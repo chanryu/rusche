@@ -1,12 +1,9 @@
 mod scanner;
 
-use scanner::Scanner;
-
-use crate::scanner::ScanError;
+use scanner::{ScanError, Scanner};
 
 fn main() {
-    let text = r#"('() )   
-    ( abc!)'(("abc?"))"#;
+    let text = r#"('() ) .123  ( abc!)'(("abc?"))"xd"#;
     let mut scanner = Scanner::new(text.chars());
 
     loop {

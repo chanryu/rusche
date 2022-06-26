@@ -7,14 +7,14 @@ pub enum Token {
     Quote,
     Backtick,
     Newline,
-    // Number(f64),
+    Number(f64),
     String(String),
     Symbol(String),
+    Comment(String),
 }
 
 #[derive(Debug)]
 pub enum ScanError {
-    UnexpectedChar(char),
     IncompleteString,
     EndOfFile,
 }
@@ -39,43 +39,68 @@ where
     }
 
     pub fn get_token(&mut self) -> ScanResult {
-        // skip any spaces and/or comment
-        while let Some(ch) = self.iter.next_if(|&ch| ch.is_ascii_whitespace()) {
-            if ch == ';' {
-                while let Some(_) = self.iter.next_if(|&ch| ch != '\r' || ch != '\n') {}
-                break;
-            }
-        }
+        self.skip_spaces();
 
         match self.iter.next() {
-            // newline "\r" | "\r\n"
-            Some('\r') => {
-                self.iter.next_if(|&ch| ch == '\n');
-                Ok(Token::Newline)
-            }
-            // newline "\n"
-            Some('\n') => Ok(Token::Newline),
-
             Some('(') => Ok(Token::LeftParan),
             Some(')') => Ok(Token::RightParan),
             Some('\'') => Ok(Token::Quote),
             Some('`') => Ok(Token::Backtick),
 
-            // quoted string
-            Some('"') => self.read_string(),
+            // newline "\r" | "\r\n"
+            Some('\r') => {
+                self.iter.next_if(|&ch| ch == '\n');
+                Ok(Token::Newline)
+            }
 
-            Some(ch) if !ch.is_control() => self.read_symbol(ch),
+            // newline "\n"
+            Some('\n') => Ok(Token::Newline),
 
-            Some(ch) => Err(ScanError::UnexpectedChar(ch)),
+            Some(';') => Ok(self.read_comment()),
+
+            // string
+            Some('"') => self.try_read_string(),
+
+            // number
+            Some(ch) if ch.is_ascii_digit() || ch == '.' => Ok(self.read_number(ch)),
+
+            // we allow all other characters to be a symbol
+            Some(ch) => Ok(self.read_symbol(ch)),
+
             None => Err(ScanError::EndOfFile),
         }
     }
 
-    fn read_symbol(&mut self, first_char: char) -> ScanResult {
+    fn skip_spaces(&mut self) {
+        while let Some(_) = self.iter.next_if(|&ch| ch == ' ' || ch == '\t') {}
+    }
+
+    fn read_comment(&mut self) -> Token {
+        let mut text = String::new();
+        while let Some(ch) = self.iter.next_if(|&ch| ch != '\r' || ch != '\n') {
+            text.push(ch);
+        }
+        Token::Comment(text)
+    }
+
+    fn read_number(&mut self, first_char: char) -> Token {
+        let mut has_decimal_point = first_char == '.';
+        let mut digits = first_char.to_string();
+        while let Some(ch) = self
+            .iter
+            .next_if(|&ch| ch.is_ascii_digit() || (!has_decimal_point && ch == '.'))
+        {
+            digits.push(ch);
+            has_decimal_point |= ch == '.';
+        }
+        Token::Number(digits.parse::<f64>().unwrap())
+    }
+
+    fn read_symbol(&mut self, first_char: char) -> Token {
         let mut name = first_char.to_string();
         loop {
             match self.iter.peek() {
-                Some(ch) if "()'`".contains(*ch) || ch.is_ascii_whitespace() => break,
+                Some(ch) if " \t\r\n()';\"".contains(*ch) => break,
                 Some(ch) => {
                     name.push(*ch);
                     self.iter.next();
@@ -83,10 +108,10 @@ where
                 None => break,
             }
         }
-        Ok(Token::Symbol(name))
+        Token::Symbol(name)
     }
 
-    fn read_string(&mut self) -> ScanResult {
+    fn try_read_string(&mut self) -> ScanResult {
         let mut text = String::new();
         loop {
             match self.iter.next() {
