@@ -1,6 +1,6 @@
 use std::iter::{Iterator, Peekable};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
     LeftParan,
     RightParan,
@@ -12,9 +12,10 @@ pub enum Token {
     Symbol(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ScanError {
     IncompleteString,
+    InvalidNumber,
     EndOfFile,
 }
 
@@ -57,13 +58,13 @@ where
             Some('\n') => Ok(Token::Newline),
 
             // string
-            Some('"') => self.try_read_string(),
+            Some('"') => self.read_string(),
 
             // number
-            Some(ch) if ch.is_ascii_digit() || ch == '.' => Ok(self.read_number(ch)),
+            Some(ch) if ch.is_ascii_digit() => self.read_number(ch),
 
             // we allow all other characters to be a symbol
-            Some(ch) => Ok(self.read_symbol(ch)),
+            Some(ch) => self.read_symbol(ch),
 
             None => Err(ScanError::EndOfFile),
         }
@@ -79,8 +80,19 @@ where
         }
     }
 
-    fn read_number(&mut self, first_char: char) -> Token {
-        let mut has_decimal_point = first_char == '.';
+    fn read_string(&mut self) -> ScanResult {
+        let mut text = String::new();
+        loop {
+            match self.iter.next() {
+                Some('"') => return Ok(Token::String(text)),
+                Some(ch) => text.push(ch),
+                None => return Err(ScanError::IncompleteString),
+            }
+        }
+    }
+
+    fn read_number(&mut self, first_char: char) -> ScanResult {
+        let mut has_decimal_point = false;
         let mut digits = first_char.to_string();
         while let Some(ch) = self
             .iter
@@ -89,10 +101,13 @@ where
             digits.push(ch);
             has_decimal_point |= ch == '.';
         }
-        Token::Number(digits.parse::<f64>().unwrap())
+        match digits.parse::<f64>() {
+            Ok(value) => Ok(Token::Number(value)),
+            Err(_) => Err(ScanError::InvalidNumber),
+        }
     }
 
-    fn read_symbol(&mut self, first_char: char) -> Token {
+    fn read_symbol(&mut self, first_char: char) -> ScanResult {
         let mut name = first_char.to_string();
         loop {
             match self.iter.peek() {
@@ -104,21 +119,43 @@ where
                 None => break,
             }
         }
-        Token::Symbol(name)
-    }
-
-    fn try_read_string(&mut self) -> ScanResult {
-        let mut text = String::new();
-        loop {
-            match self.iter.next() {
-                Some('"') => return Ok(Token::String(text)),
-                Some(ch) => text.push(ch),
-                None => return Err(ScanError::IncompleteString),
-            }
-        }
+        Ok(Token::Symbol(name))
     }
 }
 
 fn is_newline_char(ch: &char) -> bool {
     return *ch == '\r' || *ch == '\n';
+}
+
+#[test]
+fn test_read_string() {
+    macro_rules! parse_string_assert_eq {
+        ($source:literal, $expected:expr) => {
+            let mut chars = $source.chars();
+            assert_eq!(chars.next().unwrap(), '"');
+            assert_eq!(Scanner::new(chars).read_string(), $expected);
+        };
+    }
+
+    parse_string_assert_eq!(
+        "\"valid string\"",
+        Ok(Token::String("valid string".to_string()))
+    );
+    parse_string_assert_eq!("\"incomplete string", Err(ScanError::IncompleteString));
+}
+
+#[test]
+fn test_read_number() {
+    macro_rules! parse_number_assert_eq {
+        ($source:literal, $expected:expr) => {
+            assert!($source.len() != 0);
+            let mut chars = $source.chars();
+            let first_char = chars.next().unwrap();
+            assert_eq!(Scanner::new(chars).read_number(first_char), $expected);
+        };
+    }
+
+    parse_number_assert_eq!("0", Ok(Token::Number(0_f64)));
+    parse_number_assert_eq!("1", Ok(Token::Number(1_f64)));
+    parse_number_assert_eq!("1.1", Ok(Token::Number(1.1)));
 }
