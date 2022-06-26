@@ -3,7 +3,7 @@ mod scanner;
 use scanner::{ScanError, Scanner};
 
 fn main() {
-    let text = r#"('() ) .123  ( abc!)'(("abc?"))"xd"#;
+    let text = r#"('() ) .123  ( abc!)'(("abc?"))"#;
     let mut scanner = Scanner::new(text.chars());
 
     loop {
