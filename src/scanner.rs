@@ -10,7 +10,6 @@ pub enum Token {
     Number(f64),
     String(String),
     Symbol(String),
-    Comment(String),
 }
 
 #[derive(Debug)]
@@ -40,6 +39,7 @@ where
 
     pub fn get_token(&mut self) -> ScanResult {
         self.skip_spaces();
+        self.skip_comment();
 
         match self.iter.next() {
             Some('(') => Ok(Token::LeftParan),
@@ -55,8 +55,6 @@ where
 
             // newline "\n"
             Some('\n') => Ok(Token::Newline),
-
-            Some(';') => Ok(self.read_comment()),
 
             // string
             Some('"') => self.try_read_string(),
@@ -75,12 +73,10 @@ where
         while let Some(_) = self.iter.next_if(|&ch| ch == ' ' || ch == '\t') {}
     }
 
-    fn read_comment(&mut self) -> Token {
-        let mut text = String::new();
-        while let Some(ch) = self.iter.next_if(|&ch| ch != '\r' || ch != '\n') {
-            text.push(ch);
+    fn skip_comment(&mut self) {
+        if let Some(_) = self.iter.next_if_eq(&';') {
+            while let Some(_) = self.iter.next_if(|ch| !is_newline_char(ch)) {}
         }
-        Token::Comment(text)
     }
 
     fn read_number(&mut self, first_char: char) -> Token {
@@ -100,9 +96,9 @@ where
         let mut name = first_char.to_string();
         loop {
             match self.iter.peek() {
-                Some(ch) if " \t\r\n()';\"".contains(*ch) => break,
-                Some(ch) => {
-                    name.push(*ch);
+                Some(&ch) if " \t\r\n()';\"".contains(ch) => break,
+                Some(&ch) => {
+                    name.push(ch);
                     self.iter.next();
                 }
                 None => break,
@@ -121,4 +117,8 @@ where
             }
         }
     }
+}
+
+fn is_newline_char(ch: &char) -> bool {
+    return *ch == '\r' || *ch == '\n';
 }
