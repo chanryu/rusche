@@ -83,18 +83,18 @@ where
     fn read_string(&mut self) -> ScanResult {
         let mut text = String::new();
         let mut escaped = false;
-        loop {
-            match self.iter.next() {
-                Some(ch) if escaped => {
+        while let Some(ch) = self.iter.next() {
+            match ch {
+                _ if escaped => {
                     escaped = false;
                     text.push(ch);
                 }
-                Some('\\') => escaped = true,
-                Some('"') => return Ok(Token::String(text)),
-                Some(ch) => text.push(ch),
-                None => return Err(ScanError::IncompleteString),
+                '\\' => escaped = true,
+                '"' => return Ok(Token::String(text)),
+                _ => text.push(ch),
             }
         }
+        Err(ScanError::IncompleteString)
     }
 
     fn read_number(&mut self, first_char: char) -> ScanResult {
@@ -107,9 +107,10 @@ where
             digits.push(ch);
             has_decimal_point |= ch == '.';
         }
-        match digits.parse::<f64>() {
-            Ok(value) => Ok(Token::Number(value)),
-            Err(_) => Err(ScanError::InvalidNumber),
+        if let Ok(value) = digits.parse::<f64>() {
+            Ok(Token::Number(value))
+        } else {
+            Err(ScanError::InvalidNumber)
         }
     }
 
