@@ -237,6 +237,7 @@ mod tests {
         assert_eq!(scanner.get_token(), Ok(Token::Number(300_f64)));
         assert_eq!(scanner.get_token(), Ok(Token::RightParan));
         assert_eq!(scanner.get_token(), Ok(Token::RightParan));
+        assert_eq!(scanner.get_token(), Ok(Token::Newline));
         assert_eq!(scanner.get_token(), Err(ScanError::EndOfFile));
     }
 }
