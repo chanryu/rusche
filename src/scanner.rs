@@ -82,8 +82,14 @@ where
 
     fn read_string(&mut self) -> ScanResult {
         let mut text = String::new();
+        let mut escaped = false;
         loop {
             match self.iter.next() {
+                Some(ch) if escaped => {
+                    escaped = false;
+                    text.push(ch);
+                }
+                Some('\\') => escaped = true,
                 Some('"') => return Ok(Token::String(text)),
                 Some(ch) => text.push(ch),
                 None => return Err(ScanError::IncompleteString),
@@ -127,35 +133,44 @@ fn is_newline_char(ch: &char) -> bool {
     return *ch == '\r' || *ch == '\n';
 }
 
-#[test]
-fn test_read_string() {
-    macro_rules! parse_string_assert_eq {
-        ($source:literal, $expected:expr) => {
-            let mut chars = $source.chars();
-            assert_eq!(chars.next().unwrap(), '"');
-            assert_eq!(Scanner::new(chars).read_string(), $expected);
-        };
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_read_string() {
+        macro_rules! parse_string_assert_eq {
+            ($source:literal, $expected:expr) => {
+                let mut chars = $source.chars();
+                assert_eq!(chars.next().unwrap(), '"');
+                assert_eq!(Scanner::new(chars).read_string(), $expected);
+            };
+        }
+
+        parse_string_assert_eq!(
+            r#""valid string""#,
+            Ok(Token::String("valid string".to_string()))
+        );
+        parse_string_assert_eq!(
+            r#""an escaped\" string""#,
+            Ok(Token::String(String::from("an escaped\" string")))
+        );
+        parse_string_assert_eq!(r#""incomplete string"#, Err(ScanError::IncompleteString));
     }
 
-    parse_string_assert_eq!(
-        "\"valid string\"",
-        Ok(Token::String("valid string".to_string()))
-    );
-    parse_string_assert_eq!("\"incomplete string", Err(ScanError::IncompleteString));
-}
+    #[test]
+    fn test_read_number() {
+        macro_rules! parse_number_assert_eq {
+            ($source:literal, $expected:expr) => {
+                assert!($source.len() != 0);
+                let mut chars = $source.chars();
+                let first_char = chars.next().unwrap();
+                assert_eq!(Scanner::new(chars).read_number(first_char), $expected);
+            };
+        }
 
-#[test]
-fn test_read_number() {
-    macro_rules! parse_number_assert_eq {
-        ($source:literal, $expected:expr) => {
-            assert!($source.len() != 0);
-            let mut chars = $source.chars();
-            let first_char = chars.next().unwrap();
-            assert_eq!(Scanner::new(chars).read_number(first_char), $expected);
-        };
+        parse_number_assert_eq!("0", Ok(Token::Number(0_f64)));
+        parse_number_assert_eq!("1", Ok(Token::Number(1_f64)));
+        parse_number_assert_eq!("1.1", Ok(Token::Number(1.1)));
     }
-
-    parse_number_assert_eq!("0", Ok(Token::Number(0_f64)));
-    parse_number_assert_eq!("1", Ok(Token::Number(1_f64)));
-    parse_number_assert_eq!("1.1", Ok(Token::Number(1.1)));
 }
