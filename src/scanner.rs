@@ -42,31 +42,33 @@ where
         self.skip_spaces();
         self.skip_comment();
 
-        match self.iter.next() {
-            Some('(') => Ok(Token::LeftParan),
-            Some(')') => Ok(Token::RightParan),
-            Some('\'') => Ok(Token::Quote),
-            Some('`') => Ok(Token::Backtick),
+        if let Some(ch) = self.iter.next() {
+            match ch {
+                '(' => Ok(Token::LeftParan),
+                ')' => Ok(Token::RightParan),
+                '\'' => Ok(Token::Quote),
+                '`' => Ok(Token::Backtick),
 
-            // newline "\r" | "\r\n"
-            Some('\r') => {
-                self.iter.next_if(|&ch| ch == '\n');
-                Ok(Token::Newline)
+                // newline "\r" | "\r\n"
+                '\r' => {
+                    self.iter.next_if(|&ch| ch == '\n');
+                    Ok(Token::Newline)
+                }
+
+                // newline "\n"
+                '\n' => Ok(Token::Newline),
+
+                // string
+                '"' => self.read_string(),
+
+                // number
+                ch if ch.is_ascii_digit() => self.read_number(ch),
+
+                // we allow all other characters to be a symbol
+                ch => self.read_symbol(ch),
             }
-
-            // newline "\n"
-            Some('\n') => Ok(Token::Newline),
-
-            // string
-            Some('"') => self.read_string(),
-
-            // number
-            Some(ch) if ch.is_ascii_digit() => self.read_number(ch),
-
-            // we allow all other characters to be a symbol
-            Some(ch) => self.read_symbol(ch),
-
-            None => Err(ScanError::EndOfFile),
+        } else {
+            Err(ScanError::EndOfFile)
         }
     }
 
@@ -173,5 +175,68 @@ mod tests {
         parse_number_assert_eq!("0", Ok(Token::Number(0_f64)));
         parse_number_assert_eq!("1", Ok(Token::Number(1_f64)));
         parse_number_assert_eq!("1.1", Ok(Token::Number(1.1)));
+    }
+
+    #[test]
+    fn test_scanner_eof() {
+        let mut scanner = Scanner::new("".chars());
+        assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
+
+        let mut scanner = Scanner::new("    ".chars());
+        assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
+
+        let mut scanner = Scanner::new("   ; comment".chars());
+        assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
+
+        let mut scanner = Scanner::new("".chars());
+        assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
+        assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
+        assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
+    }
+
+    #[test]
+    fn test_scanner_parans() {
+        let mut scanner = Scanner::new("()(())(()())".chars());
+        assert_eq!(Ok(Token::LeftParan), scanner.get_token());
+        assert_eq!(Ok(Token::RightParan), scanner.get_token());
+        assert_eq!(Ok(Token::LeftParan), scanner.get_token());
+        assert_eq!(Ok(Token::LeftParan), scanner.get_token());
+        assert_eq!(Ok(Token::RightParan), scanner.get_token());
+        assert_eq!(Ok(Token::RightParan), scanner.get_token());
+        assert_eq!(Ok(Token::LeftParan), scanner.get_token());
+        assert_eq!(Ok(Token::LeftParan), scanner.get_token());
+        assert_eq!(Ok(Token::RightParan), scanner.get_token());
+        assert_eq!(Ok(Token::LeftParan), scanner.get_token());
+        assert_eq!(Ok(Token::RightParan), scanner.get_token());
+        assert_eq!(Ok(Token::RightParan), scanner.get_token());
+        assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
+    }
+
+    #[test]
+    fn test_scanner_all_tokens() {
+        let all_tokens = r#"
+        (add 1 2.34 `(x y) "test" '(100 200 300))
+        "#;
+
+        let mut scanner = Scanner::new(all_tokens.chars());
+        assert_eq!(scanner.get_token(), Ok(Token::Newline));
+        assert_eq!(scanner.get_token(), Ok(Token::LeftParan));
+        assert_eq!(scanner.get_token(), Ok(Token::Symbol(String::from("add"))));
+        assert_eq!(scanner.get_token(), Ok(Token::Number(1_f64)));
+        assert_eq!(scanner.get_token(), Ok(Token::Number(2.34_f64)));
+        assert_eq!(scanner.get_token(), Ok(Token::Backtick));
+        assert_eq!(scanner.get_token(), Ok(Token::LeftParan));
+        assert_eq!(scanner.get_token(), Ok(Token::Symbol(String::from("x"))));
+        assert_eq!(scanner.get_token(), Ok(Token::Symbol(String::from("y"))));
+        assert_eq!(scanner.get_token(), Ok(Token::RightParan));
+        assert_eq!(scanner.get_token(), Ok(Token::String(String::from("test"))));
+        assert_eq!(scanner.get_token(), Ok(Token::Quote));
+        assert_eq!(scanner.get_token(), Ok(Token::LeftParan));
+        assert_eq!(scanner.get_token(), Ok(Token::Number(100_f64)));
+        assert_eq!(scanner.get_token(), Ok(Token::Number(200_f64)));
+        assert_eq!(scanner.get_token(), Ok(Token::Number(300_f64)));
+        assert_eq!(scanner.get_token(), Ok(Token::RightParan));
+        assert_eq!(scanner.get_token(), Ok(Token::RightParan));
+        assert_eq!(scanner.get_token(), Err(ScanError::EndOfFile));
     }
 }
