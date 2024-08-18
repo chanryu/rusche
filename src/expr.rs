@@ -22,6 +22,14 @@ impl Expr {
             true
         }
     }
+
+    pub fn new_sym(text: &str) -> Self {
+        Self::Sym(String::from(text))
+    }
+
+    pub fn new_list(car: Expr, cdr: Expr) -> Self {
+        Self::List(Box::new(Cons { car, cdr }))
+    }
 }
 
 #[cfg(test)]
@@ -31,10 +39,6 @@ mod tests {
     #[test]
     fn test_is_atom() {
         assert!(Expr::Nil.is_atom());
-        assert!(!Expr::List(Box::new(Cons {
-            car: Expr::Nil,
-            cdr: Expr::Nil
-        }))
-        .is_atom());
+        assert!(!Expr::new_list(Expr::Nil, Expr::Nil).is_atom());
     }
 }

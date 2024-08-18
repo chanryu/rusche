@@ -35,20 +35,18 @@ where
 
     pub fn parse(&mut self) -> ParseResult {
         loop {
-            let mut expr = Expr::Nil;
-
-            match self.scanner.get_token() {
+            let expr = match self.scanner.get_token() {
                 Ok(Token::OpenParen) => {
                     self.begin_list();
                     continue;
                 }
-                Ok(Token::CloseParen) => expr = self.end_list()?,
-                Ok(Token::Sym(text)) => expr = Expr::Sym(text),
-                Ok(Token::Str(text)) => expr = Expr::Str(text),
-                Ok(Token::Num(value)) => expr = Expr::Num(value),
+                Ok(Token::CloseParen) => self.end_list()?,
+                Ok(Token::Sym(text)) => Expr::Sym(text),
+                Ok(Token::Str(text)) => Expr::Str(text),
+                Ok(Token::Num(value)) => Expr::Num(value),
                 Ok(token) => return Err(ParseError::UnexpectedToken(token)),
                 Err(error) => return Err(ParseError::ScanError(error)),
-            }
+            };
 
             if let Some(context) = self.contexts.last_mut() {
                 if context.car.is_none() {
@@ -100,16 +98,13 @@ mod tests {
         let mut parser = Parser::new("(add 1 2)".chars());
         let parsed_expr = parser.parse().unwrap();
 
-        let expected_expr = Expr::List(Box::new(Cons {
-            car: Expr::Sym(String::from("add")),
-            cdr: Expr::List(Box::new(Cons {
-                car: Expr::Num(1_f64),
-                cdr: Expr::List(Box::new(Cons {
-                    car: Expr::Num(2_f64),
-                    cdr: Expr::Nil,
-                })),
-            })),
-        }));
+        let expected_expr = Expr::new_list(
+            Expr::new_sym("add"),
+            Expr::new_list(
+                Expr::Num(1_f64),
+                Expr::new_list(Expr::Num(2_f64), Expr::Nil),
+            ),
+        );
 
         assert_eq!(parsed_expr, expected_expr);
     }
