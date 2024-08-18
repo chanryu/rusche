@@ -1,15 +1,14 @@
 use std::iter::{Iterator, Peekable};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
-    LeftParan,
-    RightParan,
+    OpenParen,
+    CloseParen,
     Quote,
-    Backtick,
     Newline,
-    Number(f64),
-    String(String),
-    Symbol(String),
+    Num(f64),
+    Str(String),
+    Sym(String),
 }
 
 #[derive(Debug, PartialEq)]
@@ -19,7 +18,7 @@ pub enum ScanError {
     EndOfFile,
 }
 
-type ScanResult = Result<Token, ScanError>;
+pub type ScanResult = Result<Token, ScanError>;
 
 pub struct Scanner<Iter>
 where
@@ -44,10 +43,9 @@ where
 
         if let Some(ch) = self.iter.next() {
             match ch {
-                '(' => Ok(Token::LeftParan),
-                ')' => Ok(Token::RightParan),
+                '(' => Ok(Token::OpenParen),
+                ')' => Ok(Token::CloseParen),
                 '\'' => Ok(Token::Quote),
-                '`' => Ok(Token::Backtick),
 
                 // newline "\r" | "\r\n"
                 '\r' => {
@@ -92,7 +90,7 @@ where
                     text.push(ch);
                 }
                 '\\' => escaped = true,
-                '"' => return Ok(Token::String(text)),
+                '"' => return Ok(Token::Str(text)),
                 _ => text.push(ch),
             }
         }
@@ -110,7 +108,7 @@ where
             has_decimal_point |= ch == '.';
         }
         if let Ok(value) = digits.parse::<f64>() {
-            Ok(Token::Number(value))
+            Ok(Token::Num(value))
         } else {
             Err(ScanError::InvalidNumber)
         }
@@ -128,7 +126,7 @@ where
                 None => break,
             }
         }
-        Ok(Token::Symbol(name))
+        Ok(Token::Sym(name))
     }
 }
 
@@ -152,11 +150,11 @@ mod tests {
 
         parse_string_assert_eq!(
             r#""valid string""#,
-            Ok(Token::String("valid string".to_string()))
+            Ok(Token::Str("valid string".to_string()))
         );
         parse_string_assert_eq!(
             r#""an escaped\" string""#,
-            Ok(Token::String(String::from("an escaped\" string")))
+            Ok(Token::Str(String::from("an escaped\" string")))
         );
         parse_string_assert_eq!(r#""incomplete string"#, Err(ScanError::IncompleteString));
     }
@@ -172,9 +170,9 @@ mod tests {
             };
         }
 
-        parse_number_assert_eq!("0", Ok(Token::Number(0_f64)));
-        parse_number_assert_eq!("1", Ok(Token::Number(1_f64)));
-        parse_number_assert_eq!("1.1", Ok(Token::Number(1.1)));
+        parse_number_assert_eq!("0", Ok(Token::Num(0_f64)));
+        parse_number_assert_eq!("1", Ok(Token::Num(1_f64)));
+        parse_number_assert_eq!("1.1", Ok(Token::Num(1.1)));
     }
 
     #[test]
@@ -197,46 +195,45 @@ mod tests {
     #[test]
     fn test_scanner_parans() {
         let mut scanner = Scanner::new("()(())(()())".chars());
-        assert_eq!(Ok(Token::LeftParan), scanner.get_token());
-        assert_eq!(Ok(Token::RightParan), scanner.get_token());
-        assert_eq!(Ok(Token::LeftParan), scanner.get_token());
-        assert_eq!(Ok(Token::LeftParan), scanner.get_token());
-        assert_eq!(Ok(Token::RightParan), scanner.get_token());
-        assert_eq!(Ok(Token::RightParan), scanner.get_token());
-        assert_eq!(Ok(Token::LeftParan), scanner.get_token());
-        assert_eq!(Ok(Token::LeftParan), scanner.get_token());
-        assert_eq!(Ok(Token::RightParan), scanner.get_token());
-        assert_eq!(Ok(Token::LeftParan), scanner.get_token());
-        assert_eq!(Ok(Token::RightParan), scanner.get_token());
-        assert_eq!(Ok(Token::RightParan), scanner.get_token());
+        assert_eq!(Ok(Token::OpenParen), scanner.get_token());
+        assert_eq!(Ok(Token::CloseParen), scanner.get_token());
+        assert_eq!(Ok(Token::OpenParen), scanner.get_token());
+        assert_eq!(Ok(Token::OpenParen), scanner.get_token());
+        assert_eq!(Ok(Token::CloseParen), scanner.get_token());
+        assert_eq!(Ok(Token::CloseParen), scanner.get_token());
+        assert_eq!(Ok(Token::OpenParen), scanner.get_token());
+        assert_eq!(Ok(Token::OpenParen), scanner.get_token());
+        assert_eq!(Ok(Token::CloseParen), scanner.get_token());
+        assert_eq!(Ok(Token::OpenParen), scanner.get_token());
+        assert_eq!(Ok(Token::CloseParen), scanner.get_token());
+        assert_eq!(Ok(Token::CloseParen), scanner.get_token());
         assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
     }
 
     #[test]
     fn test_scanner_all_tokens() {
         let all_tokens = r#"
-        (add 1 2.34 `(x y) "test" '(100 200 300))
+        (add 1 2.34 (x y) "test" '(100 200 300))
         "#;
 
         let mut scanner = Scanner::new(all_tokens.chars());
         assert_eq!(scanner.get_token(), Ok(Token::Newline));
-        assert_eq!(scanner.get_token(), Ok(Token::LeftParan));
-        assert_eq!(scanner.get_token(), Ok(Token::Symbol(String::from("add"))));
-        assert_eq!(scanner.get_token(), Ok(Token::Number(1_f64)));
-        assert_eq!(scanner.get_token(), Ok(Token::Number(2.34_f64)));
-        assert_eq!(scanner.get_token(), Ok(Token::Backtick));
-        assert_eq!(scanner.get_token(), Ok(Token::LeftParan));
-        assert_eq!(scanner.get_token(), Ok(Token::Symbol(String::from("x"))));
-        assert_eq!(scanner.get_token(), Ok(Token::Symbol(String::from("y"))));
-        assert_eq!(scanner.get_token(), Ok(Token::RightParan));
-        assert_eq!(scanner.get_token(), Ok(Token::String(String::from("test"))));
+        assert_eq!(scanner.get_token(), Ok(Token::OpenParen));
+        assert_eq!(scanner.get_token(), Ok(Token::Sym(String::from("add"))));
+        assert_eq!(scanner.get_token(), Ok(Token::Num(1_f64)));
+        assert_eq!(scanner.get_token(), Ok(Token::Num(2.34_f64)));
+        assert_eq!(scanner.get_token(), Ok(Token::OpenParen));
+        assert_eq!(scanner.get_token(), Ok(Token::Sym(String::from("x"))));
+        assert_eq!(scanner.get_token(), Ok(Token::Sym(String::from("y"))));
+        assert_eq!(scanner.get_token(), Ok(Token::CloseParen));
+        assert_eq!(scanner.get_token(), Ok(Token::Str(String::from("test"))));
         assert_eq!(scanner.get_token(), Ok(Token::Quote));
-        assert_eq!(scanner.get_token(), Ok(Token::LeftParan));
-        assert_eq!(scanner.get_token(), Ok(Token::Number(100_f64)));
-        assert_eq!(scanner.get_token(), Ok(Token::Number(200_f64)));
-        assert_eq!(scanner.get_token(), Ok(Token::Number(300_f64)));
-        assert_eq!(scanner.get_token(), Ok(Token::RightParan));
-        assert_eq!(scanner.get_token(), Ok(Token::RightParan));
+        assert_eq!(scanner.get_token(), Ok(Token::OpenParen));
+        assert_eq!(scanner.get_token(), Ok(Token::Num(100_f64)));
+        assert_eq!(scanner.get_token(), Ok(Token::Num(200_f64)));
+        assert_eq!(scanner.get_token(), Ok(Token::Num(300_f64)));
+        assert_eq!(scanner.get_token(), Ok(Token::CloseParen));
+        assert_eq!(scanner.get_token(), Ok(Token::CloseParen));
         assert_eq!(scanner.get_token(), Ok(Token::Newline));
         assert_eq!(scanner.get_token(), Err(ScanError::EndOfFile));
     }
