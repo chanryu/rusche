@@ -5,7 +5,6 @@ pub enum Token {
     OpenParen,
     CloseParen,
     Quote,
-    Newline,
     Num(f64),
     Str(String),
     Sym(String),
@@ -46,15 +45,6 @@ where
                 '(' => Ok(Token::OpenParen),
                 ')' => Ok(Token::CloseParen),
                 '\'' => Ok(Token::Quote),
-
-                // newline "\r" | "\r\n"
-                '\r' => {
-                    self.iter.next_if(|&ch| ch == '\n');
-                    Ok(Token::Newline)
-                }
-
-                // newline "\n"
-                '\n' => Ok(Token::Newline),
 
                 // string
                 '"' => self.read_string(),
