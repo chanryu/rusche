@@ -37,36 +37,40 @@ where
     }
 
     pub fn get_token(&mut self) -> ScanResult {
-        self.skip_spaces();
-        self.skip_comment();
+        loop {
+            self.skip_spaces();
 
-        if let Some(ch) = self.iter.next() {
-            match ch {
-                '(' => Ok(Token::OpenParen),
-                ')' => Ok(Token::CloseParen),
-                '\'' => Ok(Token::Quote),
+            if let Some(ch) = self.iter.next() {
+                match ch {
+                    '(' => return Ok(Token::OpenParen),
+                    ')' => return Ok(Token::CloseParen),
+                    '\'' => return Ok(Token::Quote),
+                    ';' => self.skip_comment(),
 
-                // string
-                '"' => self.read_string(),
+                    // string
+                    '"' => return self.read_string(),
 
-                // number
-                ch if ch.is_ascii_digit() => self.read_number(ch),
+                    // number
+                    ch if ch.is_ascii_digit() => return self.read_number(ch),
 
-                // we allow all other characters to be a symbol
-                ch => self.read_symbol(ch),
+                    // we allow all other characters to be a symbol
+                    ch => return self.read_symbol(ch),
+                }
+            } else {
+                return Err(ScanError::EndOfFile);
             }
-        } else {
-            Err(ScanError::EndOfFile)
         }
     }
 
     fn skip_spaces(&mut self) {
-        while let Some(_) = self.iter.next_if(|&ch| ch == ' ' || ch == '\t') {}
+        while self.iter.next_if(|&ch| ch.is_whitespace()).is_some() {}
     }
 
     fn skip_comment(&mut self) {
-        if let Some(_) = self.iter.next_if_eq(&';') {
-            while let Some(_) = self.iter.next_if(|ch| !is_newline_char(ch)) {}
+        if self.iter.next_if_eq(&';').is_none() {
+            while self.iter.next_if(|ch| !is_newline_char(ch)).is_some() {
+                // consume comment
+            }
         }
     }
 
@@ -203,11 +207,11 @@ mod tests {
     #[test]
     fn test_scanner_all_tokens() {
         let all_tokens = r#"
+        ; comment
         (add 1 2.34 (x y) "test" '(100 200 300))
-        "#;
+        ; another comment"#;
 
         let mut scanner = Scanner::new(all_tokens.chars());
-        assert_eq!(scanner.get_token(), Ok(Token::Newline));
         assert_eq!(scanner.get_token(), Ok(Token::OpenParen));
         assert_eq!(scanner.get_token(), Ok(Token::Sym(String::from("add"))));
         assert_eq!(scanner.get_token(), Ok(Token::Num(1_f64)));
@@ -224,7 +228,6 @@ mod tests {
         assert_eq!(scanner.get_token(), Ok(Token::Num(300_f64)));
         assert_eq!(scanner.get_token(), Ok(Token::CloseParen));
         assert_eq!(scanner.get_token(), Ok(Token::CloseParen));
-        assert_eq!(scanner.get_token(), Ok(Token::Newline));
         assert_eq!(scanner.get_token(), Err(ScanError::EndOfFile));
     }
 }
