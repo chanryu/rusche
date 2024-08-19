@@ -44,23 +44,21 @@ where
             }
         }
 
-        if let Some(ch) = self.iter.next() {
-            match ch {
-                '(' => Ok(Token::OpenParen),
-                ')' => Ok(Token::CloseParen),
-                '\'' => Ok(Token::Quote),
+        match self.iter.next() {
+            Some('(') => Ok(Token::OpenParen),
+            Some(')') => Ok(Token::CloseParen),
+            Some('\'') => Ok(Token::Quote),
 
-                // string
-                '"' => self.read_string(),
+            // string
+            Some('"') => self.read_string(),
 
-                // number
-                ch if ch.is_ascii_digit() => self.read_number(ch),
+            // number
+            Some(ch) if ch.is_ascii_digit() => self.read_number(ch),
 
-                // we allow all other characters to be a symbol
-                ch => self.read_symbol(ch),
-            }
-        } else {
-            Err(ScanError::EndOfFile)
+            // we allow all other characters to be a symbol
+            Some(ch) => self.read_symbol(ch),
+
+            None => Err(ScanError::EndOfFile),
         }
     }
 
