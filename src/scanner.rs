@@ -39,26 +39,28 @@ where
     pub fn get_token(&mut self) -> ScanResult {
         loop {
             self.skip_spaces();
-
-            if let Some(ch) = self.iter.next() {
-                match ch {
-                    '(' => return Ok(Token::OpenParen),
-                    ')' => return Ok(Token::CloseParen),
-                    '\'' => return Ok(Token::Quote),
-                    ';' => self.skip_comment(),
-
-                    // string
-                    '"' => return self.read_string(),
-
-                    // number
-                    ch if ch.is_ascii_digit() => return self.read_number(ch),
-
-                    // we allow all other characters to be a symbol
-                    ch => return self.read_symbol(ch),
-                }
-            } else {
-                return Err(ScanError::EndOfFile);
+            if !self.skip_comment() {
+                break;
             }
+        }
+
+        if let Some(ch) = self.iter.next() {
+            match ch {
+                '(' => Ok(Token::OpenParen),
+                ')' => Ok(Token::CloseParen),
+                '\'' => Ok(Token::Quote),
+
+                // string
+                '"' => self.read_string(),
+
+                // number
+                ch if ch.is_ascii_digit() => self.read_number(ch),
+
+                // we allow all other characters to be a symbol
+                ch => self.read_symbol(ch),
+            }
+        } else {
+            Err(ScanError::EndOfFile)
         }
     }
 
@@ -66,11 +68,14 @@ where
         while self.iter.next_if(|&ch| ch.is_whitespace()).is_some() {}
     }
 
-    fn skip_comment(&mut self) {
-        if self.iter.next_if_eq(&';').is_none() {
+    fn skip_comment(&mut self) -> bool {
+        if self.iter.next_if_eq(&';').is_some() {
             while self.iter.next_if(|ch| !is_newline_char(ch)).is_some() {
                 // consume comment
             }
+            true
+        } else {
+            false
         }
     }
 
