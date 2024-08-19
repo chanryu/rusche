@@ -1,5 +1,7 @@
 use std::iter::{Iterator, Peekable};
 
+const SYMBOL_DELIMITERS: &str = " \t\r\n()';\"";
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     OpenParen,
@@ -68,9 +70,7 @@ where
 
     fn skip_comment(&mut self) -> bool {
         if self.iter.next_if_eq(&';').is_some() {
-            while self.iter.next_if(|ch| !is_newline_char(ch)).is_some() {
-                // consume comment
-            }
+            self.iter.find(|&ch| is_newline_char(&ch));
             true
         } else {
             false
@@ -80,15 +80,15 @@ where
     fn read_string(&mut self) -> ScanResult {
         let mut text = String::new();
         let mut escaped = false;
-        while let Some(ch) = self.iter.next() {
-            match ch {
-                _ if escaped => {
+        for ch in &mut self.iter {
+            match (ch, escaped) {
+                (ch, true) => {
                     escaped = false;
                     text.push(ch);
                 }
-                '\\' => escaped = true,
-                '"' => return Ok(Token::Str(text)),
-                _ => text.push(ch),
+                ('"', false) => return Ok(Token::Str(text)),
+                ('\\', false) => escaped = true,
+                (ch, false) => text.push(ch),
             }
         }
         Err(ScanError::IncompleteString)
@@ -96,33 +96,33 @@ where
 
     fn read_number(&mut self, first_char: char) -> ScanResult {
         let mut has_decimal_point = false;
-        let mut digits = first_char.to_string();
+        let mut digits = String::new();
+
+        digits.push(first_char);
         while let Some(ch) = self
             .iter
             .next_if(|&ch| ch.is_ascii_digit() || (!has_decimal_point && ch == '.'))
         {
             digits.push(ch);
-            has_decimal_point |= ch == '.';
+            if ch == '.' {
+                has_decimal_point = true;
+            }
         }
-        if let Ok(value) = digits.parse::<f64>() {
-            Ok(Token::Num(value))
-        } else {
-            Err(ScanError::InvalidNumber)
-        }
+
+        digits
+            .parse::<f64>()
+            .map(|value| Ok(Token::Num(value)))
+            .unwrap_or_else(|_| Err(ScanError::InvalidNumber))
     }
 
     fn read_symbol(&mut self, first_char: char) -> ScanResult {
-        let mut name = first_char.to_string();
-        loop {
-            match self.iter.peek() {
-                Some(&ch) if " \t\r\n()';\"".contains(ch) => break,
-                Some(&ch) => {
-                    name.push(ch);
-                    self.iter.next();
-                }
-                None => break,
-            }
+        let mut name = String::with_capacity(16);
+        name.push(first_char);
+
+        while let Some(ch) = self.iter.next_if(|&ch| !SYMBOL_DELIMITERS.contains(ch)) {
+            name.push(ch);
         }
+
         Ok(Token::Sym(name))
     }
 }
