@@ -72,20 +72,17 @@ where
 
     fn end_list(&mut self) -> ParseResult {
         let mut expr = Expr::Nil;
-        loop {
-            if let Some(context) = self.contexts.pop() {
-                if let Some(car) = context.car {
-                    expr = Expr::List(Box::new(Cons { car, cdr: expr }));
-                } else {
-                    assert!(expr == Expr::Nil);
-                }
-                if context.list_began {
-                    return Ok(expr);
-                }
+        while let Some(context) = self.contexts.pop() {
+            if let Some(car) = context.car {
+                expr = Expr::List(Box::new(Cons { car, cdr: expr }));
             } else {
-                return Err(ParseError::UnexpectedToken(Token::CloseParen));
+                assert!(expr == Expr::Nil);
+            }
+            if context.list_began {
+                return Ok(expr);
             }
         }
+        Err(ParseError::UnexpectedToken(Token::CloseParen))
     }
 }
 
