@@ -5,7 +5,6 @@ pub enum Token {
     OpenParen,
     CloseParen,
     Quote,
-    Newline,
     Num(f64),
     Str(String),
     Sym(String),
@@ -38,45 +37,43 @@ where
     }
 
     pub fn get_token(&mut self) -> ScanResult {
-        self.skip_spaces();
-        self.skip_comment();
-
-        if let Some(ch) = self.iter.next() {
-            match ch {
-                '(' => Ok(Token::OpenParen),
-                ')' => Ok(Token::CloseParen),
-                '\'' => Ok(Token::Quote),
-
-                // newline "\r" | "\r\n"
-                '\r' => {
-                    self.iter.next_if(|&ch| ch == '\n');
-                    Ok(Token::Newline)
-                }
-
-                // newline "\n"
-                '\n' => Ok(Token::Newline),
-
-                // string
-                '"' => self.read_string(),
-
-                // number
-                ch if ch.is_ascii_digit() => self.read_number(ch),
-
-                // we allow all other characters to be a symbol
-                ch => self.read_symbol(ch),
+        loop {
+            self.skip_spaces();
+            if !self.skip_comment() {
+                break;
             }
-        } else {
-            Err(ScanError::EndOfFile)
+        }
+
+        match self.iter.next() {
+            Some('(') => Ok(Token::OpenParen),
+            Some(')') => Ok(Token::CloseParen),
+            Some('\'') => Ok(Token::Quote),
+
+            // string
+            Some('"') => self.read_string(),
+
+            // number
+            Some(ch) if ch.is_ascii_digit() => self.read_number(ch),
+
+            // we allow all other characters to be a symbol
+            Some(ch) => self.read_symbol(ch),
+
+            None => Err(ScanError::EndOfFile),
         }
     }
 
     fn skip_spaces(&mut self) {
-        while let Some(_) = self.iter.next_if(|&ch| ch == ' ' || ch == '\t') {}
+        while self.iter.next_if(|&ch| ch.is_whitespace()).is_some() {}
     }
 
-    fn skip_comment(&mut self) {
-        if let Some(_) = self.iter.next_if_eq(&';') {
-            while let Some(_) = self.iter.next_if(|ch| !is_newline_char(ch)) {}
+    fn skip_comment(&mut self) -> bool {
+        if self.iter.next_if_eq(&';').is_some() {
+            while self.iter.next_if(|ch| !is_newline_char(ch)).is_some() {
+                // consume comment
+            }
+            true
+        } else {
+            false
         }
     }
 
@@ -213,11 +210,11 @@ mod tests {
     #[test]
     fn test_scanner_all_tokens() {
         let all_tokens = r#"
+        ; comment
         (add 1 2.34 (x y) "test" '(100 200 300))
-        "#;
+        ; another comment"#;
 
         let mut scanner = Scanner::new(all_tokens.chars());
-        assert_eq!(scanner.get_token(), Ok(Token::Newline));
         assert_eq!(scanner.get_token(), Ok(Token::OpenParen));
         assert_eq!(scanner.get_token(), Ok(Token::Sym(String::from("add"))));
         assert_eq!(scanner.get_token(), Ok(Token::Num(1_f64)));
@@ -234,7 +231,6 @@ mod tests {
         assert_eq!(scanner.get_token(), Ok(Token::Num(300_f64)));
         assert_eq!(scanner.get_token(), Ok(Token::CloseParen));
         assert_eq!(scanner.get_token(), Ok(Token::CloseParen));
-        assert_eq!(scanner.get_token(), Ok(Token::Newline));
         assert_eq!(scanner.get_token(), Err(ScanError::EndOfFile));
     }
 }
