@@ -1,5 +1,7 @@
 use std::iter::{Iterator, Peekable};
 
+const SYMBOL_DELIMITERS: &str = " \t\r\n()';\"";
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     OpenParen,
@@ -68,9 +70,7 @@ where
 
     fn skip_comment(&mut self) -> bool {
         if self.iter.next_if_eq(&';').is_some() {
-            while self.iter.next_if(|ch| !is_newline_char(ch)).is_some() {
-                // consume comment
-            }
+            self.iter.find(|&ch| is_newline_char(&ch));
             true
         } else {
             false
@@ -112,17 +112,13 @@ where
     }
 
     fn read_symbol(&mut self, first_char: char) -> ScanResult {
-        let mut name = first_char.to_string();
-        loop {
-            match self.iter.peek() {
-                Some(&ch) if " \t\r\n()';\"".contains(ch) => break,
-                Some(&ch) => {
-                    name.push(ch);
-                    self.iter.next();
-                }
-                None => break,
-            }
+        let mut name = String::with_capacity(16);
+        name.push(first_char);
+
+        while let Some(ch) = self.iter.next_if(|&ch| !SYMBOL_DELIMITERS.contains(ch)) {
+            name.push(ch);
         }
+
         Ok(Token::Sym(name))
     }
 }
