@@ -33,8 +33,8 @@ impl fmt::Display for Expr {
     }
 }
 
+#[cfg(test)]
 impl Expr {
-    #[cfg(test)]
     pub fn is_atom(&self) -> bool {
         if let Self::List(_) = self {
             false

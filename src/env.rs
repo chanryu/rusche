@@ -1,4 +1,4 @@
-use crate::builtins::num::add;
+use crate::builtins;
 use crate::expr::Expr;
 use std::collections::HashMap;
 
@@ -15,7 +15,10 @@ impl Env {
 
     pub fn new_root_env() -> Self {
         let mut env = Env::new();
-        env.set("add", Expr::Proc(add));
+        env.set("+", Expr::Proc(builtins::num::add));
+        env.set("-", Expr::Proc(builtins::num::minus));
+        env.set("*", Expr::Proc(builtins::num::multiply));
+        env.set("/", Expr::Proc(builtins::num::divide));
         env
     }
 
