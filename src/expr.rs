@@ -1,4 +1,4 @@
-use crate::eval::EvalResult;
+use crate::eval::{Env, EvalResult};
 
 #[derive(Debug, PartialEq)]
 pub struct Cons {
@@ -6,7 +6,7 @@ pub struct Cons {
     pub cdr: Expr,
 }
 
-pub type Func = fn(expr: &Expr) -> EvalResult;
+pub type Func = fn(expr: &Expr, env: &Env) -> EvalResult;
 
 #[derive(Debug, PartialEq)]
 pub enum Expr {
