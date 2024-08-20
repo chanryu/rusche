@@ -1,4 +1,5 @@
-use crate::eval::{eval, Env, EvalResult};
+use crate::env::Env;
+use crate::eval::{eval, EvalResult};
 use crate::expr::Expr;
 
 pub fn add(args: &Expr, env: &Env) -> EvalResult {

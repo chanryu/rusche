@@ -1,19 +1,18 @@
 mod builtins;
+mod env;
 mod eval;
 mod expr;
 mod parser;
 mod scanner;
 
-use builtins::num::add;
-use eval::{eval, Env};
-use expr::Expr;
+use env::Env;
+use eval::eval;
 use parser::Parser;
 
 fn main() {
     let mut parser = Parser::new("(add 1 2)".chars());
     if let Ok(expr) = parser.parse() {
-        let mut env = Env::new();
-        env.set("add", Expr::Proc(add));
+        let env = Env::new_root_env();
         match eval(&expr, &env) {
             Ok(_) => {
                 println!("Eval success!");
