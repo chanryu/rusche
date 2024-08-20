@@ -1,5 +1,6 @@
 use crate::env::Env;
 use crate::eval::EvalResult;
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub struct Cons {
@@ -17,6 +18,19 @@ pub enum Expr {
     Sym(String),
     Proc(Func),
     List(Box<Cons>),
+}
+
+impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Expr::Nil => write!(f, "()"),
+            Expr::Num(value) => write!(f, "{}", value),
+            Expr::Str(text) => write!(f, "\"{}\"", text), // TODO: escape as control chars
+            Expr::Sym(text) => write!(f, "{}", text),
+            Expr::Proc(_) => write!(f, "<#proc>"),
+            Expr::List(cons) => write!(f, "({} . {})", cons.car, cons.cdr),
+        }
+    }
 }
 
 impl Expr {
