@@ -1,23 +1,46 @@
 use crate::expr::Expr;
 
-pub type EvalError = &'static str;
-pub type EvalResult = Result<Expr, EvalError>;
+pub type EvalResult = Result<Expr, String>;
 
-pub fn eval(expr: Expr) -> EvalResult {
+pub fn eval(expr: &Expr) -> EvalResult {
     match expr {
-        Expr::List(cons) => {
-            if let Expr::Proc(func) = eval(cons.car)? {
-                func(cons.cdr)
+        Expr::Nil => Ok(Expr::Nil),
+        Expr::Num(value) => Ok(Expr::Num(value.clone())),
+        Expr::Str(text) => Ok(Expr::Str(text.clone())),
+        Expr::Sym(text) => {
+            if text == "add" {
+                Ok(Expr::Proc(add))
             } else {
-                Err("A Proc is expected.")
+                Err(format!("Undefined symbol: {:?}", text))
             }
         }
-        Expr::Sym(_) => Ok(Expr::Proc(add)),
-        _ => Ok(expr),
+        Expr::Proc(func) => Ok(Expr::Proc(func.clone())),
+        Expr::List(cons) => {
+            if let Expr::Proc(func) = eval(&cons.car)? {
+                func(&cons.cdr)
+            } else {
+                Err(String::from("A Proc is expected."))
+            }
+        }
     }
 }
 
-fn add(expr: Expr) -> EvalResult {
-    let _ = expr;
-    Ok(Expr::Nil)
+fn add(args: &Expr) -> EvalResult {
+    let mut sum = 0_f64;
+    let mut args = args;
+    loop {
+        match args {
+            Expr::Nil => break,
+            Expr::List(ref cons) => {
+                if let Expr::Num(value) = eval(&cons.car)? {
+                    sum += value;
+                    args = &cons.cdr;
+                } else {
+                    return Err(String::from("Not a number!"));
+                }
+            }
+            _ => return Err(String::from("Combination must be a proper list")),
+        }
+    }
+    Ok(Expr::Num(sum))
 }

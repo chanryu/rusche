@@ -9,6 +9,6 @@ use parser::Parser;
 fn main() {
     let mut parser = Parser::new("(add 1 2)".chars());
     if let Ok(expr) = parser.parse() {
-        let _ = eval(expr);
+        let _ = eval(&expr);
     }
 }

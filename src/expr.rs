@@ -6,7 +6,7 @@ pub struct Cons {
     pub cdr: Expr,
 }
 
-pub type Func = fn(expr: Expr) -> EvalResult;
+pub type Func = fn(expr: &Expr) -> EvalResult;
 
 #[derive(Debug, PartialEq)]
 pub enum Expr {
