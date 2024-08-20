@@ -2,9 +2,7 @@ use crate::env::Env;
 use crate::eval::{eval, EvalResult};
 use crate::expr::Expr;
 
-type BinaryFunc = fn(lhs: f64, rhs: f64) -> f64;
-
-fn binary_operation(init_val: f64, func: BinaryFunc, args: &Expr, env: &Env) -> EvalResult {
+fn binop(init_val: f64, func: fn(lhs: f64, rhs: f64) -> f64, args: &Expr, env: &Env) -> EvalResult {
     let mut result = init_val;
     let mut current_args = args;
     loop {
@@ -25,17 +23,17 @@ fn binary_operation(init_val: f64, func: BinaryFunc, args: &Expr, env: &Env) -> 
 }
 
 pub fn add(args: &Expr, env: &Env) -> EvalResult {
-    binary_operation(0_f64, |lhs, rhs| lhs + rhs, args, env)
+    binop(0_f64, |lhs, rhs| lhs + rhs, args, env)
 }
 
 pub fn minus(args: &Expr, env: &Env) -> EvalResult {
-    binary_operation(0_f64, |lhs, rhs| lhs - rhs, args, env)
+    binop(0_f64, |lhs, rhs| lhs - rhs, args, env)
 }
 
-pub fn multiply(args: &Expr, env: &Env) -> EvalResult {
-    binary_operation(1_f64, |lhs, rhs| lhs * rhs, args, env)
+pub fn mul(args: &Expr, env: &Env) -> EvalResult {
+    binop(1_f64, |lhs, rhs| lhs * rhs, args, env)
 }
 
-pub fn divide(args: &Expr, env: &Env) -> EvalResult {
-    binary_operation(1_f64, |lhs, rhs| lhs / rhs, args, env)
+pub fn div(args: &Expr, env: &Env) -> EvalResult {
+    binop(1_f64, |lhs, rhs| lhs / rhs, args, env)
 }

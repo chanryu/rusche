@@ -17,8 +17,8 @@ impl Env {
         let mut env = Env::new();
         env.set("+", Expr::Proc(builtins::num::add));
         env.set("-", Expr::Proc(builtins::num::minus));
-        env.set("*", Expr::Proc(builtins::num::multiply));
-        env.set("/", Expr::Proc(builtins::num::divide));
+        env.set("*", Expr::Proc(builtins::num::mul));
+        env.set("/", Expr::Proc(builtins::num::div));
         env
     }
 
