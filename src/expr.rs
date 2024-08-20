@@ -1,4 +1,5 @@
-use crate::eval::{Env, EvalResult};
+use crate::env::Env;
+use crate::eval::EvalResult;
 
 #[derive(Debug, PartialEq)]
 pub struct Cons {
