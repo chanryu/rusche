@@ -1,10 +1,14 @@
+mod eval;
 mod expr;
 mod parser;
 mod scanner;
 
+use eval::eval;
 use parser::Parser;
 
 fn main() {
     let mut parser = Parser::new("(add 1 2)".chars());
-    let _ = parser.parse();
+    if let Ok(expr) = parser.parse() {
+        let _ = eval(expr);
+    }
 }

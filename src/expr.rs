@@ -1,8 +1,12 @@
+use crate::eval::EvalResult;
+
 #[derive(Debug, PartialEq)]
 pub struct Cons {
     pub car: Expr,
     pub cdr: Expr,
 }
+
+pub type Func = fn(expr: Expr) -> EvalResult;
 
 #[derive(Debug, PartialEq)]
 pub enum Expr {
@@ -10,6 +14,7 @@ pub enum Expr {
     Num(f64),
     Str(String),
     Sym(String),
+    Proc(Func),
     List(Box<Cons>),
 }
 
