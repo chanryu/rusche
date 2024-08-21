@@ -1,6 +1,5 @@
 use crate::env::Env;
 use crate::eval::EvalResult;
-use std::any::Any;
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
