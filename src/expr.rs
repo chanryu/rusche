@@ -119,13 +119,13 @@ mod tests {
     }
 
     #[test]
-    fn test_display_irregular_list_1() {
+    fn test_display_improper_list_1() {
         let list = Expr::List(Some(Cons::new(Expr::Num(0_f64), Expr::Num(1_f64))));
         assert_eq!(format!("{}", list), "(0 . 1)");
     }
 
     #[test]
-    fn test_display_irregular_list_2() {
+    fn test_display_improper_list_2() {
         let list = Expr::List(Some(Cons::new(
             Expr::Num(0_f64),
             Expr::List(Some(Cons::new(Expr::Num(1_f64), Expr::Num(2_f64)))),
