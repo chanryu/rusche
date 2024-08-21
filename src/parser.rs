@@ -90,19 +90,35 @@ where
 mod tests {
     use super::*;
 
+    fn num(value: i32) -> Expr {
+        Expr::Num(f64::from(value))
+    }
+
+    fn sym(text: &str) -> Expr {
+        Expr::Sym(String::from(text))
+    }
+
+    fn list(car: Expr, cdr: Expr) -> Expr {
+        Expr::List(Box::new(Cons { car, cdr }))
+    }
+
+    fn nil() -> Expr {
+        Expr::Nil
+    }
+
     #[test]
     fn test_parser() {
         let mut parser = Parser::new("(add 1 2)".chars());
         let parsed_expr = parser.parse().unwrap();
+        let expected_expr = list(sym("add"), list(num(1), list(num(2), nil())));
+        assert_eq!(parsed_expr, expected_expr);
+    }
 
-        let expected_expr = Expr::new_list(
-            Expr::new_sym("add"),
-            Expr::new_list(
-                Expr::Num(1_f64),
-                Expr::new_list(Expr::Num(2_f64), Expr::Nil),
-            ),
-        );
-
+    #[test]
+    fn test_parser_2() {
+        let mut parser = Parser::new("(quote (1 2))".chars());
+        let parsed_expr = parser.parse().unwrap();
+        let expected_expr = list(sym("quote"), list(list(num(1), list(num(2), nil())), nil()));
         assert_eq!(parsed_expr, expected_expr);
     }
 }

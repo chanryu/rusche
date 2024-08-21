@@ -15,10 +15,16 @@ impl Env {
 
     pub fn new_root_env() -> Self {
         let mut env = Env::new();
+
+        // lisp primitives
+        env.set("quote", Expr::Proc(builtins::quote));
+
+        // arithmetic operations
         env.set("+", Expr::Proc(builtins::num::add));
         env.set("-", Expr::Proc(builtins::num::minus));
-        env.set("*", Expr::Proc(builtins::num::mul));
-        env.set("/", Expr::Proc(builtins::num::div));
+        env.set("*", Expr::Proc(builtins::num::multiply));
+        env.set("/", Expr::Proc(builtins::num::divide));
+
         env
     }
 

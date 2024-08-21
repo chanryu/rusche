@@ -30,10 +30,10 @@ pub fn minus(args: &Expr, env: &Env) -> EvalResult {
     binop(0_f64, |lhs, rhs| lhs - rhs, args, env)
 }
 
-pub fn mul(args: &Expr, env: &Env) -> EvalResult {
+pub fn multiply(args: &Expr, env: &Env) -> EvalResult {
     binop(1_f64, |lhs, rhs| lhs * rhs, args, env)
 }
 
-pub fn div(args: &Expr, env: &Env) -> EvalResult {
+pub fn divide(args: &Expr, env: &Env) -> EvalResult {
     binop(1_f64, |lhs, rhs| lhs / rhs, args, env)
 }
