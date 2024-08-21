@@ -7,8 +7,8 @@ fn binop(init_val: f64, func: fn(lhs: f64, rhs: f64) -> f64, args: &Expr, env: &
     let mut current_args = args;
     loop {
         match current_args {
-            Expr::Nil => break,
-            Expr::List(ref cons) => {
+            Expr::List(None) => break,
+            Expr::List(Some(cons)) => {
                 if let Expr::Num(value) = eval(&cons.car, env)? {
                     result = func(result, value);
                     current_args = &cons.cdr;

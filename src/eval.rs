@@ -11,7 +11,7 @@ pub fn eval(expr: &Expr, env: &Env) -> EvalResult {
             Some(_) => Err(format!("{} is not a procedure!", text)),
             None => Err(format!("Undefined symbol: {:?}", text)),
         },
-        Expr::List(cons) => {
+        Expr::List(Some(cons)) => {
             if let Expr::Proc(func) = eval(&cons.car, env)? {
                 func(&cons.cdr, env)
             } else {

@@ -9,10 +9,13 @@ fn check_arity(proc_name: &str, args: &Expr, arity: u32) -> Result<(), EvalError
     let mut args = args;
     loop {
         match args {
-            Expr::Nil => break,
             Expr::List(cons) => {
-                arg_count += 1;
-                args = &cons.cdr;
+                if let Some(cons) = cons {
+                    arg_count += 1;
+                    args = &cons.cdr;
+                } else {
+                    break;
+                }
             }
             _ => arg_count += 1,
         }
@@ -27,9 +30,8 @@ fn check_arity(proc_name: &str, args: &Expr, arity: u32) -> Result<(), EvalError
 pub fn quote(args: &Expr, _env: &Env) -> EvalResult {
     check_arity("quote", &args, 1)?;
 
-    if let Expr::List(cons) = args {
-        Ok(cons.car.clone())
-    } else {
-        Err(String::from("quote requires a list."))
+    match args {
+        Expr::List(Some(cons)) => Ok(cons.car.clone()),
+        _ => Err("quote requires a non-empty list.".into()),
     }
 }

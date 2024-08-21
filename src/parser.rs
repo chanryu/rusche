@@ -71,12 +71,12 @@ where
     }
 
     fn end_list(&mut self) -> ParseResult {
-        let mut expr = Expr::Nil;
+        let mut expr = Expr::List(None);
         while let Some(context) = self.contexts.pop() {
             if let Some(car) = context.car {
-                expr = Expr::List(Box::new(Cons { car, cdr: expr }));
+                expr = Expr::List(Some(Box::new(Cons { car, cdr: expr })));
             } else {
-                assert!(expr == Expr::Nil);
+                assert!(expr == Expr::List(None));
             }
             if context.list_began {
                 return Ok(expr);
@@ -99,11 +99,11 @@ mod tests {
     }
 
     fn list(car: Expr, cdr: Expr) -> Expr {
-        Expr::List(Box::new(Cons { car, cdr }))
+        Expr::List(Some(Box::new(Cons { car, cdr })))
     }
 
     fn nil() -> Expr {
-        Expr::Nil
+        Expr::List(None)
     }
 
     #[test]
