@@ -31,7 +31,7 @@ pub fn quote(args: &Expr, _env: &Env) -> EvalResult {
     check_arity("quote", &args, 1)?;
 
     match args {
-        Expr::List(Some(cons)) => Ok(cons.car.clone()),
-        _ => Err("quote requires a non-empty list.".into()),
+        Expr::List(Some(cons)) => Ok(cons.car.as_ref().clone()),
+        _ => Err("quote requires a non-empty list.".to_string()),
     }
 }

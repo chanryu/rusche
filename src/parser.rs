@@ -1,4 +1,4 @@
-use crate::expr::{Cons, Expr};
+use crate::expr::{Cons, Expr, NIL};
 use crate::scanner::{ScanError, Scanner, Token};
 
 #[derive(Debug, PartialEq)]
@@ -71,12 +71,12 @@ where
     }
 
     fn end_list(&mut self) -> ParseResult {
-        let mut expr = Expr::List(None);
+        let mut expr = NIL;
         while let Some(context) = self.contexts.pop() {
             if let Some(car) = context.car {
-                expr = Expr::List(Some(Box::new(Cons { car, cdr: expr })));
+                expr = Expr::List(Some(Cons::new(car, expr)));
             } else {
-                assert!(expr == Expr::List(None));
+                assert!(expr == NIL);
             }
             if context.list_began {
                 return Ok(expr);
@@ -99,18 +99,14 @@ mod tests {
     }
 
     fn list(car: Expr, cdr: Expr) -> Expr {
-        Expr::List(Some(Box::new(Cons { car, cdr })))
-    }
-
-    fn nil() -> Expr {
-        Expr::List(None)
+        Expr::List(Some(Cons::new(car, cdr)))
     }
 
     #[test]
     fn test_parser() {
         let mut parser = Parser::new("(add 1 2)".chars());
         let parsed_expr = parser.parse().unwrap();
-        let expected_expr = list(sym("add"), list(num(1), list(num(2), nil())));
+        let expected_expr = list(sym("add"), list(num(1), list(num(2), NIL)));
         assert_eq!(parsed_expr, expected_expr);
     }
 }

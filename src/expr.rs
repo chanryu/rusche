@@ -4,8 +4,17 @@ use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cons {
-    pub car: Expr,
-    pub cdr: Expr,
+    pub car: Box<Expr>,
+    pub cdr: Box<Expr>,
+}
+
+impl Cons {
+    pub fn new(car: Expr, cdr: Expr) -> Self {
+        Self {
+            car: Box::new(car),
+            cdr: Box::new(cdr),
+        }
+    }
 }
 
 pub type Func = fn(expr: &Expr, env: &Env) -> EvalResult;
@@ -16,8 +25,10 @@ pub enum Expr {
     Str(String),
     Sym(String),
     Proc(Func),
-    List(Option<Box<Cons>>),
+    List(Option<Cons>),
 }
+
+pub const NIL: Expr = Expr::List(None);
 
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -27,23 +38,23 @@ impl fmt::Display for Expr {
             Expr::Sym(text) => write!(f, "{}", text),
             Expr::Proc(func) => write!(f, "<#proc: {:?}>", func),
             Expr::List(None) => write!(f, "()"),
-            Expr::List(Some(cons)) => write_cons(f, cons, true),
+            Expr::List(Some(cons)) => write_option_cons(f, cons, true),
         }
     }
 }
 
-fn write_cons(f: &mut fmt::Formatter<'_>, cons: &Cons, is_top_level: bool) -> fmt::Result {
+fn write_option_cons(f: &mut fmt::Formatter<'_>, cons: &Cons, is_top_level: bool) -> fmt::Result {
     if is_top_level {
         write!(f, "(")?;
     }
-    match &cons.cdr {
-        Expr::List(None) => write!(f, "{}", cons.car),
+    match cons.cdr.as_ref() {
+        Expr::List(None) => write!(f, "{}", cons.car)?,
         Expr::List(Some(inner_cons)) => {
             write!(f, "{} ", cons.car)?;
-            write_cons(f, inner_cons, false)
+            write_option_cons(f, inner_cons, false)?
         }
-        _ => write!(f, "{} . {}", cons.car, cons.cdr),
-    }?;
+        _ => write!(f, "{} . {}", cons.car, cons.cdr)?,
+    }
     if is_top_level {
         write!(f, ")")?;
     }
@@ -79,61 +90,46 @@ mod tests {
 
     #[test]
     fn test_display_list_1() {
-        let list = Expr::List(Some(Box::new(Cons {
-            car: Expr::Num(0_f64),
-            cdr: Expr::List(None),
-        })));
+        let list = Expr::List(Some(Cons::new(Expr::Num(0_f64), NIL)));
         assert_eq!(format!("{}", list), "(0)");
     }
 
     #[test]
     fn test_display_list_2() {
-        let list = Expr::List(Some(Box::new(Cons {
-            car: Expr::Num(0_f64),
-            cdr: Expr::List(Some(Box::new(Cons {
-                car: Expr::Num(1_f64),
-                cdr: Expr::List(Some(Box::new(Cons {
-                    car: Expr::Num(2_f64),
-                    cdr: Expr::List(None),
-                }))),
-            }))),
-        })));
+        let list = Expr::List(Some(Cons::new(
+            Expr::Num(0_f64),
+            Expr::List(Some(Cons::new(
+                Expr::Num(1_f64),
+                Expr::List(Some(Cons::new(Expr::Num(2_f64), NIL))),
+            ))),
+        )));
         assert_eq!(format!("{}", list), "(0 1 2)");
     }
 
     #[test]
     fn test_display_list_3() {
-        let list = Expr::List(Some(Box::new(Cons {
-            car: Expr::Num(0_f64),
-            cdr: Expr::List(Some(Box::new(Cons {
-                car: Expr::Str("str".to_string()),
-                cdr: Expr::List(Some(Box::new(Cons {
-                    car: Expr::Sym("sym".to_string()),
-                    cdr: Expr::List(None),
-                }))),
-            }))),
-        })));
+        let list = Expr::List(Some(Cons::new(
+            Expr::Num(0_f64),
+            Expr::List(Some(Cons::new(
+                Expr::Str("str".to_string()),
+                Expr::List(Some(Cons::new(Expr::Sym("sym".to_string()), NIL))),
+            ))),
+        )));
         assert_eq!(format!("{}", list), "(0 \"str\" sym)");
     }
 
     #[test]
     fn test_display_irregular_list_1() {
-        let list = Expr::List(Some(Box::new(Cons {
-            car: Expr::Num(0_f64),
-            cdr: Expr::Num(1_f64),
-        })));
+        let list = Expr::List(Some(Cons::new(Expr::Num(0_f64), Expr::Num(1_f64))));
         assert_eq!(format!("{}", list), "(0 . 1)");
     }
 
     #[test]
     fn test_display_irregular_list_2() {
-        let list = Expr::List(Some(Box::new(Cons {
-            car: Expr::Num(0_f64),
-            cdr: Expr::List(Some(Box::new(Cons {
-                car: Expr::Num(1_f64),
-                cdr: Expr::Num(2_f64),
-            }))),
-        })));
+        let list = Expr::List(Some(Cons::new(
+            Expr::Num(0_f64),
+            Expr::List(Some(Cons::new(Expr::Num(1_f64), Expr::Num(2_f64)))),
+        )));
         assert_eq!(format!("{}", list), "(0 1 . 2)");
     }
 }
