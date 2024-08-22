@@ -10,7 +10,7 @@ pub enum ParseError {
 type ParseResult = Result<Expr, ParseError>;
 
 struct ParseContext {
-    list_began: bool,
+    token: Option<Token>,
     car: Option<Expr>,
 }
 
@@ -35,37 +35,58 @@ where
 
     pub fn parse(&mut self) -> ParseResult {
         loop {
-            let expr = match self.scanner.get_token() {
-                Ok(Token::OpenParen) => {
-                    self.begin_list();
+            let mut expr = match self.get_token()? {
+                Token::OpenParen => {
+                    self.begin_list(Token::OpenParen);
                     continue;
                 }
-                Ok(Token::CloseParen) => self.end_list()?,
-                Ok(Token::Sym(name)) => Expr::Sym(name),
-                Ok(Token::Str(text)) => Expr::Str(text),
-                Ok(Token::Num(value)) => Expr::Num(value),
-                Ok(token) => return Err(ParseError::UnexpectedToken(token)),
-                Err(error) => return Err(ParseError::ScanError(error)),
+                Token::Quote => {
+                    self.begin_list(Token::Quote);
+                    continue;
+                }
+                Token::CloseParen => self.end_list()?,
+                Token::Sym(name) => Expr::Sym(name),
+                Token::Str(text) => Expr::Str(text),
+                Token::Num(value) => Expr::Num(value),
             };
 
-            if let Some(context) = self.contexts.last_mut() {
-                if context.car.is_none() {
-                    context.car = Some(expr);
+            loop {
+                if let Some(context) = self.contexts.last_mut() {
+                    match context.token {
+                        Some(Token::Quote) => {
+                            self.contexts.pop();
+                            expr =
+                                Expr::new_list(Expr::new_sym("quote"), Expr::new_list(expr, NIL));
+                            continue;
+                        }
+                        _ => {}
+                    }
+                    if context.car.is_none() {
+                        context.car = Some(expr);
+                    } else {
+                        self.contexts.push(ParseContext {
+                            token: None,
+                            car: Some(expr),
+                        });
+                    }
+                    break;
                 } else {
-                    self.contexts.push(ParseContext {
-                        list_began: false,
-                        car: Some(expr),
-                    });
+                    return Ok(expr);
                 }
-            } else {
-                return Ok(expr);
             }
         }
     }
 
-    fn begin_list(&mut self) {
+    fn get_token(&mut self) -> Result<Token, ParseError> {
+        match self.scanner.get_token() {
+            Ok(token) => Ok(token),
+            Err(error) => Err(ParseError::ScanError(error)),
+        }
+    }
+
+    fn begin_list(&mut self, token: Token) {
         self.contexts.push(ParseContext {
-            list_began: true,
+            token: Some(token),
             car: None,
         })
     }
@@ -73,12 +94,15 @@ where
     fn end_list(&mut self) -> ParseResult {
         let mut expr = NIL;
         while let Some(context) = self.contexts.pop() {
+            if let Some(Token::Quote) = context.token {
+                break;
+            }
             if let Some(car) = context.car {
                 expr = Expr::List(Some(Cons::new(car, expr)));
             } else {
                 assert!(expr == NIL);
             }
-            if context.list_began {
+            if context.token.is_some() {
                 return Ok(expr);
             }
         }
@@ -101,7 +125,7 @@ mod tests {
         Expr::new_sym(name)
     }
 
-    fn list(car: Expr, cdr: Expr) -> Expr {
+    fn cons(car: Expr, cdr: Expr) -> Expr {
         Expr::new_list(car, cdr)
     }
 
@@ -109,7 +133,25 @@ mod tests {
     fn test_parser() {
         let mut parser = Parser::new("(add 1 2)".chars());
         let parsed_expr = parser.parse().unwrap();
-        let expected_expr = list(sym("add"), list(num(1), list(num(2), NIL)));
+        let expected_expr = cons(sym("add"), cons(num(1), cons(num(2), NIL)));
+        assert_eq!(parsed_expr, expected_expr);
+    }
+
+    #[test]
+    fn test_parser_quote_atom() {
+        let mut parser = Parser::new("'1".chars());
+        let parsed_expr = parser.parse().unwrap();
+        print!("{}", parsed_expr);
+        let expected_expr = cons(sym("quote"), cons(num(1), NIL));
+        assert_eq!(parsed_expr, expected_expr);
+    }
+
+    #[test]
+    fn test_parser_quote_list() {
+        let mut parser = Parser::new("'(1 2)".chars());
+        let parsed_expr = parser.parse().unwrap();
+        print!("{}", parsed_expr);
+        let expected_expr = cons(sym("quote"), cons(cons(num(1), cons(num(2), NIL)), NIL));
         assert_eq!(parsed_expr, expected_expr);
     }
 }

@@ -21,10 +21,8 @@ pub fn define(args: &Expr, env: &Env) -> EvalResult {
 }
 
 pub fn quote(args: &Expr, _env: &Env) -> EvalResult {
-    let mut args = ExprIter::new(args);
-
-    match args.next() {
-        Some(Expr::List(Some(cons))) => Ok(cons.car.as_ref().clone()),
+    match args {
+        Expr::List(Some(cons)) => Ok((*cons.car).clone()),
         _ => Err("quote requires an expression.".to_string()),
     }
 }

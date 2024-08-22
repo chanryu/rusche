@@ -30,8 +30,8 @@ pub enum Expr {
 
 pub const NIL: Expr = Expr::List(None);
 
-#[cfg(test)]
 impl Expr {
+    #[cfg(test)]
     pub fn new_num<T>(value: T) -> Expr
     where
         T: Into<f64>,
@@ -39,12 +39,13 @@ impl Expr {
         Expr::Num(value.into())
     }
 
-    pub fn new_sym(name: &str) -> Expr {
-        Expr::Sym(String::from(name))
-    }
-
+    #[cfg(test)]
     pub fn new_str(text: &str) -> Expr {
         Expr::Str(String::from(text))
+    }
+
+    pub fn new_sym(name: &str) -> Expr {
+        Expr::Sym(String::from(name))
     }
 
     pub fn new_list(car: Expr, cdr: Expr) -> Expr {
