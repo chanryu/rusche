@@ -6,10 +6,10 @@ pub type EvalResult = Result<Expr, EvalError>;
 
 pub fn eval(expr: &Expr, env: &Env) -> EvalResult {
     match expr {
-        Expr::Sym(text) => match env.get(text) {
+        Expr::Sym(name) => match env.get(name) {
             Some(Expr::Proc(func)) => Ok(Expr::Proc(func.clone())),
-            Some(_) => Err(format!("{} is not a procedure!", text)),
-            None => Err(format!("Undefined symbol: {:?}", text)),
+            Some(_) => Err(format!("{} is not a procedure!", name)),
+            None => Err(format!("Undefined symbol: {:?}", name)),
         },
         Expr::List(Some(cons)) => {
             if let Expr::Proc(func) = eval(&cons.car, env)? {

@@ -1,37 +1,49 @@
 pub mod num;
 
 use crate::env::Env;
-use crate::eval::{EvalError, EvalResult};
-use crate::expr::Expr;
+use crate::eval::{eval, EvalResult};
+use crate::expr::{Expr, ExprIter, NIL};
 
-fn check_arity(proc_name: &str, args: &Expr, arity: u32) -> Result<(), EvalError> {
-    let mut arg_count = 0_u32;
-    let mut args = args;
-    loop {
-        match args {
-            Expr::List(cons) => {
-                if let Some(cons) = cons {
-                    arg_count += 1;
-                    args = &cons.cdr;
-                } else {
-                    break;
-                }
+pub fn define(args: &Expr, env: &Env) -> EvalResult {
+    let mut args = ExprIter::new(args);
+
+    match args.next() {
+        Some(Expr::Sym(name)) => {
+            if let Some(expr) = args.next() {
+                env.set(name, eval(expr, env)?.clone());
+                Ok(NIL)
+            } else {
+                Err("define expects a expression after symbol".to_string())
             }
-            _ => arg_count += 1,
         }
-    }
-    if arg_count == arity {
-        Ok(())
-    } else {
-        Err(format!("{} expects {} args!", proc_name, arity))
+        _ => Err("define expects a symbol".to_string()),
     }
 }
 
 pub fn quote(args: &Expr, _env: &Env) -> EvalResult {
-    check_arity("quote", &args, 1)?;
+    let mut args = ExprIter::new(args);
 
-    match args {
-        Expr::List(Some(cons)) => Ok(cons.car.as_ref().clone()),
-        _ => Err("quote requires a non-empty list.".to_string()),
+    match args.next() {
+        Some(Expr::List(Some(cons))) => Ok(cons.car.as_ref().clone()),
+        _ => Err("quote requires an expression.".to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_define() {
+        let env = Env::new();
+        let ret = define(
+            &Expr::new_list(
+                Expr::new_sym("name"),
+                Expr::new_list(Expr::new_str("value"), NIL),
+            ),
+            &env,
+        );
+        assert_eq!(ret, Ok(NIL));
+        assert_eq!(env.get("name"), Some(Expr::new_str("value")));
     }
 }

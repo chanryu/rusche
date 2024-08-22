@@ -41,7 +41,7 @@ where
                     continue;
                 }
                 Ok(Token::CloseParen) => self.end_list()?,
-                Ok(Token::Sym(text)) => Expr::Sym(text),
+                Ok(Token::Sym(name)) => Expr::Sym(name),
                 Ok(Token::Str(text)) => Expr::Str(text),
                 Ok(Token::Num(value)) => Expr::Num(value),
                 Ok(token) => return Err(ParseError::UnexpectedToken(token)),
@@ -90,16 +90,19 @@ where
 mod tests {
     use super::*;
 
-    fn num(value: i32) -> Expr {
-        Expr::Num(f64::from(value))
+    fn num<T>(value: T) -> Expr
+    where
+        T: Into<f64>,
+    {
+        Expr::new_num(value)
     }
 
-    fn sym(text: &str) -> Expr {
-        Expr::Sym(String::from(text))
+    fn sym(name: &str) -> Expr {
+        Expr::new_sym(name)
     }
 
     fn list(car: Expr, cdr: Expr) -> Expr {
-        Expr::List(Some(Cons::new(car, cdr)))
+        Expr::new_list(car, cdr)
     }
 
     #[test]

@@ -30,12 +30,34 @@ pub enum Expr {
 
 pub const NIL: Expr = Expr::List(None);
 
+#[cfg(test)]
+impl Expr {
+    pub fn new_num<T>(value: T) -> Expr
+    where
+        T: Into<f64>,
+    {
+        Expr::Num(value.into())
+    }
+
+    pub fn new_sym(name: &str) -> Expr {
+        Expr::Sym(String::from(name))
+    }
+
+    pub fn new_str(text: &str) -> Expr {
+        Expr::Str(String::from(text))
+    }
+
+    pub fn new_list(car: Expr, cdr: Expr) -> Expr {
+        Expr::List(Some(Cons::new(car, cdr)))
+    }
+}
+
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Expr::Num(value) => write!(f, "{}", value),
             Expr::Str(text) => write!(f, "\"{}\"", text), // TODO: escape as control chars
-            Expr::Sym(text) => write!(f, "{}", text),
+            Expr::Sym(name) => write!(f, "{}", name),
             Expr::Proc(func) => write!(f, "<#proc: {:?}>", func),
             Expr::List(None) => write!(f, "()"),
             Expr::List(Some(cons)) => write_option_cons(f, cons, true),
@@ -59,6 +81,37 @@ fn write_option_cons(f: &mut fmt::Formatter<'_>, cons: &Cons, is_top_level: bool
         write!(f, ")")?;
     }
     Ok(())
+}
+
+pub struct ExprIter<'a> {
+    current: &'a Expr,
+}
+
+impl<'a> ExprIter<'a> {
+    pub fn new(args: &'a Expr) -> Self {
+        Self { current: args }
+    }
+}
+
+impl<'a> Iterator for ExprIter<'a> {
+    type Item = &'a Expr;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.current {
+            Expr::List(None) => None,
+            Expr::List(Some(cons)) => {
+                let car = &cons.car;
+                self.current = &cons.cdr;
+                Some(car)
+            }
+            _ => {
+                // improper list or not a list
+                let arg = self.current;
+                self.current = &NIL;
+                Some(arg)
+            }
+        }
+    }
 }
 
 #[cfg(test)]

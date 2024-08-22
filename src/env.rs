@@ -1,22 +1,24 @@
 use crate::builtins;
 use crate::expr::Expr;
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 pub struct Env {
-    vars: HashMap<String, Expr>,
+    vars: RefCell<HashMap<String, Expr>>,
 }
 
 impl Env {
     pub fn new() -> Self {
         Self {
-            vars: HashMap::new(),
+            vars: RefCell::new(HashMap::new()),
         }
     }
 
     pub fn new_root_env() -> Self {
-        let mut env = Env::new();
+        let env = Env::new();
 
         // lisp primitives
+        env.set("define", Expr::Proc(builtins::define));
         env.set("quote", Expr::Proc(builtins::quote));
 
         // arithmetic operations
@@ -28,11 +30,11 @@ impl Env {
         env
     }
 
-    pub fn get(&self, name: &str) -> Option<&Expr> {
-        self.vars.get(name)
+    pub fn get(&self, name: &str) -> Option<Expr> {
+        self.vars.borrow().get(name).cloned()
     }
 
-    pub fn set(&mut self, name: &str, expr: Expr) {
-        let _ = self.vars.insert(name.to_string(), expr);
+    pub fn set(&self, name: &str, expr: Expr) {
+        self.vars.borrow_mut().insert(name.to_string(), expr);
     }
 }
