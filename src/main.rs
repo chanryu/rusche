@@ -9,20 +9,41 @@ use env::Env;
 use eval::eval;
 use parser::Parser;
 
-fn main() {
-    // let mut parser = Parser::new("(+ 1 (* 2 4))".chars());
-    // let mut parser = Parser::new("(quote 1 2)".chars());
-    let mut parser = Parser::new("'(1 2)".chars());
+use rustyline::error::ReadlineError;
+use rustyline::{DefaultEditor, Result};
 
-    if let Ok(expr) = parser.parse() {
-        let env = Env::new_root_env();
-        match eval(&expr, &env) {
-            Ok(result) => {
-                println!("{} => {}", expr, result);
+fn main() -> Result<()> {
+    let mut rl = DefaultEditor::new()?;
+
+    let env = Env::new_root_env();
+    loop {
+        match rl.readline("rusp >> ") {
+            Ok(line) => {
+                let _ = rl.add_history_entry(line.as_str());
+
+                let mut parser = Parser::new(line.chars());
+
+                match parser.parse() {
+                    Ok(expr) => match eval(&expr, &env) {
+                        Ok(result) => {
+                            println!("{} => {}", expr, result);
+                        }
+                        Err(error) => {
+                            println!("Error: {}", error);
+                        }
+                    },
+                    Err(error) => println!("Error: {}", error),
+                }
             }
-            Err(error) => {
-                println!("Error: {}", error);
+            Err(ReadlineError::Eof) => {
+                break;
+            }
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break;
             }
         }
     }
+
+    Ok(())
 }

@@ -1,3 +1,4 @@
+use std::fmt;
 use std::iter::{Iterator, Peekable};
 
 const SYMBOL_DELIMITERS: &str = " \t\r\n()';\"";
@@ -12,11 +13,34 @@ pub enum Token {
     Sym(String),
 }
 
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Token::OpenParen => write!(f, "("),
+            Token::CloseParen => write!(f, ")"),
+            Token::Quote => write!(f, "'"),
+            Token::Num(value) => write!(f, "{}", value),
+            Token::Str(text) => write!(f, "\"{}\"", text),
+            Token::Sym(name) => write!(f, "{}", name),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum ScanError {
     IncompleteString,
     InvalidNumber,
     EndOfFile,
+}
+
+impl fmt::Display for ScanError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ScanError::IncompleteString => write!(f, "Incomplete string"),
+            ScanError::InvalidNumber => write!(f, "Invalid number"),
+            ScanError::EndOfFile => write!(f, "EOF"),
+        }
+    }
 }
 
 pub type ScanResult = Result<Token, ScanError>;

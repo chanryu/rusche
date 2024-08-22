@@ -1,10 +1,20 @@
 use crate::expr::{Cons, Expr, NIL};
 use crate::scanner::{ScanError, Scanner, Token};
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
     UnexpectedToken(Token),
     ScanError(ScanError),
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParseError::UnexpectedToken(token) => write!(f, "Unexpected token: {}", token),
+            ParseError::ScanError(error) => write!(f, "Error: \"{}\"", error),
+        }
+    }
 }
 
 type ParseResult = Result<Expr, ParseError>;
