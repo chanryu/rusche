@@ -1,25 +1,23 @@
 use crate::env::Env;
 use crate::expr::Expr;
 
-pub type EvalResult = Result<Expr, String>;
+pub type EvalError = String;
+pub type EvalResult = Result<Expr, EvalError>;
 
 pub fn eval(expr: &Expr, env: &Env) -> EvalResult {
     match expr {
-        Expr::Nil => Ok(Expr::Nil),
-        Expr::Num(value) => Ok(Expr::Num(value.clone())),
-        Expr::Str(text) => Ok(Expr::Str(text.clone())),
-        Expr::Sym(text) => match env.get(text) {
+        Expr::Sym(name) => match env.get(name) {
             Some(Expr::Proc(func)) => Ok(Expr::Proc(func.clone())),
-            Some(_) => Err(format!("{} is not a procedure!", text)),
-            None => Err(format!("Undefined symbol: {:?}", text)),
+            Some(_) => Err(format!("{} is not a procedure!", name)),
+            None => Err(format!("Undefined symbol: {:?}", name)),
         },
-        Expr::Proc(func) => Ok(Expr::Proc(func.clone())),
-        Expr::List(cons) => {
+        Expr::List(Some(cons)) => {
             if let Expr::Proc(func) = eval(&cons.car, env)? {
                 func(&cons.cdr, env)
             } else {
                 Err(String::from("A Proc is expected."))
             }
         }
+        _ => Ok(expr.clone()),
     }
 }

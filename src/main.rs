@@ -11,9 +11,9 @@ use parser::Parser;
 
 fn main() {
     let mut parser = Parser::new("(+ 1 (* 2 4))".chars());
+    //let mut parser = Parser::new("(quote 1 2)".chars());
     if let Ok(expr) = parser.parse() {
         let env = Env::new_root_env();
-        let expr = env.get("+").unwrap();
         match eval(&expr, &env) {
             Ok(result) => {
                 println!("{} => {}", expr, result);

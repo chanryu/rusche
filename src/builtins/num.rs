@@ -7,8 +7,8 @@ fn binop(init_val: f64, func: fn(lhs: f64, rhs: f64) -> f64, args: &Expr, env: &
     let mut current_args = args;
     loop {
         match current_args {
-            Expr::Nil => break,
-            Expr::List(ref cons) => {
+            Expr::List(None) => break,
+            Expr::List(Some(cons)) => {
                 if let Expr::Num(value) = eval(&cons.car, env)? {
                     result = func(result, value);
                     current_args = &cons.cdr;
@@ -30,10 +30,10 @@ pub fn minus(args: &Expr, env: &Env) -> EvalResult {
     binop(0_f64, |lhs, rhs| lhs - rhs, args, env)
 }
 
-pub fn mul(args: &Expr, env: &Env) -> EvalResult {
+pub fn multiply(args: &Expr, env: &Env) -> EvalResult {
     binop(1_f64, |lhs, rhs| lhs * rhs, args, env)
 }
 
-pub fn div(args: &Expr, env: &Env) -> EvalResult {
+pub fn divide(args: &Expr, env: &Env) -> EvalResult {
     binop(1_f64, |lhs, rhs| lhs / rhs, args, env)
 }

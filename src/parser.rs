@@ -1,4 +1,4 @@
-use crate::expr::{Cons, Expr};
+use crate::expr::{Cons, Expr, NIL};
 use crate::scanner::{ScanError, Scanner, Token};
 
 #[derive(Debug, PartialEq)]
@@ -41,7 +41,7 @@ where
                     continue;
                 }
                 Ok(Token::CloseParen) => self.end_list()?,
-                Ok(Token::Sym(text)) => Expr::Sym(text),
+                Ok(Token::Sym(name)) => Expr::Sym(name),
                 Ok(Token::Str(text)) => Expr::Str(text),
                 Ok(Token::Num(value)) => Expr::Num(value),
                 Ok(token) => return Err(ParseError::UnexpectedToken(token)),
@@ -71,12 +71,12 @@ where
     }
 
     fn end_list(&mut self) -> ParseResult {
-        let mut expr = Expr::Nil;
+        let mut expr = NIL;
         while let Some(context) = self.contexts.pop() {
             if let Some(car) = context.car {
-                expr = Expr::List(Box::new(Cons { car, cdr: expr }));
+                expr = Expr::List(Some(Cons::new(car, expr)));
             } else {
-                assert!(expr == Expr::Nil);
+                assert!(expr == NIL);
             }
             if context.list_began {
                 return Ok(expr);
@@ -90,19 +90,26 @@ where
 mod tests {
     use super::*;
 
+    fn num<T>(value: T) -> Expr
+    where
+        T: Into<f64>,
+    {
+        Expr::new_num(value)
+    }
+
+    fn sym(name: &str) -> Expr {
+        Expr::new_sym(name)
+    }
+
+    fn list(car: Expr, cdr: Expr) -> Expr {
+        Expr::new_list(car, cdr)
+    }
+
     #[test]
     fn test_parser() {
         let mut parser = Parser::new("(add 1 2)".chars());
         let parsed_expr = parser.parse().unwrap();
-
-        let expected_expr = Expr::new_list(
-            Expr::new_sym("add"),
-            Expr::new_list(
-                Expr::Num(1_f64),
-                Expr::new_list(Expr::Num(2_f64), Expr::Nil),
-            ),
-        );
-
+        let expected_expr = list(sym("add"), list(num(1), list(num(2), NIL)));
         assert_eq!(parsed_expr, expected_expr);
     }
 }
