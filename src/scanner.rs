@@ -1,6 +1,5 @@
 use std::fmt;
-use std::iter::{Iterator, Peekable, Scan};
-use std::str::Chars;
+use std::iter::{Iterator, Peekable};
 
 const SYMBOL_DELIMITERS: &str = " \t\r\n()';\"";
 
@@ -31,14 +30,17 @@ pub struct TokenIter<Iter>
 where
     Iter: Iterator<Item = char>,
 {
-    scanner: Scanner<Peekable<Iter>>,
+    scanner: Scanner<Iter>,
     last_error: Option<ScanError>,
 }
 
-impl<'a> TokenIter<Chars<'a>> {
-    pub fn new(text: &'a str) -> Self {
+impl<Iter> TokenIter<Iter>
+where
+    Iter: Iterator<Item = char>,
+{
+    pub fn new(iter: Iter) -> Self {
         Self {
-            scanner: Scanner::new(text.chars().peekable()),
+            scanner: Scanner::new(iter),
             last_error: None,
         }
     }
