@@ -1,5 +1,6 @@
 use std::fmt;
-use std::iter::{Iterator, Peekable};
+use std::iter::{Iterator, Peekable, Scan};
+use std::str::Chars;
 
 const SYMBOL_DELIMITERS: &str = " \t\r\n()';\"";
 
@@ -22,6 +23,47 @@ impl fmt::Display for Token {
             Token::Num(value) => write!(f, "{}", value),
             Token::Str(text) => write!(f, "\"{}\"", text),
             Token::Sym(name) => write!(f, "{}", name),
+        }
+    }
+}
+
+pub struct TokenIter<Iter>
+where
+    Iter: Iterator<Item = char>,
+{
+    scanner: Scanner<Peekable<Iter>>,
+    last_error: Option<ScanError>,
+}
+
+impl<'a> TokenIter<Chars<'a>> {
+    pub fn new(text: &'a str) -> Self {
+        Self {
+            scanner: Scanner::new(text.chars().peekable()),
+            last_error: None,
+        }
+    }
+
+    pub fn get_last_error(&self) -> Option<&ScanError> {
+        self.last_error.as_ref()
+    }
+}
+
+impl<Iter> Iterator for TokenIter<Iter>
+where
+    Iter: Iterator<Item = char>,
+{
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.scanner.get_token() {
+            Ok(token) => {
+                self.last_error = None;
+                Some(token)
+            }
+            Err(error) => {
+                self.last_error = Some(error);
+                None
+            }
         }
     }
 }
@@ -79,7 +121,7 @@ where
             Some('"') => self.read_string(),
 
             // number
-            Some(ch) if ch.is_ascii_digit() => self.read_number(ch),
+            Some(ch) if ch.is_ascii_digit() || ch == '.' => self.read_number(ch),
 
             // we allow all other characters to be a symbol
             Some(ch) => self.read_symbol(ch),
@@ -119,7 +161,7 @@ where
     }
 
     fn read_number(&mut self, first_char: char) -> ScanResult {
-        let mut has_decimal_point = false;
+        let mut has_decimal_point = first_char == '.';
         let mut digits = String::new();
 
         digits.push(first_char);
@@ -135,8 +177,8 @@ where
 
         digits
             .parse::<f64>()
-            .map(|value| Ok(Token::Num(value)))
-            .unwrap_or_else(|_| Err(ScanError::InvalidNumber))
+            .map(Token::Num)
+            .map_err(|_| ScanError::InvalidNumber)
     }
 
     fn read_symbol(&mut self, first_char: char) -> ScanResult {
@@ -152,7 +194,7 @@ where
 }
 
 fn is_newline_char(ch: &char) -> bool {
-    return *ch == '\r' || *ch == '\n';
+    *ch == '\r' || *ch == '\n'
 }
 
 #[cfg(test)]
@@ -184,7 +226,7 @@ mod tests {
     fn test_read_number() {
         macro_rules! parse_number_assert_eq {
             ($source:literal, $expected:expr) => {
-                assert!($source.len() != 0);
+                assert!(!$source.is_empty());
                 let mut chars = $source.chars();
                 let first_char = chars.next().unwrap();
                 assert_eq!(Scanner::new(chars).read_number(first_char), $expected);
