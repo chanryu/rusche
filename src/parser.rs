@@ -93,10 +93,7 @@ where
     }
 
     fn get_token(&mut self) -> Result<Token, ParseError> {
-        match self.scanner.get_token() {
-            Ok(token) => Ok(token),
-            Err(error) => Err(ParseError::ScanError(error)),
-        }
+        self.scanner.get_token().map_err(ParseError::ScanError)
     }
 
     fn begin_list(&mut self, token: Token) {
