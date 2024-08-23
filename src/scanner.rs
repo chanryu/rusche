@@ -1,74 +1,8 @@
+use crate::token::Token;
 use std::fmt;
 use std::iter::{Iterator, Peekable};
 
 const SYMBOL_DELIMITERS: &str = " \t\r\n()';\"";
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Token {
-    OpenParen,
-    CloseParen,
-    Quote,
-    Num(f64),
-    Str(String),
-    Sym(String),
-}
-
-impl fmt::Display for Token {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Token::OpenParen => write!(f, "("),
-            Token::CloseParen => write!(f, ")"),
-            Token::Quote => write!(f, "'"),
-            Token::Num(value) => write!(f, "{}", value),
-            Token::Str(text) => write!(f, "\"{}\"", text),
-            Token::Sym(name) => write!(f, "{}", name),
-        }
-    }
-}
-
-pub struct TokenIter<Iter>
-where
-    Iter: Iterator<Item = char>,
-{
-    scanner: Scanner<Iter>,
-    last_error: Option<ScanError>,
-}
-
-impl<Iter> TokenIter<Iter>
-where
-    Iter: Iterator<Item = char>,
-{
-    pub fn new(iter: Iter) -> Self {
-        Self {
-            scanner: Scanner::new(iter),
-            last_error: None,
-        }
-    }
-
-    pub fn get_last_error(&self) -> Option<&ScanError> {
-        self.last_error.as_ref()
-    }
-}
-
-impl<Iter> Iterator for TokenIter<Iter>
-where
-    Iter: Iterator<Item = char>,
-{
-    type Item = Token;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.scanner.get_token() {
-            Ok(token) => {
-                self.last_error = None;
-                Some(token)
-            }
-            Err(error) => {
-                self.last_error = Some(error);
-                None
-            }
-        }
-    }
-}
 
 #[derive(Debug, PartialEq)]
 pub enum ScanError {
@@ -87,7 +21,7 @@ impl fmt::Display for ScanError {
     }
 }
 
-pub type ScanResult = Result<Token, ScanError>;
+type ScanResult = Result<Token, ScanError>;
 
 pub struct Scanner<Iter>
 where

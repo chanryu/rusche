@@ -4,6 +4,7 @@ mod eval;
 mod expr;
 mod parser;
 mod scanner;
+mod token;
 
 use env::Env;
 use eval::eval;

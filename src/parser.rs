@@ -1,5 +1,6 @@
 use crate::expr::{Cons, Expr, NIL};
-use crate::scanner::{ScanError, Scanner, Token};
+use crate::scanner::{ScanError, Scanner};
+use crate::token::Token;
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
@@ -41,6 +42,10 @@ where
             scanner: Scanner::new(iter),
             contexts: Vec::new(),
         }
+    }
+
+    pub fn is_clean(&self) -> bool {
+        self.contexts.is_empty()
     }
 
     pub fn parse(&mut self) -> ParseResult {
