@@ -1,39 +1,110 @@
-use crate::env::Env;
-use crate::eval::{eval, EvalResult};
+use crate::eval::{eval, Env, EvalResult};
 use crate::expr::Expr;
 
-fn binop(init_val: f64, func: fn(lhs: f64, rhs: f64) -> f64, args: &Expr, env: &Env) -> EvalResult {
-    let mut result = init_val;
-    let mut current_args = args;
-    loop {
-        match current_args {
-            Expr::List(None) => break,
-            Expr::List(Some(cons)) => {
-                if let Expr::Num(value) = eval(&cons.car, env)? {
-                    result = func(result, value);
-                    current_args = &cons.cdr;
+fn binop(
+    args: Vec<&Expr>,
+    env: &Env,
+    identity: f64,
+    is_associative: bool,
+    func: fn(lhs: f64, rhs: f64) -> f64,
+) -> EvalResult {
+    let mut result = identity;
+
+    for (index, arg) in args.iter().enumerate() {
+        match eval(&arg, env)? {
+            Expr::Num(value) => {
+                if index == 0 && args.len() > 1 && !is_associative {
+                    result = value;
                 } else {
-                    return Err(format!("{} is not a number!", cons.car));
+                    result = func(result, value);
                 }
             }
-            _ => return Err(String::from("Combination must be a proper list")),
+            _ => return Err(format!("{} is not a number!", arg)),
         }
     }
+
     Ok(Expr::Num(result))
 }
 
 pub fn add(args: &Expr, env: &Env) -> EvalResult {
-    binop(0_f64, |lhs, rhs| lhs + rhs, args, env)
+    let args = args.splat();
+    binop(args, env, 0_f64, true, |lhs, rhs| lhs + rhs)
 }
 
 pub fn minus(args: &Expr, env: &Env) -> EvalResult {
-    binop(0_f64, |lhs, rhs| lhs - rhs, args, env)
+    let args = args.splat();
+    binop(args, env, 0_f64, false, |lhs, rhs| lhs - rhs)
 }
 
 pub fn multiply(args: &Expr, env: &Env) -> EvalResult {
-    binop(1_f64, |lhs, rhs| lhs * rhs, args, env)
+    let args = args.splat();
+    binop(args, env, 1_f64, true, |lhs, rhs| lhs * rhs)
 }
 
 pub fn divide(args: &Expr, env: &Env) -> EvalResult {
-    binop(1_f64, |lhs, rhs| lhs / rhs, args, env)
+    let args = args.splat();
+    binop(args, env, 1_f64, false, |lhs, rhs| lhs / rhs)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::expr::test_utils::*;
+    use crate::expr::NIL;
+
+    #[test]
+    fn test_add() {
+        let env = Env::new();
+
+        // (+ 1) => 1
+        let args = cons(num(1), NIL);
+        assert_eq!(add(&args, &env), Ok(num(1)));
+
+        // (+ 2 1) => 3
+        let args = cons(num(2), cons(num(1), NIL));
+        assert_eq!(add(&args, &env), Ok(num(3)));
+    }
+
+    #[test]
+    fn test_minus() {
+        let env = Env::new();
+
+        // (- 1) => -1
+        let args = cons(num(1), NIL);
+        assert_eq!(minus(&args, &env), Ok(num(-1)));
+
+        // (- 2 1) => 1
+        let args = cons(num(2), cons(num(1), NIL));
+        assert_eq!(minus(&args, &env), Ok(num(1)));
+    }
+
+    #[test]
+    fn test_multiply() {
+        let env = Env::new();
+
+        // (* 1) => 1
+        let args = cons(num(1), NIL);
+        assert_eq!(multiply(&args, &env), Ok(num(1)));
+
+        // (* 2 1) => 2
+        let args = cons(num(2), cons(num(1), NIL));
+        assert_eq!(multiply(&args, &env), Ok(num(2)));
+
+        // (* 3 2 1) => 6
+        let args = cons(num(3), cons(num(2), cons(num(1), NIL)));
+        assert_eq!(multiply(&args, &env), Ok(num(6)));
+    }
+
+    #[test]
+    fn test_divide() {
+        let env = Env::new();
+
+        // (/ 2) => 0.5
+        let args = cons(num(2), NIL);
+        assert_eq!(divide(&args, &env), Ok(num(0.5)));
+
+        // (/ 4 2) => 2
+        let args = cons(num(4), cons(num(2), NIL));
+        assert_eq!(divide(&args, &env), Ok(num(2)));
+    }
 }

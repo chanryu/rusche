@@ -1,7 +1,6 @@
 pub mod num;
 
-use crate::env::Env;
-use crate::eval::{eval, EvalResult};
+use crate::eval::{eval, Env, EvalResult};
 use crate::expr::{Expr, ExprIter, NIL};
 
 pub fn define(args: &Expr, env: &Env) -> EvalResult {
