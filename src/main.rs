@@ -22,7 +22,7 @@ fn main() -> Result<()> {
             Ok(line) => {
                 let _ = rl.add_history_entry(line.as_str());
 
-                let mut parser = Parser::new(line.chars());
+                let mut parser = Parser::new();
 
                 match parser.parse() {
                     Ok(expr) => match eval(&expr, &env) {

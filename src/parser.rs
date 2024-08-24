@@ -1,19 +1,19 @@
 use crate::expr::{Cons, Expr, NIL};
-use crate::scanner::{ScanError, Scanner};
 use crate::token::Token;
+use std::collections::VecDeque;
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
+    NoToken,
     UnexpectedToken(Token),
-    ScanError(ScanError),
 }
 
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            ParseError::NoToken => write!(f, "Ran out of tokens"),
             ParseError::UnexpectedToken(token) => write!(f, "Unexpected token: {}", token),
-            ParseError::ScanError(error) => write!(f, "Error: \"{}\"", error),
         }
     }
 }
@@ -25,27 +25,32 @@ struct ParseContext {
     car: Option<Expr>,
 }
 
-pub struct Parser<Iter>
-where
-    Iter: Iterator<Item = char>,
-{
-    scanner: Scanner<Iter>,
+pub struct Parser {
+    tokens: VecDeque<Token>,
     contexts: Vec<ParseContext>,
 }
 
-impl<Iter> Parser<Iter>
-where
-    Iter: Iterator<Item = char>,
-{
-    pub fn new(iter: Iter) -> Self {
+impl Parser {
+    pub fn new() -> Self {
         Self {
-            scanner: Scanner::new(iter),
+            tokens: VecDeque::new(),
             contexts: Vec::new(),
         }
     }
 
     pub fn is_clean(&self) -> bool {
         self.contexts.is_empty()
+    }
+
+    pub fn add_token(&mut self, token: Token) {
+        self.tokens.push_back(token);
+    }
+
+    pub fn add_tokens<Iter>(&mut self, tokens: Iter)
+    where
+        Iter: IntoIterator<Item = Token>,
+    {
+        self.tokens.extend(tokens);
     }
 
     pub fn parse(&mut self) -> ParseResult {
@@ -93,7 +98,11 @@ where
     }
 
     fn get_token(&mut self) -> Result<Token, ParseError> {
-        self.scanner.get_token().map_err(ParseError::ScanError)
+        if let Some(token) = self.tokens.pop_front() {
+            Ok(token)
+        } else {
+            Err(ParseError::NoToken)
+        }
     }
 
     fn begin_list(&mut self, token: Token) {
@@ -143,7 +152,17 @@ mod tests {
 
     #[test]
     fn test_parser() {
-        let mut parser = Parser::new("(add 1 2)".chars());
+        let mut parser = Parser::new();
+
+        // (add 1 2)
+        parser.add_tokens([
+            Token::OpenParen,
+            Token::Sym(String::from("add")),
+            Token::Num(1_f64),
+            Token::Num(2_f64),
+            Token::CloseParen,
+        ]);
+
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = cons(sym("add"), cons(num(1), cons(num(2), NIL)));
         assert_eq!(parsed_expr, expected_expr);
@@ -151,7 +170,11 @@ mod tests {
 
     #[test]
     fn test_parser_quote_atom() {
-        let mut parser = Parser::new("'1".chars());
+        let mut parser = Parser::new();
+
+        // '1
+        parser.add_tokens([Token::Quote, Token::Num(1_f64)]);
+
         let parsed_expr = parser.parse().unwrap();
         print!("{}", parsed_expr);
         let expected_expr = cons(sym("quote"), cons(num(1), NIL));
@@ -160,7 +183,17 @@ mod tests {
 
     #[test]
     fn test_parser_quote_list() {
-        let mut parser = Parser::new("'(1 2)".chars());
+        let mut parser = Parser::new();
+
+        // '(1 2)
+        parser.add_tokens([
+            Token::Quote,
+            Token::OpenParen,
+            Token::Num(1_f64),
+            Token::Num(2_f64),
+            Token::CloseParen,
+        ]);
+
         let parsed_expr = parser.parse().unwrap();
         print!("{}", parsed_expr);
         let expected_expr = cons(sym("quote"), cons(cons(num(1), cons(num(2), NIL)), NIL));
