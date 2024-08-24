@@ -76,8 +76,10 @@ impl Parser {
                     match context.token {
                         Some(Token::Quote) => {
                             self.contexts.pop();
-                            expr =
-                                Expr::new_list(Expr::new_sym("quote"), Expr::new_list(expr, NIL));
+                            expr = Expr::List(Some(Cons::new(
+                                Expr::Sym(String::from("quote")),
+                                Expr::List(Some(Cons::new(expr, NIL))),
+                            )));
                             continue;
                         }
                         _ => {}
@@ -135,21 +137,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn num<T>(value: T) -> Expr
-    where
-        T: Into<f64>,
-    {
-        Expr::new_num(value)
-    }
-
-    fn sym(name: &str) -> Expr {
-        Expr::new_sym(name)
-    }
-
-    fn cons(car: Expr, cdr: Expr) -> Expr {
-        Expr::new_list(car, cdr)
-    }
+    use crate::expr::test_utils::*;
 
     #[test]
     fn test_parser() {

@@ -30,18 +30,13 @@ pub fn quote(args: &Expr, _env: &Env) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::expr::test_utils::*;
 
     #[test]
     fn test_define() {
         let env = Env::new();
-        let ret = define(
-            &Expr::new_list(
-                Expr::new_sym("name"),
-                Expr::new_list(Expr::new_str("value"), NIL),
-            ),
-            &env,
-        );
+        let ret = define(&cons(sym("name"), cons(str("value"), NIL)), &env);
         assert_eq!(ret, Ok(NIL));
-        assert_eq!(env.get("name"), Some(Expr::new_str("value")));
+        assert_eq!(env.get("name"), Some(str("value")));
     }
 }

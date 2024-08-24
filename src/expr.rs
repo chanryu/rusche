@@ -30,29 +30,6 @@ pub enum Expr {
 
 pub const NIL: Expr = Expr::List(None);
 
-impl Expr {
-    #[cfg(test)]
-    pub fn new_num<T>(value: T) -> Expr
-    where
-        T: Into<f64>,
-    {
-        Expr::Num(value.into())
-    }
-
-    #[cfg(test)]
-    pub fn new_str(text: &str) -> Expr {
-        Expr::Str(String::from(text))
-    }
-
-    pub fn new_sym(name: &str) -> Expr {
-        Expr::Sym(String::from(name))
-    }
-
-    pub fn new_list(car: Expr, cdr: Expr) -> Expr {
-        Expr::List(Some(Cons::new(car, cdr)))
-    }
-}
-
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -112,6 +89,30 @@ impl<'a> Iterator for ExprIter<'a> {
                 Some(arg)
             }
         }
+    }
+}
+
+#[cfg(test)]
+pub mod test_utils {
+    use super::*;
+
+    pub fn num<T>(value: T) -> Expr
+    where
+        T: Into<f64>,
+    {
+        Expr::Num(value.into())
+    }
+
+    pub fn str(text: &str) -> Expr {
+        Expr::Str(String::from(text))
+    }
+
+    pub fn sym(name: &str) -> Expr {
+        Expr::Sym(String::from(name))
+    }
+
+    pub fn cons(car: Expr, cdr: Expr) -> Expr {
+        Expr::List(Some(Cons::new(car, cdr)))
     }
 }
 
