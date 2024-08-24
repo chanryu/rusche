@@ -50,7 +50,7 @@ fn main() {
                                 println!("Error: {}", error);
                             }
                         },
-                        Err(ParseError::NoToken) => break,
+                        Err(ParseError::NeedMoreToken) => break,
                         Err(error) => {
                             parser.reset();
                             println!("Error: {}", error);

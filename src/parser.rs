@@ -5,14 +5,14 @@ use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
-    NoToken,
+    NeedMoreToken,
     UnexpectedToken(Token),
 }
 
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ParseError::NoToken => write!(f, "Ran out of tokens"),
+            ParseError::NeedMoreToken => write!(f, "Ran out of tokens"),
             ParseError::UnexpectedToken(token) => write!(f, "Unexpected token: {}", token),
         }
     }
@@ -102,7 +102,7 @@ impl Parser {
         if let Some(token) = self.tokens.pop_front() {
             Ok(token)
         } else {
-            Err(ParseError::NoToken)
+            Err(ParseError::NeedMoreToken)
         }
     }
 
