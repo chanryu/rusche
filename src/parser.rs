@@ -38,12 +38,13 @@ impl Parser {
         }
     }
 
-    pub fn is_clean(&self) -> bool {
+    pub fn is_parsing(&self) -> bool {
         self.contexts.is_empty()
     }
 
-    pub fn add_token(&mut self, token: Token) {
-        self.tokens.push_back(token);
+    pub fn reset(&mut self) {
+        self.tokens.clear();
+        self.contexts.clear();
     }
 
     pub fn add_tokens<Iter>(&mut self, tokens: Iter)

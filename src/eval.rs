@@ -15,7 +15,7 @@ pub fn eval(expr: &Expr, env: &Env) -> EvalResult {
             if let Expr::Proc(func) = eval(&cons.car, env)? {
                 func(&cons.cdr, env)
             } else {
-                Err(String::from("A Proc is expected."))
+                Err(format!("{} does not evaluate to a callable.", cons.car))
             }
         }
         _ => Ok(expr.clone()),
