@@ -45,3 +45,66 @@ pub fn divide(args: &Expr, env: &Env) -> EvalResult {
     let args = args.splat();
     binop(args, env, 1_f64, false, |lhs, rhs| lhs / rhs)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::expr::test_utils::*;
+    use crate::expr::NIL;
+
+    #[test]
+    fn test_add() {
+        let env = Env::new();
+
+        // (+ 1) => 1
+        let args = cons(num(1), NIL);
+        assert_eq!(add(&args, &env), Ok(num(1)));
+
+        // (+ 2 1) => 3
+        let args = cons(num(2), cons(num(1), NIL));
+        assert_eq!(add(&args, &env), Ok(num(3)));
+    }
+
+    #[test]
+    fn test_minus() {
+        let env = Env::new();
+
+        // (- 1) => -1
+        let args = cons(num(1), NIL);
+        assert_eq!(minus(&args, &env), Ok(num(-1)));
+
+        // (- 2 1) => 1
+        let args = cons(num(2), cons(num(1), NIL));
+        assert_eq!(minus(&args, &env), Ok(num(1)));
+    }
+
+    #[test]
+    fn test_multiply() {
+        let env = Env::new();
+
+        // (* 1) => 1
+        let args = cons(num(1), NIL);
+        assert_eq!(multiply(&args, &env), Ok(num(1)));
+
+        // (* 2 1) => 2
+        let args = cons(num(2), cons(num(1), NIL));
+        assert_eq!(multiply(&args, &env), Ok(num(2)));
+
+        // (* 3 2 1) => 6
+        let args = cons(num(3), cons(num(2), cons(num(1), NIL)));
+        assert_eq!(multiply(&args, &env), Ok(num(6)));
+    }
+
+    #[test]
+    fn test_divide() {
+        let env = Env::new();
+
+        // (/ 2) => 0.5
+        let args = cons(num(2), NIL);
+        assert_eq!(divide(&args, &env), Ok(num(0.5)));
+
+        // (/ 4 2) => 2
+        let args = cons(num(4), cons(num(2), NIL));
+        assert_eq!(divide(&args, &env), Ok(num(2)));
+    }
+}
