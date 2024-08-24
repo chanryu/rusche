@@ -1,25 +1,25 @@
+use crate::token::Token;
+use std::fmt;
 use std::iter::{Iterator, Peekable};
 
 const SYMBOL_DELIMITERS: &str = " \t\r\n()';\"";
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum Token {
-    OpenParen,
-    CloseParen,
-    Quote,
-    Num(f64),
-    Str(String),
-    Sym(String),
-}
-
 #[derive(Debug, PartialEq)]
-pub enum ScanError {
+pub enum TokenError {
     IncompleteString,
     InvalidNumber,
-    EndOfFile,
 }
 
-pub type ScanResult = Result<Token, ScanError>;
+impl fmt::Display for TokenError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TokenError::IncompleteString => write!(f, "Incomplete string"),
+            TokenError::InvalidNumber => write!(f, "Invalid number"),
+        }
+    }
+}
+
+type ScanResult = Result<Option<Token>, TokenError>;
 
 pub struct Scanner<Iter>
 where
@@ -47,20 +47,20 @@ where
         }
 
         match self.iter.next() {
-            Some('(') => Ok(Token::OpenParen),
-            Some(')') => Ok(Token::CloseParen),
-            Some('\'') => Ok(Token::Quote),
+            Some('(') => Ok(Some(Token::OpenParen)),
+            Some(')') => Ok(Some(Token::CloseParen)),
+            Some('\'') => Ok(Some(Token::Quote)),
 
             // string
             Some('"') => self.read_string(),
 
             // number
-            Some(ch) if ch.is_ascii_digit() => self.read_number(ch),
+            Some(ch) if ch.is_ascii_digit() || ch == '.' => self.read_number(ch),
 
             // we allow all other characters to be a symbol
             Some(ch) => self.read_symbol(ch),
 
-            None => Err(ScanError::EndOfFile),
+            None => Ok(None),
         }
     }
 
@@ -70,7 +70,7 @@ where
 
     fn skip_comment(&mut self) -> bool {
         if self.iter.next_if_eq(&';').is_some() {
-            self.iter.find(|&ch| is_newline_char(&ch));
+            self.iter.find(|&ch| ch == '\r' || ch == '\n');
             true
         } else {
             false
@@ -86,16 +86,16 @@ where
                     escaped = false;
                     text.push(ch);
                 }
-                ('"', false) => return Ok(Token::Str(text)),
+                ('"', false) => return Ok(Some(Token::Str(text))),
                 ('\\', false) => escaped = true,
                 (ch, false) => text.push(ch),
             }
         }
-        Err(ScanError::IncompleteString)
+        Err(TokenError::IncompleteString)
     }
 
     fn read_number(&mut self, first_char: char) -> ScanResult {
-        let mut has_decimal_point = false;
+        let mut has_decimal_point = first_char == '.';
         let mut digits = String::new();
 
         digits.push(first_char);
@@ -111,8 +111,8 @@ where
 
         digits
             .parse::<f64>()
-            .map(|value| Ok(Token::Num(value)))
-            .unwrap_or_else(|_| Err(ScanError::InvalidNumber))
+            .map(|value| Some(Token::Num(value)))
+            .map_err(|_| TokenError::InvalidNumber)
     }
 
     fn read_symbol(&mut self, first_char: char) -> ScanResult {
@@ -123,17 +123,18 @@ where
             name.push(ch);
         }
 
-        Ok(Token::Sym(name))
+        Ok(Some(Token::Sym(name)))
     }
-}
-
-fn is_newline_char(ch: &char) -> bool {
-    return *ch == '\r' || *ch == '\n';
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::token::test_utils::*;
+
+    fn ok_some<T, E>(t: T) -> Result<Option<T>, E> {
+        Ok(Some(t))
+    }
 
     #[test]
     fn test_read_string() {
@@ -147,64 +148,64 @@ mod tests {
 
         parse_string_assert_eq!(
             r#""valid string""#,
-            Ok(Token::Str("valid string".to_string()))
+            Ok(Some(Token::Str("valid string".to_string())))
         );
         parse_string_assert_eq!(
             r#""an escaped\" string""#,
-            Ok(Token::Str(String::from("an escaped\" string")))
+            Ok(Some(Token::Str(String::from("an escaped\" string"))))
         );
-        parse_string_assert_eq!(r#""incomplete string"#, Err(ScanError::IncompleteString));
+        parse_string_assert_eq!(r#""incomplete string"#, Err(TokenError::IncompleteString));
     }
 
     #[test]
     fn test_read_number() {
         macro_rules! parse_number_assert_eq {
             ($source:literal, $expected:expr) => {
-                assert!($source.len() != 0);
+                assert!(!$source.is_empty());
                 let mut chars = $source.chars();
                 let first_char = chars.next().unwrap();
                 assert_eq!(Scanner::new(chars).read_number(first_char), $expected);
             };
         }
 
-        parse_number_assert_eq!("0", Ok(Token::Num(0_f64)));
-        parse_number_assert_eq!("1", Ok(Token::Num(1_f64)));
-        parse_number_assert_eq!("1.1", Ok(Token::Num(1.1)));
+        parse_number_assert_eq!("0", ok_some(num(0)));
+        parse_number_assert_eq!("1", ok_some(num(1)));
+        parse_number_assert_eq!("1.1", ok_some(num(1.1)));
     }
 
     #[test]
     fn test_scanner_eof() {
         let mut scanner = Scanner::new("".chars());
-        assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
+        assert_eq!(scanner.get_token(), Ok(None));
 
         let mut scanner = Scanner::new("    ".chars());
-        assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
+        assert_eq!(scanner.get_token(), Ok(None));
 
         let mut scanner = Scanner::new("   ; comment".chars());
-        assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
+        assert_eq!(scanner.get_token(), Ok(None));
 
         let mut scanner = Scanner::new("".chars());
-        assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
-        assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
-        assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
+        assert_eq!(scanner.get_token(), Ok(None));
+        assert_eq!(scanner.get_token(), Ok(None));
+        assert_eq!(scanner.get_token(), Ok(None));
     }
 
     #[test]
     fn test_scanner_parans() {
         let mut scanner = Scanner::new("()(())(()())".chars());
-        assert_eq!(Ok(Token::OpenParen), scanner.get_token());
-        assert_eq!(Ok(Token::CloseParen), scanner.get_token());
-        assert_eq!(Ok(Token::OpenParen), scanner.get_token());
-        assert_eq!(Ok(Token::OpenParen), scanner.get_token());
-        assert_eq!(Ok(Token::CloseParen), scanner.get_token());
-        assert_eq!(Ok(Token::CloseParen), scanner.get_token());
-        assert_eq!(Ok(Token::OpenParen), scanner.get_token());
-        assert_eq!(Ok(Token::OpenParen), scanner.get_token());
-        assert_eq!(Ok(Token::CloseParen), scanner.get_token());
-        assert_eq!(Ok(Token::OpenParen), scanner.get_token());
-        assert_eq!(Ok(Token::CloseParen), scanner.get_token());
-        assert_eq!(Ok(Token::CloseParen), scanner.get_token());
-        assert_eq!(Err(ScanError::EndOfFile), scanner.get_token());
+        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
+        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
+        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
+        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
+        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
+        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
+        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
+        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
+        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
+        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
+        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
+        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
+        assert_eq!(scanner.get_token(), Ok(None));
     }
 
     #[test]
@@ -215,22 +216,22 @@ mod tests {
         ; another comment"#;
 
         let mut scanner = Scanner::new(all_tokens.chars());
-        assert_eq!(scanner.get_token(), Ok(Token::OpenParen));
-        assert_eq!(scanner.get_token(), Ok(Token::Sym(String::from("add"))));
-        assert_eq!(scanner.get_token(), Ok(Token::Num(1_f64)));
-        assert_eq!(scanner.get_token(), Ok(Token::Num(2.34_f64)));
-        assert_eq!(scanner.get_token(), Ok(Token::OpenParen));
-        assert_eq!(scanner.get_token(), Ok(Token::Sym(String::from("x"))));
-        assert_eq!(scanner.get_token(), Ok(Token::Sym(String::from("y"))));
-        assert_eq!(scanner.get_token(), Ok(Token::CloseParen));
-        assert_eq!(scanner.get_token(), Ok(Token::Str(String::from("test"))));
-        assert_eq!(scanner.get_token(), Ok(Token::Quote));
-        assert_eq!(scanner.get_token(), Ok(Token::OpenParen));
-        assert_eq!(scanner.get_token(), Ok(Token::Num(100_f64)));
-        assert_eq!(scanner.get_token(), Ok(Token::Num(200_f64)));
-        assert_eq!(scanner.get_token(), Ok(Token::Num(300_f64)));
-        assert_eq!(scanner.get_token(), Ok(Token::CloseParen));
-        assert_eq!(scanner.get_token(), Ok(Token::CloseParen));
-        assert_eq!(scanner.get_token(), Err(ScanError::EndOfFile));
+        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
+        assert_eq!(scanner.get_token(), ok_some(sym("add")));
+        assert_eq!(scanner.get_token(), ok_some(num(1)));
+        assert_eq!(scanner.get_token(), ok_some(num(2.34)));
+        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
+        assert_eq!(scanner.get_token(), ok_some(sym("x")));
+        assert_eq!(scanner.get_token(), ok_some(sym("y")));
+        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
+        assert_eq!(scanner.get_token(), ok_some(str("test")));
+        assert_eq!(scanner.get_token(), ok_some(Token::Quote));
+        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
+        assert_eq!(scanner.get_token(), ok_some(num(100)));
+        assert_eq!(scanner.get_token(), ok_some(num(200)));
+        assert_eq!(scanner.get_token(), ok_some(num(300)));
+        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
+        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
+        assert_eq!(scanner.get_token(), Ok(None));
     }
 }
