@@ -1,5 +1,4 @@
 mod builtins;
-mod env;
 mod eval;
 mod expr;
 mod parser;

@@ -1,5 +1,4 @@
-use crate::env::Env;
-use crate::eval::EvalResult;
+use crate::eval::{Env, EvalResult};
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -29,6 +28,27 @@ pub enum Expr {
 }
 
 pub const NIL: Expr = Expr::List(None);
+
+impl Expr {
+    pub fn splat(&self) -> Vec<&Expr> {
+        let mut argv = Vec::new();
+        let mut args = self;
+        loop {
+            match args {
+                Expr::List(None) => break,
+                Expr::List(Some(cons)) => {
+                    argv.push(cons.car.as_ref());
+                    args = &cons.cdr;
+                }
+                _ => {
+                    argv.push(args);
+                    break;
+                }
+            }
+        }
+        argv
+    }
+}
 
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
