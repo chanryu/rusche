@@ -2,12 +2,13 @@ use crate::eval::{eval, Env, EvalResult};
 use crate::expr::Expr;
 
 fn binop(
-    args: Vec<&Expr>,
+    args: &Expr,
     env: &Env,
     identity: f64,
     is_associative: bool,
     func: fn(lhs: f64, rhs: f64) -> f64,
 ) -> EvalResult {
+    let args = args.collect();
     let mut result = identity;
 
     for (index, arg) in args.iter().enumerate() {
@@ -27,22 +28,18 @@ fn binop(
 }
 
 pub fn add(args: &Expr, env: &Env) -> EvalResult {
-    let args = args.splat();
     binop(args, env, 0_f64, true, |lhs, rhs| lhs + rhs)
 }
 
 pub fn minus(args: &Expr, env: &Env) -> EvalResult {
-    let args = args.splat();
     binop(args, env, 0_f64, false, |lhs, rhs| lhs - rhs)
 }
 
 pub fn multiply(args: &Expr, env: &Env) -> EvalResult {
-    let args = args.splat();
     binop(args, env, 1_f64, true, |lhs, rhs| lhs * rhs)
 }
 
 pub fn divide(args: &Expr, env: &Env) -> EvalResult {
-    let args = args.splat();
     binop(args, env, 1_f64, false, |lhs, rhs| lhs / rhs)
 }
 

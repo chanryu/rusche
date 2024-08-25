@@ -1,12 +1,4 @@
-mod builtins;
-mod eval;
-mod expr;
-mod parser;
-mod repl;
-mod scanner;
-mod token;
-
-use repl::repl;
+use rusp::repl::repl;
 
 fn main() {
     repl();

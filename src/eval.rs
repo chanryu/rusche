@@ -1,4 +1,4 @@
-use crate::builtins;
+use crate::built_in;
 use crate::expr::Expr;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -17,15 +17,20 @@ impl Env {
     pub fn new_root_env() -> Self {
         let env = Env::new();
 
-        // lisp primitives
-        env.set("define", Expr::Proc(builtins::define));
-        env.set("quote", Expr::Proc(builtins::quote));
+        // lisp built_in
+        env.set("atom", Expr::Proc(built_in::atom));
+        env.set("car", Expr::Proc(built_in::car));
+        env.set("cdr", Expr::Proc(built_in::cdr));
+        env.set("cond", Expr::Proc(built_in::cond));
+        env.set("define", Expr::Proc(built_in::define));
+        env.set("eq", Expr::Proc(built_in::eq));
+        env.set("quote", Expr::Proc(built_in::quote));
 
         // arithmetic operations
-        env.set("+", Expr::Proc(builtins::num::add));
-        env.set("-", Expr::Proc(builtins::num::minus));
-        env.set("*", Expr::Proc(builtins::num::multiply));
-        env.set("/", Expr::Proc(builtins::num::divide));
+        env.set("+", Expr::Proc(built_in::num::add));
+        env.set("-", Expr::Proc(built_in::num::minus));
+        env.set("*", Expr::Proc(built_in::num::multiply));
+        env.set("/", Expr::Proc(built_in::num::divide));
 
         env
     }
@@ -45,8 +50,7 @@ pub type EvalResult = Result<Expr, EvalError>;
 pub fn eval(expr: &Expr, env: &Env) -> EvalResult {
     match expr {
         Expr::Sym(name) => match env.get(name) {
-            Some(Expr::Proc(func)) => Ok(Expr::Proc(func.clone())),
-            Some(_) => Err(format!("{} is not a procedure!", name)),
+            Some(expr) => Ok(expr.clone()),
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
         Expr::List(Some(cons)) => {

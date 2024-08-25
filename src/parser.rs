@@ -39,7 +39,7 @@ impl Parser {
     }
 
     pub fn is_parsing(&self) -> bool {
-        self.contexts.is_empty()
+        !self.contexts.is_empty()
     }
 
     pub fn reset(&mut self) {
