@@ -30,23 +30,26 @@ pub enum Expr {
 pub const NIL: Expr = Expr::List(None);
 
 impl Expr {
-    pub fn splat(&self) -> Vec<&Expr> {
-        let mut argv = Vec::new();
-        let mut args = self;
-        loop {
-            match args {
-                Expr::List(None) => break,
-                Expr::List(Some(cons)) => {
-                    argv.push(cons.car.as_ref());
-                    args = &cons.cdr;
-                }
-                _ => {
-                    argv.push(args);
-                    break;
-                }
-            }
+    pub fn iter(&self) -> ExprIter {
+        ExprIter::new(self)
+    }
+
+    pub fn collect(&self) -> Vec<&Expr> {
+        self.iter().collect::<Vec<_>>()
+    }
+
+    pub fn car(&self) -> Option<&Expr> {
+        match self {
+            Expr::List(Some(cons)) => Some(cons.car.as_ref()),
+            _ => None,
         }
-        argv
+    }
+
+    pub fn cdr(&self) -> Option<&Expr> {
+        match self {
+            Expr::List(Some(cons)) => Some(cons.cdr.as_ref()),
+            _ => None,
+        }
     }
 }
 

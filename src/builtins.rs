@@ -1,14 +1,13 @@
 pub mod num;
 
-use crate::eval::{eval, Env, EvalResult};
-use crate::expr::{Expr, ExprIter, NIL};
+use crate::eval::{eval, Env, EvalError, EvalResult};
+use crate::expr::{Cons, Expr, NIL};
 
 pub fn define(args: &Expr, env: &Env) -> EvalResult {
-    let mut args = ExprIter::new(args);
-
-    match args.next() {
+    let mut iter = args.iter();
+    match iter.next() {
         Some(Expr::Sym(name)) => {
-            if let Some(expr) = args.next() {
+            if let Some(expr) = iter.next() {
                 env.set(name, eval(expr, env)?.clone());
                 Ok(NIL)
             } else {
@@ -20,10 +19,40 @@ pub fn define(args: &Expr, env: &Env) -> EvalResult {
 }
 
 pub fn quote(args: &Expr, _env: &Env) -> EvalResult {
-    match args {
-        Expr::List(Some(cons)) => Ok((*cons.car).clone()),
-        _ => Err("quote requires an expression.".to_string()),
+    if let Some(car) = args.car() {
+        // TODO: error if cdr is not NIL
+        Ok(car.clone())
+    } else {
+        Err(make_syntax_error("quote", args))
     }
+}
+
+pub fn car(args: &Expr, env: &Env) -> EvalResult {
+    if let Some(car) = args.car() {
+        Ok(eval(car, env)?)
+    } else {
+        Err(make_syntax_error("car", args))
+    }
+}
+
+pub fn cdr(args: &Expr, env: &Env) -> EvalResult {
+    if let Some(cdr) = args.cdr() {
+        if let Some(car) = cdr.car() {
+            return Ok(eval(car, env)?);
+        }
+    }
+
+    Err(make_syntax_error("cdr", args))
+}
+
+fn make_syntax_error(func_name: &str, args: &Expr) -> EvalError {
+    format!(
+        "Ill-formed syntax: {}",
+        Expr::List(Some(Cons::new(
+            Expr::Sym(func_name.to_string()),
+            args.clone(),
+        )))
+    )
 }
 
 #[cfg(test)]
@@ -37,5 +66,21 @@ mod tests {
         let ret = define(&cons(sym("name"), cons(str("value"), NIL)), &env);
         assert_eq!(ret, Ok(NIL));
         assert_eq!(env.get("name"), Some(str("value")));
+    }
+
+    #[test]
+    fn test_car() {
+        let env = Env::new();
+        // (1 2)
+        let ret = car(&cons(num(1), cons(num(2), NIL)), &env);
+        assert_eq!(ret, Ok(num(1)));
+    }
+
+    #[test]
+    fn test_cdr() {
+        let env = Env::new();
+        // (1 2)
+        let ret = cdr(&cons(num(1), cons(num(2), NIL)), &env);
+        assert_eq!(ret, Ok(num(2)));
     }
 }
