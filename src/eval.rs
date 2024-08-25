@@ -20,6 +20,7 @@ impl Env {
         // lisp primitives
         env.set("define", Expr::Proc(builtins::define));
         env.set("quote", Expr::Proc(builtins::quote));
+        env.set("atom", Expr::Proc(builtins::atom));
         env.set("car", Expr::Proc(builtins::car));
         env.set("cdr", Expr::Proc(builtins::cdr));
 

@@ -27,6 +27,18 @@ pub fn quote(args: &Expr, _env: &Env) -> EvalResult {
     }
 }
 
+pub fn atom(args: &Expr, env: &Env) -> EvalResult {
+    if let Some(car) = args.car() {
+        // TODO: error if cdr is not NIL
+        match eval(car, env)? {
+            Expr::List(Some(_)) => Ok(NIL),
+            _ => Ok(Expr::Sym(String::from("#t"))),
+        }
+    } else {
+        Err(make_syntax_error("atom", args))
+    }
+}
+
 pub fn car(args: &Expr, env: &Env) -> EvalResult {
     if let Some(car) = args.car() {
         Ok(eval(car, env)?)
