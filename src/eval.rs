@@ -1,5 +1,5 @@
-use crate::builtins;
 use crate::expr::Expr;
+use crate::primitives;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -18,19 +18,19 @@ impl Env {
         let env = Env::new();
 
         // lisp primitives
-        env.set("atom", Expr::Proc(builtins::atom));
-        env.set("car", Expr::Proc(builtins::car));
-        env.set("cdr", Expr::Proc(builtins::cdr));
-        env.set("cond", Expr::Proc(builtins::cond));
-        env.set("define", Expr::Proc(builtins::define));
-        env.set("eq", Expr::Proc(builtins::eq));
-        env.set("quote", Expr::Proc(builtins::quote));
+        env.set("atom", Expr::Proc(primitives::atom));
+        env.set("car", Expr::Proc(primitives::car));
+        env.set("cdr", Expr::Proc(primitives::cdr));
+        env.set("cond", Expr::Proc(primitives::cond));
+        env.set("define", Expr::Proc(primitives::define));
+        env.set("eq", Expr::Proc(primitives::eq));
+        env.set("quote", Expr::Proc(primitives::quote));
 
         // arithmetic operations
-        env.set("+", Expr::Proc(builtins::num::add));
-        env.set("-", Expr::Proc(builtins::num::minus));
-        env.set("*", Expr::Proc(builtins::num::multiply));
-        env.set("/", Expr::Proc(builtins::num::divide));
+        env.set("+", Expr::Proc(primitives::num::add));
+        env.set("-", Expr::Proc(primitives::num::minus));
+        env.set("*", Expr::Proc(primitives::num::multiply));
+        env.set("/", Expr::Proc(primitives::num::divide));
 
         env
     }
