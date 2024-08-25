@@ -1,5 +1,5 @@
 use rusp::{
-    eval::{eval, Env, EvalResult},
+    eval::{Env, EvalResult},
     expr::{Expr, NIL},
     parser::Parser,
     scanner::Scanner,
@@ -35,6 +35,6 @@ pub fn parse_expr(text: &str) -> Expr {
     }
 }
 
-pub fn test_eval(expr: &str) -> EvalResult {
-    eval(&parse_expr(expr), &create_test_env())
+pub fn eval(expr: &str) -> EvalResult {
+    rusp::eval::eval(&parse_expr(expr), &create_test_env())
 }

@@ -16,9 +16,9 @@ pub fn repl() {
 
     loop {
         let prompt = if parser.is_parsing() {
-            "rusp > "
-        } else {
             ".... > "
+        } else {
+            "rusp > "
         };
 
         match rl.readline(prompt) {

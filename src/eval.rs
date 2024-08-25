@@ -1,5 +1,5 @@
+use crate::built_in;
 use crate::expr::Expr;
-use crate::primitives;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -17,20 +17,20 @@ impl Env {
     pub fn new_root_env() -> Self {
         let env = Env::new();
 
-        // lisp primitives
-        env.set("atom", Expr::Proc(primitives::atom));
-        env.set("car", Expr::Proc(primitives::car));
-        env.set("cdr", Expr::Proc(primitives::cdr));
-        env.set("cond", Expr::Proc(primitives::cond));
-        env.set("define", Expr::Proc(primitives::define));
-        env.set("eq", Expr::Proc(primitives::eq));
-        env.set("quote", Expr::Proc(primitives::quote));
+        // lisp built_in
+        env.set("atom", Expr::Proc(built_in::atom));
+        env.set("car", Expr::Proc(built_in::car));
+        env.set("cdr", Expr::Proc(built_in::cdr));
+        env.set("cond", Expr::Proc(built_in::cond));
+        env.set("define", Expr::Proc(built_in::define));
+        env.set("eq", Expr::Proc(built_in::eq));
+        env.set("quote", Expr::Proc(built_in::quote));
 
         // arithmetic operations
-        env.set("+", Expr::Proc(primitives::num::add));
-        env.set("-", Expr::Proc(primitives::num::minus));
-        env.set("*", Expr::Proc(primitives::num::multiply));
-        env.set("/", Expr::Proc(primitives::num::divide));
+        env.set("+", Expr::Proc(built_in::num::add));
+        env.set("-", Expr::Proc(built_in::num::minus));
+        env.set("*", Expr::Proc(built_in::num::multiply));
+        env.set("/", Expr::Proc(built_in::num::divide));
 
         env
     }
