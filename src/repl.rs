@@ -63,9 +63,9 @@ pub fn repl() {
 }
 
 fn print_logo() {
-    println!("┬─┐┬ ┬┌─┐┌─┐");
-    println!("├┬┘│ │└─┐├─┘");
-    println!("┴└─└─┘└─┘┴  ");
+    println!("           ┬─┐┬ ┬┌─┐┌─┐");
+    println!("Welcome to ├┬┘│ │└─┐├─┘");
+    println!("           ┴└─└─┘└─┘┴  !");
 }
 
 fn get_tokens(line: String) -> Result<Vec<Token>, TokenError> {

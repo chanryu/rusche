@@ -18,12 +18,13 @@ impl Env {
         let env = Env::new();
 
         // lisp primitives
-        env.set("define", Expr::Proc(builtins::define));
-        env.set("quote", Expr::Proc(builtins::quote));
         env.set("atom", Expr::Proc(builtins::atom));
-        env.set("eq", Expr::Proc(builtins::eq));
         env.set("car", Expr::Proc(builtins::car));
         env.set("cdr", Expr::Proc(builtins::cdr));
+        env.set("cond", Expr::Proc(builtins::cond));
+        env.set("define", Expr::Proc(builtins::define));
+        env.set("eq", Expr::Proc(builtins::eq));
+        env.set("quote", Expr::Proc(builtins::quote));
 
         // arithmetic operations
         env.set("+", Expr::Proc(builtins::num::add));
@@ -49,8 +50,7 @@ pub type EvalResult = Result<Expr, EvalError>;
 pub fn eval(expr: &Expr, env: &Env) -> EvalResult {
     match expr {
         Expr::Sym(name) => match env.get(name) {
-            Some(Expr::Proc(func)) => Ok(Expr::Proc(func.clone())),
-            Some(_) => Err(format!("{} is not a procedure!", name)),
+            Some(expr) => Ok(expr.clone()),
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
         Expr::List(Some(cons)) => {
