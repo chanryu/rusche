@@ -9,6 +9,8 @@ use rustyline::DefaultEditor;
 pub fn repl() {
     let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");
 
+    print_logo();
+
     let env = Env::new_root_env();
     let mut parser = Parser::new();
 
@@ -58,6 +60,12 @@ pub fn repl() {
             }
         }
     }
+}
+
+fn print_logo() {
+    println!("┬─┐┬ ┬┌─┐┌─┐");
+    println!("├┬┘│ │└─┐├─┘");
+    println!("┴└─└─┘└─┘┴  ");
 }
 
 fn get_tokens(line: String) -> Result<Vec<Token>, TokenError> {
