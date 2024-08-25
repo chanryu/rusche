@@ -63,9 +63,18 @@ mod tests {
     #[test]
     fn test_define() {
         let env = Env::new();
+        // (define name "value")
         let ret = define(&cons(sym("name"), cons(str("value"), NIL)), &env);
         assert_eq!(ret, Ok(NIL));
         assert_eq!(env.get("name"), Some(str("value")));
+    }
+
+    #[test]
+    fn test_quote() {
+        let env = Env::new();
+        // (quote (1 2))
+        let ret = quote(&cons(cons(num(1), cons(num(2), NIL)), NIL), &env);
+        assert_eq!(ret, Ok(cons(num(1), cons(num(2), NIL))));
     }
 
     #[test]
