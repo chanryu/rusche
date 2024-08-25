@@ -138,73 +138,60 @@ pub mod test_utils {
 
 #[cfg(test)]
 mod tests {
+    use super::test_utils::*;
     use super::*;
 
     #[test]
     fn test_display_nil() {
         assert_eq!(format!("{}", Expr::List(None)), "()");
+        assert_eq!(format!("{}", NIL), "()");
     }
 
     #[test]
     fn test_display_num() {
-        assert_eq!(format!("{}", Expr::Num(0_f64)), "0");
-        assert_eq!(format!("{}", Expr::Num(1_f64)), "1");
-        assert_eq!(format!("{}", Expr::Num(1.2)), "1.2");
-        assert_eq!(format!("{}", Expr::Num(2.0)), "2");
+        assert_eq!(format!("{}", num(0)), "0");
+        assert_eq!(format!("{}", num(1)), "1");
+        assert_eq!(format!("{}", num(1.2)), "1.2");
+        assert_eq!(format!("{}", num(2.0)), "2");
     }
 
     #[test]
     fn test_display_str() {
-        assert_eq!(format!("{}", Expr::Str(String::from("str"))), "\"str\"");
+        assert_eq!(format!("{}", str("str")), "\"str\"");
     }
 
     #[test]
     fn test_display_sym() {
-        assert_eq!(format!("{}", Expr::Sym(String::from("sym"))), "sym");
+        assert_eq!(format!("{}", sym("sym")), "sym");
     }
 
     #[test]
     fn test_display_list_1() {
-        let list = Expr::List(Some(Cons::new(Expr::Num(0_f64), NIL)));
+        let list = cons(num(0), NIL);
         assert_eq!(format!("{}", list), "(0)");
     }
 
     #[test]
     fn test_display_list_2() {
-        let list = Expr::List(Some(Cons::new(
-            Expr::Num(0_f64),
-            Expr::List(Some(Cons::new(
-                Expr::Num(1_f64),
-                Expr::List(Some(Cons::new(Expr::Num(2_f64), NIL))),
-            ))),
-        )));
+        let list = cons(num(0), cons(num(1), cons(num(2), NIL)));
         assert_eq!(format!("{}", list), "(0 1 2)");
     }
 
     #[test]
     fn test_display_list_3() {
-        let list = Expr::List(Some(Cons::new(
-            Expr::Num(0_f64),
-            Expr::List(Some(Cons::new(
-                Expr::Str("str".to_string()),
-                Expr::List(Some(Cons::new(Expr::Sym("sym".to_string()), NIL))),
-            ))),
-        )));
+        let list = cons(num(0), cons(str("str"), cons(sym("sym"), NIL)));
         assert_eq!(format!("{}", list), "(0 \"str\" sym)");
     }
 
     #[test]
     fn test_display_improper_list_1() {
-        let list = Expr::List(Some(Cons::new(Expr::Num(0_f64), Expr::Num(1_f64))));
+        let list = cons(num(0), num(1));
         assert_eq!(format!("{}", list), "(0 . 1)");
     }
 
     #[test]
     fn test_display_improper_list_2() {
-        let list = Expr::List(Some(Cons::new(
-            Expr::Num(0_f64),
-            Expr::List(Some(Cons::new(Expr::Num(1_f64), Expr::Num(2_f64)))),
-        )));
+        let list = cons(num(0), cons(num(1), num(2)));
         assert_eq!(format!("{}", list), "(0 1 . 2)");
     }
 }
