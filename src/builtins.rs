@@ -39,6 +39,24 @@ pub fn atom(args: &Expr, env: &Env) -> EvalResult {
     }
 }
 
+pub fn eq(args: &Expr, env: &Env) -> EvalResult {
+    if let Some(car) = args.car() {
+        if let Some(cdr) = args.cdr() {
+            if let Some(cdar) = cdr.car() {
+                let arg1 = eval(car, env)?;
+                let arg2 = eval(cdar, env)?;
+                return if arg1 == arg2 {
+                    Ok(Expr::Sym(String::from("#t")))
+                } else {
+                    Ok(NIL)
+                };
+            }
+        }
+    }
+
+    Err(make_syntax_error("eq", args))
+}
+
 pub fn car(args: &Expr, env: &Env) -> EvalResult {
     if let Some(car) = args.car() {
         Ok(eval(car, env)?)
@@ -87,6 +105,22 @@ mod tests {
         // (quote (1 2))
         let ret = quote(&cons(cons(num(1), cons(num(2), NIL)), NIL), &env);
         assert_eq!(ret, Ok(cons(num(1), cons(num(2), NIL))));
+    }
+
+    #[test]
+    fn test_eq() {
+        let env = Env::new();
+        // (eq 1 1) => #t
+        assert_eq!(eq(&cons(num(1), cons(num(1), NIL)), &env), Ok(sym("#t")));
+        // (eq 1 2) => ()
+        assert_eq!(eq(&cons(num(1), cons(num(2), NIL)), &env), Ok(NIL));
+        // (eq "str" "str") => #t
+        assert_eq!(
+            eq(&cons(str("str"), cons(str("str"), NIL)), &env),
+            Ok(sym("#t"))
+        );
+        // (eq 1 "1") => ()
+        assert_eq!(eq(&cons(num(1), cons(str("1"), NIL)), &env), Ok(NIL));
     }
 
     #[test]
