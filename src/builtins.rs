@@ -71,7 +71,7 @@ mod tests {
     #[test]
     fn test_car() {
         let env = Env::new();
-        // (1 2)
+        // (car '(1 2)) => 1
         let ret = car(&cons(num(1), cons(num(2), NIL)), &env);
         assert_eq!(ret, Ok(num(1)));
     }
@@ -79,7 +79,7 @@ mod tests {
     #[test]
     fn test_cdr() {
         let env = Env::new();
-        // (1 2)
+        // (cdr '(1 2)) => 2
         let ret = cdr(&cons(num(1), cons(num(2), NIL)), &env);
         assert_eq!(ret, Ok(num(2)));
     }
