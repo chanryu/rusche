@@ -2,7 +2,7 @@ pub mod num;
 
 use crate::eval::{eval, Env, EvalError, EvalResult};
 use crate::expr::{sym, Expr};
-use crate::list::List;
+use crate::list::{cons, List};
 
 pub fn atom(args: &List, env: &Env) -> EvalResult {
     if let Some(car) = args.car() {
@@ -104,10 +104,7 @@ pub fn eq(args: &List, env: &Env) -> EvalResult {
 fn make_syntax_error(func_name: &str, args: &List) -> EvalError {
     format!(
         "Ill-formed syntax: {}",
-        Expr::List(List::new_cons(
-            Expr::Sym(func_name.to_string()),
-            args.clone()
-        ))
+        cons(sym(func_name.to_string()), args.clone())
     )
 }
 

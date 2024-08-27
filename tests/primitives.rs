@@ -1,7 +1,10 @@
 mod common;
 
-use common::{cons, num, test_eval};
-use rusp::list::List;
+use common::test_eval;
+use rusp::{
+    expr::num,
+    list::{cons, List},
+};
 
 #[test]
 fn test_cond() {

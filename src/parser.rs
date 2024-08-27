@@ -120,7 +120,7 @@ impl Parser {
                 break;
             }
             if let Some(car) = context.car {
-                list = List::new_cons(car, list);
+                list = cons(car, list);
             }
             if context.token.is_some() {
                 return Ok(list.into());

@@ -35,14 +35,3 @@ pub fn test_eval(expr: &str) -> EvalResult {
     env.set("f", List::Nil.into());
     eval(&parse_expr(expr), &env)
 }
-
-pub fn num<T>(value: T) -> Expr
-where
-    T: Into<f64>,
-{
-    Expr::Num(value.into())
-}
-
-pub fn cons(car: Expr, cdr: List) -> List {
-    List::new_cons(car, cdr)
-}

@@ -23,10 +23,6 @@ pub enum List {
 }
 
 impl List {
-    pub fn new_cons(car: Expr, cdr: List) -> Self {
-        List::Cons(Cons::new(car, cdr))
-    }
-
     pub fn iter(&self) -> ListIter {
         ListIter::new(self)
     }
@@ -62,7 +58,7 @@ pub fn cons<T>(car: T, cdr: List) -> List
 where
     T: Into<Expr>,
 {
-    List::new_cons(car.into(), cdr)
+    List::Cons(Cons::new(car.into(), cdr))
 }
 
 impl fmt::Display for List {
