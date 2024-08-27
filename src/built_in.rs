@@ -172,9 +172,9 @@ mod tests {
         let env = Env::new();
         // (quote (1 2))
         let ret = quote(
-            &cons(Expr::List(cons(num(1), cons(num(2), List::Nil))), List::Nil),
+            &cons(cons(num(1), cons(num(2), List::Nil)).to_expr(), List::Nil),
             &env,
         );
-        assert_eq!(ret, Ok(Expr::List(cons(num(1), cons(num(2), List::Nil)))));
+        assert_eq!(ret, Ok(cons(num(1), cons(num(2), List::Nil)).to_expr()));
     }
 }

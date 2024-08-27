@@ -155,7 +155,7 @@ mod tests {
         ]);
 
         let parsed_expr = parser.parse().unwrap();
-        let expected_expr = Expr::List(cons(sym("add"), cons(num(1), cons(num(2), List::Nil))));
+        let expected_expr = cons(sym("add"), cons(num(1), cons(num(2), List::Nil))).to_expr();
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -168,7 +168,7 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         print!("{}", parsed_expr);
-        let expected_expr = Expr::List(cons(sym("quote"), cons(num(1), List::Nil)));
+        let expected_expr = cons(sym("quote"), cons(num(1), List::Nil)).to_expr();
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -187,10 +187,11 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         print!("{}", parsed_expr);
-        let expected_expr = Expr::List(cons(
+        let expected_expr = cons(
             sym("quote"),
-            cons(Expr::List(cons(num(1), cons(num(2), List::Nil))), List::Nil),
-        ));
+            cons(cons(num(1), cons(num(2), List::Nil)).to_expr(), List::Nil),
+        )
+        .to_expr();
         assert_eq!(parsed_expr, expected_expr);
     }
 }
