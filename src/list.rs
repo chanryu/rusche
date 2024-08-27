@@ -23,6 +23,16 @@ pub struct List {
 pub const NIL: List = List { cons: None };
 
 impl List {
+    pub fn new_with_cons(car: Expr, cdr: List) -> Self {
+        Self {
+            cons: Some(Cons::new(car, cdr)),
+        }
+    }
+
+    pub fn to_expr(&self) -> Expr {
+        Expr::List(self.clone())
+    }
+
     pub fn iter(&self) -> ListIter {
         ListIter::new(self)
     }
@@ -46,6 +56,10 @@ impl List {
             None
         }
     }
+}
+
+pub fn cons(car: Expr, cdr: List) -> List {
+    List::new_with_cons(car, cdr)
 }
 
 impl fmt::Display for List {

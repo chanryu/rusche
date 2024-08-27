@@ -1,5 +1,5 @@
 use crate::expr::Expr;
-use crate::list::{Cons, List, NIL};
+use crate::list::{List, NIL};
 use crate::token::Token;
 use std::collections::VecDeque;
 use std::fmt;
@@ -77,14 +77,10 @@ impl Parser {
                     match context.token {
                         Some(Token::Quote) => {
                             self.contexts.pop();
-                            expr = Expr::List(List {
-                                cons: Some(Cons::new(
-                                    Expr::Sym(String::from("quote")),
-                                    List {
-                                        cons: Some(Cons::new(expr, NIL)),
-                                    },
-                                )),
-                            });
+                            expr = Expr::List(List::new_with_cons(
+                                Expr::Sym(String::from("quote")),
+                                List::new_with_cons(expr, NIL),
+                            ));
                             continue;
                         }
                         _ => {}
@@ -127,11 +123,7 @@ impl Parser {
                 break;
             }
             if let Some(car) = context.car {
-                list = List {
-                    cons: Some(Cons::new(car, list)),
-                };
-            } else {
-                assert!(list == NIL);
+                list = List::new_with_cons(car, list);
             }
             if context.token.is_some() {
                 return Ok(Expr::List(list));
@@ -144,7 +136,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::test_utils::*;
+    use crate::{expr::test_utils::*, list::cons};
 
     #[test]
     fn test_parser() {

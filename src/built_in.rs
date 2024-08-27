@@ -2,13 +2,13 @@ pub mod num;
 
 use crate::eval::{eval, Env, EvalError, EvalResult};
 use crate::expr::Expr;
-use crate::list::{Cons, List, NIL};
+use crate::list::{List, NIL};
 
 pub fn atom(args: &List, env: &Env) -> EvalResult {
     if let Some(car) = args.car() {
         // TODO: error if cdr is not NIL
         match eval(car, env)? {
-            Expr::List(List { cons: Some(_) }) => Ok(Expr::List(NIL)),
+            Expr::List(List { cons: Some(_) }) => Ok(NIL.to_expr()),
             _ => Ok(Expr::Sym(String::from("#t"))),
         }
     } else {
@@ -39,11 +39,11 @@ pub fn cond(args: &List, env: &Env) -> EvalResult {
     loop {
         match iter.next() {
             None => {
-                return Ok(Expr::List(NIL));
+                return Ok(NIL.to_expr());
             }
             Some(Expr::List(List { cons: Some(cons) })) => {
                 let car = cons.car.as_ref();
-                if eval(car, env)? != Expr::List(NIL) {
+                if eval(car, env)? != NIL.to_expr() {
                     if let Some(cdar) = cons.cdr.car() {
                         return eval(cdar, env);
                     } else {
@@ -73,7 +73,7 @@ pub fn define(args: &List, env: &Env) -> EvalResult {
         Some(Expr::Sym(name)) => {
             if let Some(expr) = iter.next() {
                 env.set(name, eval(expr, env)?.clone());
-                Ok(Expr::List(NIL))
+                Ok(NIL.to_expr())
             } else {
                 Err("define expects a expression after symbol".to_string())
             }
@@ -91,7 +91,7 @@ pub fn eq(args: &List, env: &Env) -> EvalResult {
                 return if arg1 == arg2 {
                     Ok(Expr::Sym(String::from("#t")))
                 } else {
-                    Ok(Expr::List(NIL))
+                    Ok(NIL.to_expr())
                 };
             }
         }
@@ -103,16 +103,17 @@ pub fn eq(args: &List, env: &Env) -> EvalResult {
 fn make_syntax_error(func_name: &str, args: &List) -> EvalError {
     format!(
         "Ill-formed syntax: {}",
-        Expr::List(List {
-            cons: Some(Cons::new(Expr::Sym(func_name.to_string()), args.clone()))
-        })
+        Expr::List(List::new_with_cons(
+            Expr::Sym(func_name.to_string()),
+            args.clone()
+        ))
     )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::test_utils::*;
+    use crate::{expr::test_utils::*, list::cons};
 
     #[test]
     fn test_car() {
@@ -135,7 +136,7 @@ mod tests {
         let env = Env::new();
         // (define name "value")
         let ret = define(&cons(sym("name"), cons(str("value"), NIL)), &env);
-        assert_eq!(ret, Ok(Expr::List(NIL)));
+        assert_eq!(ret, Ok(NIL.to_expr()));
         assert_eq!(env.get("name"), Some(str("value")));
     }
 
@@ -147,7 +148,7 @@ mod tests {
         // (eq 1 2) => ()
         assert_eq!(
             eq(&cons(num(1), cons(num(2), NIL)), &env),
-            Ok(Expr::List(NIL))
+            Ok(NIL.to_expr())
         );
         // (eq "str" "str") => #t
         assert_eq!(
@@ -157,7 +158,7 @@ mod tests {
         // (eq 1 "1") => ()
         assert_eq!(
             eq(&cons(num(1), cons(str("1"), NIL)), &env),
-            Ok(Expr::List(NIL))
+            Ok(NIL.to_expr())
         );
     }
 

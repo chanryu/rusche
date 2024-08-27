@@ -27,8 +27,6 @@ impl fmt::Display for Expr {
 
 #[cfg(test)]
 pub mod test_utils {
-    use crate::list::Cons;
-
     use super::*;
 
     pub fn num<T>(value: T) -> Expr
@@ -45,25 +43,17 @@ pub mod test_utils {
     pub fn sym(name: &str) -> Expr {
         Expr::Sym(String::from(name))
     }
-
-    pub fn cons(car: Expr, cdr: List) -> List {
-        List {
-            cons: Some(Cons::new(car, cdr)),
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::list::NIL;
-
     use super::test_utils::*;
-    use super::*;
+    use crate::list::{cons, NIL};
 
     #[test]
     fn test_display_nil() {
         assert_eq!(format!("{}", NIL), "()");
-        assert_eq!(format!("{}", Expr::List(NIL)), "()");
+        assert_eq!(format!("{}", NIL.to_expr()), "()");
     }
 
     #[test]
