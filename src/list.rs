@@ -16,17 +16,14 @@ impl Cons {
     }
 }
 #[derive(Clone, Debug, PartialEq)]
-pub struct List {
-    pub cons: Option<Cons>,
+pub enum List {
+    Cons(Cons),
+    Nil,
 }
 
-pub const NIL: List = List { cons: None };
-
 impl List {
-    pub fn new_with_cons(car: Expr, cdr: List) -> Self {
-        Self {
-            cons: Some(Cons::new(car, cdr)),
-        }
+    pub fn new_cons(car: Expr, cdr: List) -> Self {
+        List::Cons(Cons::new(car, cdr))
     }
 
     pub fn to_expr(&self) -> Expr {
@@ -42,7 +39,7 @@ impl List {
     }
 
     pub fn car(&self) -> Option<&Expr> {
-        if let Some(cons) = &self.cons {
+        if let List::Cons(cons) = &self {
             Some(cons.car.as_ref())
         } else {
             None
@@ -50,7 +47,7 @@ impl List {
     }
 
     pub fn cdr(&self) -> Option<&List> {
-        if let Some(cons) = &self.cons {
+        if let List::Cons(cons) = &self {
             Some(cons.cdr.as_ref())
         } else {
             None
@@ -59,7 +56,7 @@ impl List {
 }
 
 pub fn cons(car: Expr, cdr: List) -> List {
-    List::new_with_cons(car, cdr)
+    List::new_cons(car, cdr)
 }
 
 impl fmt::Display for List {
@@ -72,7 +69,7 @@ fn write_list(f: &mut fmt::Formatter<'_>, list: &List, is_top_level: bool) -> fm
     if is_top_level {
         write!(f, "(")?;
     }
-    if let Some(cons) = &list.cons {
+    if let List::Cons(cons) = list {
         if is_top_level {
             write!(f, "{}", cons.car)?;
         } else {
@@ -101,7 +98,7 @@ impl<'a> Iterator for ListIter<'a> {
     type Item = &'a Expr;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(cons) = &self.list.cons {
+        if let List::Cons(cons) = self.list {
             let car = &cons.car;
             self.list = &cons.cdr;
             Some(car)

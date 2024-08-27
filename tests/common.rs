@@ -1,7 +1,7 @@
 use rusp::{
     eval::{eval, Env, EvalResult},
     expr::Expr,
-    list::{List, NIL},
+    list::List,
     parser::Parser,
     scanner::Scanner,
 };
@@ -32,7 +32,7 @@ pub fn parse_expr(text: &str) -> Expr {
 pub fn test_eval(expr: &str) -> EvalResult {
     let env = Env::new_root_env();
     env.set("t", Expr::Sym("#t".to_string()));
-    env.set("f", NIL.to_expr());
+    env.set("f", List::Nil.to_expr());
     eval(&parse_expr(expr), &env)
 }
 
@@ -44,5 +44,5 @@ where
 }
 
 pub fn cons(car: Expr, cdr: List) -> List {
-    List::new_with_cons(car, cdr)
+    List::new_cons(car, cdr)
 }

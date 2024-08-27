@@ -1,5 +1,5 @@
 use crate::expr::Expr;
-use crate::list::{List, NIL};
+use crate::list::List;
 use crate::token::Token;
 use std::collections::VecDeque;
 use std::fmt;
@@ -77,9 +77,9 @@ impl Parser {
                     match context.token {
                         Some(Token::Quote) => {
                             self.contexts.pop();
-                            expr = Expr::List(List::new_with_cons(
+                            expr = Expr::List(List::new_cons(
                                 Expr::Sym(String::from("quote")),
-                                List::new_with_cons(expr, NIL),
+                                List::new_cons(expr, List::Nil),
                             ));
                             continue;
                         }
@@ -117,13 +117,13 @@ impl Parser {
     }
 
     fn end_list(&mut self) -> ParseResult {
-        let mut list = NIL;
+        let mut list = List::Nil;
         while let Some(context) = self.contexts.pop() {
             if let Some(Token::Quote) = context.token {
                 break;
             }
             if let Some(car) = context.car {
-                list = List::new_with_cons(car, list);
+                list = List::new_cons(car, list);
             }
             if context.token.is_some() {
                 return Ok(list.to_expr());
@@ -155,7 +155,7 @@ mod tests {
         ]);
 
         let parsed_expr = parser.parse().unwrap();
-        let expected_expr = Expr::List(cons(sym("add"), cons(num(1), cons(num(2), NIL))));
+        let expected_expr = Expr::List(cons(sym("add"), cons(num(1), cons(num(2), List::Nil))));
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -168,7 +168,7 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         print!("{}", parsed_expr);
-        let expected_expr = Expr::List(cons(sym("quote"), cons(num(1), NIL)));
+        let expected_expr = Expr::List(cons(sym("quote"), cons(num(1), List::Nil)));
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -189,7 +189,7 @@ mod tests {
         print!("{}", parsed_expr);
         let expected_expr = Expr::List(cons(
             sym("quote"),
-            cons(Expr::List(cons(num(1), cons(num(2), NIL))), NIL),
+            cons(Expr::List(cons(num(1), cons(num(2), List::Nil))), List::Nil),
         ));
         assert_eq!(parsed_expr, expected_expr);
     }

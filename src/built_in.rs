@@ -2,7 +2,7 @@ pub mod num;
 
 use crate::eval::{eval, Env, EvalError, EvalResult};
 use crate::expr::Expr;
-use crate::list::{List, NIL};
+use crate::list::List;
 
 pub fn atom(args: &List, env: &Env) -> EvalResult {
     if let Some(car) = args.car() {
@@ -10,7 +10,7 @@ pub fn atom(args: &List, env: &Env) -> EvalResult {
         if eval(car, env)?.is_atom() {
             Ok(Expr::Sym(String::from("#t")))
         } else {
-            Ok(NIL.to_expr())
+            Ok(List::Nil.to_expr())
         }
     } else {
         Err(make_syntax_error("atom", args))
@@ -40,11 +40,11 @@ pub fn cond(args: &List, env: &Env) -> EvalResult {
     loop {
         match iter.next() {
             None => {
-                return Ok(NIL.to_expr());
+                return Ok(List::Nil.to_expr());
             }
-            Some(Expr::List(List { cons: Some(cons) })) => {
+            Some(Expr::List(List::Cons(cons))) => {
                 let car = cons.car.as_ref();
-                if eval(car, env)? != NIL.to_expr() {
+                if eval(car, env)? != List::Nil.to_expr() {
                     if let Some(cdar) = cons.cdr.car() {
                         return eval(cdar, env);
                     } else {
@@ -74,7 +74,7 @@ pub fn define(args: &List, env: &Env) -> EvalResult {
         Some(Expr::Sym(name)) => {
             if let Some(expr) = iter.next() {
                 env.set(name, eval(expr, env)?.clone());
-                Ok(NIL.to_expr())
+                Ok(List::Nil.to_expr())
             } else {
                 Err("define expects a expression after symbol".to_string())
             }
@@ -92,7 +92,7 @@ pub fn eq(args: &List, env: &Env) -> EvalResult {
                 return if arg1 == arg2 {
                     Ok(Expr::Sym(String::from("#t")))
                 } else {
-                    Ok(NIL.to_expr())
+                    Ok(List::Nil.to_expr())
                 };
             }
         }
@@ -104,7 +104,7 @@ pub fn eq(args: &List, env: &Env) -> EvalResult {
 fn make_syntax_error(func_name: &str, args: &List) -> EvalError {
     format!(
         "Ill-formed syntax: {}",
-        Expr::List(List::new_with_cons(
+        Expr::List(List::new_cons(
             Expr::Sym(func_name.to_string()),
             args.clone()
         ))
@@ -121,7 +121,7 @@ mod tests {
     fn test_car() {
         let env = Env::new();
         // (car '(1 2)) => 1
-        let ret = car(&cons(num(1), cons(num(2), NIL)), &env);
+        let ret = car(&cons(num(1), cons(num(2), List::Nil)), &env);
         assert_eq!(ret, Ok(num(1)));
     }
 
@@ -129,7 +129,7 @@ mod tests {
     fn test_cdr() {
         let env = Env::new();
         // (cdr '(1 2)) => 2
-        let ret = cdr(&cons(num(1), cons(num(2), NIL)), &env);
+        let ret = cdr(&cons(num(1), cons(num(2), List::Nil)), &env);
         assert_eq!(ret, Ok(num(2)));
     }
 
@@ -137,8 +137,8 @@ mod tests {
     fn test_define() {
         let env = Env::new();
         // (define name "value")
-        let ret = define(&cons(sym("name"), cons(str("value"), NIL)), &env);
-        assert_eq!(ret, Ok(NIL.to_expr()));
+        let ret = define(&cons(sym("name"), cons(str("value"), List::Nil)), &env);
+        assert_eq!(ret, Ok(List::Nil.to_expr()));
         assert_eq!(env.get("name"), Some(str("value")));
     }
 
@@ -146,21 +146,24 @@ mod tests {
     fn test_eq() {
         let env = Env::new();
         // (eq 1 1) => #t
-        assert_eq!(eq(&cons(num(1), cons(num(1), NIL)), &env), Ok(sym("#t")));
+        assert_eq!(
+            eq(&cons(num(1), cons(num(1), List::Nil)), &env),
+            Ok(sym("#t"))
+        );
         // (eq 1 2) => ()
         assert_eq!(
-            eq(&cons(num(1), cons(num(2), NIL)), &env),
-            Ok(NIL.to_expr())
+            eq(&cons(num(1), cons(num(2), List::Nil)), &env),
+            Ok(List::Nil.to_expr())
         );
         // (eq "str" "str") => #t
         assert_eq!(
-            eq(&cons(str("str"), cons(str("str"), NIL)), &env),
+            eq(&cons(str("str"), cons(str("str"), List::Nil)), &env),
             Ok(sym("#t"))
         );
         // (eq 1 "1") => ()
         assert_eq!(
-            eq(&cons(num(1), cons(str("1"), NIL)), &env),
-            Ok(NIL.to_expr())
+            eq(&cons(num(1), cons(str("1"), List::Nil)), &env),
+            Ok(List::Nil.to_expr())
         );
     }
 
@@ -169,9 +172,9 @@ mod tests {
         let env = Env::new();
         // (quote (1 2))
         let ret = quote(
-            &cons(Expr::List(cons(num(1), cons(num(2), NIL))), NIL),
+            &cons(Expr::List(cons(num(1), cons(num(2), List::Nil))), List::Nil),
             &env,
         );
-        assert_eq!(ret, Ok(Expr::List(cons(num(1), cons(num(2), NIL)))));
+        assert_eq!(ret, Ok(Expr::List(cons(num(1), cons(num(2), List::Nil)))));
     }
 }

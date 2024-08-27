@@ -48,18 +48,18 @@ pub fn divide(args: &List, env: &Env) -> EvalResult {
 mod tests {
     use super::*;
     use crate::expr::num;
-    use crate::list::{cons, NIL};
+    use crate::list::cons;
 
     #[test]
     fn test_add() {
         let env = Env::new();
 
         // (+ 1) => 1
-        let args = cons(num(1), NIL);
+        let args = cons(num(1), List::Nil);
         assert_eq!(add(&args, &env), Ok(num(1)));
 
         // (+ 2 1) => 3
-        let args = cons(num(2), cons(num(1), NIL));
+        let args = cons(num(2), cons(num(1), List::Nil));
         assert_eq!(add(&args, &env), Ok(num(3)));
     }
 
@@ -68,11 +68,11 @@ mod tests {
         let env = Env::new();
 
         // (- 1) => -1
-        let args = cons(num(1), NIL);
+        let args = cons(num(1), List::Nil);
         assert_eq!(minus(&args, &env), Ok(num(-1)));
 
         // (- 2 1) => 1
-        let args = cons(num(2), cons(num(1), NIL));
+        let args = cons(num(2), cons(num(1), List::Nil));
         assert_eq!(minus(&args, &env), Ok(num(1)));
     }
 
@@ -81,15 +81,15 @@ mod tests {
         let env = Env::new();
 
         // (* 1) => 1
-        let args = cons(num(1), NIL);
+        let args = cons(num(1), List::Nil);
         assert_eq!(multiply(&args, &env), Ok(num(1)));
 
         // (* 2 1) => 2
-        let args = cons(num(2), cons(num(1), NIL));
+        let args = cons(num(2), cons(num(1), List::Nil));
         assert_eq!(multiply(&args, &env), Ok(num(2)));
 
         // (* 3 2 1) => 6
-        let args = cons(num(3), cons(num(2), cons(num(1), NIL)));
+        let args = cons(num(3), cons(num(2), cons(num(1), List::Nil)));
         assert_eq!(multiply(&args, &env), Ok(num(6)));
     }
 
@@ -98,11 +98,11 @@ mod tests {
         let env = Env::new();
 
         // (/ 2) => 0.5
-        let args = cons(num(2), NIL);
+        let args = cons(num(2), List::Nil);
         assert_eq!(divide(&args, &env), Ok(num(0.5)));
 
         // (/ 4 2) => 2
-        let args = cons(num(4), cons(num(2), NIL));
+        let args = cons(num(4), cons(num(2), List::Nil));
         assert_eq!(divide(&args, &env), Ok(num(2)));
     }
 }

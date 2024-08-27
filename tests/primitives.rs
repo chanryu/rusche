@@ -1,7 +1,8 @@
 mod common;
 
 use common::{cons, num, test_eval};
-use rusp::{expr::Expr, list::NIL};
+use rusp::expr::Expr;
+use rusp::list::List;
 
 #[test]
 fn test_cond() {
@@ -12,9 +13,9 @@ fn test_cond() {
 #[test]
 fn test_quote() {
     assert_eq!(test_eval("'1"), Ok(num(1)));
-    assert_eq!(test_eval("'(1)"), Ok(Expr::List(cons(num(1), NIL))));
+    assert_eq!(test_eval("'(1)"), Ok(Expr::List(cons(num(1), List::Nil))));
     assert_eq!(
         test_eval("'(1 2)"),
-        Ok(Expr::List(cons(num(1), cons(num(2), NIL))))
+        Ok(Expr::List(cons(num(1), cons(num(2), List::Nil))))
     );
 }

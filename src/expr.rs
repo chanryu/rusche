@@ -1,5 +1,5 @@
 use crate::eval::{Env, EvalResult};
-use crate::list::{List, NIL};
+use crate::list::List;
 use std::fmt;
 
 pub type Func = fn(args: &List, env: &Env) -> EvalResult;
@@ -16,8 +16,8 @@ pub enum Expr {
 impl Expr {
     pub fn is_atom(&self) -> bool {
         match self {
-            Expr::List(list) => *list != NIL,
-            _ => false,
+            Expr::List(List::Cons(_)) => false,
+            _ => true,
         }
     }
 }
@@ -56,11 +56,11 @@ pub fn sym<T: Into<String>>(text: T) -> Expr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::list::{cons, NIL};
+    use crate::list::cons;
 
     #[test]
     fn test_display_nil() {
-        assert_eq!(format!("{}", NIL.to_expr()), "()");
+        assert_eq!(format!("{}", List::Nil.to_expr()), "()");
     }
 
     #[test]
@@ -83,19 +83,19 @@ mod tests {
 
     #[test]
     fn test_display_list_1() {
-        let list = cons(num(0), NIL);
+        let list = cons(num(0), List::Nil);
         assert_eq!(format!("{}", list), "(0)");
     }
 
     #[test]
     fn test_display_list_2() {
-        let list = cons(num(0), cons(num(1), cons(num(2), NIL)));
+        let list = cons(num(0), cons(num(1), cons(num(2), List::Nil)));
         assert_eq!(format!("{}", list), "(0 1 2)");
     }
 
     #[test]
     fn test_display_list_3() {
-        let list = cons(num(0), cons(str("str"), cons(sym("sym"), NIL)));
+        let list = cons(num(0), cons(str("str"), cons(sym("sym"), List::Nil)));
         assert_eq!(format!("{}", list), "(0 \"str\" sym)");
     }
 }
