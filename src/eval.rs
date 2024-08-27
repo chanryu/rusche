@@ -1,5 +1,6 @@
 use crate::built_in;
 use crate::expr::Expr;
+use crate::list::List;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -40,7 +41,7 @@ impl Env {
     }
 
     pub fn set(&self, name: &str, expr: Expr) {
-        self.vars.borrow_mut().insert(name.to_string(), expr);
+        self.vars.borrow_mut().insert(name.into(), expr);
     }
 }
 
@@ -53,9 +54,9 @@ pub fn eval(expr: &Expr, env: &Env) -> EvalResult {
             Some(expr) => Ok(expr.clone()),
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
-        Expr::List(Some(cons)) => {
+        Expr::List(List::Cons(cons)) => {
             if let Expr::Proc(func) = eval(&cons.car, env)? {
-                func(&cons.cdr, env)
+                func(cons.cdr.as_ref(), env)
             } else {
                 Err(format!("{} does not evaluate to a callable.", cons.car))
             }

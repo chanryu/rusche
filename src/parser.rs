@@ -1,4 +1,6 @@
-use crate::expr::{Cons, Expr, NIL};
+use crate::expr::{sym, Expr};
+use crate::list::{cons, List};
+use crate::macros::list;
 use crate::token::Token;
 use std::collections::VecDeque;
 use std::fmt;
@@ -76,10 +78,7 @@ impl Parser {
                     match context.token {
                         Some(Token::Quote) => {
                             self.contexts.pop();
-                            expr = Expr::List(Some(Cons::new(
-                                Expr::Sym(String::from("quote")),
-                                Expr::List(Some(Cons::new(expr, NIL))),
-                            )));
+                            expr = list!(sym("quote"), expr).into();
                             continue;
                         }
                         _ => {}
@@ -116,18 +115,16 @@ impl Parser {
     }
 
     fn end_list(&mut self) -> ParseResult {
-        let mut expr = NIL;
+        let mut list = List::Nil;
         while let Some(context) = self.contexts.pop() {
             if let Some(Token::Quote) = context.token {
                 break;
             }
             if let Some(car) = context.car {
-                expr = Expr::List(Some(Cons::new(car, expr)));
-            } else {
-                assert!(expr == NIL);
+                list = cons(car, list);
             }
             if context.token.is_some() {
-                return Ok(expr);
+                return Ok(list.into());
             }
         }
         Err(ParseError::UnexpectedToken(Token::CloseParen))
@@ -137,7 +134,10 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::test_utils::*;
+    use crate::{
+        expr::{num, sym},
+        list::cons,
+    };
 
     #[test]
     fn test_parser() {
@@ -153,7 +153,7 @@ mod tests {
         ]);
 
         let parsed_expr = parser.parse().unwrap();
-        let expected_expr = cons(sym("add"), cons(num(1), cons(num(2), NIL)));
+        let expected_expr = list!(sym("add"), num(1), num(2)).into();
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -166,7 +166,7 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         print!("{}", parsed_expr);
-        let expected_expr = cons(sym("quote"), cons(num(1), NIL));
+        let expected_expr = list!(sym("quote"), num(1)).into();
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -185,7 +185,7 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         print!("{}", parsed_expr);
-        let expected_expr = cons(sym("quote"), cons(cons(num(1), cons(num(2), NIL)), NIL));
+        let expected_expr = list!(sym("quote"), list!(num(1), num(2))).into();
         assert_eq!(parsed_expr, expected_expr);
     }
 }

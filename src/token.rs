@@ -24,21 +24,19 @@ impl fmt::Display for Token {
 }
 
 #[cfg(test)]
-pub mod test_utils {
+mod tests {
     use super::*;
 
-    pub fn num<T>(value: T) -> Token
-    where
-        T: Into<f64>,
-    {
-        Token::Num(value.into())
-    }
-
-    pub fn sym(name: &str) -> Token {
-        Token::Sym(name.to_string())
-    }
-
-    pub fn str(name: &str) -> Token {
-        Token::Str(name.to_string())
+    #[test]
+    fn test_display() {
+        assert_eq!(format!("{}", Token::OpenParen), "(");
+        assert_eq!(format!("{}", Token::CloseParen), ")");
+        assert_eq!(format!("{}", Token::Quote), "'");
+        assert_eq!(format!("{}", Token::Num(0.0)), "0");
+        assert_eq!(format!("{}", Token::Num(0.5)), "0.5");
+        assert_eq!(format!("{}", Token::Num(1.0)), "1");
+        assert_eq!(format!("{}", Token::Num(123.456)), "123.456");
+        assert_eq!(format!("{}", Token::Str("str".into())), "\"str\"");
+        assert_eq!(format!("{}", Token::Sym("sym".into())), "sym");
     }
 }

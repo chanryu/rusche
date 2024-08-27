@@ -130,7 +130,21 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::token::test_utils::*;
+
+    fn num<T>(value: T) -> Token
+    where
+        T: Into<f64>,
+    {
+        Token::Num(value.into())
+    }
+
+    fn sym(name: &str) -> Token {
+        Token::Sym(name.into())
+    }
+
+    fn str(name: &str) -> Token {
+        Token::Str(name.into())
+    }
 
     fn ok_some<T, E>(t: T) -> Result<Option<T>, E> {
         Ok(Some(t))
@@ -148,7 +162,7 @@ mod tests {
 
         parse_string_assert_eq!(
             r#""valid string""#,
-            Ok(Some(Token::Str("valid string".to_string())))
+            Ok(Some(Token::Str("valid string".into())))
         );
         parse_string_assert_eq!(
             r#""an escaped\" string""#,
