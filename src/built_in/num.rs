@@ -1,8 +1,9 @@
 use crate::eval::{eval, Env, EvalResult};
 use crate::expr::Expr;
+use crate::list::List;
 
 fn binop(
-    args: &Expr,
+    args: &List,
     env: &Env,
     identity: f64,
     is_associative: bool,
@@ -27,19 +28,19 @@ fn binop(
     Ok(Expr::Num(result))
 }
 
-pub fn add(args: &Expr, env: &Env) -> EvalResult {
+pub fn add(args: &List, env: &Env) -> EvalResult {
     binop(args, env, 0_f64, true, |lhs, rhs| lhs + rhs)
 }
 
-pub fn minus(args: &Expr, env: &Env) -> EvalResult {
+pub fn minus(args: &List, env: &Env) -> EvalResult {
     binop(args, env, 0_f64, false, |lhs, rhs| lhs - rhs)
 }
 
-pub fn multiply(args: &Expr, env: &Env) -> EvalResult {
+pub fn multiply(args: &List, env: &Env) -> EvalResult {
     binop(args, env, 1_f64, true, |lhs, rhs| lhs * rhs)
 }
 
-pub fn divide(args: &Expr, env: &Env) -> EvalResult {
+pub fn divide(args: &List, env: &Env) -> EvalResult {
     binop(args, env, 1_f64, false, |lhs, rhs| lhs / rhs)
 }
 
@@ -47,7 +48,7 @@ pub fn divide(args: &Expr, env: &Env) -> EvalResult {
 mod tests {
     use super::*;
     use crate::expr::test_utils::*;
-    use crate::expr::NIL;
+    use crate::list::NIL;
 
     #[test]
     fn test_add() {
