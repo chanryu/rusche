@@ -15,8 +15,8 @@ understand what Paul Graham talked about in [The Roots of Lisp](https://paulgrah
 > programming language. He called this language Lisp, for "List Processing," because one of his key ideas was to use a 
 > simple data structure called a list for both code and data.
 
-The project was successful. By writing the interpreter, I learned what makes Lisp different from other languages. Writing code 
-for lambda expressions and macros felt very satisfying.
+The project was successful. Writing the interpreter taught me what makes Lisp different from other languages. Lisp's macro system
+was very enlightening, and writing C++ code to make macros work felt like meditation.
 
 Back then, I chose C++ because it's the programming language I'm most comfortable with. If I were to do it again today, I would 
 probably choose Swift. Even though I'm still better at C++, Swift makes me more productive.
