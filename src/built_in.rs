@@ -1,16 +1,16 @@
 pub mod num;
 
 use crate::eval::{eval, Env, EvalError, EvalResult};
-use crate::expr::Expr;
+use crate::expr::{sym, Expr, IntoExpr};
 use crate::list::List;
 
 pub fn atom(args: &List, env: &Env) -> EvalResult {
     if let Some(car) = args.car() {
         // TODO: error if cdr is not NIL
         if eval(car, env)?.is_atom() {
-            Ok(Expr::Sym(String::from("#t")))
+            Ok(sym("#t"))
         } else {
-            Ok(List::Nil.to_expr())
+            Ok(List::Nil.into_expr())
         }
     } else {
         Err(make_syntax_error("atom", args))
@@ -40,11 +40,11 @@ pub fn cond(args: &List, env: &Env) -> EvalResult {
     loop {
         match iter.next() {
             None => {
-                return Ok(List::Nil.to_expr());
+                return Ok(List::Nil.into_expr());
             }
             Some(Expr::List(List::Cons(cons))) => {
                 let car = cons.car.as_ref();
-                if eval(car, env)? != List::Nil.to_expr() {
+                if eval(car, env)? != List::Nil.into_expr() {
                     if let Some(cdar) = cons.cdr.car() {
                         return eval(cdar, env);
                     } else {
@@ -74,7 +74,7 @@ pub fn define(args: &List, env: &Env) -> EvalResult {
         Some(Expr::Sym(name)) => {
             if let Some(expr) = iter.next() {
                 env.set(name, eval(expr, env)?.clone());
-                Ok(List::Nil.to_expr())
+                Ok(List::Nil.into_expr())
             } else {
                 Err("define expects a expression after symbol".to_string())
             }
@@ -90,9 +90,9 @@ pub fn eq(args: &List, env: &Env) -> EvalResult {
                 let arg1 = eval(car, env)?;
                 let arg2 = eval(cdar, env)?;
                 return if arg1 == arg2 {
-                    Ok(Expr::Sym(String::from("#t")))
+                    Ok(sym("#t"))
                 } else {
-                    Ok(List::Nil.to_expr())
+                    Ok(List::Nil.into_expr())
                 };
             }
         }
@@ -114,7 +114,7 @@ fn make_syntax_error(func_name: &str, args: &List) -> EvalError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::{num, str, sym};
+    use crate::expr::{num, str, sym, IntoExpr};
     use crate::list::cons;
 
     #[test]
@@ -138,7 +138,7 @@ mod tests {
         let env = Env::new();
         // (define name "value")
         let ret = define(&cons(sym("name"), cons(str("value"), List::Nil)), &env);
-        assert_eq!(ret, Ok(List::Nil.to_expr()));
+        assert_eq!(ret, Ok(List::Nil.into_expr()));
         assert_eq!(env.get("name"), Some(str("value")));
     }
 
@@ -153,7 +153,7 @@ mod tests {
         // (eq 1 2) => ()
         assert_eq!(
             eq(&cons(num(1), cons(num(2), List::Nil)), &env),
-            Ok(List::Nil.to_expr())
+            Ok(List::Nil.into_expr())
         );
         // (eq "str" "str") => #t
         assert_eq!(
@@ -163,7 +163,7 @@ mod tests {
         // (eq 1 "1") => ()
         assert_eq!(
             eq(&cons(num(1), cons(str("1"), List::Nil)), &env),
-            Ok(List::Nil.to_expr())
+            Ok(List::Nil.into_expr())
         );
     }
 
@@ -172,9 +172,9 @@ mod tests {
         let env = Env::new();
         // (quote (1 2))
         let ret = quote(
-            &cons(cons(num(1), cons(num(2), List::Nil)).to_expr(), List::Nil),
+            &cons(cons(num(1), cons(num(2), List::Nil)), List::Nil),
             &env,
         );
-        assert_eq!(ret, Ok(cons(num(1), cons(num(2), List::Nil)).to_expr()));
+        assert_eq!(ret, Ok(cons(num(1), cons(num(2), List::Nil)).into_expr()));
     }
 }

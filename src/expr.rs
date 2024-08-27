@@ -38,6 +38,12 @@ pub trait IntoExpr {
     fn into_expr(self) -> Expr;
 }
 
+impl IntoExpr for Expr {
+    fn into_expr(self) -> Expr {
+        self
+    }
+}
+
 pub fn num<T>(value: T) -> Expr
 where
     T: Into<f64>,
@@ -60,7 +66,7 @@ mod tests {
 
     #[test]
     fn test_display_nil() {
-        assert_eq!(format!("{}", List::Nil.to_expr()), "()");
+        assert_eq!(format!("{}", Expr::List(List::Nil)), "()");
     }
 
     #[test]

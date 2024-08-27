@@ -1,4 +1,4 @@
-use crate::expr::Expr;
+use crate::expr::{Expr, IntoExpr};
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -15,6 +15,7 @@ impl Cons {
         }
     }
 }
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum List {
     Cons(Cons),
@@ -24,10 +25,6 @@ pub enum List {
 impl List {
     pub fn new_cons(car: Expr, cdr: List) -> Self {
         List::Cons(Cons::new(car, cdr))
-    }
-
-    pub fn to_expr(&self) -> Expr {
-        Expr::List(self.clone())
     }
 
     pub fn iter(&self) -> ListIter {
@@ -55,8 +52,17 @@ impl List {
     }
 }
 
-pub fn cons(car: Expr, cdr: List) -> List {
-    List::new_cons(car, cdr)
+impl IntoExpr for List {
+    fn into_expr(self) -> Expr {
+        Expr::List(self)
+    }
+}
+
+pub fn cons<T>(car: T, cdr: List) -> List
+where
+    T: IntoExpr,
+{
+    List::new_cons(car.into_expr(), cdr)
 }
 
 impl fmt::Display for List {

@@ -1,5 +1,5 @@
-use crate::expr::Expr;
-use crate::list::List;
+use crate::expr::{sym, Expr, IntoExpr};
+use crate::list::{cons, List};
 use crate::token::Token;
 use std::collections::VecDeque;
 use std::fmt;
@@ -77,10 +77,7 @@ impl Parser {
                     match context.token {
                         Some(Token::Quote) => {
                             self.contexts.pop();
-                            expr = Expr::List(List::new_cons(
-                                Expr::Sym(String::from("quote")),
-                                List::new_cons(expr, List::Nil),
-                            ));
+                            expr = cons(sym("quote"), cons(expr, List::Nil)).into_expr();
                             continue;
                         }
                         _ => {}
@@ -126,7 +123,7 @@ impl Parser {
                 list = List::new_cons(car, list);
             }
             if context.token.is_some() {
-                return Ok(list.to_expr());
+                return Ok(list.into_expr());
             }
         }
         Err(ParseError::UnexpectedToken(Token::CloseParen))
@@ -155,7 +152,7 @@ mod tests {
         ]);
 
         let parsed_expr = parser.parse().unwrap();
-        let expected_expr = cons(sym("add"), cons(num(1), cons(num(2), List::Nil))).to_expr();
+        let expected_expr = cons(sym("add"), cons(num(1), cons(num(2), List::Nil))).into_expr();
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -168,7 +165,7 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         print!("{}", parsed_expr);
-        let expected_expr = cons(sym("quote"), cons(num(1), List::Nil)).to_expr();
+        let expected_expr = cons(sym("quote"), cons(num(1), List::Nil)).into_expr();
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -189,9 +186,9 @@ mod tests {
         print!("{}", parsed_expr);
         let expected_expr = cons(
             sym("quote"),
-            cons(cons(num(1), cons(num(2), List::Nil)).to_expr(), List::Nil),
+            cons(cons(num(1), cons(num(2), List::Nil)), List::Nil),
         )
-        .to_expr();
+        .into_expr();
         assert_eq!(parsed_expr, expected_expr);
     }
 }
