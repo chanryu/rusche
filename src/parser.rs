@@ -126,7 +126,7 @@ impl Parser {
                 list = List::new_with_cons(car, list);
             }
             if context.token.is_some() {
-                return Ok(Expr::List(list));
+                return Ok(list.to_expr());
             }
         }
         Err(ParseError::UnexpectedToken(Token::CloseParen))
@@ -136,7 +136,10 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{expr::test_utils::*, list::cons};
+    use crate::{
+        expr::{num, sym},
+        list::cons,
+    };
 
     #[test]
     fn test_parser() {

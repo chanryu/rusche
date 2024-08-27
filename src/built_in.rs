@@ -7,9 +7,10 @@ use crate::list::{List, NIL};
 pub fn atom(args: &List, env: &Env) -> EvalResult {
     if let Some(car) = args.car() {
         // TODO: error if cdr is not NIL
-        match eval(car, env)? {
-            Expr::List(List { cons: Some(_) }) => Ok(NIL.to_expr()),
-            _ => Ok(Expr::Sym(String::from("#t"))),
+        if eval(car, env)?.is_atom() {
+            Ok(Expr::Sym(String::from("#t")))
+        } else {
+            Ok(NIL.to_expr())
         }
     } else {
         Err(make_syntax_error("atom", args))
@@ -113,7 +114,8 @@ fn make_syntax_error(func_name: &str, args: &List) -> EvalError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{expr::test_utils::*, list::cons};
+    use crate::expr::{num, str, sym};
+    use crate::list::cons;
 
     #[test]
     fn test_car() {

@@ -130,7 +130,21 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::token::test_utils::*;
+
+    fn num<T>(value: T) -> Token
+    where
+        T: Into<f64>,
+    {
+        Token::Num(value.into())
+    }
+
+    fn sym(name: &str) -> Token {
+        Token::Sym(name.to_string())
+    }
+
+    fn str(name: &str) -> Token {
+        Token::Str(name.to_string())
+    }
 
     fn ok_some<T, E>(t: T) -> Result<Option<T>, E> {
         Ok(Some(t))

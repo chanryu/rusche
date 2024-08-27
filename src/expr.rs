@@ -1,5 +1,5 @@
 use crate::eval::{Env, EvalResult};
-use crate::list::List;
+use crate::list::{List, NIL};
 use std::fmt;
 
 pub type Func = fn(args: &List, env: &Env) -> EvalResult;
@@ -11,6 +11,15 @@ pub enum Expr {
     Sym(String),
     Proc(Func),
     List(List),
+}
+
+impl Expr {
+    pub fn is_atom(&self) -> bool {
+        match self {
+            Expr::List(list) => *list != NIL,
+            _ => false,
+        }
+    }
 }
 
 impl fmt::Display for Expr {
@@ -25,34 +34,32 @@ impl fmt::Display for Expr {
     }
 }
 
-#[cfg(test)]
-pub mod test_utils {
-    use super::*;
+pub trait IntoExpr {
+    fn into_expr(self) -> Expr;
+}
 
-    pub fn num<T>(value: T) -> Expr
-    where
-        T: Into<f64>,
-    {
-        Expr::Num(value.into())
-    }
+pub fn num<T>(value: T) -> Expr
+where
+    T: Into<f64>,
+{
+    Expr::Num(value.into())
+}
 
-    pub fn str(text: &str) -> Expr {
-        Expr::Str(String::from(text))
-    }
+pub fn str<T: Into<String>>(text: T) -> Expr {
+    Expr::Str(text.into())
+}
 
-    pub fn sym(name: &str) -> Expr {
-        Expr::Sym(String::from(name))
-    }
+pub fn sym<T: Into<String>>(text: T) -> Expr {
+    Expr::Sym(text.into())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::test_utils::*;
+    use super::*;
     use crate::list::{cons, NIL};
 
     #[test]
     fn test_display_nil() {
-        assert_eq!(format!("{}", NIL), "()");
         assert_eq!(format!("{}", NIL.to_expr()), "()");
     }
 

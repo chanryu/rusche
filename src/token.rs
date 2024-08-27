@@ -22,23 +22,3 @@ impl fmt::Display for Token {
         }
     }
 }
-
-#[cfg(test)]
-pub mod test_utils {
-    use super::*;
-
-    pub fn num<T>(value: T) -> Token
-    where
-        T: Into<f64>,
-    {
-        Token::Num(value.into())
-    }
-
-    pub fn sym(name: &str) -> Token {
-        Token::Sym(name.to_string())
-    }
-
-    pub fn str(name: &str) -> Token {
-        Token::Str(name.to_string())
-    }
-}

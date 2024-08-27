@@ -47,7 +47,7 @@ pub fn divide(args: &List, env: &Env) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::test_utils::*;
+    use crate::expr::num;
     use crate::list::{cons, NIL};
 
     #[test]
