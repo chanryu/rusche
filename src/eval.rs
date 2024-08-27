@@ -4,6 +4,7 @@ use crate::list::List;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct Env {
     vars: RefCell<HashMap<String, Expr>>,
 }
