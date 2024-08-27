@@ -9,7 +9,6 @@ fn binop(
     is_associative: bool,
     func: fn(lhs: f64, rhs: f64) -> f64,
 ) -> EvalResult {
-    let args = args.collect();
     let mut result = identity;
 
     for (index, arg) in args.iter().enumerate() {

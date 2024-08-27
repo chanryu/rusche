@@ -27,8 +27,8 @@ impl List {
         ListIter::new(self)
     }
 
-    pub fn collect(&self) -> Vec<&Expr> {
-        self.iter().collect::<Vec<_>>()
+    pub fn len(&self) -> usize {
+        self.iter().count()
     }
 
     pub fn car(&self) -> Option<&Expr> {
