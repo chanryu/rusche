@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn test_display_list_3() {
-        let list = cons(num(0), cons(str("str"), cons(sym("sym"), List::Nil)));
-        assert_eq!(format!("{}", list), "(0 \"str\" sym)");
+        let list = list!(num(0), str("string"), sym("symbol"));
+        assert_eq!(format!("{}", list), r#"(0 "string" symbol)"#);
     }
 }

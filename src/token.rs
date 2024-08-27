@@ -36,7 +36,7 @@ mod tests {
         assert_eq!(format!("{}", Token::Num(0.5)), "0.5");
         assert_eq!(format!("{}", Token::Num(1.0)), "1");
         assert_eq!(format!("{}", Token::Num(123.456)), "123.456");
-        assert_eq!(format!("{}", Token::Str("str".to_string())), "\"str\"");
-        assert_eq!(format!("{}", Token::Sym("sym".to_string())), "sym");
+        assert_eq!(format!("{}", Token::Str("str".into())), "\"str\"");
+        assert_eq!(format!("{}", Token::Sym("sym".into())), "sym");
     }
 }

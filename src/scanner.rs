@@ -139,11 +139,11 @@ mod tests {
     }
 
     fn sym(name: &str) -> Token {
-        Token::Sym(name.to_string())
+        Token::Sym(name.into())
     }
 
     fn str(name: &str) -> Token {
-        Token::Str(name.to_string())
+        Token::Str(name.into())
     }
 
     fn ok_some<T, E>(t: T) -> Result<Option<T>, E> {
@@ -162,7 +162,7 @@ mod tests {
 
         parse_string_assert_eq!(
             r#""valid string""#,
-            Ok(Some(Token::Str("valid string".to_string())))
+            Ok(Some(Token::Str("valid string".into())))
         );
         parse_string_assert_eq!(
             r#""an escaped\" string""#,

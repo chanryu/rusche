@@ -41,7 +41,7 @@ impl Env {
     }
 
     pub fn set(&self, name: &str, expr: Expr) {
-        self.vars.borrow_mut().insert(name.to_string(), expr);
+        self.vars.borrow_mut().insert(name.into(), expr);
     }
 }
 
