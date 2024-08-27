@@ -13,6 +13,8 @@ pub enum Expr {
     List(List),
 }
 
+pub const NIL: Expr = Expr::List(List::Nil);
+
 impl Expr {
     pub fn is_atom(&self) -> bool {
         match self {
@@ -56,7 +58,7 @@ mod tests {
 
     #[test]
     fn test_display_nil() {
-        assert_eq!(format!("{}", Expr::List(List::Nil)), "()");
+        assert_eq!(format!("{}", NIL), "()");
     }
 
     #[test]

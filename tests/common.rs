@@ -1,7 +1,6 @@
 use rusp::{
     eval::{eval, Env, EvalResult},
-    expr::Expr,
-    list::List,
+    expr::{Expr, NIL},
     parser::Parser,
     scanner::Scanner,
 };
@@ -32,6 +31,6 @@ pub fn parse_expr(text: &str) -> Expr {
 pub fn test_eval(expr: &str) -> EvalResult {
     let env = Env::new_root_env();
     env.set("t", Expr::Sym("#t".into()));
-    env.set("f", List::Nil.into());
+    env.set("f", NIL);
     eval(&parse_expr(expr), &env)
 }

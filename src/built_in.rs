@@ -1,7 +1,7 @@
 pub mod num;
 
 use crate::eval::{eval, Env, EvalError, EvalResult};
-use crate::expr::{sym, Expr};
+use crate::expr::{sym, Expr, NIL};
 use crate::list::{cons, List};
 
 pub fn atom(args: &List, env: &Env) -> EvalResult {
@@ -10,7 +10,7 @@ pub fn atom(args: &List, env: &Env) -> EvalResult {
         if eval(car, env)?.is_atom() {
             Ok(sym("#t"))
         } else {
-            Ok(List::Nil.into())
+            Ok(NIL)
         }
     } else {
         Err(make_syntax_error("atom", args))
@@ -40,11 +40,11 @@ pub fn cond(args: &List, env: &Env) -> EvalResult {
     loop {
         match iter.next() {
             None => {
-                return Ok(List::Nil.into());
+                return Ok(NIL);
             }
             Some(Expr::List(List::Cons(cons))) => {
                 let car = cons.car.as_ref();
-                if eval(car, env)? != List::Nil.into() {
+                if eval(car, env)? != NIL {
                     if let Some(cdar) = cons.cdr.car() {
                         return eval(cdar, env);
                     } else {
@@ -74,7 +74,7 @@ pub fn define(args: &List, env: &Env) -> EvalResult {
         Some(Expr::Sym(name)) => {
             if let Some(expr) = iter.next() {
                 env.set(name, eval(expr, env)?.clone());
-                Ok(List::Nil.into())
+                Ok(NIL)
             } else {
                 Err("define expects a expression after symbol".into())
             }
@@ -89,11 +89,7 @@ pub fn eq(args: &List, env: &Env) -> EvalResult {
             if let Some(cdar) = cdr.car() {
                 let arg1 = eval(car, env)?;
                 let arg2 = eval(cdar, env)?;
-                return if arg1 == arg2 {
-                    Ok(sym("#t"))
-                } else {
-                    Ok(List::Nil.into())
-                };
+                return if arg1 == arg2 { Ok(sym("#t")) } else { Ok(NIL) };
             }
         }
     }
@@ -133,7 +129,7 @@ mod tests {
         let env = Env::new();
         // (define name "value")
         let ret = define(&list!(sym("name"), str("value")), &env);
-        assert_eq!(ret, Ok(List::Nil.into()));
+        assert_eq!(ret, Ok(NIL));
         assert_eq!(env.get("name"), Some(str("value")));
     }
 
@@ -143,11 +139,11 @@ mod tests {
         // (eq 1 1) => #t
         assert_eq!(eq(&list!(num(1), num(1)), &env), Ok(sym("#t")));
         // (eq 1 2) => ()
-        assert_eq!(eq(&list!(num(1), num(2)), &env), Ok(List::Nil.into()));
+        assert_eq!(eq(&list!(num(1), num(2)), &env), Ok(NIL));
         // (eq "str" "str") => #t
         assert_eq!(eq(&list!(str("str"), str("str")), &env), Ok(sym("#t")));
         // (eq 1 "1") => ()
-        assert_eq!(eq(&list!(num(1), str("1")), &env), Ok(List::Nil.into()));
+        assert_eq!(eq(&list!(num(1), str("1")), &env), Ok(NIL));
     }
 
     #[test]
