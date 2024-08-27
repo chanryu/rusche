@@ -52,7 +52,7 @@ pub fn sym<T: Into<String>>(text: T) -> Expr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::list::cons;
+    use crate::{list::cons, macros::list};
 
     #[test]
     fn test_display_nil() {
@@ -79,13 +79,13 @@ mod tests {
 
     #[test]
     fn test_display_list_1() {
-        let list = cons(num(0), List::Nil);
+        let list = list!(num(0));
         assert_eq!(format!("{}", list), "(0)");
     }
 
     #[test]
     fn test_display_list_2() {
-        let list = cons(num(0), cons(num(1), cons(num(2), List::Nil)));
+        let list = list!(num(0), num(1), num(2));
         assert_eq!(format!("{}", list), "(0 1 2)");
     }
 

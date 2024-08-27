@@ -49,17 +49,18 @@ mod tests {
     use super::*;
     use crate::expr::num;
     use crate::list::cons;
+    use crate::macros::list;
 
     #[test]
     fn test_add() {
         let env = Env::new();
 
         // (+ 1) => 1
-        let args = cons(num(1), List::Nil);
+        let args = list!(num(1));
         assert_eq!(add(&args, &env), Ok(num(1)));
 
         // (+ 2 1) => 3
-        let args = cons(num(2), cons(num(1), List::Nil));
+        let args = list!(num(2), num(1));
         assert_eq!(add(&args, &env), Ok(num(3)));
     }
 
@@ -68,11 +69,11 @@ mod tests {
         let env = Env::new();
 
         // (- 1) => -1
-        let args = cons(num(1), List::Nil);
+        let args = list!(num(1));
         assert_eq!(minus(&args, &env), Ok(num(-1)));
 
         // (- 2 1) => 1
-        let args = cons(num(2), cons(num(1), List::Nil));
+        let args = list!(num(2), num(1));
         assert_eq!(minus(&args, &env), Ok(num(1)));
     }
 
@@ -81,15 +82,15 @@ mod tests {
         let env = Env::new();
 
         // (* 1) => 1
-        let args = cons(num(1), List::Nil);
+        let args = list!(num(1));
         assert_eq!(multiply(&args, &env), Ok(num(1)));
 
         // (* 2 1) => 2
-        let args = cons(num(2), cons(num(1), List::Nil));
+        let args = list!(num(2), num(1));
         assert_eq!(multiply(&args, &env), Ok(num(2)));
 
         // (* 3 2 1) => 6
-        let args = cons(num(3), cons(num(2), cons(num(1), List::Nil)));
+        let args = list!(num(3), num(2), num(1));
         assert_eq!(multiply(&args, &env), Ok(num(6)));
     }
 
@@ -98,11 +99,11 @@ mod tests {
         let env = Env::new();
 
         // (/ 2) => 0.5
-        let args = cons(num(2), List::Nil);
+        let args = list!(num(2));
         assert_eq!(divide(&args, &env), Ok(num(0.5)));
 
         // (/ 4 2) => 2
-        let args = cons(num(4), cons(num(2), List::Nil));
+        let args = list!(num(4), num(2));
         assert_eq!(divide(&args, &env), Ok(num(2)));
     }
 }

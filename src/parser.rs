@@ -1,5 +1,6 @@
 use crate::expr::{sym, Expr};
 use crate::list::{cons, List};
+use crate::macros::list;
 use crate::token::Token;
 use std::collections::VecDeque;
 use std::fmt;
@@ -77,7 +78,7 @@ impl Parser {
                     match context.token {
                         Some(Token::Quote) => {
                             self.contexts.pop();
-                            expr = cons(sym("quote"), cons(expr, List::Nil)).into();
+                            expr = list!(sym("quote"), expr).into();
                             continue;
                         }
                         _ => {}

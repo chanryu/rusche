@@ -1,5 +1,8 @@
 mod common;
 
+#[macro_use]
+extern crate rusp;
+
 use common::test_eval;
 use rusp::{
     expr::num,
@@ -15,9 +18,6 @@ fn test_cond() {
 #[test]
 fn test_quote() {
     assert_eq!(test_eval("'1"), Ok(num(1)));
-    assert_eq!(test_eval("'(1)"), Ok(cons(num(1), List::Nil).into()));
-    assert_eq!(
-        test_eval("'(1 2)"),
-        Ok(cons(num(1), cons(num(2), List::Nil)).into())
-    );
+    assert_eq!(test_eval("'(1)"), Ok(list!(num(1)).into()));
+    assert_eq!(test_eval("'(1 2)"), Ok(list!(num(1), num(2)).into()));
 }
