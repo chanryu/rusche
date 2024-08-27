@@ -20,19 +20,19 @@ impl Env {
         let env = Env::new();
 
         // lisp built_in
-        env.set("atom", Expr::Proc(built_in::atom));
-        env.set("car", Expr::Proc(built_in::car));
-        env.set("cdr", Expr::Proc(built_in::cdr));
-        env.set("cond", Expr::Proc(built_in::cond));
-        env.set("define", Expr::Proc(built_in::define));
-        env.set("eq", Expr::Proc(built_in::eq));
-        env.set("quote", Expr::Proc(built_in::quote));
+        env.set("atom", Expr::new_native_proc(built_in::atom));
+        env.set("car", Expr::new_native_proc(built_in::car));
+        env.set("cdr", Expr::new_native_proc(built_in::cdr));
+        env.set("cond", Expr::new_native_proc(built_in::cond));
+        env.set("define", Expr::new_native_proc(built_in::define));
+        env.set("eq", Expr::new_native_proc(built_in::eq));
+        env.set("quote", Expr::new_native_proc(built_in::quote));
 
         // arithmetic operations
-        env.set("+", Expr::Proc(built_in::num::add));
-        env.set("-", Expr::Proc(built_in::num::minus));
-        env.set("*", Expr::Proc(built_in::num::multiply));
-        env.set("/", Expr::Proc(built_in::num::divide));
+        env.set("+", Expr::new_native_proc(built_in::num::add));
+        env.set("-", Expr::new_native_proc(built_in::num::minus));
+        env.set("*", Expr::new_native_proc(built_in::num::multiply));
+        env.set("/", Expr::new_native_proc(built_in::num::divide));
 
         env
     }
@@ -56,8 +56,8 @@ pub fn eval(expr: &Expr, env: &Env) -> EvalResult {
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
         Expr::List(List::Cons(cons)) => {
-            if let Expr::Proc(func) = eval(&cons.car, env)? {
-                func(cons.cdr.as_ref(), env)
+            if let Expr::Proc(proc) = eval(&cons.car, env)? {
+                proc.invoke(cons.cdr.as_ref(), env)
             } else {
                 Err(format!("{} does not evaluate to a callable.", cons.car))
             }

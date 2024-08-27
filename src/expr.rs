@@ -1,15 +1,13 @@
-use crate::eval::{Env, EvalResult};
 use crate::list::List;
+use crate::proc::{NativeFunc, Proc};
 use std::fmt;
-
-pub type Func = fn(args: &List, env: &Env) -> EvalResult;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
     Num(f64),
     Str(String),
     Sym(String),
-    Proc(Func),
+    Proc(Proc),
     List(List),
 }
 
@@ -21,6 +19,10 @@ impl Expr {
             Expr::List(List::Cons(_)) => false,
             _ => true,
         }
+    }
+
+    pub fn new_native_proc(func: NativeFunc) -> Self {
+        Expr::Proc(Proc::Native(func))
     }
 }
 
