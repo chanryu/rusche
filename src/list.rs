@@ -1,4 +1,4 @@
-use crate::expr::{Expr, IntoExpr};
+use crate::expr::Expr;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -52,17 +52,17 @@ impl List {
     }
 }
 
-impl IntoExpr for List {
-    fn into_expr(self) -> Expr {
+impl Into<Expr> for List {
+    fn into(self) -> Expr {
         Expr::List(self)
     }
 }
 
 pub fn cons<T>(car: T, cdr: List) -> List
 where
-    T: IntoExpr,
+    T: Into<Expr>,
 {
-    List::new_cons(car.into_expr(), cdr)
+    List::new_cons(car.into(), cdr)
 }
 
 impl fmt::Display for List {

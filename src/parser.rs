@@ -1,4 +1,4 @@
-use crate::expr::{sym, Expr, IntoExpr};
+use crate::expr::{sym, Expr};
 use crate::list::{cons, List};
 use crate::token::Token;
 use std::collections::VecDeque;
@@ -77,7 +77,7 @@ impl Parser {
                     match context.token {
                         Some(Token::Quote) => {
                             self.contexts.pop();
-                            expr = cons(sym("quote"), cons(expr, List::Nil)).into_expr();
+                            expr = cons(sym("quote"), cons(expr, List::Nil)).into();
                             continue;
                         }
                         _ => {}
@@ -123,7 +123,7 @@ impl Parser {
                 list = List::new_cons(car, list);
             }
             if context.token.is_some() {
-                return Ok(list.into_expr());
+                return Ok(list.into());
             }
         }
         Err(ParseError::UnexpectedToken(Token::CloseParen))
@@ -152,7 +152,7 @@ mod tests {
         ]);
 
         let parsed_expr = parser.parse().unwrap();
-        let expected_expr = cons(sym("add"), cons(num(1), cons(num(2), List::Nil))).into_expr();
+        let expected_expr = cons(sym("add"), cons(num(1), cons(num(2), List::Nil))).into();
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -165,7 +165,7 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         print!("{}", parsed_expr);
-        let expected_expr = cons(sym("quote"), cons(num(1), List::Nil)).into_expr();
+        let expected_expr = cons(sym("quote"), cons(num(1), List::Nil)).into();
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -188,7 +188,7 @@ mod tests {
             sym("quote"),
             cons(cons(num(1), cons(num(2), List::Nil)), List::Nil),
         )
-        .into_expr();
+        .into();
         assert_eq!(parsed_expr, expected_expr);
     }
 }

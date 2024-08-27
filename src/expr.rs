@@ -34,16 +34,6 @@ impl fmt::Display for Expr {
     }
 }
 
-pub trait IntoExpr {
-    fn into_expr(self) -> Expr;
-}
-
-impl IntoExpr for Expr {
-    fn into_expr(self) -> Expr {
-        self
-    }
-}
-
 pub fn num<T>(value: T) -> Expr
 where
     T: Into<f64>,
