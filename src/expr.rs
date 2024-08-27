@@ -43,11 +43,17 @@ where
     Expr::Num(value.into())
 }
 
-pub fn str<T: Into<String>>(text: T) -> Expr {
+pub fn str<T>(text: T) -> Expr
+where
+    T: Into<String>,
+{
     Expr::Str(text.into())
 }
 
-pub fn sym<T: Into<String>>(text: T) -> Expr {
+pub fn sym<T>(text: T) -> Expr
+where
+    T: Into<String>,
+{
     Expr::Sym(text.into())
 }
 
