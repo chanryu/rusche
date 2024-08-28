@@ -2,16 +2,19 @@ use crate::built_in;
 use crate::expr::Expr;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Env {
-    vars: RefCell<HashMap<String, Expr>>,
+    base: Option<Box<Env>>,
+    vars: Rc<RefCell<HashMap<String, Expr>>>,
 }
 
 impl Env {
     pub fn new() -> Self {
         Self {
-            vars: RefCell::new(HashMap::new()),
+            base: None,
+            vars: Rc::new(RefCell::new(HashMap::new())),
         }
     }
 
@@ -42,5 +45,11 @@ impl Env {
 
     pub fn set(&self, name: &str, expr: Expr) {
         self.vars.borrow_mut().insert(name.into(), expr);
+    }
+
+    pub fn derive(&self) -> Env {
+        let mut derived_env = Env::new();
+        derived_env.base = Some(Box::new(self.clone()));
+        derived_env
     }
 }

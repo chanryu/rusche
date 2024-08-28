@@ -1,7 +1,9 @@
 use crate::env::Env;
-use crate::eval::EvalResult;
-use crate::expr::Expr;
+use crate::eval::{eval, EvalResult};
+use crate::expr::{Expr, NIL};
 use crate::list::List;
+
+pub type NativeFunc = fn(args: &List, env: &Env) -> EvalResult;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Proc {
@@ -26,8 +28,6 @@ impl Proc {
     }
 }
 
-pub type NativeFunc = fn(args: &List, env: &Env) -> EvalResult;
-
 fn eval_closure(
     formal_args: &List,
     lambda_body: &List,
@@ -35,24 +35,28 @@ fn eval_closure(
     args: &List,
     env: &Env,
 ) -> EvalResult {
-    // auto lambda_env = outer_env->derive_new();
-    // auto syms = formal_args;
-    // while (!syms.empty()) {
-    //     auto sym = dynamic_node_cast<Symbol>(car(syms));
-    //     assert(sym.has_value());
-    //     if (args.empty()) {
-    //         throw EvalError("Proc: too few args");
-    //     }
-    //     auto val = eval(car(args), env);
-    //     lambda_env->set(sym->name(), val);
-    //     syms = cdr(syms);
-    //     args = cdr(args);
-    // }
-    // if (!args.empty()) {
-    //     throw EvalError("Proc: too many args");
-    // }
-    // Node result;
-    // for_each(lambda_body, [&result, lambda_env](auto const& expr) { result = eval(expr, *lambda_env); });
+    let lambda_env = outer_env.derive();
+    let mut formal_args = formal_args.iter();
+    let mut args = args.iter();
 
-    Ok(Expr::List(List::Nil))
+    while let Some(formal_arg) = formal_args.next() {
+        if let Expr::Sym(name) = formal_arg {
+            if let Some(expr) = args.next() {
+                lambda_env.set(name, eval(expr, env)?);
+            } else {
+                return Err("Proc: too few args".into());
+            }
+        } else {
+            return Err("Formal arg of lambda must be a symbol".into());
+        }
+    }
+    if args.next() != None {
+        return Err("Proc: too many args".into());
+    }
+
+    let mut result = NIL;
+    for expr in lambda_body.iter() {
+        result = eval(expr, &lambda_env)?;
+    }
+    Ok(result)
 }
