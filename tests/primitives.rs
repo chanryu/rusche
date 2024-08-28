@@ -5,7 +5,7 @@ extern crate rusp;
 
 use common::test_eval;
 use rusp::{
-    expr::num,
+    expr::shortcuts::num,
     list::{cons, List},
 };
 

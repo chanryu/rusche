@@ -59,29 +59,25 @@ impl fmt::Display for Expr {
     }
 }
 
-pub fn num<T>(value: T) -> Expr
-where
-    T: Into<f64>,
-{
-    Expr::new_num(value.into())
-}
+pub mod shortcuts {
+    use super::Expr;
 
-pub fn str<T>(text: T) -> Expr
-where
-    T: Into<String>,
-{
-    Expr::new_str(text.into())
-}
+    pub fn num<T: Into<f64>>(value: T) -> Expr {
+        Expr::new_num(value.into())
+    }
 
-pub fn sym<T>(text: T) -> Expr
-where
-    T: Into<String>,
-{
-    Expr::new_sym(text)
+    pub fn str<T: Into<String>>(text: T) -> Expr {
+        Expr::new_str(text.into())
+    }
+
+    pub fn sym<T: Into<String>>(text: T) -> Expr {
+        Expr::new_sym(text)
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::shortcuts::{num, str, sym};
     use super::*;
     use crate::{list::cons, macros::list};
 

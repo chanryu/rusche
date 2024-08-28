@@ -15,7 +15,7 @@ pub(crate) use list;
 #[cfg(test)]
 mod tests {
     use crate::{
-        expr::num,
+        expr::shortcuts::num,
         list::{cons, List},
     };
 

@@ -1,4 +1,4 @@
-use crate::expr::{sym, Expr};
+use crate::expr::Expr;
 use crate::list::{cons, List};
 use crate::macros::list;
 use crate::token::Token;
@@ -78,7 +78,7 @@ impl Parser {
                     match context.token {
                         Some(Token::Quote) => {
                             self.contexts.pop();
-                            expr = list!(sym("quote"), expr).into();
+                            expr = list!(Expr::new_sym("quote"), expr).into();
                             continue;
                         }
                         _ => {}
@@ -134,10 +134,8 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        expr::{num, sym},
-        list::cons,
-    };
+    use crate::expr::shortcuts::{num, sym};
+    use crate::list::cons;
 
     #[test]
     fn test_parser() {
