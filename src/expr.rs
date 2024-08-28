@@ -21,6 +21,27 @@ impl Expr {
         }
     }
 
+    pub fn new_num<T>(value: T) -> Expr
+    where
+        T: Into<f64>,
+    {
+        Expr::Num(value.into())
+    }
+
+    pub fn new_str<T>(text: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::Str(text.into())
+    }
+
+    pub fn new_sym<T>(text: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::Sym(text.into())
+    }
+
     pub fn new_native_proc(func: NativeFunc) -> Self {
         Expr::Proc(Proc::Native(func))
     }
@@ -42,21 +63,21 @@ pub fn num<T>(value: T) -> Expr
 where
     T: Into<f64>,
 {
-    Expr::Num(value.into())
+    Expr::new_num(value.into())
 }
 
 pub fn str<T>(text: T) -> Expr
 where
     T: Into<String>,
 {
-    Expr::Str(text.into())
+    Expr::new_str(text.into())
 }
 
 pub fn sym<T>(text: T) -> Expr
 where
     T: Into<String>,
 {
-    Expr::Sym(text.into())
+    Expr::new_sym(text)
 }
 
 #[cfg(test)]
