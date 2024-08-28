@@ -1,4 +1,5 @@
 pub mod built_in;
+pub mod env;
 pub mod eval;
 pub mod expr;
 pub mod list;

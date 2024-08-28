@@ -1,5 +1,6 @@
 use rusp::{
-    eval::{eval, Env, EvalResult},
+    env::Env,
+    eval::{eval, EvalResult},
     expr::{Expr, NIL},
     parser::Parser,
     scanner::Scanner,

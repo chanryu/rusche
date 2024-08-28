@@ -1,4 +1,5 @@
-use crate::eval::{eval, Env};
+use crate::env::Env;
+use crate::eval::eval;
 use crate::parser::{ParseError, Parser};
 use crate::scanner::{Scanner, TokenError};
 use crate::token::Token;

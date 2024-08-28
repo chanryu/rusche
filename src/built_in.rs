@@ -1,8 +1,10 @@
 pub mod num;
 
-use crate::eval::{eval, Env, EvalError, EvalResult};
+use crate::env::Env;
+use crate::eval::{eval, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::{cons, List};
+use crate::proc::Proc;
 
 pub fn atom(args: &List, env: &Env) -> EvalResult {
     if let Some(car) = args.car() {
@@ -92,9 +94,22 @@ pub fn eq(args: &List, env: &Env) -> EvalResult {
     Err(make_syntax_error("eq", args))
 }
 
-// pub fn lambda(args: &List, env: &Env) -> EvalResult {
-//     Proc::
-// }
+pub fn lambda(args: &List, env: &Env) -> EvalResult {
+    if let List::Cons(cons) = args {
+        if let Expr::List(List::Cons(formal_args)) = cons.car.as_ref() {
+            // TODO: check if formal_args are list of symbols.
+
+            let lambda_body = cons.cdr.as_ref();
+
+            return Ok(Expr::Proc(Proc::Closure {
+                formal_args: List::Cons(formal_args.clone()),
+                lambda_body: lambda_body.clone(),
+                outer_env: env.clone(),
+            }));
+        }
+    }
+    Err(make_syntax_error("lambda", args))
+}
 
 pub fn quote(args: &List, _env: &Env) -> EvalResult {
     if let Some(car) = args.car() {
