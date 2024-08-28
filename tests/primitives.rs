@@ -16,6 +16,11 @@ fn test_cond() {
 }
 
 #[test]
+fn test_lambda() {
+    assert_eq!(test_eval("((lambda (x) (* x 2)) 5)"), Ok(num(10)));
+}
+
+#[test]
 fn test_quote() {
     assert_eq!(test_eval("'1"), Ok(num(1)));
     assert_eq!(test_eval("'(1)"), Ok(list!(num(1)).into()));

@@ -156,7 +156,7 @@ mod tests {
         // (define name "value")
         let ret = define(&list!(sym("name"), str("value")), &env);
         assert_eq!(ret, Ok(NIL));
-        assert_eq!(env.get("name"), Some(str("value")));
+        assert_eq!(env.lookup("name"), Some(str("value")));
     }
 
     #[test]

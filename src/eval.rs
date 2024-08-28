@@ -7,7 +7,7 @@ pub type EvalResult = Result<Expr, EvalError>;
 
 pub fn eval(expr: &Expr, env: &Env) -> EvalResult {
     match expr {
-        Expr::Sym(name) => match env.get(name) {
+        Expr::Sym(name) => match env.lookup(name) {
             Some(expr) => Ok(expr.clone()),
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
