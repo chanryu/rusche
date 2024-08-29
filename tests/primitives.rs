@@ -18,4 +18,5 @@ fn test_quote() {
     assert_eq!(eval_expr("'1"), "1");
     assert_eq!(eval_expr("'(1)"), "(1)");
     assert_eq!(eval_expr("'(1 2)"), "(1 2)");
+    assert_eq!(eval_expr("'(1 2 (3))"), "(1 2 (3))");
 }
