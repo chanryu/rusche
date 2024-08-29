@@ -59,6 +59,7 @@ impl fmt::Display for Expr {
     }
 }
 
+#[cfg(test)]
 pub mod shortcuts {
     use super::Expr;
 

@@ -10,7 +10,7 @@ fn test_cond() {
 
 #[test]
 fn test_lambda() {
-    assert_eq!(eval_expr("((lambda (x) (* x 2)) 5)"), "0");
+    assert_eq!(eval_expr("((lambda (x) (* x 2)) 5)"), "10");
 }
 
 #[test]
