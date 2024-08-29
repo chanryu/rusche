@@ -29,9 +29,12 @@ pub fn parse_expr(text: &str) -> Expr {
     }
 }
 
-pub fn eval_expr(expr: &str) -> EvalResult {
+pub fn eval_expr(expr: &str) -> String {
     let env = Env::new_root_env();
     env.set("t", Expr::Sym("#t".into()));
     env.set("f", NIL);
-    eval(&parse_expr(expr), &env)
+    match eval(&parse_expr(expr), &env) {
+        Ok(expr) => expr.to_string(),
+        Err(error) => format!("Err: {}", error),
+    }
 }
