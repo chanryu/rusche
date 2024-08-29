@@ -1,15 +1,13 @@
-use crate::eval::{Env, EvalResult};
 use crate::list::List;
+use crate::proc::{NativeFunc, Proc};
 use std::fmt;
-
-pub type Func = fn(args: &List, env: &Env) -> EvalResult;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
     Num(f64),
     Str(String),
     Sym(String),
-    Proc(Func),
+    Proc(Proc),
     List(List),
 }
 
@@ -21,6 +19,31 @@ impl Expr {
             Expr::List(List::Cons(_)) => false,
             _ => true,
         }
+    }
+
+    pub fn new_num<T>(value: T) -> Expr
+    where
+        T: Into<f64>,
+    {
+        Expr::Num(value.into())
+    }
+
+    pub fn new_str<T>(text: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::Str(text.into())
+    }
+
+    pub fn new_sym<T>(text: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::Sym(text.into())
+    }
+
+    pub fn new_native_proc(func: NativeFunc) -> Self {
+        Expr::Proc(Proc::Native(func))
     }
 }
 
@@ -36,23 +59,26 @@ impl fmt::Display for Expr {
     }
 }
 
-pub fn num<T>(value: T) -> Expr
-where
-    T: Into<f64>,
-{
-    Expr::Num(value.into())
-}
+#[cfg(test)]
+pub mod shortcuts {
+    use super::Expr;
 
-pub fn str<T: Into<String>>(text: T) -> Expr {
-    Expr::Str(text.into())
-}
+    pub fn num<T: Into<f64>>(value: T) -> Expr {
+        Expr::new_num(value.into())
+    }
 
-pub fn sym<T: Into<String>>(text: T) -> Expr {
-    Expr::Sym(text.into())
+    pub fn str<T: Into<String>>(text: T) -> Expr {
+        Expr::new_str(text.into())
+    }
+
+    pub fn sym<T: Into<String>>(text: T) -> Expr {
+        Expr::new_sym(text)
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::shortcuts::{num, str, sym};
     use super::*;
     use crate::{list::cons, macros::list};
 

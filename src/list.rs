@@ -8,9 +8,12 @@ pub struct Cons {
 }
 
 impl Cons {
-    pub fn new(car: Expr, cdr: List) -> Self {
+    pub fn new<T>(car: T, cdr: List) -> Self
+    where
+        T: Into<Expr>,
+    {
         Self {
-            car: Box::new(car),
+            car: Box::new(car.into()),
             cdr: Box::new(cdr),
         }
     }
@@ -58,7 +61,7 @@ pub fn cons<T>(car: T, cdr: List) -> List
 where
     T: Into<Expr>,
 {
-    List::Cons(Cons::new(car.into(), cdr))
+    List::Cons(Cons::new(car, cdr))
 }
 
 impl fmt::Display for List {

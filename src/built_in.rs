@@ -1,14 +1,16 @@
 pub mod num;
 
-use crate::eval::{eval, Env, EvalError, EvalResult};
-use crate::expr::{sym, Expr, NIL};
+use crate::env::Env;
+use crate::eval::{eval, EvalError, EvalResult};
+use crate::expr::{Expr, NIL};
 use crate::list::{cons, List};
+use crate::proc::Proc;
 
 pub fn atom(args: &List, env: &Env) -> EvalResult {
     if let Some(car) = args.car() {
         // TODO: error if cdr is not NIL
         if eval(car, env)?.is_atom() {
-            Ok(sym("#t"))
+            Ok(Expr::new_sym("#t"))
         } else {
             Ok(NIL)
         }
@@ -59,15 +61,6 @@ pub fn cond(args: &List, env: &Env) -> EvalResult {
     Err(make_syntax_error("cond", args))
 }
 
-pub fn quote(args: &List, _env: &Env) -> EvalResult {
-    if let Some(car) = args.car() {
-        // TODO: error if cdr is not NIL
-        Ok(car.clone())
-    } else {
-        Err(make_syntax_error("quote", args))
-    }
-}
-
 pub fn define(args: &List, env: &Env) -> EvalResult {
     let mut iter = args.iter();
     match iter.next() {
@@ -89,7 +82,11 @@ pub fn eq(args: &List, env: &Env) -> EvalResult {
             if let Some(cdar) = cdr.car() {
                 let arg1 = eval(car, env)?;
                 let arg2 = eval(cdar, env)?;
-                return if arg1 == arg2 { Ok(sym("#t")) } else { Ok(NIL) };
+                return if arg1 == arg2 {
+                    Ok(Expr::new_sym("#t"))
+                } else {
+                    Ok(NIL)
+                };
             }
         }
     }
@@ -97,14 +94,43 @@ pub fn eq(args: &List, env: &Env) -> EvalResult {
     Err(make_syntax_error("eq", args))
 }
 
+pub fn lambda(args: &List, env: &Env) -> EvalResult {
+    if let List::Cons(cons) = args {
+        if let Expr::List(List::Cons(formal_args)) = cons.car.as_ref() {
+            // TODO: check if formal_args are list of symbols.
+
+            let lambda_body = cons.cdr.as_ref();
+
+            return Ok(Expr::Proc(Proc::Closure {
+                formal_args: List::Cons(formal_args.clone()),
+                lambda_body: lambda_body.clone(),
+                outer_env: env.clone(),
+            }));
+        }
+    }
+    Err(make_syntax_error("lambda", args))
+}
+
+pub fn quote(args: &List, _env: &Env) -> EvalResult {
+    if let Some(car) = args.car() {
+        // TODO: error if cdr is not NIL
+        Ok(car.clone())
+    } else {
+        Err(make_syntax_error("quote", args))
+    }
+}
+
 fn make_syntax_error(func_name: &str, args: &List) -> EvalError {
-    format!("Ill-formed syntax: {}", cons(sym(func_name), args.clone()))
+    format!(
+        "Ill-formed syntax: {}",
+        cons(Expr::new_sym(func_name), args.clone())
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::{num, str, sym};
+    use crate::expr::shortcuts::{num, str, sym};
     use crate::list::cons;
     use crate::macros::list;
 
@@ -130,7 +156,7 @@ mod tests {
         // (define name "value")
         let ret = define(&list!(sym("name"), str("value")), &env);
         assert_eq!(ret, Ok(NIL));
-        assert_eq!(env.get("name"), Some(str("value")));
+        assert_eq!(env.lookup("name"), Some(str("value")));
     }
 
     #[test]

@@ -1,4 +1,5 @@
-use crate::eval::{eval, Env, EvalResult};
+use crate::env::Env;
+use crate::eval::{eval, EvalResult};
 use crate::expr::Expr;
 use crate::list::List;
 
@@ -46,7 +47,7 @@ pub fn divide(args: &List, env: &Env) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::num;
+    use crate::expr::shortcuts::num;
     use crate::list::cons;
     use crate::macros::list;
 
