@@ -3,7 +3,7 @@ mod common;
 #[macro_use]
 extern crate rusp;
 
-use common::test_eval;
+use common::eval_expr;
 use rusp::{
     expr::shortcuts::num,
     list::{cons, List},
@@ -11,18 +11,18 @@ use rusp::{
 
 #[test]
 fn test_cond() {
-    assert_eq!(test_eval("(cond (t 0) (f 1))"), Ok(num(0)));
-    assert_eq!(test_eval("(cond (f 0) (t 1))"), Ok(num(1)));
+    assert_eq!(eval_expr("(cond (t 0) (f 1))"), Ok(num(0)));
+    assert_eq!(eval_expr("(cond (f 0) (t 1))"), Ok(num(1)));
 }
 
 #[test]
 fn test_lambda() {
-    assert_eq!(test_eval("((lambda (x) (* x 2)) 5)"), Ok(num(10)));
+    assert_eq!(eval_expr("((lambda (x) (* x 2)) 5)"), Ok(num(10)));
 }
 
 #[test]
 fn test_quote() {
-    assert_eq!(test_eval("'1"), Ok(num(1)));
-    assert_eq!(test_eval("'(1)"), Ok(list!(num(1)).into()));
-    assert_eq!(test_eval("'(1 2)"), Ok(list!(num(1), num(2)).into()));
+    assert_eq!(eval_expr("'1"), Ok(num(1)));
+    assert_eq!(eval_expr("'(1)"), Ok(list!(num(1)).into()));
+    assert_eq!(eval_expr("'(1 2)"), Ok(list!(num(1), num(2)).into()));
 }
