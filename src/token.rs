@@ -5,6 +5,9 @@ pub enum Token {
     OpenParen,
     CloseParen,
     Quote,
+    Quasiquote,
+    Unquote,
+    UnquoteSplicing,
     Num(f64),
     Str(String),
     Sym(String),
@@ -16,6 +19,9 @@ impl fmt::Display for Token {
             Token::OpenParen => write!(f, "("),
             Token::CloseParen => write!(f, ")"),
             Token::Quote => write!(f, "'"),
+            Token::Quasiquote => write!(f, "`"),
+            Token::Unquote => write!(f, ","),
+            Token::UnquoteSplicing => write!(f, ",@"),
             Token::Num(value) => write!(f, "{}", value),
             Token::Str(text) => write!(f, "\"{}\"", text),
             Token::Sym(name) => write!(f, "{}", name),
@@ -32,6 +38,9 @@ mod tests {
         assert_eq!(format!("{}", Token::OpenParen), "(");
         assert_eq!(format!("{}", Token::CloseParen), ")");
         assert_eq!(format!("{}", Token::Quote), "'");
+        assert_eq!(format!("{}", Token::Quasiquote), "`");
+        assert_eq!(format!("{}", Token::Unquote), ",");
+        assert_eq!(format!("{}", Token::UnquoteSplicing), ",@");
         assert_eq!(format!("{}", Token::Num(0.0)), "0");
         assert_eq!(format!("{}", Token::Num(0.5)), "0.5");
         assert_eq!(format!("{}", Token::Num(1.0)), "1");
