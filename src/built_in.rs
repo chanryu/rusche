@@ -1,4 +1,5 @@
 pub mod num;
+pub mod quote;
 
 use crate::env::Env;
 use crate::eval::{eval, EvalError, EvalResult};
@@ -111,75 +112,6 @@ pub fn lambda(args: &List, env: &Env) -> EvalResult {
     Err(make_syntax_error("lambda", args))
 }
 
-pub fn quasiquote(args: &List, env: &Env) -> EvalResult {
-    let mut exprs = Vec::new();
-    let mut iter = args.iter();
-    while let Some(expr) = iter.next() {
-        let Expr::List(list) = expr else {
-            exprs.push(expr.clone());
-            continue;
-        };
-
-        let List::Cons(cons) = list else {
-            exprs.push(List::Nil.into());
-            continue;
-        };
-
-        let Expr::Sym(name) = cons.car.as_ref() else {
-            exprs.push(quasiquote(list, env)?);
-            continue;
-        };
-
-        match name.as_str() {
-            "quote" => {
-                exprs.push(expr.clone());
-            }
-            "unquote" => {
-                exprs.push(eval(expr, env)?);
-            }
-            "unquote-splicing" => {
-                let result = eval(expr, env)?;
-                if let Expr::List(List::Cons(cons)) = result {
-                    exprs.push(cons.car.as_ref().clone());
-                    let mut l = cons.cdr.as_ref();
-                    while let List::Cons(cons) = l {
-                        exprs.push(cons.car.as_ref().clone());
-                        l = cons.cdr.as_ref();
-                    }
-                } else {
-                    exprs.push(result);
-                }
-            }
-            _ => {
-                exprs.push(quasiquote(list, env)?);
-            }
-        }
-    }
-
-    Ok(exprs.into())
-}
-
-pub fn quote(args: &List, _env: &Env) -> EvalResult {
-    if let Some(car) = args.car() {
-        // TODO: error if cdr is not NIL
-        Ok(car.clone())
-    } else {
-        Err(make_syntax_error("quote", args))
-    }
-}
-
-pub fn unquote(args: &List, env: &Env) -> EvalResult {
-    let mut exprs = Vec::new();
-    for expr in args.iter() {
-        exprs.push(eval(expr, env)?);
-    }
-    Ok(exprs.into())
-}
-
-pub fn unquote_splicing(args: &List, env: &Env) -> EvalResult {
-    unquote(args, env)
-}
-
 fn make_syntax_error(func_name: &str, args: &List) -> EvalError {
     format!(
         "Ill-formed syntax: {}",
@@ -230,13 +162,5 @@ mod tests {
         assert_eq!(eq(&list!(str("str"), str("str")), &env), Ok(sym("#t")));
         // (eq 1 "1") => ()
         assert_eq!(eq(&list!(num(1), str("1")), &env), Ok(NIL));
-    }
-
-    #[test]
-    fn test_quote() {
-        let env = Env::new();
-        // (quote (1 2)) => (1 2)
-        let ret = quote(&list!(list!(num(1), num(2))), &env);
-        assert_eq!(ret, Ok(list!(num(1), num(2)).into()));
     }
 }

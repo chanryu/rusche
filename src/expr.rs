@@ -47,16 +47,6 @@ impl Expr {
     }
 }
 
-impl From<Vec<Expr>> for Expr {
-    fn from(mut value: Vec<Expr>) -> Self {
-        let mut list = List::Nil;
-        while let Some(expr) = value.pop() {
-            list = cons(expr, list);
-        }
-        list.into()
-    }
-}
-
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -66,6 +56,16 @@ impl fmt::Display for Expr {
             Expr::Proc(func) => write!(f, "<#proc: {:?}>", func),
             Expr::List(list) => write!(f, "{}", list),
         }
+    }
+}
+
+impl From<Vec<Expr>> for Expr {
+    fn from(mut value: Vec<Expr>) -> Self {
+        let mut list = List::Nil;
+        while let Some(expr) = value.pop() {
+            list = cons(expr, list);
+        }
+        list.into()
     }
 }
 
@@ -131,5 +131,12 @@ mod tests {
     fn test_display_list_3() {
         let list = list!(num(0), str("string"), sym("symbol"));
         assert_eq!(format!("{}", list), r#"(0 "string" symbol)"#);
+    }
+
+    #[test]
+    fn test_vec_into_expr() {
+        let v: Vec<Expr> = vec![num(1), num(2), list!(num(3), num(4)).into()];
+        let expr: Expr = v.into();
+        assert_eq!(format!("{}", expr), "(1 2 (3 4))");
     }
 }

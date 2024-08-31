@@ -42,6 +42,14 @@ impl List {
         self.iter().count()
     }
 
+    pub fn is_nil(&self) -> bool {
+        if let List::Nil = self {
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn car(&self) -> Option<&Expr> {
         if let List::Cons(cons) = &self {
             Some(cons.car.as_ref())
