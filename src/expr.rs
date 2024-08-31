@@ -1,4 +1,4 @@
-use crate::list::List;
+use crate::list::{cons, List};
 use crate::proc::{NativeFunc, Proc};
 use std::fmt;
 
@@ -44,6 +44,16 @@ impl Expr {
 
     pub fn new_native_proc(func: NativeFunc) -> Self {
         Expr::Proc(Proc::Native(func))
+    }
+}
+
+impl From<Vec<Expr>> for Expr {
+    fn from(mut value: Vec<Expr>) -> Self {
+        let mut list = List::Nil;
+        while let Some(expr) = value.pop() {
+            list = cons(expr, list);
+        }
+        list.into()
     }
 }
 

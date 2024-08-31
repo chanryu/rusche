@@ -3,7 +3,7 @@ pub mod num;
 use crate::env::Env;
 use crate::eval::{eval, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
-use crate::list::{cons, List};
+use crate::list::{cons, Cons, List};
 use crate::proc::Proc;
 
 pub fn atom(args: &List, env: &Env) -> EvalResult {
@@ -109,6 +109,51 @@ pub fn lambda(args: &List, env: &Env) -> EvalResult {
         }
     }
     Err(make_syntax_error("lambda", args))
+}
+
+pub fn quasiquote(args: &List, env: &Env) -> EvalResult {
+    let mut exprs = Vec::new();
+    let mut iter = args.iter();
+    while let Some(expr) = iter.next() {
+        if let Expr::List(list) = expr {
+            if let List::Cons(cons) = list {
+                if let Expr::Sym(name) = cons.car.as_ref() {
+                    match name.as_str() {
+                        "quote" => {
+                            exprs.push(expr.clone());
+                            continue;
+                        }
+                        "unquote" => {
+                            exprs.push(eval(expr, env)?);
+                            continue;
+                        }
+                        "unquote-splicing" => {
+                            let result = eval(expr, env)?;
+                            if let Expr::List(List::Cons(cons)) = result {
+                                exprs.push(cons.car.as_ref().clone());
+                                let mut l = cons.cdr.as_ref();
+                                while let List::Cons(cons) = l {
+                                    exprs.push(cons.car.as_ref().clone());
+                                    l = cons.cdr.as_ref();
+                                }
+                            } else {
+                                exprs.push(result);
+                            }
+                            continue;
+                        }
+                        _ => {}
+                    }
+                }
+                exprs.push(quasiquote(list, env)?);
+            } else {
+                exprs.push(List::Nil.into());
+            }
+        } else {
+            exprs.push(expr.clone());
+        }
+    }
+
+    Ok(exprs.into())
 }
 
 pub fn quote(args: &List, _env: &Env) -> EvalResult {

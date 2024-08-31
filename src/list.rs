@@ -1,5 +1,6 @@
 use crate::expr::Expr;
 use std::fmt;
+use std::iter::Iterator;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cons {
@@ -17,6 +18,13 @@ impl Cons {
             cdr: Box::new(cdr),
         }
     }
+}
+
+pub fn cons<T>(car: T, cdr: List) -> List
+where
+    T: Into<Expr>,
+{
+    List::Cons(Cons::new(car, cdr))
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -55,13 +63,6 @@ impl Into<Expr> for List {
     fn into(self) -> Expr {
         Expr::List(self)
     }
-}
-
-pub fn cons<T>(car: T, cdr: List) -> List
-where
-    T: Into<Expr>,
-{
-    List::Cons(Cons::new(car, cdr))
 }
 
 impl fmt::Display for List {
@@ -110,5 +111,28 @@ impl<'a> Iterator for ListIter<'a> {
         } else {
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::expr::shortcuts::{num, str, sym};
+    use crate::macros::list;
+
+    #[test]
+    fn test_display() {
+        let list = list!(num(1), num(2), list!(num(3), sym("sym"), str("str")));
+        assert_eq!(format!("{}", list), "(1 2 (3 sym \"str\"))");
+    }
+
+    #[test]
+    fn test_iter() {
+        let list = list!(num(1), num(2), num(3));
+        let mut iter = list.iter();
+        assert_eq!(iter.next(), Some(&num(1)));
+        assert_eq!(iter.next(), Some(&num(2)));
+        assert_eq!(iter.next(), Some(&num(3)));
+        assert_eq!(iter.next(), None);
     }
 }
