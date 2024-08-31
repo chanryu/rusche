@@ -3,7 +3,7 @@ pub mod num;
 use crate::env::Env;
 use crate::eval::{eval, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
-use crate::list::{cons, Cons, List};
+use crate::list::{cons, List};
 use crate::proc::Proc;
 
 pub fn atom(args: &List, env: &Env) -> EvalResult {
@@ -163,6 +163,18 @@ pub fn quote(args: &List, _env: &Env) -> EvalResult {
     } else {
         Err(make_syntax_error("quote", args))
     }
+}
+
+pub fn unquote(args: &List, env: &Env) -> EvalResult {
+    let mut exprs = Vec::new();
+    for expr in args.iter() {
+        exprs.push(eval(expr, env)?);
+    }
+    Ok(exprs.into())
+}
+
+pub fn unquote_splicing(args: &List, env: &Env) -> EvalResult {
+    unquote(args, env)
 }
 
 fn make_syntax_error(func_name: &str, args: &List) -> EvalError {
