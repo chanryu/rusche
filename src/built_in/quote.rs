@@ -88,7 +88,7 @@ pub fn unquote_splicing(_args: &List, _env: &Env) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::shortcuts::num;
+    use crate::expr::shortcuts::{num, sym};
     use crate::list::cons;
     use crate::macros::list;
 
@@ -104,11 +104,21 @@ mod tests {
     fn test_quasiquote() {
         let env = Env::new();
 
+        env.set("+", Expr::new_native_proc(crate::built_in::num::add));
+
         // (quasiquote (0 1 2)) => (0 1 2)
         let result = quasiquote(&list!(list!(num(0), num(1), num(2))), &env);
         assert_eq!(result, Ok(list!(num(0), num(1), num(2)).into()));
 
-        // > (quasiquote (0 (unquote (+ 1 2)) 4))
-        // (0 3 4)
+        // (quasiquote (0 (unquote (+ 1 2)) 4)) => (0 3 4)
+        let result = quasiquote(
+            &list!(list!(
+                num(0),
+                list!(sym("unquote"), list!(sym("+"), num(1), num(2))),
+                num(4)
+            )),
+            &env,
+        );
+        assert_eq!(result, Ok(list!(num(0), num(3), num(4)).into()));
     }
 }

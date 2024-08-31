@@ -2,7 +2,7 @@ pub mod num;
 pub mod quote;
 
 use crate::env::Env;
-use crate::eval::{eval, eval_list, EvalError, EvalResult};
+use crate::eval::{eval, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::{cons, List};
 use crate::proc::Proc;

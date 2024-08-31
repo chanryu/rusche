@@ -11,20 +11,13 @@ pub fn eval(expr: &Expr, env: &Env) -> EvalResult {
             Some(expr) => Ok(expr.clone()),
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
-        Expr::List(list) => eval_list(list, env),
-        _ => Ok(expr.clone()),
-    }
-}
-
-pub fn eval_list(list: &List, env: &Env) -> EvalResult {
-    match list {
-        List::Nil => Ok(NIL),
-        List::Cons(cons) => {
+        Expr::List(List::Cons(cons)) => {
             if let Expr::Proc(proc) = eval(&cons.car, env)? {
                 proc.invoke(cons.cdr.as_ref(), env)
             } else {
                 Err(format!("{} does not evaluate to a callable.", cons.car))
             }
         }
+        _ => Ok(expr.clone()),
     }
 }
