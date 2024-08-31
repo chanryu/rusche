@@ -50,14 +50,6 @@ impl List {
         }
     }
 
-    pub fn car(&self) -> Option<&Expr> {
-        if let List::Cons(cons) = &self {
-            Some(cons.car.as_ref())
-        } else {
-            None
-        }
-    }
-
     pub fn cdr(&self) -> Option<&List> {
         if let List::Cons(cons) = &self {
             Some(cons.cdr.as_ref())

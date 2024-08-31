@@ -2,40 +2,41 @@ pub mod num;
 pub mod quote;
 
 use crate::env::Env;
-use crate::eval::{eval, EvalError, EvalResult};
+use crate::eval::{eval, eval_list, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::{cons, List};
 use crate::proc::Proc;
 
 pub fn atom(args: &List, env: &Env) -> EvalResult {
-    if let Some(car) = args.car() {
-        // TODO: error if cdr is not NIL
-        if eval(car, env)?.is_atom() {
-            Ok(Expr::new_sym("#t"))
-        } else {
-            Ok(NIL)
-        }
+    let List::Cons(cons) = args else {
+        return Err(make_syntax_error("atom", args));
+    };
+
+    if !cons.cdr.is_nil() {
+        return Err(make_syntax_error("atom", args));
+    };
+
+    if eval(cons.car.as_ref(), env)?.is_atom() {
+        Ok(Expr::new_sym("#t"))
     } else {
-        Err(make_syntax_error("atom", args))
+        Ok(NIL)
     }
 }
 
-pub fn car(args: &List, env: &Env) -> EvalResult {
-    if let Some(car) = args.car() {
-        Ok(eval(car, env)?)
+pub fn car(args: &List, _env: &Env) -> EvalResult {
+    if let List::Cons(cons) = args {
+        Ok(cons.car.as_ref().clone())
     } else {
         Err(make_syntax_error("car", args))
     }
 }
 
-pub fn cdr(args: &List, env: &Env) -> EvalResult {
-    if let Some(cdr) = args.cdr() {
-        if let Some(cdar) = cdr.car() {
-            return Ok(eval(cdar, env)?);
-        }
+pub fn cdr(args: &List, _env: &Env) -> EvalResult {
+    if let List::Cons(cons) = args {
+        Ok(cons.cdr.as_ref().clone().into())
+    } else {
+        Err(make_syntax_error("cdr", args))
     }
-
-    Err(make_syntax_error("cdr", args))
 }
 
 pub fn cond(args: &List, env: &Env) -> EvalResult {
@@ -47,9 +48,9 @@ pub fn cond(args: &List, env: &Env) -> EvalResult {
             }
             Some(Expr::List(List::Cons(cons))) => {
                 let car = cons.car.as_ref();
-                if eval(car, env)? != NIL {
-                    if let Some(cdar) = cons.cdr.car() {
-                        return eval(cdar, env);
+                if !eval(car, env)?.is_nil() {
+                    if let List::Cons(cons) = cons.cdr.as_ref() {
+                        return eval(cons.car.as_ref(), env);
                     } else {
                         break;
                     }
@@ -78,12 +79,11 @@ pub fn define(args: &List, env: &Env) -> EvalResult {
 }
 
 pub fn eq(args: &List, env: &Env) -> EvalResult {
-    if let Some(car) = args.car() {
-        if let Some(cdr) = args.cdr() {
-            if let Some(cdar) = cdr.car() {
-                let arg1 = eval(car, env)?;
-                let arg2 = eval(cdar, env)?;
-                return if arg1 == arg2 {
+    let mut iter = args.iter();
+    if let Some(left) = iter.next() {
+        if let Some(right) = iter.next() {
+            if iter.next().is_none() {
+                return if eval(left, env)? == eval(right, env)? {
                     Ok(Expr::new_sym("#t"))
                 } else {
                     Ok(NIL)
@@ -139,7 +139,7 @@ mod tests {
         let env = Env::new();
         // (cdr '(1 2)) => 2
         let ret = cdr(&list!(num(1), num(2)), &env);
-        assert_eq!(ret, Ok(num(2)));
+        assert_eq!(ret, Ok(list!(num(2)).into()));
     }
 
     #[test]

@@ -9,7 +9,7 @@ pub fn quote(args: &List, _env: &Env) -> EvalResult {
         return Err(make_syntax_error("quote", args));
     };
 
-    if !cons.cdr.as_ref().is_nil() {
+    if !cons.cdr.is_nil() {
         return Err(make_syntax_error("quote", args));
     }
 
@@ -18,11 +18,11 @@ pub fn quote(args: &List, _env: &Env) -> EvalResult {
 
 pub fn quasiquote(args: &List, env: &Env) -> EvalResult {
     let List::Cons(cons) = args else {
-        return Err(make_syntax_error("quote", args));
+        return Err(make_syntax_error("quasiquote", args));
     };
 
-    if !cons.cdr.as_ref().is_nil() {
-        return Err(make_syntax_error("quote", args));
+    if !cons.cdr.is_nil() {
+        return Err(make_syntax_error("quasiquote", args));
     }
 
     let Expr::List(list) = cons.car.as_ref() else {

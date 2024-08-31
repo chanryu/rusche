@@ -14,6 +14,12 @@ pub enum Expr {
 pub const NIL: Expr = Expr::List(List::Nil);
 
 impl Expr {
+    pub fn is_nil(&self) -> bool {
+        match self {
+            Expr::List(List::Nil) => true,
+            _ => false,
+        }
+    }
     pub fn is_atom(&self) -> bool {
         match self {
             Expr::List(List::Cons(_)) => false,
