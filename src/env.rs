@@ -1,5 +1,6 @@
 use crate::built_in;
 use crate::expr::Expr;
+use crate::proc::Proc;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -22,7 +23,13 @@ impl Env {
         let env = Env::new();
 
         let set_native_func = |name, func| {
-            env.set(name, Expr::new_native_proc(func));
+            env.set(
+                name,
+                Expr::Proc(Proc::NativeFunc {
+                    name: name.to_owned(),
+                    func,
+                }),
+            );
         };
 
         // lisp built_in

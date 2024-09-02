@@ -1,5 +1,5 @@
 use crate::list::{cons, List};
-use crate::proc::{NativeFunc, Proc};
+use crate::proc::Proc;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -46,10 +46,6 @@ impl Expr {
         T: Into<String>,
     {
         Self::Sym(text.into())
-    }
-
-    pub fn new_native_proc(func: NativeFunc) -> Self {
-        Expr::Proc(Proc::Native(func))
     }
 }
 

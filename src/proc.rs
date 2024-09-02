@@ -3,12 +3,18 @@ use crate::eval::{eval, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::List;
 
-pub type NativeFunc = fn(args: &List, env: &Env) -> EvalResult;
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum Proc {
-    Native(NativeFunc),
-    Closure {
+    NativeFunc {
+        name: String,
+        func: fn(args: &List, env: &Env) -> EvalResult,
+    },
+    Func {
+        name: String,
+        formal_args: List,
+        body: List,
+    },
+    Lambda {
         formal_args: List,
         lambda_body: List,
         outer_env: Env,
@@ -18,14 +24,29 @@ pub enum Proc {
 impl Proc {
     pub fn invoke(&self, args: &List, env: &Env) -> EvalResult {
         match self {
-            Proc::Native(func) => func(args, env),
-            Proc::Closure {
+            Proc::NativeFunc { name: _, func } => func(args, env),
+            Proc::Func {
+                name,
+                formal_args,
+                body,
+            } => eval_func(name, formal_args, body, args, env),
+            Proc::Lambda {
                 formal_args,
                 lambda_body,
                 outer_env,
             } => eval_closure(formal_args, lambda_body, outer_env, args, env),
         }
     }
+}
+
+fn eval_func(
+    _name: &str,
+    _formal_args: &List,
+    _body: &List,
+    _args: &List,
+    _env: &Env,
+) -> EvalResult {
+    todo!()
 }
 
 fn eval_closure(

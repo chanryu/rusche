@@ -92,6 +92,7 @@ mod tests {
     use super::*;
     use crate::expr::shortcuts::{num, sym};
     use crate::list::{cons, list};
+    use crate::proc::Proc;
 
     #[test]
     fn test_quote() {
@@ -113,7 +114,13 @@ mod tests {
     #[test]
     fn test_quasiquote_unquote() {
         let env = Env::new();
-        env.set("+", Expr::new_native_proc(crate::built_in::num::add));
+        env.set(
+            "+",
+            Expr::Proc(Proc::NativeFunc {
+                name: "add".to_owned(),
+                func: crate::built_in::num::add,
+            }),
+        );
 
         // (quasiquote (0 (unquote (+ 1 2)) 4)) => (0 3 4)
         let result = quasiquote(
@@ -130,7 +137,13 @@ mod tests {
     #[test]
     fn test_quasiquote_unquote_splicing() {
         let env = Env::new();
-        env.set("quote", Expr::new_native_proc(quote));
+        env.set(
+            "quote",
+            Expr::Proc(Proc::NativeFunc {
+                name: "quote".to_owned(),
+                func: quote,
+            }),
+        );
 
         // (quasiquote (0 (unquote-splicing (quote (1 2 3))) 4)) => (0 1 2 3 4)
         let result = quasiquote(

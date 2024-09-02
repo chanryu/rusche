@@ -74,6 +74,21 @@ pub fn define(args: &List, env: &Env) -> EvalResult {
                 Err("define expects a expression after symbol".into())
             }
         }
+        Some(Expr::List(List::Cons(cons))) => {
+            if let Expr::Sym(name) = cons.car.as_ref() {
+                if let Some(Expr::List(list)) = iter.next() {
+                    Ok(Expr::Proc(Proc::Func {
+                        name: name.clone(),
+                        formal_args: cons.cdr.as_ref().clone(),
+                        body: list.clone(),
+                    }))
+                } else {
+                    Err("define expects a expression after a list of symbols".into())
+                }
+            } else {
+                Err("define expects a list of symbols".into())
+            }
+        }
         _ => Err("define expects a symbol".into()),
     }
 }
@@ -102,7 +117,7 @@ pub fn lambda(args: &List, env: &Env) -> EvalResult {
 
             let lambda_body = cons.cdr.as_ref();
 
-            return Ok(Expr::Proc(Proc::Closure {
+            return Ok(Expr::Proc(Proc::Lambda {
                 formal_args: List::Cons(formal_args.clone()),
                 lambda_body: lambda_body.clone(),
                 outer_env: env.clone(),
