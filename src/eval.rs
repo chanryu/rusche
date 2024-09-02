@@ -1,5 +1,5 @@
 use crate::env::Env;
-use crate::expr::{Expr, NIL};
+use crate::expr::Expr;
 use crate::list::List;
 
 pub type EvalError = String;

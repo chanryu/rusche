@@ -18,6 +18,14 @@ impl Cons {
             cdr: Box::new(cdr),
         }
     }
+
+    pub fn cdar(&self) -> Option<&Expr> {
+        if let List::Cons(cons) = self.cdr.as_ref() {
+            Some(cons.car.as_ref())
+        } else {
+            None
+        }
+    }
 }
 
 pub fn cons<T>(car: T, cdr: List) -> List

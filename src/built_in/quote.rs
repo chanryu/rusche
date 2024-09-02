@@ -49,23 +49,25 @@ pub fn quasiquote(args: &List, env: &Env) -> EvalResult {
         };
 
         match name.as_str() {
-            "quote" => {
-                exprs.push(expr.clone());
-            }
             "unquote" => {
-                exprs.push(eval(expr, env)?);
+                if let Some(cdar) = cons.cdar() {
+                    exprs.push(eval(cdar, env)?);
+                } else {
+                    // TODO: error - malformed unquote, i.e. "(unquote)"
+                }
             }
             "unquote-splicing" => {
-                let result = eval(expr, env)?;
-                if let Expr::List(List::Cons(cons)) = result {
-                    exprs.push(cons.car.as_ref().clone());
-                    let mut l = cons.cdr.as_ref();
-                    while let List::Cons(cons) = l {
-                        exprs.push(cons.car.as_ref().clone());
-                        l = cons.cdr.as_ref();
+                if let Some(cdar) = cons.cdar() {
+                    if let Expr::List(list) = eval(cdar, env)? {
+                        if list.is_nil() {
+                            exprs.push(List::Nil.into());
+                        } else {
+                            exprs.extend(list.iter().map(|expr| expr.clone()));
+                        }
+                    } else {
                     }
                 } else {
-                    exprs.push(result);
+                    // TODO: error - malformed unquote, i.e. "(unquote-splicing)"
                 }
             }
             _ => {
@@ -104,11 +106,15 @@ mod tests {
     fn test_quasiquote() {
         let env = Env::new();
 
-        env.set("+", Expr::new_native_proc(crate::built_in::num::add));
-
         // (quasiquote (0 1 2)) => (0 1 2)
         let result = quasiquote(&list!(list!(num(0), num(1), num(2))), &env);
         assert_eq!(result, Ok(list!(num(0), num(1), num(2)).into()));
+    }
+
+    #[test]
+    fn test_quasiquote_unquote() {
+        let env = Env::new();
+        env.set("+", Expr::new_native_proc(crate::built_in::num::add));
 
         // (quasiquote (0 (unquote (+ 1 2)) 4)) => (0 3 4)
         let result = quasiquote(
@@ -120,5 +126,28 @@ mod tests {
             &env,
         );
         assert_eq!(result, Ok(list!(num(0), num(3), num(4)).into()));
+    }
+
+    #[test]
+    fn test_quasiquote_unquote_splicing() {
+        let env = Env::new();
+        env.set("quote", Expr::new_native_proc(quote));
+
+        // (quasiquote (0 (unquote-splicing (quote (1 2 3))) 4)) => (0 1 2 3 4)
+        let result = quasiquote(
+            &list!(list!(
+                num(0),
+                list!(
+                    sym("unquote-splicing"),
+                    list!(sym("quote"), list!(num(1), num(2), num(3)))
+                ),
+                num(4)
+            )),
+            &env,
+        );
+        assert_eq!(
+            result,
+            Ok(list!(num(0), num(1), num(2), num(3), num(4)).into())
+        );
     }
 }
