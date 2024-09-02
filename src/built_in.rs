@@ -123,7 +123,6 @@ fn make_syntax_error(func_name: &str, args: &List) -> EvalError {
 mod tests {
     use super::*;
     use crate::expr::shortcuts::{num, str, sym};
-    use crate::list::cons;
     use crate::macros::list;
 
     #[test]
