@@ -48,8 +48,7 @@ pub fn divide(args: &List, env: &Env) -> EvalResult {
 mod tests {
     use super::*;
     use crate::expr::shortcuts::num;
-    use crate::list::cons;
-    use crate::macros::list;
+    use crate::list::{cons, list};
 
     #[test]
     fn test_add() {

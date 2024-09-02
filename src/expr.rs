@@ -96,7 +96,7 @@ pub mod shortcuts {
 mod tests {
     use super::shortcuts::{num, str, sym};
     use super::*;
-    use crate::{list::cons, macros::list};
+    use crate::list::{cons, list};
 
     #[test]
     fn test_display_nil() {

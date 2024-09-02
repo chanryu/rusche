@@ -91,8 +91,7 @@ pub fn unquote_splicing(_args: &List, _env: &Env) -> EvalResult {
 mod tests {
     use super::*;
     use crate::expr::shortcuts::{num, sym};
-    use crate::list::cons;
-    use crate::macros::list;
+    use crate::list::{cons, list};
 
     #[test]
     fn test_quote() {

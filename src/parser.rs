@@ -1,6 +1,5 @@
 use crate::expr::Expr;
-use crate::list::{cons, List};
-use crate::macros::list;
+use crate::list::{cons, list, List};
 use crate::token::Token;
 use std::collections::VecDeque;
 use std::fmt;
@@ -143,7 +142,6 @@ fn get_quote_name(token: Option<&Token>) -> Option<&'static str> {
 mod tests {
     use super::*;
     use crate::expr::shortcuts::{num, sym};
-    use crate::list::cons;
 
     #[test]
     fn test_parser() {
