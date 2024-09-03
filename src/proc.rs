@@ -1,13 +1,13 @@
 use crate::env::Env;
 use crate::eval::{eval, EvalResult};
-use crate::expr::{Expr, NIL};
+use crate::expr::Expr;
 use crate::list::List;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Proc {
     NativeFunc {
         name: String,
-        func: fn(args: &List, env: &Env) -> EvalResult,
+        func: fn(func_name: &str, args: &List, env: &Env) -> EvalResult,
     },
     Func {
         name: String,
@@ -24,7 +24,7 @@ pub enum Proc {
 impl Proc {
     pub fn invoke(&self, args: &List, env: &Env) -> EvalResult {
         match self {
-            Proc::NativeFunc { name: _, func } => func(args, env),
+            Proc::NativeFunc { name, func } => func(name, args, env),
             Proc::Func {
                 name,
                 formal_args,

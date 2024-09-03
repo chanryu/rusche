@@ -4,25 +4,25 @@ use crate::eval::{eval, EvalResult};
 use crate::expr::Expr;
 use crate::list::List;
 
-pub fn quote(args: &List, _env: &Env) -> EvalResult {
+pub fn quote(func_name: &str, args: &List, _env: &Env) -> EvalResult {
     let List::Cons(cons) = args else {
-        return Err(make_syntax_error("quote", args));
+        return Err(make_syntax_error(func_name, args));
     };
 
     if !cons.cdr.is_nil() {
-        return Err(make_syntax_error("quote", args));
+        return Err(make_syntax_error(func_name, args));
     }
 
     Ok(cons.car.as_ref().clone())
 }
 
-pub fn quasiquote(args: &List, env: &Env) -> EvalResult {
+pub fn quasiquote(func_name: &str, args: &List, env: &Env) -> EvalResult {
     let List::Cons(cons) = args else {
-        return Err(make_syntax_error("quasiquote", args));
+        return Err(make_syntax_error(func_name, args));
     };
 
     if !cons.cdr.is_nil() {
-        return Err(make_syntax_error("quasiquote", args));
+        return Err(make_syntax_error(func_name, args));
     }
 
     let Expr::List(list) = cons.car.as_ref() else {
@@ -44,7 +44,7 @@ pub fn quasiquote(args: &List, env: &Env) -> EvalResult {
         };
 
         let Expr::Sym(name) = cons.car.as_ref() else {
-            exprs.push(quasiquote(list, env)?);
+            exprs.push(quasiquote("quasiquote", list, env)?);
             continue;
         };
 
@@ -71,7 +71,7 @@ pub fn quasiquote(args: &List, env: &Env) -> EvalResult {
                 }
             }
             _ => {
-                exprs.push(quasiquote(list, env)?);
+                exprs.push(quasiquote("quasiquote", list, env)?);
             }
         }
     }
@@ -79,12 +79,12 @@ pub fn quasiquote(args: &List, env: &Env) -> EvalResult {
     Ok(exprs.into())
 }
 
-pub fn unquote(_args: &List, _env: &Env) -> EvalResult {
-    Err("unquote (,) used outside of quasiquote".to_string())
+pub fn unquote(func_name: &str, _args: &List, _env: &Env) -> EvalResult {
+    Err(format!("{func_name} (,) used outside of quasiquote"))
 }
 
-pub fn unquote_splicing(_args: &List, _env: &Env) -> EvalResult {
-    Err("unquote-splicing (,@) used outside of quasiquote".to_string())
+pub fn unquote_splicing(func_name: &str, _args: &List, _env: &Env) -> EvalResult {
+    Err(format!("{func_name} (,@) used outside of quasiquote"))
 }
 
 #[cfg(test)]
@@ -98,7 +98,7 @@ mod tests {
     fn test_quote() {
         let env = Env::new();
         // (quote (1 2)) => (1 2)
-        let result = quote(&list!(list!(num(1), num(2))), &env);
+        let result = quote("", &list!(list!(num(1), num(2))), &env);
         assert_eq!(result, Ok(list!(num(1), num(2)).into()));
     }
 
@@ -107,7 +107,7 @@ mod tests {
         let env = Env::new();
 
         // (quasiquote (0 1 2)) => (0 1 2)
-        let result = quasiquote(&list!(list!(num(0), num(1), num(2))), &env);
+        let result = quasiquote("", &list!(list!(num(0), num(1), num(2))), &env);
         assert_eq!(result, Ok(list!(num(0), num(1), num(2)).into()));
     }
 
@@ -124,6 +124,7 @@ mod tests {
 
         // (quasiquote (0 (unquote (+ 1 2)) 4)) => (0 3 4)
         let result = quasiquote(
+            "",
             &list!(list!(
                 num(0),
                 list!(sym("unquote"), list!(sym("+"), num(1), num(2))),
@@ -147,6 +148,7 @@ mod tests {
 
         // (quasiquote (0 (unquote-splicing (quote (1 2 3))) 4)) => (0 1 2 3 4)
         let result = quasiquote(
+            "",
             &list!(list!(
                 num(0),
                 list!(

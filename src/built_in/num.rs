@@ -3,7 +3,8 @@ use crate::eval::{eval, EvalResult};
 use crate::expr::Expr;
 use crate::list::List;
 
-fn binop(
+fn binary_operation(
+    func_name: &str,
     args: &List,
     env: &Env,
     identity: f64,
@@ -21,27 +22,27 @@ fn binop(
                     result = func(result, value);
                 }
             }
-            _ => return Err(format!("{} is not a number!", arg)),
+            _ => return Err(format!("{func_name}: {arg} does not evaluate to a number!")),
         }
     }
 
     Ok(Expr::Num(result))
 }
 
-pub fn add(args: &List, env: &Env) -> EvalResult {
-    binop(args, env, 0_f64, true, |lhs, rhs| lhs + rhs)
+pub fn add(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    binary_operation(func_name, args, env, 0_f64, true, |lhs, rhs| lhs + rhs)
 }
 
-pub fn minus(args: &List, env: &Env) -> EvalResult {
-    binop(args, env, 0_f64, false, |lhs, rhs| lhs - rhs)
+pub fn minus(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    binary_operation(func_name, args, env, 0_f64, false, |lhs, rhs| lhs - rhs)
 }
 
-pub fn multiply(args: &List, env: &Env) -> EvalResult {
-    binop(args, env, 1_f64, true, |lhs, rhs| lhs * rhs)
+pub fn multiply(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    binary_operation(func_name, args, env, 1_f64, true, |lhs, rhs| lhs * rhs)
 }
 
-pub fn divide(args: &List, env: &Env) -> EvalResult {
-    binop(args, env, 1_f64, false, |lhs, rhs| lhs / rhs)
+pub fn divide(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    binary_operation(func_name, args, env, 1_f64, false, |lhs, rhs| lhs / rhs)
 }
 
 #[cfg(test)]
