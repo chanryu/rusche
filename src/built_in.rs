@@ -68,26 +68,32 @@ pub fn define(args: &List, env: &Env) -> EvalResult {
     match iter.next() {
         Some(Expr::Sym(name)) => {
             if let Some(expr) = iter.next() {
-                env.set(name, eval(expr, env)?.clone());
+                env.set(name, eval(expr, env)?);
                 Ok(NIL)
             } else {
                 Err("define expects a expression after symbol".into())
             }
         }
         Some(Expr::List(List::Cons(cons))) => {
-            if let Expr::Sym(name) = cons.car.as_ref() {
-                if let Some(Expr::List(list)) = iter.next() {
-                    Ok(Expr::Proc(Proc::Func {
-                        name: name.clone(),
-                        formal_args: cons.cdr.as_ref().clone(),
-                        body: list.clone(),
-                    }))
-                } else {
-                    Err("define expects a expression after a list of symbols".into())
-                }
-            } else {
-                Err("define expects a list of symbols".into())
-            }
+            let Expr::Sym(name) = cons.car.as_ref() else {
+                return Err("define expects a list of symbols".into());
+            };
+
+            let Some(body) = iter.next() else {
+                return Err("define expects a expression after a list of symbols".into());
+            };
+
+            // TODO: check if formal_args is a list of symbols.
+
+            env.set(
+                name,
+                Expr::Proc(Proc::Func {
+                    name: name.clone(),
+                    formal_args: cons.cdr.as_ref().clone(),
+                    body: Box::new(body.clone()),
+                }),
+            );
+            Ok(NIL)
         }
         _ => Err("define expects a symbol".into()),
     }
@@ -111,20 +117,27 @@ pub fn eq(args: &List, env: &Env) -> EvalResult {
 }
 
 pub fn lambda(args: &List, env: &Env) -> EvalResult {
-    if let List::Cons(cons) = args {
-        if let Expr::List(List::Cons(formal_args)) = cons.car.as_ref() {
-            // TODO: check if formal_args are list of symbols.
+    let mut iter = args.iter();
 
-            let lambda_body = cons.cdr.as_ref();
+    let Some(Expr::List(List::Cons(formal_args))) = iter.next() else {
+        return Err(make_syntax_error("lambda", args));
+    };
 
-            return Ok(Expr::Proc(Proc::Lambda {
-                formal_args: List::Cons(formal_args.clone()),
-                lambda_body: lambda_body.clone(),
-                outer_env: env.clone(),
-            }));
-        }
+    // TODO: check if formal_args is a list of symbols.
+
+    let Some(lambda_body) = iter.next() else {
+        return Err(make_syntax_error("lambda", args));
+    };
+
+    if iter.next().is_some() {
+        return Err(make_syntax_error("lambda", args));
     }
-    Err(make_syntax_error("lambda", args))
+
+    return Ok(Expr::Proc(Proc::Lambda {
+        formal_args: List::Cons(formal_args.clone()),
+        lambda_body: Box::new(lambda_body.clone()),
+        outer_env: env.clone(),
+    }));
 }
 
 fn make_syntax_error(func_name: &str, args: &List) -> EvalError {

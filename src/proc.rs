@@ -12,11 +12,11 @@ pub enum Proc {
     Func {
         name: String,
         formal_args: List,
-        body: List,
+        body: Box<Expr>,
     },
     Lambda {
         formal_args: List,
-        lambda_body: List,
+        lambda_body: Box<Expr>,
         outer_env: Env,
     },
 }
@@ -40,18 +40,38 @@ impl Proc {
 }
 
 fn eval_func(
-    _name: &str,
-    _formal_args: &List,
-    _body: &List,
-    _args: &List,
-    _env: &Env,
+    func_name: &str,
+    formal_args: &List,
+    body: &Expr,
+    args: &List,
+    env: &Env,
 ) -> EvalResult {
-    todo!()
+    let func_env = env.derive();
+    let mut formal_args = formal_args.iter();
+    let mut args = args.iter();
+
+    while let Some(formal_arg) = formal_args.next() {
+        let Expr::Sym(name) = formal_arg else {
+            return Err(format!("{func_name}: formal arg must be a symbol"));
+        };
+
+        let Some(expr) = args.next() else {
+            return Err(format!("{func_name}: too few args"));
+        };
+
+        func_env.set(name, eval(expr, env)?);
+    }
+
+    if args.next().is_some() {
+        return Err(format!("{func_name}: too many args"));
+    }
+
+    Ok(eval(body, &func_env)?)
 }
 
 fn eval_closure(
     formal_args: &List,
-    lambda_body: &List,
+    lambda_body: &Expr,
     outer_env: &Env,
     args: &List,
     env: &Env,
@@ -61,23 +81,20 @@ fn eval_closure(
     let mut args = args.iter();
 
     while let Some(formal_arg) = formal_args.next() {
-        if let Expr::Sym(name) = formal_arg {
-            if let Some(expr) = args.next() {
-                lambda_env.set(name, eval(expr, env)?);
-            } else {
-                return Err("Proc: too few args".into());
-            }
-        } else {
-            return Err("Formal arg of lambda must be a symbol".into());
-        }
-    }
-    if args.next() != None {
-        return Err("Proc: too many args".into());
+        let Expr::Sym(name) = formal_arg else {
+            return Err("lambda: formal arg must be a symbol".into());
+        };
+
+        let Some(expr) = args.next() else {
+            return Err("lambda: too few args".into());
+        };
+
+        lambda_env.set(name, eval(expr, env)?);
     }
 
-    let mut result = NIL;
-    for expr in lambda_body.iter() {
-        result = eval(expr, &lambda_env)?;
+    if args.next().is_some() {
+        return Err("lambda: too many args".into());
     }
-    Ok(result)
+
+    Ok(eval(lambda_body, &lambda_env)?)
 }
