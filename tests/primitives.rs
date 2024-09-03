@@ -13,10 +13,10 @@ fn test_cond() {
 #[test]
 fn test_define() {
     let env = Env::new_root_env();
-    let expr = parse_expr("(define (plus x y) (+ x y))");
+    let expr = parse_expr("(define (do-math x y) (- (* x 2) y))");
     let _ = eval(&expr, &env).unwrap();
-    let result = eval(&parse_expr("(plus 99 1)"), &env).unwrap();
-    assert_eq!(result.to_string(), "100");
+    let result = eval(&parse_expr("(do-math 50 1)"), &env).unwrap();
+    assert_eq!(result.to_string(), "99");
 }
 
 #[test]
