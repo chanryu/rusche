@@ -19,7 +19,7 @@ pub fn atom(func_name: &str, args: &List, env: &Env) -> EvalResult {
     if eval(cons.car.as_ref(), env)?.is_atom() {
         Ok(Expr::new_sym("#t"))
     } else {
-        Ok(NIL)
+        Ok(Expr::new_sym("#f"))
     }
 }
 

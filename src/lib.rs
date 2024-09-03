@@ -5,6 +5,7 @@ pub mod eval;
 pub mod expr;
 pub mod list;
 pub mod parser;
+pub mod prelude;
 pub mod proc;
 pub mod repl;
 pub mod scanner;

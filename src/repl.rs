@@ -38,16 +38,16 @@ pub fn repl() {
                     match parser.parse() {
                         Ok(expr) => match eval(&expr, &env) {
                             Ok(result) => {
-                                println!("{} => {}", expr, result);
+                                println!("; {}", result);
                             }
                             Err(error) => {
-                                println!("Error: {}", error);
+                                println!("; Error: {}", error);
                             }
                         },
                         Err(ParseError::NeedMoreToken) => break,
                         Err(error) => {
                             parser.reset();
-                            println!("Error: {}", error);
+                            println!("; Error: {}", error);
                         }
                     }
                 }

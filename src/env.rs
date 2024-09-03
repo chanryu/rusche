@@ -54,6 +54,9 @@ impl Env {
         set_native_func("*", built_in::num::multiply);
         set_native_func("/", built_in::num::divide);
 
+        env.set("#t", Expr::new_sym("#t"));
+        env.set("#f", Expr::new_sym("#f"));
+
         env
     }
 

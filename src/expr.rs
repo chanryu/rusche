@@ -1,6 +1,7 @@
 use crate::list::{cons, List};
 use crate::proc::Proc;
 use std::fmt;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
@@ -55,7 +56,23 @@ impl fmt::Display for Expr {
             Expr::Num(value) => write!(f, "{}", value),
             Expr::Str(text) => write!(f, "\"{}\"", text), // TODO: escape as control chars
             Expr::Sym(name) => write!(f, "{}", name),
-            Expr::Proc(func) => write!(f, "<#proc: {:?}>", func),
+            Expr::Proc(Proc::NativeFunc { name, func: _ }) => {
+                write!(f, "<#proc/native-func: {name}>")
+            }
+            Expr::Proc(Proc::Func {
+                name,
+                formal_args: _,
+                body: _,
+            }) => write!(f, "<#proc/func: {name}>"),
+            Expr::Proc(Proc::Lambda {
+                formal_args: _,
+                lambda_body,
+                outer_env: _,
+            }) => {
+                let mut hasher = DefaultHasher::new();
+                lambda_body.to_string().hash(&mut hasher);
+                write!(f, "<#proc/lambda: {:x}>", hasher.finish())
+            }
             Expr::List(list) => write!(f, "{}", list),
         }
     }
