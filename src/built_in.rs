@@ -120,6 +120,18 @@ pub fn eq(func_name: &str, args: &List, env: &Env) -> EvalResult {
     Err(make_syntax_error(func_name, args))
 }
 
+pub fn eval_(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    let mut iter = args.iter();
+    let Some(expr) = iter.next() else {
+        return Err(make_syntax_error(func_name, args));
+    };
+    if iter.next().is_some() {
+        return Err(make_syntax_error(func_name, args));
+    }
+
+    eval(&eval(expr, env)?, env)
+}
+
 pub fn lambda(func_name: &str, args: &List, env: &Env) -> EvalResult {
     let mut iter = args.iter();
 

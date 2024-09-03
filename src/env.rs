@@ -40,6 +40,7 @@ impl Env {
         set_native_func("cond", built_in::cond);
         set_native_func("define", built_in::define);
         set_native_func("eq", built_in::eq);
+        set_native_func("eval", built_in::eval_);
         set_native_func("lambda", built_in::lambda);
 
         // quote

@@ -20,6 +20,11 @@ fn test_define() {
 }
 
 #[test]
+fn test_eval() {
+    assert_eq!(eval_expr("(eval '(+ 1 2))"), "3");
+}
+
+#[test]
 fn test_lambda() {
     assert_eq!(eval_expr("((lambda (x) (* x 2)) 5)"), "10");
 }
