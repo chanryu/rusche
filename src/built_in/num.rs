@@ -57,11 +57,11 @@ mod tests {
 
         // (+ 1) => 1
         let args = list!(num(1));
-        assert_eq!(add(&args, &env), Ok(num(1)));
+        assert_eq!(add("", &args, &env), Ok(num(1)));
 
         // (+ 2 1) => 3
         let args = list!(num(2), num(1));
-        assert_eq!(add(&args, &env), Ok(num(3)));
+        assert_eq!(add("", &args, &env), Ok(num(3)));
     }
 
     #[test]
@@ -70,11 +70,11 @@ mod tests {
 
         // (- 1) => -1
         let args = list!(num(1));
-        assert_eq!(minus(&args, &env), Ok(num(-1)));
+        assert_eq!(minus("", &args, &env), Ok(num(-1)));
 
         // (- 2 1) => 1
         let args = list!(num(2), num(1));
-        assert_eq!(minus(&args, &env), Ok(num(1)));
+        assert_eq!(minus("", &args, &env), Ok(num(1)));
     }
 
     #[test]
@@ -83,15 +83,15 @@ mod tests {
 
         // (* 1) => 1
         let args = list!(num(1));
-        assert_eq!(multiply(&args, &env), Ok(num(1)));
+        assert_eq!(multiply("", &args, &env), Ok(num(1)));
 
         // (* 2 1) => 2
         let args = list!(num(2), num(1));
-        assert_eq!(multiply(&args, &env), Ok(num(2)));
+        assert_eq!(multiply("", &args, &env), Ok(num(2)));
 
         // (* 3 2 1) => 6
         let args = list!(num(3), num(2), num(1));
-        assert_eq!(multiply(&args, &env), Ok(num(6)));
+        assert_eq!(multiply("", &args, &env), Ok(num(6)));
     }
 
     #[test]
@@ -100,10 +100,10 @@ mod tests {
 
         // (/ 2) => 0.5
         let args = list!(num(2));
-        assert_eq!(divide(&args, &env), Ok(num(0.5)));
+        assert_eq!(divide("", &args, &env), Ok(num(0.5)));
 
         // (/ 4 2) => 2
         let args = list!(num(4), num(2));
-        assert_eq!(divide(&args, &env), Ok(num(2)));
+        assert_eq!(divide("", &args, &env), Ok(num(2)));
     }
 }
