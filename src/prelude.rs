@@ -10,6 +10,9 @@ const PRELUDE: &str = r#"
 ; nil
 (define nil '())
 
+; newline
+(define (newline) (display "\n"))
+
 "#;
 
 pub fn load_prelude(env: &Env) {

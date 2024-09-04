@@ -2,8 +2,8 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::env::Env;
 use crate::eval::{eval, EvalResult};
-use crate::expr::Expr;
-use crate::list::List;
+use crate::expr::{Expr, NIL};
+use crate::list::{cons, List};
 
 pub type NativeFunc = fn(func_name: &str, args: &List, env: &Env) -> EvalResult;
 
@@ -90,33 +90,33 @@ fn eval_closure(
     actual_args: &List,
     env: &Env,
 ) -> EvalResult {
+    let closure_name = closure_name.unwrap_or("closure");
     let closure_env = outer_env.derive();
     let mut formal_args = formal_args.iter();
     let mut actual_args = actual_args.iter();
 
-    while let Some(formal_arg) = formal_args.next() {
-        let Expr::Sym(name) = formal_arg else {
-            return Err(format!(
-                "{}: formal arg must be a symbol",
-                closure_name.unwrap_or("closure")
-            ));
-        };
+    loop {
+        if let Some(formal_arg) = formal_args.next() {
+            let Expr::Sym(arg_name) = formal_arg else {
+                return Err(format!("{}: formal arg must be a symbol", closure_name));
+            };
 
-        let Some(expr) = actual_args.next() else {
-            return Err(format!(
-                "{}: too few args",
-                closure_name.unwrap_or("closure")
-            ));
-        };
+            if let Some(name) = parse_name_if_variadic_args(arg_name) {
+                closure_env.set(name, actual_args);
+                break;
+            }
 
-        closure_env.set(name, eval(expr, env)?);
-    }
+            let Some(expr) = actual_args.next() else {
+                return Err(format!("{}: too few args", closure_name));
+            };
 
-    if actual_args.next().is_some() {
-        return Err(format!(
-            "{}: too many args",
-            closure_name.unwrap_or("closure")
-        ));
+            closure_env.set(arg_name, eval(expr, env)?);
+        } else {
+            if actual_args.next().is_none() {
+                break;
+            }
+            return Err(format!("{}: too many args", closure_name));
+        }
     }
 
     Ok(eval(body, &closure_env)?)
@@ -129,28 +129,42 @@ fn eval_macro(
     actual_args: &List,
     env: &Env,
 ) -> EvalResult {
+    let macro_name = macro_name.unwrap_or("macro");
     let macro_env = env.derive();
     let mut formal_args = formal_args.iter();
     let mut actual_args = actual_args.iter();
 
-    while let Some(formal_arg) = formal_args.next() {
-        let Expr::Sym(name) = formal_arg else {
-            return Err(format!(
-                "{}: formal arg must be a symbol",
-                macro_name.unwrap_or("macro")
-            ));
-        };
+    loop {
+        if let Some(formal_arg) = formal_args.next() {
+            let Expr::Sym(arg_name) = formal_arg else {
+                return Err(format!("{}: formal arg must be a symbol", macro_name));
+            };
 
-        let Some(expr) = actual_args.next() else {
-            return Err(format!("{}: too few args", macro_name.unwrap_or("macro")));
-        };
+            if let Some(name) = parse_name_if_variadic_args(arg_name) {
+                macro_env.set(name, actual_args);
+                break;
+            }
 
-        macro_env.set(name, expr.clone());
-    }
+            let Some(expr) = actual_args.next() else {
+                return Err(format!("{}: too few args", macro_name));
+            };
 
-    if actual_args.next().is_some() {
-        return Err(format!("{}: too many args", macro_name.unwrap_or("macro")));
+            macro_env.set(arg_name, expr.clone());
+        } else {
+            if actual_args.next().is_none() {
+                break;
+            }
+            return Err(format!("{}: too many args", macro_name));
+        }
     }
 
     Ok(eval(body, &macro_env)?)
+}
+
+fn parse_name_if_variadic_args(name: &str) -> Option<&str> {
+    if name.starts_with("*") && name.len() > 1 {
+        Some(&name[1..])
+    } else {
+        None
+    }
 }

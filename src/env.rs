@@ -70,8 +70,11 @@ impl Env {
         env
     }
 
-    pub fn set(&self, name: &str, expr: Expr) {
-        self.vars.borrow_mut().insert(name.into(), expr);
+    pub fn set<IntoExpr>(&self, name: &str, e: IntoExpr)
+    where
+        IntoExpr: Into<Expr>,
+    {
+        self.vars.borrow_mut().insert(name.into(), e.into());
     }
 
     pub fn update(&self, name: &str, expr: Expr) -> bool {

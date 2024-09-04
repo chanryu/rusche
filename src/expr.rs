@@ -1,4 +1,4 @@
-use crate::list::{cons, List};
+use crate::list::{cons, List, ListIter};
 use crate::proc::Proc;
 use std::fmt;
 
@@ -68,6 +68,12 @@ impl From<Vec<Expr>> for Expr {
             list = cons(expr, list);
         }
         list.into()
+    }
+}
+
+impl<'a> From<ListIter<'a>> for Expr {
+    fn from(value: ListIter) -> Self {
+        value.map(|expr| expr.clone()).collect::<Vec<_>>().into()
     }
 }
 
