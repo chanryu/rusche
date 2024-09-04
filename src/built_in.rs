@@ -169,6 +169,19 @@ pub fn defun(func_name: &str, args: &List, env: &Env) -> EvalResult {
     Ok(NIL)
 }
 
+pub fn display(_: &str, args: &List, env: &Env) -> EvalResult {
+    for (index, expr) in args.iter().enumerate() {
+        if index > 0 {
+            print!(" ");
+        }
+        match eval(expr, env)? {
+            Expr::Str(text) => print!("{}", text), // w/o double quotes
+            expr => print!("{}", expr),
+        }
+    }
+    Ok(NIL)
+}
+
 pub fn eq(func_name: &str, args: &List, env: &Env) -> EvalResult {
     let mut iter = args.iter();
     if let Some(left) = iter.next() {

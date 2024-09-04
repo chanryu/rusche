@@ -93,7 +93,12 @@ where
             match (ch, escaped) {
                 (ch, true) => {
                     escaped = false;
-                    text.push(ch);
+                    match ch {
+                        'n' => text.push('\n'),
+                        'r' => text.push('\r'),
+                        't' => text.push('\t'),
+                        _ => text.push(ch),
+                    }
                 }
                 ('"', false) => return Ok(Some(Token::Str(text))),
                 ('\\', false) => escaped = true,
