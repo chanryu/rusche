@@ -1,62 +1,151 @@
+use std::hash::{DefaultHasher, Hash, Hasher};
+
 use crate::env::Env;
 use crate::eval::{eval, EvalResult};
-use crate::expr::{Expr, NIL};
+use crate::expr::Expr;
 use crate::list::List;
-
-pub type NativeFunc = fn(args: &List, env: &Env) -> EvalResult;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Proc {
-    Native(NativeFunc),
-    Closure {
+    Lambda {
+        name: Option<String>,
         formal_args: List,
-        lambda_body: List,
+        body: Box<Expr>,
         outer_env: Env,
+    },
+    Macro {
+        name: Option<String>,
+        formal_args: List,
+        body: Box<Expr>,
+    },
+    Native {
+        name: String,
+        func: fn(func_name: &str, args: &List, env: &Env) -> EvalResult,
     },
 }
 
 impl Proc {
     pub fn invoke(&self, args: &List, env: &Env) -> EvalResult {
         match self {
-            Proc::Native(func) => func(args, env),
-            Proc::Closure {
+            Proc::Lambda {
+                name,
                 formal_args,
-                lambda_body,
+                body,
                 outer_env,
-            } => eval_closure(formal_args, lambda_body, outer_env, args, env),
+            } => eval_lambda(name.as_deref(), formal_args, body, outer_env, args, env),
+            Proc::Macro {
+                name,
+                formal_args,
+                body,
+            } => eval_macro(name.as_deref(), formal_args, body, args, env),
+            Proc::Native { name, func } => func(name, args, env),
+        }
+    }
+
+    pub fn fingerprint(&self) -> String {
+        let mut hasher = DefaultHasher::new();
+        match self {
+            Proc::Lambda {
+                name,
+                formal_args,
+                body,
+                outer_env: _,
+            } => {
+                formal_args.to_string().hash(&mut hasher);
+                body.to_string().hash(&mut hasher);
+                format!(
+                    "proc/lambda:{}:{:x}",
+                    name.as_deref().unwrap_or("unnamed"),
+                    hasher.finish()
+                )
+            }
+            Proc::Macro {
+                name,
+                formal_args,
+                body,
+            } => {
+                formal_args.to_string().hash(&mut hasher);
+                body.to_string().hash(&mut hasher);
+                format!(
+                    "proc/macro:{}:{:x}",
+                    name.as_deref().unwrap_or("unnamed"),
+                    hasher.finish()
+                )
+            }
+            Proc::Native { name, func } => {
+                func.hash(&mut hasher);
+                format!("proc/native:{}:{:x}", name, hasher.finish())
+            }
         }
     }
 }
 
-fn eval_closure(
+fn eval_lambda(
+    lambda_name: Option<&str>,
     formal_args: &List,
-    lambda_body: &List,
+    body: &Expr,
     outer_env: &Env,
-    args: &List,
+    actual_args: &List,
     env: &Env,
 ) -> EvalResult {
     let lambda_env = outer_env.derive();
     let mut formal_args = formal_args.iter();
-    let mut args = args.iter();
+    let mut actual_args = actual_args.iter();
 
     while let Some(formal_arg) = formal_args.next() {
-        if let Expr::Sym(name) = formal_arg {
-            if let Some(expr) = args.next() {
-                lambda_env.set(name, eval(expr, env)?);
-            } else {
-                return Err("Proc: too few args".into());
-            }
-        } else {
-            return Err("Formal arg of lambda must be a symbol".into());
-        }
-    }
-    if args.next() != None {
-        return Err("Proc: too many args".into());
+        let Expr::Sym(name) = formal_arg else {
+            return Err(format!(
+                "{}: formal arg must be a symbol",
+                lambda_name.unwrap_or("lambda")
+            ));
+        };
+
+        let Some(expr) = actual_args.next() else {
+            return Err(format!("{}: too few args", lambda_name.unwrap_or("lambda")));
+        };
+
+        lambda_env.set(name, eval(expr, env)?);
     }
 
-    let mut result = NIL;
-    for expr in lambda_body.iter() {
-        result = eval(expr, &lambda_env)?;
+    if actual_args.next().is_some() {
+        return Err(format!(
+            "{}: too many args",
+            lambda_name.unwrap_or("lambda")
+        ));
     }
-    Ok(result)
+
+    Ok(eval(body, &lambda_env)?)
+}
+
+fn eval_macro(
+    macro_name: Option<&str>,
+    formal_args: &List,
+    body: &Expr,
+    actual_args: &List,
+    env: &Env,
+) -> EvalResult {
+    let macro_env = env.derive();
+    let mut formal_args = formal_args.iter();
+    let mut actual_args = actual_args.iter();
+
+    while let Some(formal_arg) = formal_args.next() {
+        let Expr::Sym(name) = formal_arg else {
+            return Err(format!(
+                "{}: formal arg must be a symbol",
+                macro_name.unwrap_or("macro")
+            ));
+        };
+
+        let Some(expr) = actual_args.next() else {
+            return Err(format!("{}: too few args", macro_name.unwrap_or("macro")));
+        };
+
+        macro_env.set(name, expr.clone());
+    }
+
+    if actual_args.next().is_some() {
+        return Err(format!("{}: too many args", macro_name.unwrap_or("macro")));
+    }
+
+    Ok(eval(body, &macro_env)?)
 }

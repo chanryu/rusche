@@ -26,7 +26,7 @@ pub fn repl() {
             Ok(line) => {
                 let _ = rl.add_history_entry(line.as_str());
 
-                match get_tokens(line) {
+                match tokenize(&line) {
                     Ok(tokens) => parser.add_tokens(tokens),
                     Err(error) => {
                         println!("Error: {}", error);
@@ -38,16 +38,16 @@ pub fn repl() {
                     match parser.parse() {
                         Ok(expr) => match eval(&expr, &env) {
                             Ok(result) => {
-                                println!("{} => {}", expr, result);
+                                println!("; {}", result);
                             }
                             Err(error) => {
-                                println!("Error: {}", error);
+                                println!("; Error: {}", error);
                             }
                         },
                         Err(ParseError::NeedMoreToken) => break,
                         Err(error) => {
                             parser.reset();
-                            println!("Error: {}", error);
+                            println!("; Error: {}", error);
                         }
                     }
                 }
@@ -69,9 +69,9 @@ fn print_logo() {
     println!("           ┴└─└─┘└─┘┴  !");
 }
 
-fn get_tokens(line: String) -> Result<Vec<Token>, TokenError> {
+fn tokenize(text: &str) -> Result<Vec<Token>, TokenError> {
     let mut tokens = Vec::new();
-    let mut scanner = Scanner::new(line.chars());
+    let mut scanner = Scanner::new(text.chars());
 
     loop {
         match scanner.get_token()? {

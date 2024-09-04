@@ -1,5 +1,5 @@
-use crate::list::List;
-use crate::proc::{NativeFunc, Proc};
+use crate::list::{cons, List};
+use crate::proc::Proc;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -14,6 +14,12 @@ pub enum Expr {
 pub const NIL: Expr = Expr::List(List::Nil);
 
 impl Expr {
+    pub fn is_nil(&self) -> bool {
+        match self {
+            Expr::List(List::Nil) => true,
+            _ => false,
+        }
+    }
     pub fn is_atom(&self) -> bool {
         match self {
             Expr::List(List::Cons(_)) => false,
@@ -41,10 +47,6 @@ impl Expr {
     {
         Self::Sym(text.into())
     }
-
-    pub fn new_native_proc(func: NativeFunc) -> Self {
-        Expr::Proc(Proc::Native(func))
-    }
 }
 
 impl fmt::Display for Expr {
@@ -53,9 +55,19 @@ impl fmt::Display for Expr {
             Expr::Num(value) => write!(f, "{}", value),
             Expr::Str(text) => write!(f, "\"{}\"", text), // TODO: escape as control chars
             Expr::Sym(name) => write!(f, "{}", name),
-            Expr::Proc(func) => write!(f, "<#proc: {:?}>", func),
+            Expr::Proc(proc) => write!(f, "<{}>", proc.fingerprint()),
             Expr::List(list) => write!(f, "{}", list),
         }
+    }
+}
+
+impl From<Vec<Expr>> for Expr {
+    fn from(mut value: Vec<Expr>) -> Self {
+        let mut list = List::Nil;
+        while let Some(expr) = value.pop() {
+            list = cons(expr, list);
+        }
+        list.into()
     }
 }
 
@@ -80,7 +92,7 @@ pub mod shortcuts {
 mod tests {
     use super::shortcuts::{num, str, sym};
     use super::*;
-    use crate::{list::cons, macros::list};
+    use crate::list::{cons, list};
 
     #[test]
     fn test_display_nil() {
@@ -121,5 +133,12 @@ mod tests {
     fn test_display_list_3() {
         let list = list!(num(0), str("string"), sym("symbol"));
         assert_eq!(format!("{}", list), r#"(0 "string" symbol)"#);
+    }
+
+    #[test]
+    fn test_vec_into_expr() {
+        let v: Vec<Expr> = vec![num(1), num(2), list!(num(3), num(4)).into()];
+        let expr: Expr = v.into();
+        assert_eq!(format!("{}", expr), "(1 2 (3 4))");
     }
 }

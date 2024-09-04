@@ -49,7 +49,16 @@ where
         match self.iter.next() {
             Some('(') => Ok(Some(Token::OpenParen)),
             Some(')') => Ok(Some(Token::CloseParen)),
+
             Some('\'') => Ok(Some(Token::Quote)),
+            Some('`') => Ok(Some(Token::Quasiquote)),
+            Some(',') => {
+                if self.iter.next_if_eq(&'@').is_some() {
+                    Ok(Some(Token::UnquoteSplicing))
+                } else {
+                    Ok(Some(Token::Unquote))
+                }
+            }
 
             // string
             Some('"') => self.read_string(),

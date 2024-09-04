@@ -1,5 +1,5 @@
-use crate::built_in;
-use crate::expr::Expr;
+use crate::expr::{Expr, NIL};
+use crate::proc::Proc;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -19,23 +19,50 @@ impl Env {
     }
 
     pub fn new_root_env() -> Self {
+        use crate::built_in;
+        use crate::prelude;
+
         let env = Env::new();
 
-        // lisp built_in
-        env.set("atom", Expr::new_native_proc(built_in::atom));
-        env.set("car", Expr::new_native_proc(built_in::car));
-        env.set("cdr", Expr::new_native_proc(built_in::cdr));
-        env.set("cond", Expr::new_native_proc(built_in::cond));
-        env.set("define", Expr::new_native_proc(built_in::define));
-        env.set("eq", Expr::new_native_proc(built_in::eq));
-        env.set("lambda", Expr::new_native_proc(built_in::lambda));
-        env.set("quote", Expr::new_native_proc(built_in::quote));
+        let set_native_func = |name, func| {
+            env.set(
+                name,
+                Expr::Proc(Proc::Native {
+                    name: name.to_owned(),
+                    func,
+                }),
+            );
+        };
+
+        // lisp primitives
+        set_native_func("atom", built_in::atom);
+        set_native_func("atom", built_in::atom);
+        set_native_func("car", built_in::car);
+        set_native_func("cdr", built_in::cdr);
+        set_native_func("cond", built_in::cond);
+        set_native_func("define", built_in::define);
+        set_native_func("eq", built_in::eq);
+        set_native_func("eval", built_in::eval_);
+        set_native_func("lambda", built_in::lambda);
+
+        // quote
+        set_native_func("quote", built_in::quote::quote);
+        set_native_func("quasiquote", built_in::quote::quasiquote);
+        set_native_func("unquote", built_in::quote::unquote);
+        set_native_func("unquote-splicing", built_in::quote::unquote_splicing);
 
         // arithmetic operations
-        env.set("+", Expr::new_native_proc(built_in::num::add));
-        env.set("-", Expr::new_native_proc(built_in::num::minus));
-        env.set("*", Expr::new_native_proc(built_in::num::multiply));
-        env.set("/", Expr::new_native_proc(built_in::num::divide));
+        set_native_func("+", built_in::num::add);
+        set_native_func("-", built_in::num::minus);
+        set_native_func("*", built_in::num::multiply);
+        set_native_func("/", built_in::num::divide);
+
+        // boolean
+        env.set("#t", Expr::new_sym("#t"));
+        env.set("#f", NIL);
+
+        // prelude
+        prelude::load_prelude(&env);
 
         env
     }

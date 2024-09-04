@@ -3,7 +3,8 @@ use crate::eval::{eval, EvalResult};
 use crate::expr::Expr;
 use crate::list::List;
 
-fn binop(
+fn binary_operation(
+    func_name: &str,
     args: &List,
     env: &Env,
     identity: f64,
@@ -21,35 +22,34 @@ fn binop(
                     result = func(result, value);
                 }
             }
-            _ => return Err(format!("{} is not a number!", arg)),
+            _ => return Err(format!("{func_name}: {arg} does not evaluate to a number!")),
         }
     }
 
     Ok(Expr::Num(result))
 }
 
-pub fn add(args: &List, env: &Env) -> EvalResult {
-    binop(args, env, 0_f64, true, |lhs, rhs| lhs + rhs)
+pub fn add(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    binary_operation(func_name, args, env, 0_f64, true, |lhs, rhs| lhs + rhs)
 }
 
-pub fn minus(args: &List, env: &Env) -> EvalResult {
-    binop(args, env, 0_f64, false, |lhs, rhs| lhs - rhs)
+pub fn minus(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    binary_operation(func_name, args, env, 0_f64, false, |lhs, rhs| lhs - rhs)
 }
 
-pub fn multiply(args: &List, env: &Env) -> EvalResult {
-    binop(args, env, 1_f64, true, |lhs, rhs| lhs * rhs)
+pub fn multiply(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    binary_operation(func_name, args, env, 1_f64, true, |lhs, rhs| lhs * rhs)
 }
 
-pub fn divide(args: &List, env: &Env) -> EvalResult {
-    binop(args, env, 1_f64, false, |lhs, rhs| lhs / rhs)
+pub fn divide(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    binary_operation(func_name, args, env, 1_f64, false, |lhs, rhs| lhs / rhs)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::expr::shortcuts::num;
-    use crate::list::cons;
-    use crate::macros::list;
+    use crate::list::{cons, list};
 
     #[test]
     fn test_add() {
@@ -57,11 +57,11 @@ mod tests {
 
         // (+ 1) => 1
         let args = list!(num(1));
-        assert_eq!(add(&args, &env), Ok(num(1)));
+        assert_eq!(add("", &args, &env), Ok(num(1)));
 
         // (+ 2 1) => 3
         let args = list!(num(2), num(1));
-        assert_eq!(add(&args, &env), Ok(num(3)));
+        assert_eq!(add("", &args, &env), Ok(num(3)));
     }
 
     #[test]
@@ -70,11 +70,11 @@ mod tests {
 
         // (- 1) => -1
         let args = list!(num(1));
-        assert_eq!(minus(&args, &env), Ok(num(-1)));
+        assert_eq!(minus("", &args, &env), Ok(num(-1)));
 
         // (- 2 1) => 1
         let args = list!(num(2), num(1));
-        assert_eq!(minus(&args, &env), Ok(num(1)));
+        assert_eq!(minus("", &args, &env), Ok(num(1)));
     }
 
     #[test]
@@ -83,15 +83,15 @@ mod tests {
 
         // (* 1) => 1
         let args = list!(num(1));
-        assert_eq!(multiply(&args, &env), Ok(num(1)));
+        assert_eq!(multiply("", &args, &env), Ok(num(1)));
 
         // (* 2 1) => 2
         let args = list!(num(2), num(1));
-        assert_eq!(multiply(&args, &env), Ok(num(2)));
+        assert_eq!(multiply("", &args, &env), Ok(num(2)));
 
         // (* 3 2 1) => 6
         let args = list!(num(3), num(2), num(1));
-        assert_eq!(multiply(&args, &env), Ok(num(6)));
+        assert_eq!(multiply("", &args, &env), Ok(num(6)));
     }
 
     #[test]
@@ -100,10 +100,10 @@ mod tests {
 
         // (/ 2) => 0.5
         let args = list!(num(2));
-        assert_eq!(divide(&args, &env), Ok(num(0.5)));
+        assert_eq!(divide("", &args, &env), Ok(num(0.5)));
 
         // (/ 4 2) => 2
         let args = list!(num(4), num(2));
-        assert_eq!(divide(&args, &env), Ok(num(2)));
+        assert_eq!(divide("", &args, &env), Ok(num(2)));
     }
 }
