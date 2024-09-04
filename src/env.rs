@@ -1,5 +1,4 @@
-use crate::built_in;
-use crate::expr::Expr;
+use crate::expr::{Expr, NIL};
 use crate::proc::Proc;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -20,6 +19,9 @@ impl Env {
     }
 
     pub fn new_root_env() -> Self {
+        use crate::built_in;
+        use crate::prelude;
+
         let env = Env::new();
 
         let set_native_func = |name, func| {
@@ -32,7 +34,7 @@ impl Env {
             );
         };
 
-        // lisp built_in
+        // lisp primitives
         set_native_func("atom", built_in::atom);
         set_native_func("atom", built_in::atom);
         set_native_func("car", built_in::car);
@@ -55,8 +57,12 @@ impl Env {
         set_native_func("*", built_in::num::multiply);
         set_native_func("/", built_in::num::divide);
 
+        // boolean
         env.set("#t", Expr::new_sym("#t"));
-        env.set("#f", Expr::new_sym("#f"));
+        env.set("#f", NIL);
+
+        // prelude
+        prelude::load_prelude(&env);
 
         env
     }
