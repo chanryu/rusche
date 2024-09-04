@@ -91,10 +91,11 @@ pub fn define(func_name: &str, args: &List, env: &Env) -> EvalResult {
 
             env.set(
                 name,
-                Expr::Proc(Proc::Func {
-                    name: name.clone(),
+                Expr::Proc(Proc::Lambda {
+                    name: Some(name.to_string()),
                     formal_args: cons.cdr.as_ref().clone(),
                     body: Box::new(body.clone()),
+                    outer_env: env.clone(),
                 }),
             );
             Ok(NIL)
@@ -141,7 +142,7 @@ pub fn lambda(func_name: &str, args: &List, env: &Env) -> EvalResult {
 
     // TODO: check if formal_args is a list of symbols.
 
-    let Some(lambda_body) = iter.next() else {
+    let Some(body) = iter.next() else {
         return Err(make_syntax_error(func_name, args));
     };
 
@@ -150,8 +151,9 @@ pub fn lambda(func_name: &str, args: &List, env: &Env) -> EvalResult {
     }
 
     Ok(Expr::Proc(Proc::Lambda {
+        name: None,
         formal_args: List::Cons(formal_args.clone()),
-        lambda_body: Box::new(lambda_body.clone()),
+        body: Box::new(body.clone()),
         outer_env: env.clone(),
     }))
 }

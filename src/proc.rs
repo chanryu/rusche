@@ -5,18 +5,14 @@ use crate::list::List;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Proc {
-    NativeFunc {
+    Native {
         name: String,
         func: fn(func_name: &str, args: &List, env: &Env) -> EvalResult,
     },
-    Func {
-        name: String,
+    Lambda {
+        name: Option<String>,
         formal_args: List,
         body: Box<Expr>,
-    },
-    Lambda {
-        formal_args: List,
-        lambda_body: Box<Expr>,
         outer_env: Env,
     },
 }
@@ -24,54 +20,21 @@ pub enum Proc {
 impl Proc {
     pub fn invoke(&self, args: &List, env: &Env) -> EvalResult {
         match self {
-            Proc::NativeFunc { name, func } => func(name, args, env),
-            Proc::Func {
+            Proc::Native { name, func } => func(name, args, env),
+            Proc::Lambda {
                 name,
                 formal_args,
                 body,
-            } => eval_func(name, formal_args, body, args, env),
-            Proc::Lambda {
-                formal_args,
-                lambda_body,
                 outer_env,
-            } => eval_closure(formal_args, lambda_body, outer_env, args, env),
+            } => eval_lambda(name.as_deref(), formal_args, body, outer_env, args, env),
         }
     }
 }
 
-fn eval_func(
-    func_name: &str,
+fn eval_lambda(
+    lambda_name: Option<&str>,
     formal_args: &List,
     body: &Expr,
-    args: &List,
-    env: &Env,
-) -> EvalResult {
-    let func_env = env.derive();
-    let mut formal_args = formal_args.iter();
-    let mut args = args.iter();
-
-    while let Some(formal_arg) = formal_args.next() {
-        let Expr::Sym(name) = formal_arg else {
-            return Err(format!("{func_name}: formal arg must be a symbol"));
-        };
-
-        let Some(expr) = args.next() else {
-            return Err(format!("{func_name}: too few args"));
-        };
-
-        func_env.set(name, eval(expr, env)?);
-    }
-
-    if args.next().is_some() {
-        return Err(format!("{func_name}: too many args"));
-    }
-
-    Ok(eval(body, &func_env)?)
-}
-
-fn eval_closure(
-    formal_args: &List,
-    lambda_body: &Expr,
     outer_env: &Env,
     args: &List,
     env: &Env,
@@ -82,19 +45,25 @@ fn eval_closure(
 
     while let Some(formal_arg) = formal_args.next() {
         let Expr::Sym(name) = formal_arg else {
-            return Err("lambda: formal arg must be a symbol".into());
+            return Err(format!(
+                "{}: formal arg must be a symbol",
+                lambda_name.unwrap_or("lambda")
+            ));
         };
 
         let Some(expr) = args.next() else {
-            return Err("lambda: too few args".into());
+            return Err(format!("{}: too few args", lambda_name.unwrap_or("lambda")));
         };
 
         lambda_env.set(name, eval(expr, env)?);
     }
 
     if args.next().is_some() {
-        return Err("lambda: too many args".into());
+        return Err(format!(
+            "{}: too many args",
+            lambda_name.unwrap_or("lambda")
+        ));
     }
 
-    Ok(eval(lambda_body, &lambda_env)?)
+    Ok(eval(body, &lambda_env)?)
 }

@@ -116,7 +116,7 @@ mod tests {
         let env = Env::new();
         env.set(
             "+",
-            Expr::Proc(Proc::NativeFunc {
+            Expr::Proc(Proc::Native {
                 name: "add".to_owned(),
                 func: crate::built_in::num::add,
             }),
@@ -140,7 +140,7 @@ mod tests {
         let env = Env::new();
         env.set(
             "quote",
-            Expr::Proc(Proc::NativeFunc {
+            Expr::Proc(Proc::Native {
                 name: "quote".to_owned(),
                 func: quote,
             }),

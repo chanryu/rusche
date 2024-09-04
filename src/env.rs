@@ -27,7 +27,7 @@ impl Env {
         let set_native_func = |name, func| {
             env.set(
                 name,
-                Expr::Proc(Proc::NativeFunc {
+                Expr::Proc(Proc::Native {
                     name: name.to_owned(),
                     func,
                 }),

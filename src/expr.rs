@@ -56,22 +56,24 @@ impl fmt::Display for Expr {
             Expr::Num(value) => write!(f, "{}", value),
             Expr::Str(text) => write!(f, "\"{}\"", text), // TODO: escape as control chars
             Expr::Sym(name) => write!(f, "{}", name),
-            Expr::Proc(Proc::NativeFunc { name, func: _ }) => {
-                write!(f, "<#proc/native-func: {name}>")
+            Expr::Proc(Proc::Native { name, func: _ }) => {
+                write!(f, "<#proc/native: {name}>")
             }
-            Expr::Proc(Proc::Func {
-                name,
-                formal_args: _,
-                body: _,
-            }) => write!(f, "<#proc/func: {name}>"),
             Expr::Proc(Proc::Lambda {
-                formal_args: _,
-                lambda_body,
+                name,
+                formal_args,
+                body,
                 outer_env: _,
             }) => {
                 let mut hasher = DefaultHasher::new();
-                lambda_body.to_string().hash(&mut hasher);
-                write!(f, "<#proc/lambda: {:x}>", hasher.finish())
+                formal_args.to_string().hash(&mut hasher);
+                body.to_string().hash(&mut hasher);
+                write!(
+                    f,
+                    "<#proc/{}: {:x}>",
+                    name.as_deref().unwrap_or("lambda"),
+                    hasher.finish()
+                )
             }
             Expr::List(list) => write!(f, "{}", list),
         }
