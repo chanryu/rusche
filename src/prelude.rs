@@ -1,29 +1,42 @@
+use core::panic;
+
 use crate::env::Env;
 use crate::eval::eval;
-use crate::parser::Parser;
+use crate::parser::{ParseError, Parser};
 use crate::scanner::Scanner;
 
-const DEFMACRO: &str = r#"
-    (define (defmacro name args body)
-        (eval `(define ,name
-                (lambda ,args (eval ,body)))))
-    "#;
+const PRELUDE: &str = r#"
+
+; nil
+(define nil '())
+
+"#;
 
 pub fn load_prelude(env: &Env) {
-    for expr in [DEFMACRO] {
-        let mut tokens = Vec::new();
-        let mut scanner = Scanner::new(expr.chars());
-        while let Some(token) = scanner.get_token().expect("Prelude failure!") {
-            tokens.push(token);
-        }
+    let mut tokens = Vec::new();
+    let mut scanner = Scanner::new(PRELUDE.chars());
+    while let Some(token) = scanner.get_token().expect("Prelude failure!") {
+        tokens.push(token);
+    }
 
-        let mut parser = Parser::new();
-        parser.add_tokens(tokens);
-        let expr = parser.parse().expect("Prelude failure!");
-        if parser.is_parsing() {
-            panic!();
-        }
+    let mut parser = Parser::new();
+    parser.add_tokens(tokens);
 
-        let _ = eval(&expr, &env).expect("Prelude failure!");
+    loop {
+        match parser.parse() {
+            Ok(expr) => {
+                let _ = eval(&expr, &env).expect("Prelude eval failure!");
+            }
+            Err(ParseError::NeedMoreToken) => {
+                if parser.is_parsing() {
+                    panic!("Prelude parse failure!");
+                } else {
+                    break; // we're done!
+                }
+            }
+            Err(ParseError::UnexpectedToken(_)) => {
+                panic!("Prelude parse failure!");
+            }
+        }
     }
 }
