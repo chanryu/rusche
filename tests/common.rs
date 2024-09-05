@@ -4,7 +4,7 @@ use rusp::expr::Expr;
 use rusp::parser::Parser;
 use rusp::scanner::Scanner;
 
-pub fn parse_expr(text: &str) -> Expr {
+pub fn parse_single_expr(text: &str) -> Expr {
     let mut tokens = Vec::new();
     let mut scanner = Scanner::new(text.chars());
     while let Some(token) = scanner
@@ -27,9 +27,9 @@ pub fn parse_expr(text: &str) -> Expr {
     }
 }
 
-pub fn eval_expr(expr: &str) -> String {
+pub fn eval_str(text: &str) -> String {
     let env = Env::new_root_env();
-    match eval(&parse_expr(expr), &env) {
+    match eval(&parse_single_expr(text), &env) {
         Ok(expr) => expr.to_string(),
         Err(error) => format!("Err: {}", error),
     }
