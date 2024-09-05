@@ -3,7 +3,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use crate::env::Env;
 use crate::eval::{eval, EvalResult};
 use crate::expr::{Expr, NIL};
-use crate::list::{cons, List};
+use crate::list::List;
 
 pub type NativeFunc = fn(func_name: &str, args: &List, env: &Env) -> EvalResult;
 
@@ -12,7 +12,7 @@ pub enum Proc {
     Closure {
         name: Option<String>,
         formal_args: List,
-        body: Box<Expr>,
+        body: Box<List>,
         outer_env: Env,
     },
     Macro {
@@ -85,7 +85,7 @@ impl Proc {
 fn eval_closure(
     closure_name: Option<&str>,
     formal_args: &List,
-    body: &Expr,
+    body: &List,
     outer_env: &Env,
     actual_args: &List,
     env: &Env,
@@ -119,7 +119,10 @@ fn eval_closure(
         }
     }
 
-    Ok(eval(body, &closure_env)?)
+    let result = body
+        .iter()
+        .try_fold(NIL, |_, expr| eval(expr, &closure_env))?;
+    Ok(result)
 }
 
 fn eval_macro(

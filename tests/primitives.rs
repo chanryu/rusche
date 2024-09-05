@@ -5,9 +5,21 @@ use rusp::env::Env;
 use rusp::eval::eval;
 
 #[test]
+fn test_car() {
+    assert_eq!(eval_expr("(car '(1 2))"), "1");
+}
+
+#[test]
+fn test_cdr() {
+    assert_eq!(eval_expr("(cdr '(1 2))"), "(2)");
+}
+
+#[test]
 fn test_cond() {
-    assert_eq!(eval_expr("(cond (t 0) (f 1))"), "0");
-    assert_eq!(eval_expr("(cond (f 0) (t 1))"), "1");
+    assert_eq!(eval_expr("(cond (#t  0) (#t  1))"), "0");
+    assert_eq!(eval_expr("(cond (#t  0) (nil 1))"), "0");
+    assert_eq!(eval_expr("(cond (nil 0) (#t  1))"), "1");
+    assert_eq!(eval_expr("(cond (nil 0) (nil 1))"), "()");
 }
 
 #[test]

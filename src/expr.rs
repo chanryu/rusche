@@ -61,6 +61,12 @@ impl fmt::Display for Expr {
     }
 }
 
+impl From<List> for Expr {
+    fn from(val: List) -> Self {
+        Expr::List(val)
+    }
+}
+
 impl From<Vec<Expr>> for Expr {
     fn from(mut value: Vec<Expr>) -> Self {
         let mut list = List::Nil;

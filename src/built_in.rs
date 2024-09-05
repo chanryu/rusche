@@ -23,16 +23,34 @@ pub fn atom(func_name: &str, args: &List, env: &Env) -> EvalResult {
     }
 }
 
-pub fn car(func_name: &str, args: &List, _env: &Env) -> EvalResult {
-    if let List::Cons(cons) = args {
+pub fn car(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    if args.len() != 1 {
+        return Err(make_syntax_error(func_name, args));
+    }
+
+    let mut iter = args.iter();
+    let Some(expr) = iter.next() else {
+        return Err(make_syntax_error(func_name, args));
+    };
+
+    if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
         Ok(cons.car.as_ref().clone())
     } else {
         Err(make_syntax_error(func_name, args))
     }
 }
 
-pub fn cdr(func_name: &str, args: &List, _env: &Env) -> EvalResult {
-    if let List::Cons(cons) = args {
+pub fn cdr(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    if args.len() != 1 {
+        return Err(make_syntax_error(func_name, args));
+    }
+
+    let mut iter = args.iter();
+    let Some(expr) = iter.next() else {
+        return Err(make_syntax_error(func_name, args));
+    };
+
+    if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
         Ok(cons.cdr.as_ref().clone().into())
     } else {
         Err(make_syntax_error(func_name, args))
@@ -81,11 +99,7 @@ pub fn define(func_name: &str, args: &List, env: &Env) -> EvalResult {
                 return Err(format!("{func_name}: expects a list of symbols"));
             };
 
-            let Some(body) = iter.next() else {
-                return Err(format!(
-                    "{func_name}: expects a expression after a list of symbols"
-                ));
-            };
+            let body = iter.into();
 
             // TODO: check if formal_args is a list of symbols.
 
@@ -94,7 +108,7 @@ pub fn define(func_name: &str, args: &List, env: &Env) -> EvalResult {
                 Expr::Proc(Proc::Closure {
                     name: Some(name.to_string()),
                     formal_args: cons.cdr.as_ref().clone(),
-                    body: Box::new(body.clone()),
+                    body: Box::new(body),
                     outer_env: env.clone(),
                 }),
             );
@@ -149,20 +163,12 @@ pub fn defun(func_name: &str, args: &List, env: &Env) -> EvalResult {
 
     // TODO: check if formal_args is a list of symbols.
 
-    let Some(body) = iter.next() else {
-        return Err(make_syntax_error(func_name, args));
-    };
-
-    if iter.next().is_some() {
-        return Err(make_syntax_error(func_name, args));
-    }
-
     env.set(
         lambda_name,
         Expr::Proc(Proc::Closure {
             name: Some(lambda_name.clone()),
             formal_args: List::Cons(formal_args.clone()),
-            body: Box::new(body.clone()),
+            body: Box::new(iter.into()),
             outer_env: env.clone(),
         }),
     );
@@ -220,18 +226,18 @@ pub fn lambda(func_name: &str, args: &List, env: &Env) -> EvalResult {
 
     // TODO: check if formal_args is a list of symbols.
 
-    let Some(body) = iter.next() else {
-        return Err(make_syntax_error(func_name, args));
-    };
+    // let Some(body) = iter.next() else {
+    //     return Err(make_syntax_error(func_name, args));
+    // };
 
-    if iter.next().is_some() {
-        return Err(make_syntax_error(func_name, args));
-    }
+    // if iter.next().is_some() {
+    //     return Err(make_syntax_error(func_name, args));
+    // }
 
     Ok(Expr::Proc(Proc::Closure {
         name: None,
         formal_args: List::Cons(formal_args.clone()),
-        body: Box::new(body.clone()),
+        body: Box::new(iter.into()),
         outer_env: env.clone(),
     }))
 }
@@ -248,22 +254,6 @@ mod tests {
     use super::*;
     use crate::expr::shortcuts::{num, str, sym};
     use crate::list::list;
-
-    #[test]
-    fn test_car() {
-        let env = Env::new();
-        // (car '(1 2)) => 1
-        let ret = car("", &list!(num(1), num(2)), &env);
-        assert_eq!(ret, Ok(num(1)));
-    }
-
-    #[test]
-    fn test_cdr() {
-        let env = Env::new();
-        // (cdr '(1 2)) => 2
-        let ret = cdr("", &list!(num(1), num(2)), &env);
-        assert_eq!(ret, Ok(list!(num(2)).into()));
-    }
 
     #[test]
     fn test_define() {

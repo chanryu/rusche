@@ -36,7 +36,6 @@ impl Env {
 
         // lisp primitives
         set_native_func("atom", built_in::atom);
-        set_native_func("atom", built_in::atom);
         set_native_func("car", built_in::car);
         set_native_func("cdr", built_in::cdr);
         set_native_func("cond", built_in::cond);
