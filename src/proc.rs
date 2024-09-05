@@ -18,7 +18,7 @@ pub enum Proc {
     Macro {
         name: Option<String>,
         formal_args: List,
-        body: Box<Expr>,
+        body: Box<List>,
     },
     Native {
         name: String,
@@ -128,7 +128,7 @@ fn eval_closure(
 fn eval_macro(
     macro_name: Option<&str>,
     formal_args: &List,
-    body: &Expr,
+    body: &List,
     actual_args: &List,
     env: &Env,
 ) -> EvalResult {
@@ -161,7 +161,10 @@ fn eval_macro(
         }
     }
 
-    Ok(eval(body, &macro_env)?)
+    let result = body
+        .iter()
+        .try_fold(NIL, |_, expr| eval(expr, &macro_env))?;
+    Ok(result)
 }
 
 fn parse_name_if_variadic_args(name: &str) -> Option<&str> {

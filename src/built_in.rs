@@ -131,20 +131,12 @@ pub fn defmacro(func_name: &str, args: &List, env: &Env) -> EvalResult {
 
     // TODO: check if formal_args is a list of symbols.
 
-    let Some(body) = iter.next() else {
-        return Err(make_syntax_error(func_name, args));
-    };
-
-    if iter.next().is_some() {
-        return Err(make_syntax_error(func_name, args));
-    }
-
     env.set(
         macro_name,
         Expr::Proc(Proc::Macro {
             name: Some(macro_name.clone()),
             formal_args: List::Cons(formal_args.clone()),
-            body: Box::new(body.clone()),
+            body: Box::new(iter.into()),
         }),
     );
     Ok(NIL)
