@@ -88,14 +88,6 @@ pub fn quasiquote(func_name: &str, args: &List, env: &Env) -> EvalResult {
     }
 }
 
-pub fn unquote(func_name: &str, _args: &List, _env: &Env) -> EvalResult {
-    Err(format!("{func_name} (,) used outside of quasiquote"))
-}
-
-pub fn unquote_splicing(func_name: &str, _args: &List, _env: &Env) -> EvalResult {
-    Err(format!("{func_name} (,@) used outside of quasiquote"))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

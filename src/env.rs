@@ -51,8 +51,6 @@ impl Env {
         // quote
         set_native_func("quote", built_in::quote::quote);
         set_native_func("quasiquote", built_in::quote::quasiquote);
-        set_native_func("unquote", built_in::quote::unquote);
-        set_native_func("unquote-splicing", built_in::quote::unquote_splicing);
 
         // arithmetic operations
         set_native_func("+", built_in::num::add);
