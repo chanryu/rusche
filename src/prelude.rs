@@ -5,52 +5,52 @@ use crate::eval::eval;
 use crate::parser::{ParseError, Parser};
 use crate::scanner::Scanner;
 
-const PRELUDE: &str = r#"
-
-;; nil
-(define nil '())
-
-;; #t, #f
-(define #t '#t)
-(define #f '())
-
-;; else
-(define else #t)
-
-;; null?
-(define (null? lst)
-  (eq? lst '()))
-
-;; if
-(defmacro if (pred then else)
-  `(cond (,pred ,then) (else ,else)))
-
-"#;
-
 pub fn load_prelude(env: &Env) {
-    let mut tokens = Vec::new();
-    let mut scanner = Scanner::new(PRELUDE.chars());
-    while let Some(token) = scanner.get_token().expect("Prelude failure!") {
-        tokens.push(token);
-    }
+    let primitives = [
+        // nil
+        "(define nil '())",
+        // #t
+        "(define #t 1)",
+        // #f
+        "(define #f '())",
+        // else
+        "(define else 1)",
+        // null?
+        "(define (null? lst) (eq? lst '()))",
+        // if
+        "(defmacro if (pred then else)`(cond (,pred ,then) (else ,else)))",
+    ];
 
     let mut parser = Parser::new();
-    parser.add_tokens(tokens);
 
-    loop {
-        match parser.parse() {
-            Ok(expr) => {
-                let _ = eval(&expr, &env).expect("Prelude eval failure!");
-            }
-            Err(ParseError::NeedMoreToken) => {
-                if parser.is_parsing() {
-                    panic!("Prelude parse failure!");
-                } else {
-                    break; // we're done!
+    for primitive in primitives {
+        let mut tokens = Vec::new();
+        let mut scanner = Scanner::new(primitive.chars());
+        while let Some(token) = scanner
+            .get_token()
+            .expect(format!("Failed to tokenize prelude: {primitive}").as_str())
+        {
+            tokens.push(token);
+        }
+
+        parser.add_tokens(tokens);
+
+        loop {
+            match parser.parse() {
+                Ok(expr) => {
+                    let _ = eval(&expr, &env)
+                        .expect(format!("Failed to evaluate prelude: {primitive}").as_str());
                 }
-            }
-            Err(ParseError::UnexpectedToken(_)) => {
-                panic!("Prelude parse failure!");
+                Err(ParseError::NeedMoreToken) => {
+                    if parser.is_parsing() {
+                        panic!("Failed to parse prelude - incomplete expression: {primitive}");
+                    } else {
+                        break; // we're done!
+                    }
+                }
+                Err(ParseError::UnexpectedToken(token)) => {
+                    panic!("Failed to parse prelude - unexpected token {token} in {primitive}");
+                }
             }
         }
     }
