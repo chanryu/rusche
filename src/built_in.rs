@@ -7,6 +7,9 @@ use crate::expr::{Expr, NIL};
 use crate::list::{cons, List};
 use crate::proc::Proc;
 
+const TRUE: Expr = Expr::Num(1_f64);
+const FALSE: Expr = NIL;
+
 pub fn atom(func_name: &str, args: &List, env: &Env) -> EvalResult {
     let List::Cons(cons) = args else {
         return Err(make_syntax_error(func_name, args));
@@ -17,9 +20,9 @@ pub fn atom(func_name: &str, args: &List, env: &Env) -> EvalResult {
     };
 
     if eval(cons.car.as_ref(), env)?.is_atom() {
-        Ok(Expr::new_sym("#t"))
+        Ok(TRUE)
     } else {
-        Ok(NIL)
+        Ok(FALSE)
     }
 }
 
@@ -207,9 +210,9 @@ pub fn eq(func_name: &str, args: &List, env: &Env) -> EvalResult {
         if let Some(right) = iter.next() {
             if iter.next().is_none() {
                 return if eval(left, env)? == eval(right, env)? {
-                    Ok(Expr::new_sym("#t"))
+                    Ok(TRUE)
                 } else {
-                    Ok(NIL)
+                    Ok(FALSE)
                 };
             }
         }
@@ -271,12 +274,12 @@ mod tests {
     fn test_eq() {
         let env = Env::new();
         // (eq 1 1) => #t
-        assert_eq!(eq("", &list!(num(1), num(1)), &env), Ok(sym("#t")));
+        assert_ne!(eq("", &list!(num(1), num(1)), &env).unwrap(), NIL);
         // (eq 1 2) => ()
-        assert_eq!(eq("", &list!(num(1), num(2)), &env), Ok(NIL));
+        assert_eq!(eq("", &list!(num(1), num(2)), &env).unwrap(), NIL);
         // (eq "str" "str") => #t
-        assert_eq!(eq("", &list!(str("str"), str("str")), &env), Ok(sym("#t")));
+        assert_ne!(eq("", &list!(str("str"), str("str")), &env).unwrap(), NIL);
         // (eq 1 "1") => ()
-        assert_eq!(eq("", &list!(num(1), str("1")), &env), Ok(NIL));
+        assert_eq!(eq("", &list!(num(1), str("1")), &env).unwrap(), NIL);
     }
 }

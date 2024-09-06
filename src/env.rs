@@ -61,7 +61,7 @@ impl Env {
         set_native_func("/", built_in::num::divide);
 
         // boolean
-        env.set("#t", Expr::new_sym("#t"));
+        env.set("#t", Expr::Num(1_f64));
         env.set("#f", NIL);
 
         // prelude

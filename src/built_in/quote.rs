@@ -49,13 +49,10 @@ fn quasiquote_expr(func_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>,
             if let Some(cdar) = cons.cdar() {
                 match eval(cdar, env)? {
                     Expr::List(list) => {
-                        for expr in list.iter() {
-                            exprs.push(eval(expr, env)?);
-                        }
+                        // TODO: implement comsuming `into_iter()`
+                        exprs.extend(list.iter().map(|e| e.clone()));
                     }
                     _ => {
-                        // TODO: error - malformed unquote-splicing, non-list argument
-                        // e.g. "(unquote-splicing 1)"
                         return Err(format!(
                             "unquote-splicing: \"{}\" does not evaluate to a list",
                             cdar
