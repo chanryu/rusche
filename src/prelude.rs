@@ -25,12 +25,6 @@ const PRELUDE: &str = r#"
 (defmacro if (pred then else)
   `(cond (,pred ,then) (else ,else)))
 
-;; apply
-(define (apply func *args)
-  (if (null? args)
-      (func)
-      (apply (func (car args)) (cdr args))))
-
 "#;
 
 pub fn load_prelude(env: &Env) {
