@@ -17,8 +17,7 @@ pub fn quote(func_name: &str, args: &List, _env: &Env) -> EvalResult {
 }
 
 fn quasiquote_expr(func_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>, EvalError> {
-    #[allow(unused)]
-    let expr_str = expr.to_string();
+    // println!("quasiquote_expr: {}", expr);
 
     let Expr::List(list) = expr else {
         return Ok(vec![expr.clone()]);
@@ -28,24 +27,22 @@ fn quasiquote_expr(func_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>,
         return Ok(vec![NIL]);
     };
 
-    let Expr::Sym(name) = cons.car.as_ref() else {
-        let mut exprs = Vec::new();
-        for expr in list.iter() {
-            exprs.extend(quasiquote_expr(func_name, expr, env)?);
-        }
-        return Ok(vec![exprs.into()]);
+    let car_name: Option<&str> = if let Expr::Sym(name) = cons.car.as_ref() {
+        Some(name.as_str())
+    } else {
+        None
     };
 
     let mut exprs = Vec::new();
-    match name.as_str() {
-        "unquote" => {
+    match car_name {
+        Some("unquote") => {
             if let Some(cdar) = cons.cdar() {
                 exprs.push(eval(cdar, env)?);
             } else {
                 return Err(make_syntax_error("unquote", &List::Nil));
             }
         }
-        "unquote-splicing" => {
+        Some("unquote-splicing") => {
             if let Some(cdar) = cons.cdar() {
                 match eval(cdar, env)? {
                     Expr::List(list) => {
@@ -64,9 +61,16 @@ fn quasiquote_expr(func_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>,
             }
         }
         _ => {
-            exprs.push(quasiquote(func_name, list, env)?);
+            let mut v = Vec::new();
+            for expr in list.iter() {
+                v.extend(quasiquote_expr(func_name, expr, env)?);
+            }
+            exprs.push(v.into());
         }
     }
+
+    // println!("return:");
+    // exprs.iter().for_each(|e| println!("  - {e}"));
 
     Ok(exprs)
 }
@@ -83,8 +87,14 @@ pub fn quasiquote(func_name: &str, args: &List, env: &Env) -> EvalResult {
     }
 
     match quasiquote_expr(func_name, expr, env) {
-        Ok(mut exprs) if exprs.len() == 1 => Ok(exprs.remove(0)),
-        _ => Err(make_syntax_error(func_name, args)),
+        Ok(mut exprs) => {
+            if exprs.len() == 1 {
+                Ok(exprs.remove(0))
+            } else {
+                Err(make_syntax_error(func_name, args))
+            }
+        }
+        Err(err) => Err(err),
     }
 }
 

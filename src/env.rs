@@ -1,4 +1,4 @@
-use crate::expr::{Expr, NIL};
+use crate::expr::Expr;
 use crate::proc::Proc;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -57,10 +57,6 @@ impl Env {
         set_native_func("-", built_in::num::minus);
         set_native_func("*", built_in::num::multiply);
         set_native_func("/", built_in::num::divide);
-
-        // boolean
-        env.set("#t", Expr::Num(1_f64));
-        env.set("#f", NIL);
 
         // prelude
         prelude::load_prelude(&env);

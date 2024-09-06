@@ -163,9 +163,8 @@ fn eval_macro(
 
     let mut result = NIL;
     for expr in body.iter() {
-        //result = eval(&eval(expr, &macro_env)?, env)?
-        let first_eval = eval(expr, &macro_env)?;
-        result = eval(&first_eval, env)?
+        let expanded = eval(expr, &macro_env)?;
+        result = eval(&expanded, env)?;
     }
     Ok(result)
 }

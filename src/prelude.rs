@@ -10,6 +10,27 @@ const PRELUDE: &str = r#"
 ;; nil
 (define nil '())
 
+;; #t, #f
+(define #t '#t)
+(define #f '())
+
+;; else
+(define else #t)
+
+;; null?
+(define (null? lst)
+  (eq? lst '()))
+
+;; if
+(defmacro if (pred then else)
+  `(cond (,pred ,then) (else ,else)))
+
+;; apply
+(define (apply func *args)
+  (if (null? args)
+      (func)
+      (apply (func (car args)) (cdr args))))
+
 "#;
 
 pub fn load_prelude(env: &Env) {
