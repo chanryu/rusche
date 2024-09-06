@@ -35,15 +35,16 @@ impl Env {
         };
 
         // lisp primitives
-        set_native_func("atom", built_in::atom);
+        set_native_func("atom?", built_in::atom);
         set_native_func("car", built_in::car);
         set_native_func("cdr", built_in::cdr);
+        set_native_func("cons", built_in::cons_);
         set_native_func("cond", built_in::cond);
         set_native_func("define", built_in::define);
         set_native_func("defmacro", built_in::defmacro);
         set_native_func("defun", built_in::defun);
         set_native_func("display", built_in::display);
-        set_native_func("eq", built_in::eq);
+        set_native_func("eq?", built_in::eq);
         set_native_func("eval", built_in::eval_);
         set_native_func("lambda", built_in::lambda);
 

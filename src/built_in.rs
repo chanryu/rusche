@@ -57,6 +57,27 @@ pub fn cdr(func_name: &str, args: &List, env: &Env) -> EvalResult {
     }
 }
 
+pub fn cons_(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    let mut iter = args.iter();
+
+    let Some(car) = iter.next() else {
+        return Err(make_syntax_error(func_name, args));
+    };
+
+    let Some(cdr) = iter.next() else {
+        return Err(make_syntax_error(func_name, args));
+    };
+
+    // TODO: Err if iter.next().is_some()
+
+    let car = eval(car, env)?;
+    let Expr::List(cdr) = eval(cdr, env)? else {
+        return Err(make_syntax_error(func_name, args));
+    };
+
+    Ok(crate::list::cons(car, cdr).into())
+}
+
 pub fn cond(func_name: &str, args: &List, env: &Env) -> EvalResult {
     let mut iter = args.iter();
     loop {
@@ -67,8 +88,8 @@ pub fn cond(func_name: &str, args: &List, env: &Env) -> EvalResult {
             Some(Expr::List(List::Cons(cons))) => {
                 let car = cons.car.as_ref();
                 if !eval(car, env)?.is_nil() {
-                    if let List::Cons(cons) = cons.cdr.as_ref() {
-                        return eval(cons.car.as_ref(), env);
+                    if let Some(expr) = cons.cdar() {
+                        return eval(expr, env);
                     } else {
                         break;
                     }
@@ -215,16 +236,6 @@ pub fn lambda(func_name: &str, args: &List, env: &Env) -> EvalResult {
     let Some(Expr::List(List::Cons(formal_args))) = iter.next() else {
         return Err(make_syntax_error(func_name, args));
     };
-
-    // TODO: check if formal_args is a list of symbols.
-
-    // let Some(body) = iter.next() else {
-    //     return Err(make_syntax_error(func_name, args));
-    // };
-
-    // if iter.next().is_some() {
-    //     return Err(make_syntax_error(func_name, args));
-    // }
 
     Ok(Expr::Proc(Proc::Closure {
         name: None,

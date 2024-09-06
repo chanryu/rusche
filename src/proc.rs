@@ -161,9 +161,12 @@ fn eval_macro(
         }
     }
 
-    let result = body
-        .iter()
-        .try_fold(NIL, |_, expr| eval(expr, &macro_env))?;
+    let mut result = NIL;
+    for expr in body.iter() {
+        //result = eval(&eval(expr, &macro_env)?, env)?
+        let first_eval = eval(expr, &macro_env)?;
+        result = eval(&first_eval, env)?
+    }
     Ok(result)
 }
 

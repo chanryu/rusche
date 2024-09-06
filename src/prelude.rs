@@ -7,19 +7,9 @@ use crate::scanner::Scanner;
 
 const PRELUDE: &str = r#"
 
-; nil
+;; nil
 (define nil '())
 
-; newline
-(define (newline) (display "\n"))
-
-; null?
-(define (null? x) (eq x nil))
-
-; reverse
-(define (reverse lst)
-    (cond ((null? lst) lst)
-          ('t (append (reverse (cdr lst)) (list (car lst))))))
 "#;
 
 pub fn load_prelude(env: &Env) {
