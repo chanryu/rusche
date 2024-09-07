@@ -8,17 +8,13 @@ use crate::list::{cons, List};
 use crate::proc::Proc;
 
 pub fn atom(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let Some(expr) = get_exact_one_arg(args) else {
-        return Err(make_syntax_error(func_name, args));
-    };
+    let expr = get_exact_one_arg(func_name, args)?;
 
     Ok(eval(expr, env)?.is_atom().into())
 }
 
 pub fn car(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let Some(expr) = get_exact_one_arg(args) else {
-        return Err(make_syntax_error(func_name, args));
-    };
+    let expr = get_exact_one_arg(func_name, args)?;
 
     if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
         Ok(cons.car.as_ref().clone())
@@ -28,9 +24,7 @@ pub fn car(func_name: &str, args: &List, env: &Env) -> EvalResult {
 }
 
 pub fn cdr(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let Some(expr) = get_exact_one_arg(args) else {
-        return Err(make_syntax_error(func_name, args));
-    };
+    let expr = get_exact_one_arg(func_name, args)?;
 
     if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
         Ok(cons.cdr.as_ref().clone().into())
@@ -156,9 +150,7 @@ pub fn eq(func_name: &str, args: &List, env: &Env) -> EvalResult {
 }
 
 pub fn eval_(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let Some(expr) = get_exact_one_arg(args) else {
-        return Err(make_syntax_error(func_name, args));
-    };
+    let expr = get_exact_one_arg(func_name, args)?;
 
     eval(&eval(expr, env)?, env)
 }
@@ -185,13 +177,15 @@ fn make_syntax_error(func_name: &str, args: &List) -> EvalError {
     )
 }
 
-fn get_exact_one_arg(args: &List) -> Option<&Expr> {
+fn get_exact_one_arg<'a>(func_name: &str, args: &'a List) -> Result<&'a Expr, EvalError> {
     let mut iter = args.iter();
-    let Some(arg) = iter.next() else { return None };
+    let Some(arg) = iter.next() else {
+        return Err(format!("{func_name} needs an argument."));
+    };
     if iter.next().is_none() {
-        Some(arg)
+        Ok(arg)
     } else {
-        None
+        Err(format!("{func_name} expects only 1 argument."))
     }
 }
 

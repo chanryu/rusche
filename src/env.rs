@@ -51,7 +51,7 @@ impl Env {
         set_native_func("quote", built_in::quote::quote);
         set_native_func("quasiquote", built_in::quote::quasiquote);
 
-        // arithmetic operations
+        // num
         set_native_func("+", built_in::num::add);
         set_native_func("-", built_in::num::minus);
         set_native_func("*", built_in::num::multiply);

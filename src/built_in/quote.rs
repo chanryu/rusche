@@ -5,11 +5,7 @@ use crate::expr::{Expr, NIL};
 use crate::list::List;
 
 pub fn quote(func_name: &str, args: &List, _env: &Env) -> EvalResult {
-    let Some(expr) = get_exact_one_arg(args) else {
-        return Err(make_syntax_error(func_name, args));
-    };
-
-    Ok(expr.clone())
+    Ok(get_exact_one_arg(func_name, args)?.clone())
 }
 
 fn quasiquote_expr(func_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>, EvalError> {
@@ -67,9 +63,7 @@ fn quasiquote_expr(func_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>,
 }
 
 pub fn quasiquote(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let Some(expr) = get_exact_one_arg(args) else {
-        return Err(make_syntax_error(func_name, args));
-    };
+    let expr = get_exact_one_arg(func_name, args)?;
 
     match quasiquote_expr(func_name, expr, env) {
         Ok(mut exprs) => {
