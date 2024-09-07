@@ -1,4 +1,5 @@
-use rusp::repl::repl;
+mod repl;
+use repl::repl;
 
 fn main() {
     repl();

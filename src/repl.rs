@@ -1,8 +1,8 @@
-use crate::env::Env;
-use crate::eval::eval;
-use crate::parser::{ParseError, Parser};
-use crate::scanner::{Scanner, TokenError};
-use crate::token::Token;
+use rusp::env::Env;
+use rusp::eval::eval;
+use rusp::parser::{ParseError, Parser};
+use rusp::scanner::{Scanner, TokenError};
+use rusp::token::Token;
 
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
