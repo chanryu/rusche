@@ -8,24 +8,15 @@ use crate::list::{cons, List};
 use crate::proc::Proc;
 
 pub fn atom(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let List::Cons(cons) = args else {
+    let Some(expr) = get_exact_one_arg(args) else {
         return Err(make_syntax_error(func_name, args));
     };
 
-    if !cons.cdr.is_nil() {
-        return Err(make_syntax_error(func_name, args));
-    };
-
-    Ok(eval(cons.car.as_ref(), env)?.is_atom().into())
+    Ok(eval(expr, env)?.is_atom().into())
 }
 
 pub fn car(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    if args.len() != 1 {
-        return Err(make_syntax_error(func_name, args));
-    }
-
-    let mut iter = args.iter();
-    let Some(expr) = iter.next() else {
+    let Some(expr) = get_exact_one_arg(args) else {
         return Err(make_syntax_error(func_name, args));
     };
 
@@ -37,12 +28,7 @@ pub fn car(func_name: &str, args: &List, env: &Env) -> EvalResult {
 }
 
 pub fn cdr(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    if args.len() != 1 {
-        return Err(make_syntax_error(func_name, args));
-    }
-
-    let mut iter = args.iter();
-    let Some(expr) = iter.next() else {
+    let Some(expr) = get_exact_one_arg(args) else {
         return Err(make_syntax_error(func_name, args));
     };
 
@@ -54,24 +40,16 @@ pub fn cdr(func_name: &str, args: &List, env: &Env) -> EvalResult {
 }
 
 pub fn cons_(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let mut iter = args.iter();
-
-    let Some(car) = iter.next() else {
+    let Some((car, cdr)) = get_exact_two_args(args) else {
         return Err(make_syntax_error(func_name, args));
     };
-
-    let Some(cdr) = iter.next() else {
-        return Err(make_syntax_error(func_name, args));
-    };
-
-    // TODO: Err if iter.next().is_some()
 
     let car = eval(car, env)?;
     let Expr::List(cdr) = eval(cdr, env)? else {
-        return Err(make_syntax_error(func_name, args));
+        return Err(format!("{func_name}: {cdr} does not evaluate to a list."));
     };
 
-    Ok(crate::list::cons(car, cdr).into())
+    Ok(cons(car, cdr).into())
 }
 
 pub fn cond(func_name: &str, args: &List, env: &Env) -> EvalResult {
@@ -116,16 +94,14 @@ pub fn define(func_name: &str, args: &List, env: &Env) -> EvalResult {
                 return Err(format!("{func_name}: expects a list of symbols"));
             };
 
-            let body = iter.into();
-
-            // TODO: check if formal_args is a list of symbols.
+            let formal_args = make_formal_args(cons.cdr.as_ref())?;
 
             env.set(
                 name,
                 Expr::Proc(Proc::Closure {
                     name: Some(name.to_string()),
-                    formal_args: cons.cdr.as_ref().clone(),
-                    body: Box::new(body),
+                    formal_args: formal_args.clone(),
+                    body: Box::new(iter.into()),
                     outer_env: env.clone(),
                 }),
             );
@@ -142,45 +118,19 @@ pub fn defmacro(func_name: &str, args: &List, env: &Env) -> EvalResult {
         return Err(make_syntax_error(func_name, args));
     };
 
-    let Some(Expr::List(List::Cons(formal_args))) = iter.next() else {
+    let Some(Expr::List(list)) = iter.next() else {
         return Err(make_syntax_error(func_name, args));
     };
-
-    // TODO: check if formal_args is a list of symbols.
 
     env.set(
         macro_name,
         Expr::Proc(Proc::Macro {
             name: Some(macro_name.clone()),
-            formal_args: List::Cons(formal_args.clone()),
+            formal_args: make_formal_args(list)?,
             body: Box::new(iter.into()),
         }),
     );
-    Ok(NIL)
-}
 
-pub fn defun(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let mut iter = args.iter();
-
-    let Some(Expr::Sym(lambda_name)) = iter.next() else {
-        return Err(make_syntax_error(func_name, args));
-    };
-
-    let Some(Expr::List(List::Cons(formal_args))) = iter.next() else {
-        return Err(make_syntax_error(func_name, args));
-    };
-
-    // TODO: check if formal_args is a list of symbols.
-
-    env.set(
-        lambda_name,
-        Expr::Proc(Proc::Closure {
-            name: Some(lambda_name.clone()),
-            formal_args: List::Cons(formal_args.clone()),
-            body: Box::new(iter.into()),
-            outer_env: env.clone(),
-        }),
-    );
     Ok(NIL)
 }
 
@@ -195,6 +145,44 @@ pub fn display(_: &str, args: &List, env: &Env) -> EvalResult {
         }
     }
     Ok(NIL)
+}
+
+pub fn eq(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    let Some((left, right)) = get_exact_two_args(args) else {
+        return Err(make_syntax_error(func_name, args));
+    };
+
+    Ok((eval(left, env)? == eval(right, env)?).into())
+}
+
+pub fn eval_(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    let Some(expr) = get_exact_one_arg(args) else {
+        return Err(make_syntax_error(func_name, args));
+    };
+
+    eval(&eval(expr, env)?, env)
+}
+
+pub fn lambda(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    let mut iter = args.iter();
+
+    let Some(Expr::List(list)) = iter.next() else {
+        return Err(make_syntax_error(func_name, args));
+    };
+
+    Ok(Expr::Proc(Proc::Closure {
+        name: None,
+        formal_args: make_formal_args(list)?,
+        body: Box::new(iter.into()),
+        outer_env: env.clone(),
+    }))
+}
+
+fn make_syntax_error(func_name: &str, args: &List) -> EvalError {
+    format!(
+        "Ill-formed syntax: {}",
+        cons(Expr::new_sym(func_name), args.clone())
+    )
 }
 
 fn get_exact_one_arg(args: &List) -> Option<&Expr> {
@@ -218,42 +206,16 @@ fn get_exact_two_args(args: &List) -> Option<(&Expr, &Expr)> {
     }
 }
 
-pub fn eq(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let Some((left, right)) = get_exact_two_args(args) else {
-        return Err(make_syntax_error(func_name, args));
-    };
+fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
+    let mut formal_args = Vec::new();
+    for item in list.iter() {
+        let Expr::Sym(formal_arg) = item else {
+            return Err(format!("{item} is not a symbol."));
+        };
+        formal_args.push(formal_arg.clone());
+    }
 
-    Ok((eval(left, env)? == eval(right, env)?).into())
-}
-
-pub fn eval_(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let Some(expr) = get_exact_one_arg(args) else {
-        return Err(make_syntax_error(func_name, args));
-    };
-
-    eval(&eval(expr, env)?, env)
-}
-
-pub fn lambda(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let mut iter = args.iter();
-
-    let Some(Expr::List(List::Cons(formal_args))) = iter.next() else {
-        return Err(make_syntax_error(func_name, args));
-    };
-
-    Ok(Expr::Proc(Proc::Closure {
-        name: None,
-        formal_args: List::Cons(formal_args.clone()),
-        body: Box::new(iter.into()),
-        outer_env: env.clone(),
-    }))
-}
-
-fn make_syntax_error(func_name: &str, args: &List) -> EvalError {
-    format!(
-        "Ill-formed syntax: {}",
-        cons(Expr::new_sym(func_name), args.clone())
-    )
+    Ok(formal_args)
 }
 
 #[cfg(test)]

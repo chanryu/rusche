@@ -1,24 +1,18 @@
-use super::make_syntax_error;
+use super::{get_exact_one_arg, make_syntax_error};
 use crate::env::Env;
 use crate::eval::{eval, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::List;
 
 pub fn quote(func_name: &str, args: &List, _env: &Env) -> EvalResult {
-    let List::Cons(cons) = args else {
+    let Some(expr) = get_exact_one_arg(args) else {
         return Err(make_syntax_error(func_name, args));
     };
 
-    if !cons.cdr.is_nil() {
-        return Err(make_syntax_error(func_name, args));
-    }
-
-    Ok(cons.car.as_ref().clone())
+    Ok(expr.clone())
 }
 
 fn quasiquote_expr(func_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>, EvalError> {
-    // println!("quasiquote_expr: {}", expr);
-
     let Expr::List(list) = expr else {
         return Ok(vec![expr.clone()]);
     };
@@ -27,7 +21,7 @@ fn quasiquote_expr(func_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>,
         return Ok(vec![NIL]);
     };
 
-    let car_name: Option<&str> = if let Expr::Sym(name) = cons.car.as_ref() {
+    let car_name = if let Expr::Sym(name) = cons.car.as_ref() {
         Some(name.as_str())
     } else {
         None
@@ -69,22 +63,13 @@ fn quasiquote_expr(func_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>,
         }
     }
 
-    // println!("return:");
-    // exprs.iter().for_each(|e| println!("  - {e}"));
-
     Ok(exprs)
 }
 
 pub fn quasiquote(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let mut iter = args.iter();
-
-    let Some(expr) = iter.next() else {
+    let Some(expr) = get_exact_one_arg(args) else {
         return Err(make_syntax_error(func_name, args));
     };
-
-    if iter.next().is_some() {
-        return Err(make_syntax_error(func_name, args));
-    }
 
     match quasiquote_expr(func_name, expr, env) {
         Ok(mut exprs) => {
