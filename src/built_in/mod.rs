@@ -7,9 +7,6 @@ use crate::expr::{Expr, NIL};
 use crate::list::{cons, List};
 use crate::proc::Proc;
 
-const TRUE: Expr = Expr::Num(1_f64);
-const FALSE: Expr = NIL;
-
 pub fn atom(func_name: &str, args: &List, env: &Env) -> EvalResult {
     let List::Cons(cons) = args else {
         return Err(make_syntax_error(func_name, args));
@@ -19,11 +16,7 @@ pub fn atom(func_name: &str, args: &List, env: &Env) -> EvalResult {
         return Err(make_syntax_error(func_name, args));
     };
 
-    if eval(cons.car.as_ref(), env)?.is_atom() {
-        Ok(TRUE)
-    } else {
-        Ok(FALSE)
-    }
+    Ok(eval(cons.car.as_ref(), env)?.is_atom().into())
 }
 
 pub fn car(func_name: &str, args: &List, env: &Env) -> EvalResult {
@@ -90,7 +83,7 @@ pub fn cond(func_name: &str, args: &List, env: &Env) -> EvalResult {
             }
             Some(Expr::List(List::Cons(cons))) => {
                 let car = cons.car.as_ref();
-                if !eval(car, env)?.is_nil() {
+                if eval(car, env)?.is_truthy() {
                     if let Some(expr) = cons.cdar() {
                         return eval(expr, env);
                     } else {
@@ -204,31 +197,39 @@ pub fn display(_: &str, args: &List, env: &Env) -> EvalResult {
     Ok(NIL)
 }
 
-pub fn eq(func_name: &str, args: &List, env: &Env) -> EvalResult {
+fn get_exact_one_arg(args: &List) -> Option<&Expr> {
     let mut iter = args.iter();
-    if let Some(left) = iter.next() {
-        if let Some(right) = iter.next() {
-            if iter.next().is_none() {
-                return if eval(left, env)? == eval(right, env)? {
-                    Ok(TRUE)
-                } else {
-                    Ok(FALSE)
-                };
-            }
-        }
+    let Some(arg) = iter.next() else { return None };
+    if iter.next().is_none() {
+        Some(arg)
+    } else {
+        None
     }
+}
 
-    Err(make_syntax_error(func_name, args))
+fn get_exact_two_args(args: &List) -> Option<(&Expr, &Expr)> {
+    let mut iter = args.iter();
+    let Some(arg0) = iter.next() else { return None };
+    let Some(arg1) = iter.next() else { return None };
+    if iter.next().is_none() {
+        Some((arg0, arg1))
+    } else {
+        None
+    }
+}
+
+pub fn eq(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    let Some((left, right)) = get_exact_two_args(args) else {
+        return Err(make_syntax_error(func_name, args));
+    };
+
+    Ok((eval(left, env)? == eval(right, env)?).into())
 }
 
 pub fn eval_(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let mut iter = args.iter();
-    let Some(expr) = iter.next() else {
+    let Some(expr) = get_exact_one_arg(args) else {
         return Err(make_syntax_error(func_name, args));
     };
-    if iter.next().is_some() {
-        return Err(make_syntax_error(func_name, args));
-    }
 
     eval(&eval(expr, env)?, env)
 }

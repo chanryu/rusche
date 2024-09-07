@@ -14,17 +14,22 @@ pub enum Expr {
 pub const NIL: Expr = Expr::List(List::Nil);
 
 impl Expr {
+    pub fn is_atom(&self) -> bool {
+        match self {
+            Expr::List(List::Cons(_)) => false,
+            _ => true,
+        }
+    }
+
     pub fn is_nil(&self) -> bool {
         match self {
             Expr::List(List::Nil) => true,
             _ => false,
         }
     }
-    pub fn is_atom(&self) -> bool {
-        match self {
-            Expr::List(List::Cons(_)) => false,
-            _ => true,
-        }
+
+    pub fn is_truthy(&self) -> bool {
+        !self.is_nil()
     }
 
     pub fn new_num<T>(value: T) -> Expr
@@ -80,6 +85,16 @@ impl From<Vec<Expr>> for Expr {
 impl<'a> From<ListIter<'a>> for Expr {
     fn from(value: ListIter) -> Self {
         value.map(|expr| expr.clone()).collect::<Vec<_>>().into()
+    }
+}
+
+impl From<bool> for Expr {
+    fn from(value: bool) -> Self {
+        if value {
+            Expr::Num(1_f64)
+        } else {
+            NIL
+        }
     }
 }
 
