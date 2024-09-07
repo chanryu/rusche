@@ -34,9 +34,7 @@ pub fn cdr(func_name: &str, args: &List, env: &Env) -> EvalResult {
 }
 
 pub fn cons_(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let Some((car, cdr)) = get_exact_two_args(args) else {
-        return Err(make_syntax_error(func_name, args));
-    };
+    let (car, cdr) = get_exact_two_args(func_name, args)?;
 
     let car = eval(car, env)?;
     let Expr::List(cdr) = eval(cdr, env)? else {
@@ -142,9 +140,7 @@ pub fn display(_: &str, args: &List, env: &Env) -> EvalResult {
 }
 
 pub fn eq(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let Some((left, right)) = get_exact_two_args(args) else {
-        return Err(make_syntax_error(func_name, args));
-    };
+    let (left, right) = get_exact_two_args(func_name, args)?;
 
     Ok((eval(left, env)? == eval(right, env)?).into())
 }
@@ -189,14 +185,21 @@ fn get_exact_one_arg<'a>(func_name: &str, args: &'a List) -> Result<&'a Expr, Ev
     }
 }
 
-fn get_exact_two_args(args: &List) -> Option<(&Expr, &Expr)> {
+fn get_exact_two_args<'a>(
+    func_name: &str,
+    args: &'a List,
+) -> Result<(&'a Expr, &'a Expr), EvalError> {
     let mut iter = args.iter();
-    let Some(arg0) = iter.next() else { return None };
-    let Some(arg1) = iter.next() else { return None };
+    let Some(arg0) = iter.next() else {
+        return Err(format!("{}: requres two arguments", func_name));
+    };
+    let Some(arg1) = iter.next() else {
+        return Err(format!("{}: requres two arguments", func_name));
+    };
     if iter.next().is_none() {
-        Some((arg0, arg1))
+        Ok((arg0, arg1))
     } else {
-        None
+        Err(format!("{}: takes only two arguments", func_name))
     }
 }
 
