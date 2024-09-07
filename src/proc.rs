@@ -2,37 +2,39 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::env::Env;
 use crate::eval::{eval, EvalResult};
-use crate::expr::Expr;
+use crate::expr::{Expr, NIL};
 use crate::list::List;
+
+pub type NativeFunc = fn(func_name: &str, args: &List, env: &Env) -> EvalResult;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Proc {
-    Lambda {
+    Closure {
         name: Option<String>,
         formal_args: List,
-        body: Box<Expr>,
+        body: Box<List>,
         outer_env: Env,
     },
     Macro {
         name: Option<String>,
         formal_args: List,
-        body: Box<Expr>,
+        body: Box<List>,
     },
     Native {
         name: String,
-        func: fn(func_name: &str, args: &List, env: &Env) -> EvalResult,
+        func: NativeFunc,
     },
 }
 
 impl Proc {
     pub fn invoke(&self, args: &List, env: &Env) -> EvalResult {
         match self {
-            Proc::Lambda {
+            Proc::Closure {
                 name,
                 formal_args,
                 body,
                 outer_env,
-            } => eval_lambda(name.as_deref(), formal_args, body, outer_env, args, env),
+            } => eval_closure(name.as_deref(), formal_args, body, outer_env, args, env),
             Proc::Macro {
                 name,
                 formal_args,
@@ -45,7 +47,7 @@ impl Proc {
     pub fn fingerprint(&self) -> String {
         let mut hasher = DefaultHasher::new();
         match self {
-            Proc::Lambda {
+            Proc::Closure {
                 name,
                 formal_args,
                 body,
@@ -54,7 +56,7 @@ impl Proc {
                 formal_args.to_string().hash(&mut hasher);
                 body.to_string().hash(&mut hasher);
                 format!(
-                    "proc/lambda:{}:{:x}",
+                    "proc/closure:{}:{:x}",
                     name.as_deref().unwrap_or("unnamed"),
                     hasher.finish()
                 )
@@ -80,72 +82,97 @@ impl Proc {
     }
 }
 
-fn eval_lambda(
-    lambda_name: Option<&str>,
+fn eval_closure(
+    closure_name: Option<&str>,
     formal_args: &List,
-    body: &Expr,
+    body: &List,
     outer_env: &Env,
     actual_args: &List,
     env: &Env,
 ) -> EvalResult {
-    let lambda_env = outer_env.derive();
+    let closure_name = closure_name.unwrap_or("closure");
+    let closure_env = outer_env.derive();
     let mut formal_args = formal_args.iter();
     let mut actual_args = actual_args.iter();
 
-    while let Some(formal_arg) = formal_args.next() {
-        let Expr::Sym(name) = formal_arg else {
-            return Err(format!(
-                "{}: formal arg must be a symbol",
-                lambda_name.unwrap_or("lambda")
-            ));
-        };
+    loop {
+        if let Some(formal_arg) = formal_args.next() {
+            let Expr::Sym(arg_name) = formal_arg else {
+                return Err(format!("{}: formal arg must be a symbol", closure_name));
+            };
 
-        let Some(expr) = actual_args.next() else {
-            return Err(format!("{}: too few args", lambda_name.unwrap_or("lambda")));
-        };
+            if let Some(name) = parse_name_if_variadic_args(arg_name) {
+                closure_env.set(name, actual_args);
+                break;
+            }
 
-        lambda_env.set(name, eval(expr, env)?);
+            let Some(expr) = actual_args.next() else {
+                return Err(format!("{}: too few args", closure_name));
+            };
+
+            closure_env.set(arg_name, eval(expr, env)?);
+        } else {
+            if actual_args.next().is_none() {
+                break;
+            }
+            return Err(format!("{}: too many args", closure_name));
+        }
     }
 
-    if actual_args.next().is_some() {
-        return Err(format!(
-            "{}: too many args",
-            lambda_name.unwrap_or("lambda")
-        ));
-    }
-
-    Ok(eval(body, &lambda_env)?)
+    let result = body
+        .iter()
+        .try_fold(NIL, |_, expr| eval(expr, &closure_env))?;
+    Ok(result)
 }
 
 fn eval_macro(
     macro_name: Option<&str>,
     formal_args: &List,
-    body: &Expr,
+    body: &List,
     actual_args: &List,
     env: &Env,
 ) -> EvalResult {
+    let macro_name = macro_name.unwrap_or("macro");
     let macro_env = env.derive();
     let mut formal_args = formal_args.iter();
     let mut actual_args = actual_args.iter();
 
-    while let Some(formal_arg) = formal_args.next() {
-        let Expr::Sym(name) = formal_arg else {
-            return Err(format!(
-                "{}: formal arg must be a symbol",
-                macro_name.unwrap_or("macro")
-            ));
-        };
+    loop {
+        if let Some(formal_arg) = formal_args.next() {
+            let Expr::Sym(arg_name) = formal_arg else {
+                return Err(format!("{}: formal arg must be a symbol", macro_name));
+            };
 
-        let Some(expr) = actual_args.next() else {
-            return Err(format!("{}: too few args", macro_name.unwrap_or("macro")));
-        };
+            if let Some(name) = parse_name_if_variadic_args(arg_name) {
+                macro_env.set(name, actual_args);
+                break;
+            }
 
-        macro_env.set(name, expr.clone());
+            let Some(expr) = actual_args.next() else {
+                return Err(format!("{}: too few args", macro_name));
+            };
+
+            macro_env.set(arg_name, expr.clone());
+        } else {
+            if actual_args.next().is_none() {
+                break;
+            }
+            return Err(format!("{}: too many args", macro_name));
+        }
     }
 
-    if actual_args.next().is_some() {
-        return Err(format!("{}: too many args", macro_name.unwrap_or("macro")));
+    let mut result = NIL;
+    for expr in body.iter() {
+        let expanded = eval(expr, &macro_env)?;
+        result = eval(&expanded, env)?;
     }
+    Ok(result)
+}
 
-    Ok(eval(body, &macro_env)?)
+fn parse_name_if_variadic_args(name: &str) -> Option<&str> {
+    if name.starts_with("*") && name.len() > 1 {
+        Some(&name[1..])
+    } else {
+        None
+    }
 }

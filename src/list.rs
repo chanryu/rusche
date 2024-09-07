@@ -35,9 +35,9 @@ impl List {
     }
 }
 
-impl Into<Expr> for List {
-    fn into(self) -> Expr {
-        Expr::List(self)
+impl<'a> From<ListIter<'a>> for List {
+    fn from(val: ListIter<'a>) -> Self {
+        val.list.clone()
     }
 }
 

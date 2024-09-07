@@ -1,4 +1,4 @@
-use crate::expr::{Expr, NIL};
+use crate::expr::Expr;
 use crate::proc::Proc;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -35,21 +35,22 @@ impl Env {
         };
 
         // lisp primitives
-        set_native_func("atom", built_in::atom);
-        set_native_func("atom", built_in::atom);
+        set_native_func("atom?", built_in::atom);
         set_native_func("car", built_in::car);
         set_native_func("cdr", built_in::cdr);
+        set_native_func("cons", built_in::cons_);
         set_native_func("cond", built_in::cond);
         set_native_func("define", built_in::define);
-        set_native_func("eq", built_in::eq);
+        set_native_func("defmacro", built_in::defmacro);
+        set_native_func("defun", built_in::defun);
+        set_native_func("display", built_in::display);
+        set_native_func("eq?", built_in::eq);
         set_native_func("eval", built_in::eval_);
         set_native_func("lambda", built_in::lambda);
 
         // quote
         set_native_func("quote", built_in::quote::quote);
         set_native_func("quasiquote", built_in::quote::quasiquote);
-        set_native_func("unquote", built_in::quote::unquote);
-        set_native_func("unquote-splicing", built_in::quote::unquote_splicing);
 
         // arithmetic operations
         set_native_func("+", built_in::num::add);
@@ -57,18 +58,17 @@ impl Env {
         set_native_func("*", built_in::num::multiply);
         set_native_func("/", built_in::num::divide);
 
-        // boolean
-        env.set("#t", Expr::new_sym("#t"));
-        env.set("#f", NIL);
-
         // prelude
         prelude::load_prelude(&env);
 
         env
     }
 
-    pub fn set(&self, name: &str, expr: Expr) {
-        self.vars.borrow_mut().insert(name.into(), expr);
+    pub fn set<IntoExpr>(&self, name: &str, e: IntoExpr)
+    where
+        IntoExpr: Into<Expr>,
+    {
+        self.vars.borrow_mut().insert(name.into(), e.into());
     }
 
     pub fn update(&self, name: &str, expr: Expr) -> bool {

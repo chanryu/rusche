@@ -1,4 +1,4 @@
-use crate::list::{cons, List};
+use crate::list::{cons, List, ListIter};
 use crate::proc::Proc;
 use std::fmt;
 
@@ -14,17 +14,22 @@ pub enum Expr {
 pub const NIL: Expr = Expr::List(List::Nil);
 
 impl Expr {
+    pub fn is_atom(&self) -> bool {
+        match self {
+            Expr::List(List::Cons(_)) => false,
+            _ => true,
+        }
+    }
+
     pub fn is_nil(&self) -> bool {
         match self {
             Expr::List(List::Nil) => true,
             _ => false,
         }
     }
-    pub fn is_atom(&self) -> bool {
-        match self {
-            Expr::List(List::Cons(_)) => false,
-            _ => true,
-        }
+
+    pub fn is_truthy(&self) -> bool {
+        !self.is_nil()
     }
 
     pub fn new_num<T>(value: T) -> Expr
@@ -61,6 +66,12 @@ impl fmt::Display for Expr {
     }
 }
 
+impl From<List> for Expr {
+    fn from(val: List) -> Self {
+        Expr::List(val)
+    }
+}
+
 impl From<Vec<Expr>> for Expr {
     fn from(mut value: Vec<Expr>) -> Self {
         let mut list = List::Nil;
@@ -68,6 +79,22 @@ impl From<Vec<Expr>> for Expr {
             list = cons(expr, list);
         }
         list.into()
+    }
+}
+
+impl<'a> From<ListIter<'a>> for Expr {
+    fn from(value: ListIter) -> Self {
+        value.map(|expr| expr.clone()).collect::<Vec<_>>().into()
+    }
+}
+
+impl From<bool> for Expr {
+    fn from(value: bool) -> Self {
+        if value {
+            Expr::Num(1_f64)
+        } else {
+            NIL
+        }
     }
 }
 

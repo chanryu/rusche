@@ -1,7 +1,7 @@
 use super::make_syntax_error;
 use crate::env::Env;
-use crate::eval::{eval, EvalResult};
-use crate::expr::Expr;
+use crate::eval::{eval, EvalError, EvalResult};
+use crate::expr::{Expr, NIL};
 use crate::list::List;
 
 pub fn quote(func_name: &str, args: &List, _env: &Env) -> EvalResult {
@@ -16,75 +16,86 @@ pub fn quote(func_name: &str, args: &List, _env: &Env) -> EvalResult {
     Ok(cons.car.as_ref().clone())
 }
 
-pub fn quasiquote(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let List::Cons(cons) = args else {
-        return Err(make_syntax_error(func_name, args));
+fn quasiquote_expr(func_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>, EvalError> {
+    // println!("quasiquote_expr: {}", expr);
+
+    let Expr::List(list) = expr else {
+        return Ok(vec![expr.clone()]);
     };
 
-    if !cons.cdr.is_nil() {
-        return Err(make_syntax_error(func_name, args));
-    }
+    let List::Cons(cons) = list else {
+        return Ok(vec![NIL]);
+    };
 
-    let Expr::List(list) = cons.car.as_ref() else {
-        return Ok(cons.car.as_ref().clone());
+    let car_name: Option<&str> = if let Expr::Sym(name) = cons.car.as_ref() {
+        Some(name.as_str())
+    } else {
+        None
     };
 
     let mut exprs = Vec::new();
-    let mut iter = list.iter();
-
-    while let Some(expr) = iter.next() {
-        let Expr::List(list) = expr else {
-            exprs.push(expr.clone());
-            continue;
-        };
-
-        let List::Cons(cons) = list else {
-            exprs.push(List::Nil.into());
-            continue;
-        };
-
-        let Expr::Sym(name) = cons.car.as_ref() else {
-            exprs.push(quasiquote("quasiquote", list, env)?);
-            continue;
-        };
-
-        match name.as_str() {
-            "unquote" => {
-                if let Some(cdar) = cons.cdar() {
-                    exprs.push(eval(cdar, env)?);
-                } else {
-                    // TODO: error - malformed unquote, i.e. "(unquote)"
-                }
+    match car_name {
+        Some("unquote") => {
+            if let Some(cdar) = cons.cdar() {
+                exprs.push(eval(cdar, env)?);
+            } else {
+                return Err(make_syntax_error("unquote", &List::Nil));
             }
-            "unquote-splicing" => {
-                if let Some(cdar) = cons.cdar() {
-                    if let Expr::List(list) = eval(cdar, env)? {
-                        if list.is_nil() {
-                            exprs.push(List::Nil.into());
-                        } else {
-                            exprs.extend(list.iter().map(|expr| expr.clone()));
-                        }
-                    } else {
+        }
+        Some("unquote-splicing") => {
+            if let Some(cdar) = cons.cdar() {
+                match eval(cdar, env)? {
+                    Expr::List(list) => {
+                        // TODO: implement comsuming `into_iter()`
+                        exprs.extend(list.iter().map(|e| e.clone()));
                     }
-                } else {
-                    // TODO: error - malformed unquote, i.e. "(unquote-splicing)"
+                    _ => {
+                        return Err(format!(
+                            "unquote-splicing: \"{}\" does not evaluate to a list",
+                            cdar
+                        ));
+                    }
                 }
+            } else {
+                return Err(make_syntax_error("unquote-splicing", &List::Nil));
             }
-            _ => {
-                exprs.push(quasiquote("quasiquote", list, env)?);
+        }
+        _ => {
+            let mut v = Vec::new();
+            for expr in list.iter() {
+                v.extend(quasiquote_expr(func_name, expr, env)?);
             }
+            exprs.push(v.into());
         }
     }
 
-    Ok(exprs.into())
+    // println!("return:");
+    // exprs.iter().for_each(|e| println!("  - {e}"));
+
+    Ok(exprs)
 }
 
-pub fn unquote(func_name: &str, _args: &List, _env: &Env) -> EvalResult {
-    Err(format!("{func_name} (,) used outside of quasiquote"))
-}
+pub fn quasiquote(func_name: &str, args: &List, env: &Env) -> EvalResult {
+    let mut iter = args.iter();
 
-pub fn unquote_splicing(func_name: &str, _args: &List, _env: &Env) -> EvalResult {
-    Err(format!("{func_name} (,@) used outside of quasiquote"))
+    let Some(expr) = iter.next() else {
+        return Err(make_syntax_error(func_name, args));
+    };
+
+    if iter.next().is_some() {
+        return Err(make_syntax_error(func_name, args));
+    }
+
+    match quasiquote_expr(func_name, expr, env) {
+        Ok(mut exprs) => {
+            if exprs.len() == 1 {
+                Ok(exprs.remove(0))
+            } else {
+                Err(make_syntax_error(func_name, args))
+            }
+        }
+        Err(err) => Err(err),
+    }
 }
 
 #[cfg(test)]
@@ -106,9 +117,20 @@ mod tests {
     fn test_quasiquote() {
         let env = Env::new();
 
-        // (quasiquote (0 1 2)) => (0 1 2)
-        let result = quasiquote("", &list!(list!(num(0), num(1), num(2))), &env);
-        assert_eq!(result, Ok(list!(num(0), num(1), num(2)).into()));
+        env.set("x", num(2));
+
+        // `(0 1 ,x 3) => (0 1 2 3)
+        let result = quasiquote(
+            "",
+            &list!(list!(
+                num(0),
+                num(1),
+                list!(sym("unquote"), sym("x")),
+                num(3)
+            )),
+            &env,
+        );
+        assert_eq!(result, Ok(list!(num(0), num(1), num(2), num(3)).into()));
     }
 
     #[test]
