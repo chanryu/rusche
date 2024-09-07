@@ -2,7 +2,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::env::Env;
 use crate::eval::{eval, EvalResult};
-use crate::expr::{Expr, NIL};
+use crate::expr::NIL;
 use crate::list::List;
 
 pub type NativeFunc = fn(func_name: &str, args: &List, env: &Env) -> EvalResult;
@@ -11,13 +11,13 @@ pub type NativeFunc = fn(func_name: &str, args: &List, env: &Env) -> EvalResult;
 pub enum Proc {
     Closure {
         name: Option<String>,
-        formal_args: List,
+        formal_args: Vec<String>,
         body: Box<List>,
         outer_env: Env,
     },
     Macro {
         name: Option<String>,
-        formal_args: List,
+        formal_args: Vec<String>,
         body: Box<List>,
     },
     Native {
@@ -53,7 +53,7 @@ impl Proc {
                 body,
                 outer_env: _,
             } => {
-                formal_args.to_string().hash(&mut hasher);
+                formal_args.hash(&mut hasher);
                 body.to_string().hash(&mut hasher);
                 format!(
                     "proc/closure:{}:{:x}",
@@ -66,7 +66,7 @@ impl Proc {
                 formal_args,
                 body,
             } => {
-                formal_args.to_string().hash(&mut hasher);
+                formal_args.hash(&mut hasher);
                 body.to_string().hash(&mut hasher);
                 format!(
                     "proc/macro:{}:{:x}",
@@ -84,7 +84,7 @@ impl Proc {
 
 fn eval_closure(
     closure_name: Option<&str>,
-    formal_args: &List,
+    formal_args: &Vec<String>,
     body: &List,
     outer_env: &Env,
     actual_args: &List,
@@ -97,11 +97,7 @@ fn eval_closure(
 
     loop {
         if let Some(formal_arg) = formal_args.next() {
-            let Expr::Sym(arg_name) = formal_arg else {
-                return Err(format!("{}: formal arg must be a symbol", closure_name));
-            };
-
-            if let Some(name) = parse_name_if_variadic_args(arg_name) {
+            if let Some(name) = parse_name_if_variadic_args(formal_arg) {
                 closure_env.set(name, actual_args);
                 break;
             }
@@ -110,7 +106,7 @@ fn eval_closure(
                 return Err(format!("{}: too few args", closure_name));
             };
 
-            closure_env.set(arg_name, eval(expr, env)?);
+            closure_env.set(formal_arg, eval(expr, env)?);
         } else {
             if actual_args.next().is_none() {
                 break;
@@ -127,7 +123,7 @@ fn eval_closure(
 
 fn eval_macro(
     macro_name: Option<&str>,
-    formal_args: &List,
+    formal_args: &Vec<String>,
     body: &List,
     actual_args: &List,
     env: &Env,
@@ -139,11 +135,7 @@ fn eval_macro(
 
     loop {
         if let Some(formal_arg) = formal_args.next() {
-            let Expr::Sym(arg_name) = formal_arg else {
-                return Err(format!("{}: formal arg must be a symbol", macro_name));
-            };
-
-            if let Some(name) = parse_name_if_variadic_args(arg_name) {
+            if let Some(name) = parse_name_if_variadic_args(formal_arg) {
                 macro_env.set(name, actual_args);
                 break;
             }
@@ -152,7 +144,7 @@ fn eval_macro(
                 return Err(format!("{}: too few args", macro_name));
             };
 
-            macro_env.set(arg_name, expr.clone());
+            macro_env.set(formal_arg, expr.clone());
         } else {
             if actual_args.next().is_none() {
                 break;

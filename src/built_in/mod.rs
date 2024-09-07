@@ -94,8 +94,7 @@ pub fn define(func_name: &str, args: &List, env: &Env) -> EvalResult {
                 return Err(format!("{func_name}: expects a list of symbols"));
             };
 
-            let formal_args = cons.cdr.as_ref();
-            ensure_formal_args(formal_args)?;
+            let formal_args = make_formal_args(cons.cdr.as_ref())?;
 
             env.set(
                 name,
@@ -119,20 +118,19 @@ pub fn defmacro(func_name: &str, args: &List, env: &Env) -> EvalResult {
         return Err(make_syntax_error(func_name, args));
     };
 
-    let Some(Expr::List(formal_args)) = iter.next() else {
+    let Some(Expr::List(list)) = iter.next() else {
         return Err(make_syntax_error(func_name, args));
     };
-
-    ensure_formal_args(formal_args)?;
 
     env.set(
         macro_name,
         Expr::Proc(Proc::Macro {
             name: Some(macro_name.clone()),
-            formal_args: formal_args.clone(),
+            formal_args: make_formal_args(list)?,
             body: Box::new(iter.into()),
         }),
     );
+
     Ok(NIL)
 }
 
@@ -168,13 +166,13 @@ pub fn eval_(func_name: &str, args: &List, env: &Env) -> EvalResult {
 pub fn lambda(func_name: &str, args: &List, env: &Env) -> EvalResult {
     let mut iter = args.iter();
 
-    let Some(Expr::List(List::Cons(formal_args))) = iter.next() else {
+    let Some(Expr::List(list)) = iter.next() else {
         return Err(make_syntax_error(func_name, args));
     };
 
     Ok(Expr::Proc(Proc::Closure {
         name: None,
-        formal_args: List::Cons(formal_args.clone()),
+        formal_args: make_formal_args(list)?,
         body: Box::new(iter.into()),
         outer_env: env.clone(),
     }))
@@ -208,13 +206,16 @@ fn get_exact_two_args(args: &List) -> Option<(&Expr, &Expr)> {
     }
 }
 
-fn ensure_formal_args(formal_args: &List) -> Result<(), EvalError> {
-    for formal_arg in formal_args.iter() {
-        let Expr::Sym(_) = formal_arg else {
-            return Err(format!("{formal_arg} is not a symbol."));
+fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
+    let mut formal_args = Vec::new();
+    for item in list.iter() {
+        let Expr::Sym(formal_arg) = item else {
+            return Err(format!("{item} is not a symbol."));
         };
+        formal_args.push(formal_arg.clone());
     }
-    Ok(())
+
+    Ok(formal_args)
 }
 
 #[cfg(test)]
