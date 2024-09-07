@@ -1,4 +1,5 @@
 use crate::expr::Expr;
+use crate::prelude::load_prelude;
 use crate::proc::Proc;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -20,7 +21,6 @@ impl Env {
 
     pub fn new_root_env() -> Self {
         use crate::built_in;
-        use crate::prelude;
 
         let env = Env::new();
 
@@ -51,14 +51,15 @@ impl Env {
         set_native_func("quote", built_in::quote::quote);
         set_native_func("quasiquote", built_in::quote::quasiquote);
 
-        // arithmetic operations
+        // num
         set_native_func("+", built_in::num::add);
         set_native_func("-", built_in::num::minus);
         set_native_func("*", built_in::num::multiply);
         set_native_func("/", built_in::num::divide);
+        set_native_func("num?", built_in::num::is_num);
 
         // prelude
-        prelude::load_prelude(&env);
+        load_prelude(&env);
 
         env
     }

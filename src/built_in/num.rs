@@ -3,6 +3,8 @@ use crate::eval::{eval, EvalResult};
 use crate::expr::Expr;
 use crate::list::List;
 
+use super::get_exact_one_arg;
+
 fn binary_operation(
     func_name: &str,
     args: &List,
@@ -43,6 +45,14 @@ pub fn multiply(func_name: &str, args: &List, env: &Env) -> EvalResult {
 
 pub fn divide(func_name: &str, args: &List, env: &Env) -> EvalResult {
     binary_operation(func_name, args, env, 1_f64, false, |lhs, rhs| lhs / rhs)
+}
+
+pub fn is_num(func_name: &str, args: &List, _env: &Env) -> EvalResult {
+    if let Expr::Num(_) = get_exact_one_arg(func_name, args)? {
+        Ok(true.into())
+    } else {
+        Ok(false.into())
+    }
 }
 
 #[cfg(test)]
