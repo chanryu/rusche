@@ -5,28 +5,25 @@ use crate::eval::eval;
 use crate::parser::{ParseError, Parser};
 use crate::scanner::Scanner;
 
-const PIECES: [&str; 13] = [
-    // null
-    "(define null '())",
-    // null?
-    "(define (null? e) (eq? e null))",
-    // #t
-    "(define #t 1)",
-    // #f
-    "(define #f '())",
+const PIECES: [&str; 9] = [
+    // #t, #f
+    r#"
+    (define #t 1)
+    (define #f '())
+    "#,
+    // caar, cadr, cadar, caddr, cdar
+    r#"
+    (define (caar  lst) (car (car lst)))
+    (define (cadr  lst) (car (cdr lst)))
+    (define (cadar lst) (car (cdr (car lst))))
+    (define (caddr lst) (car (cdr (cdr lst))))
+    (define (cdar  lst) (cdr (car lst)))
+    "#,
     // if
     r#"
     (defmacro if (pred then else)
         `(cond (,pred ,then)
                (#t    ,else)))
-    "#,
-    // caar, cadr, cadar, caddr, cdar
-    r#"
-    (define (cadr lst) (car (car lst)))
-    (define (cadr lst) (car (cdr lst)))
-    (define (cadar lst) (car (cdr (car lst))))
-    (define (caddr lst) (car (cdr (cdr lst))))
-    (define (cdar lst) (cdr (car lst)))
     "#,
     // list
     r#"
@@ -55,12 +52,16 @@ const PIECES: [&str; 13] = [
     (defmacro begin (*exprs)
         `(let () ,@exprs))
     "#,
-    // and
-    "(define (and x y) (if x (if y #t #f) #f))",
-    // or
-    "(define (or x y) (if x #t (if y #t #f)))",
-    // not
-    "(define (not x) (if x #f #t))",
+    // and, or, not
+    r#"
+    (define (and x y) (if x (if y #t #f) #f))
+    (define (or  x y) (if x #t (if y #t #f)))
+    (define (not x  ) (if x #f #t))
+    "#,
+    // null?
+    r#"
+    (define (null? e) (eq? e '()))
+    "#,
 ];
 
 pub fn load_prelude(env: &Env) {
