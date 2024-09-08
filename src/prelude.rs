@@ -14,10 +14,10 @@ const PIECES: [&str; 9] = [
     // caar, cadr, cadar, caddr, cdar
     r#"
     (define (caar  lst) (car (car lst)))
-    (define (cadr  lst) (car (cdr lst)))
+    (define (cadr  lst) (cdr (car lst)))
     (define (cadar lst) (car (cdr (car lst))))
     (define (caddr lst) (car (cdr (cdr lst))))
-    (define (cdar  lst) (cdr (car lst)))
+    (define (cdar  lst) (car (cdr lst)))
     "#,
     // if
     r#"
@@ -45,7 +45,7 @@ const PIECES: [&str; 9] = [
     (defmacro let (bindings *body)
         `((lambda ,(map car bindings) ; Get the list of variable names
              ,@body)                  ; The body of the let becomes the lambda's body
-          ,@(map cadr bindings)))     ; Apply the values to the lambda
+          ,@(map cdar bindings)))     ; Apply the values to the lambda
     "#,
     // begin
     r#"
