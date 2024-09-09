@@ -9,18 +9,6 @@ const PIECES: [&str; 15] = [
     (define #t 1)
     (define #f '())
     "#,
-    // caar, cadr, cdar, cdar
-    r#"
-    (define (caar  lst) (car (car lst)))
-    (define (cadr  lst) (cdr (car lst)))
-    (define (cdar  lst) (car (cdr lst)))
-    (define (cddr  lst) (cdr (cdr lst)))
-    "#,
-    // cadar
-    r#"
-    (define (cadar lst) (car (cadr lst)))
-    (define (caddr lst) (cdr (cadr lst)))
-    "#,
     // if
     r#"
     (defmacro if (pred then else)
@@ -34,14 +22,6 @@ const PIECES: [&str; 15] = [
             '()
             `(cons ,(car args) (list ,@(cdr args)))))
     "#,
-    // map
-    r#"
-    (define (map fn lst)
-        (if (null? lst)
-            '()                          ; Base case: empty list
-            (cons (fn (car lst))         ; Apply function to the first element
-                  (map fn (cdr lst)))))  ; Recursive call on the rest of the list
-    "#,
     // let
     r#"
     (defmacro let (bindings *body)
@@ -53,6 +33,26 @@ const PIECES: [&str; 15] = [
     r#"
     (defmacro begin (*exprs)
         `(let () ,@exprs))
+    "#,
+    // caar, cadr, cdar, cdar
+    r#"
+    (define (caar  lst) (car (car lst)))
+    (define (cadr  lst) (cdr (car lst)))
+    (define (cdar  lst) (car (cdr lst)))
+    (define (cddr  lst) (cdr (cdr lst)))
+    "#,
+    // cadar
+    r#"
+    (define (cadar lst) (car (cadr lst)))
+    (define (caddr lst) (cdr (cadr lst)))
+    "#,
+    // map
+    r#"
+    (define (map fn lst)
+        (if (null? lst)
+            '()                          ; Base case: empty list
+            (cons (fn (car lst))         ; Apply function to the first element
+                  (map fn (cdr lst)))))  ; Recursive call on the rest of the list
     "#,
     // and, or, not
     r#"
@@ -66,9 +66,9 @@ const PIECES: [&str; 15] = [
     "#,
     // append
     r#"
-    (define (append lst lst2)
-        (if (null? lst) lst2
-	        (cons (car lst) (append (cdr lst) lst2))))
+    (define (append lst1 lst2)
+        (if (null? lst1) lst2                             ; If lst1 is empty, return lst2
+            (cons (car lst1) (append (cdr lst1) lst2))))  ; Otherwise, prepend the first element of lst1 and recurse
     "#,
     // pair
     r#"
@@ -80,21 +80,26 @@ const PIECES: [&str; 15] = [
     "#,
     // assoc
     r#"
-    (define (assoc x y)
-        (if (eq? (caar y) x) (cadar y)
-		    (assoc x (cdr y))))
+    (define (assoc key lst)
+        (cond
+            ((null? lst) #f)                       ; If the list is empty, return #f
+            ((eq? (car (car lst)) key) (car lst))  ; If the car of the first element matches the key, return the pair
+            (#t (assoc key (cdr lst)))))           ; Otherwise, recursively search the rest of the list
     "#,
     // subst
     r#"
-    (define (subst x y z)
-        (if (atom? z) (if (eq z y) x z)
-		    (cons (subst x y (car z)) (subst x y (cdr z)))))
+    (define (subst new old lst)
+        (cond
+            ((null? lst) '())                                  ; If the list is empty, return an empty list
+            ((eq? (car lst) old)                               ; If the first element matches 'old'
+            (cons new (subst new old (cdr lst))))              ; Replace it with 'new' and recurse on the rest
+            (#t (cons (car lst) (subst new old (cdr lst))))))  ; Otherwise, keep the first element and recurse
     "#,
     // reverse
     r#"
     (define (reverse lst)
         (if (null? lst) lst
-            (append (reverse (cdr lst)) (car lst))))
+            (append (reverse (cdr lst)) (list (car lst)))))
     "#,
 ];
 

@@ -87,16 +87,23 @@ fn test_pair() {
         ),
         r#"((1 "one") (2 "two") (3 "three"))"#,
     );
+
+    assert_eq!(eval_str("(pair '(1 2 3 4) '(5 6))"), "((1 5) (2 6))",);
 }
 
 #[test]
 fn test_assoc() {
-    assert_eq!(
-        eval_str(
-            r#"(pair '(1 2 3)
-                     '("one" "two" "three"))
-            "#
-        ),
-        r#"((1 "one") (2 "two") (3 "three"))"#,
-    );
+    assert_eq!(eval_str("(assoc 'a '((a 1) (b 2) (c 3)))"), "(a 1)");
+    assert_eq!(eval_str("(assoc 'b '((a 1) (b 2) (c 3)))"), "(b 2)");
+    assert_eq!(eval_str("(assoc 'x '((a 1) (b 2) (c 3)))"), "()");
+}
+
+#[test]
+fn test_subst() {
+    assert_eq!(eval_str("(subst 'a 'b '(a b c b))"), "(a a c a)");
+}
+
+#[test]
+fn test_reverse() {
+    assert_eq!(eval_str("(reverse '(a b c d))"), "(d c b a)");
 }
