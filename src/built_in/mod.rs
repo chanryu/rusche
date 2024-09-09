@@ -7,44 +7,44 @@ use crate::expr::{Expr, NIL};
 use crate::list::{cons, List};
 use crate::proc::Proc;
 
-pub fn atom(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let expr = get_exact_one_arg(func_name, args)?;
+pub fn atom(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+    let expr = get_exact_one_arg(proc_name, args)?;
 
     Ok(eval(expr, env)?.is_atom().into())
 }
 
-pub fn car(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let expr = get_exact_one_arg(func_name, args)?;
+pub fn car(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+    let expr = get_exact_one_arg(proc_name, args)?;
 
     if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
         Ok(cons.car.as_ref().clone())
     } else {
-        Err(make_syntax_error(func_name, args))
+        Err(make_syntax_error(proc_name, args))
     }
 }
 
-pub fn cdr(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let expr = get_exact_one_arg(func_name, args)?;
+pub fn cdr(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+    let expr = get_exact_one_arg(proc_name, args)?;
 
     if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
         Ok(cons.cdr.as_ref().clone().into())
     } else {
-        Err(make_syntax_error(func_name, args))
+        Err(make_syntax_error(proc_name, args))
     }
 }
 
-pub fn cons_(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let (car, cdr) = get_exact_two_args(func_name, args)?;
+pub fn cons_(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+    let (car, cdr) = get_exact_two_args(proc_name, args)?;
 
     let car = eval(car, env)?;
     let Expr::List(cdr) = eval(cdr, env)? else {
-        return Err(format!("{func_name}: {cdr} does not evaluate to a list."));
+        return Err(format!("{proc_name}: {cdr} does not evaluate to a list."));
     };
 
     Ok(cons(car, cdr).into())
 }
 
-pub fn cond(func_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn cond(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     let mut iter = args.iter();
     loop {
         match iter.next() {
@@ -65,10 +65,10 @@ pub fn cond(func_name: &str, args: &List, env: &Env) -> EvalResult {
         }
     }
 
-    Err(make_syntax_error(func_name, args))
+    Err(make_syntax_error(proc_name, args))
 }
 
-pub fn define(func_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn define(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     let mut iter = args.iter();
     match iter.next() {
         Some(Expr::Sym(name)) => {
@@ -77,13 +77,13 @@ pub fn define(func_name: &str, args: &List, env: &Env) -> EvalResult {
                 Ok(NIL)
             } else {
                 Err(format!(
-                    "{func_name}: define expects a expression after symbol"
+                    "{proc_name}: define expects a expression after symbol"
                 ))
             }
         }
         Some(Expr::List(List::Cons(cons))) => {
             let Expr::Sym(name) = cons.car.as_ref() else {
-                return Err(format!("{func_name}: expects a list of symbols"));
+                return Err(format!("{proc_name}: expects a list of symbols"));
             };
 
             let formal_args = make_formal_args(cons.cdr.as_ref())?;
@@ -99,19 +99,19 @@ pub fn define(func_name: &str, args: &List, env: &Env) -> EvalResult {
             );
             Ok(NIL)
         }
-        _ => Err(make_syntax_error(func_name, args)),
+        _ => Err(make_syntax_error(proc_name, args)),
     }
 }
 
-pub fn defmacro(func_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn defmacro(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     let mut iter = args.iter();
 
     let Some(Expr::Sym(macro_name)) = iter.next() else {
-        return Err(make_syntax_error(func_name, args));
+        return Err(make_syntax_error(proc_name, args));
     };
 
     let Some(Expr::List(list)) = iter.next() else {
-        return Err(make_syntax_error(func_name, args));
+        return Err(make_syntax_error(proc_name, args));
     };
 
     env.set(
@@ -139,23 +139,23 @@ pub fn display(_: &str, args: &List, env: &Env) -> EvalResult {
     Ok(NIL)
 }
 
-pub fn eq(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let (left, right) = get_exact_two_args(func_name, args)?;
+pub fn eq(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+    let (left, right) = get_exact_two_args(proc_name, args)?;
 
     Ok((eval(left, env)? == eval(right, env)?).into())
 }
 
-pub fn eval_(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let expr = get_exact_one_arg(func_name, args)?;
+pub fn eval_(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+    let expr = get_exact_one_arg(proc_name, args)?;
 
     eval(&eval(expr, env)?, env)
 }
 
-pub fn lambda(func_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn lambda(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     let mut iter = args.iter();
 
     let Some(Expr::List(list)) = iter.next() else {
-        return Err(make_syntax_error(func_name, args));
+        return Err(make_syntax_error(proc_name, args));
     };
 
     Ok(Expr::Proc(Proc::Closure {
@@ -166,40 +166,40 @@ pub fn lambda(func_name: &str, args: &List, env: &Env) -> EvalResult {
     }))
 }
 
-fn make_syntax_error(func_name: &str, args: &List) -> EvalError {
+fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
     format!(
         "Ill-formed syntax: {}",
-        cons(Expr::new_sym(func_name), args.clone())
+        cons(Expr::new_sym(proc_name), args.clone())
     )
 }
 
-fn get_exact_one_arg<'a>(func_name: &str, args: &'a List) -> Result<&'a Expr, EvalError> {
+fn get_exact_one_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, EvalError> {
     let mut iter = args.iter();
     let Some(arg) = iter.next() else {
-        return Err(format!("{func_name} needs an argument."));
+        return Err(format!("{proc_name} needs an argument."));
     };
     if iter.next().is_none() {
         Ok(arg)
     } else {
-        Err(format!("{func_name} expects only 1 argument."))
+        Err(format!("{proc_name} expects only 1 argument."))
     }
 }
 
 fn get_exact_two_args<'a>(
-    func_name: &str,
+    proc_name: &str,
     args: &'a List,
 ) -> Result<(&'a Expr, &'a Expr), EvalError> {
     let mut iter = args.iter();
     let Some(arg0) = iter.next() else {
-        return Err(format!("{}: requres two arguments", func_name));
+        return Err(format!("{}: requres two arguments", proc_name));
     };
     let Some(arg1) = iter.next() else {
-        return Err(format!("{}: requres two arguments", func_name));
+        return Err(format!("{}: requres two arguments", proc_name));
     };
     if iter.next().is_none() {
         Ok((arg0, arg1))
     } else {
-        Err(format!("{}: takes only two arguments", func_name))
+        Err(format!("{}: takes only two arguments", proc_name))
     }
 }
 

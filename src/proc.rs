@@ -5,7 +5,7 @@ use crate::eval::{eval, EvalResult};
 use crate::expr::NIL;
 use crate::list::List;
 
-pub type NativeFunc = fn(func_name: &str, args: &List, env: &Env) -> EvalResult;
+pub type NativeFunc = fn(proc_name: &str, args: &List, env: &Env) -> EvalResult;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Proc {
