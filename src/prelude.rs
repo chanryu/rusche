@@ -5,19 +5,24 @@ use crate::eval::eval;
 use crate::parser::{ParseError, Parser};
 use crate::scanner::Scanner;
 
-const PIECES: [&str; 9] = [
+const PIECES: [&str; 15] = [
     // #t, #f
     r#"
     (define #t 1)
     (define #f '())
     "#,
-    // caar, cadr, cadar, caddr, cdar
+    // caar, cadr, cdar, cdar
     r#"
     (define (caar  lst) (car (car lst)))
     (define (cadr  lst) (cdr (car lst)))
+    (define (cdar  lst) (car (cdr lst)))
+    (define (cddr  lst) (cdr (cdr lst)))
+    "#,
+    // cadar, caddr
+    r#"
+    (define (caaar lst) (car (car (car lst))))
     (define (cadar lst) (car (cdr (car lst))))
     (define (caddr lst) (car (cdr (cdr lst))))
-    (define (cdar  lst) (car (cdr lst)))
     "#,
     // if
     r#"
@@ -61,6 +66,38 @@ const PIECES: [&str; 9] = [
     // null?
     r#"
     (define (null? e) (eq? e '()))
+    "#,
+    // append
+    r#"
+    (define (append lst lst2)
+        (if (null? lst) lst2
+	        (cons (car lst) (append (cdr lst) lst2))))
+    "#,
+    // pair
+    r#"
+    (define (pair x y)
+        (cond ((and (null? x) (null? y)) '())
+              ((and (not (atom? x)) (not (atom? y)))
+               (cons (cons (car x) (cons (car y) '()))
+                     (pair (cdr x) (cdr y))))))
+    "#,
+    // assoc
+    r#"
+    (define (assoc x y)
+        (if (eq? (caar y) x) (cadar y)
+		    (assoc x (cdr y))))
+    "#,
+    // subst
+    r#"
+    (define (subst x y z)
+        (if (atom? z) (if (eq z y) x z)
+		    (cons (subst x y (car z)) (subst x y (cdr z)))))
+    "#,
+    // reverse
+    r#"
+    (define (reverse lst)
+        (if (null? lst) lst
+            (append (reverse (cdr lst)) (car lst))))
     "#,
 ];
 

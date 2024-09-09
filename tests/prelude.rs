@@ -62,3 +62,23 @@ fn test_and_or_not() {
     assert_eq!(eval_str("(not #f)"), "1");
     assert_eq!(eval_str("(not #t)"), "()");
 }
+
+#[test]
+fn test_append() {
+    assert_eq!(eval_str("(append '() '(1))"), "(1)");
+    assert_eq!(eval_str("(append '(1) '(2))"), "(1 2)");
+    assert_eq!(eval_str("(append '(1 2 3) '(4))"), "(1 2 3 4)");
+    assert_eq!(eval_str("(append '(1 2 3) '(4 5 6))"), "(1 2 3 4 5 6)");
+}
+
+#[test]
+fn test_pair() {
+    assert_eq!(
+        eval_str(
+            r#"(pair '(1 2 3)
+                     '("one" "two" "three"))
+            "#
+        ),
+        r#"((1 "one") (2 "two") (3 "three"))"#,
+    );
+}
