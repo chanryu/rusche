@@ -1,5 +1,3 @@
-use core::panic;
-
 use crate::env::Env;
 use crate::eval::eval;
 use crate::parser::{ParseError, Parser};
@@ -18,11 +16,10 @@ const PIECES: [&str; 15] = [
     (define (cdar  lst) (car (cdr lst)))
     (define (cddr  lst) (cdr (cdr lst)))
     "#,
-    // cadar, caddr
+    // cadar
     r#"
-    (define (caaar lst) (car (car (car lst))))
-    (define (cadar lst) (car (cdr (car lst))))
-    (define (caddr lst) (car (cdr (cdr lst))))
+    (define (cadar lst) (car (cadr lst)))
+    (define (caddr lst) (cdr (cadr lst)))
     "#,
     // if
     r#"
@@ -75,11 +72,11 @@ const PIECES: [&str; 15] = [
     "#,
     // pair
     r#"
-    (define (pair x y)
-        (cond ((and (null? x) (null? y)) '())
-              ((and (not (atom? x)) (not (atom? y)))
-               (cons (cons (car x) (cons (car y) '()))
-                     (pair (cdr x) (cdr y))))))
+    (define (pair lst1 lst2)
+        (cond ((and (null? lst1) (null? lst2)) '())
+              ((and (not (atom? lst1)) (not (atom? lst2)))
+               (cons (cons (car lst1) (cons (car lst2) '()))
+                     (pair (cdr lst1) (cdr lst2))))))
     "#,
     // assoc
     r#"

@@ -10,11 +10,17 @@ fn test_t_f() {
 }
 
 #[test]
-fn test_caar_cadr_cadar_cdar() {
-    assert_eq!(eval_str("(caar  '((1 2) 3))"), "1");
-    assert_eq!(eval_str("(cadr  '((1 2) 3))"), "(2)");
-    assert_eq!(eval_str("(cadar '((1 2) 3))"), "2");
-    assert_eq!(eval_str("(cdar  '((1 2) 3))"), "3");
+fn test_cxxr() {
+    assert_eq!(eval_str("(caar '((1 2) 3 4))"), "1");
+    assert_eq!(eval_str("(cadr '((1 2) 3 4))"), "(2)");
+    assert_eq!(eval_str("(cdar '((1 2) 3 4))"), "3");
+    assert_eq!(eval_str("(cddr '((1 2) 3 4))"), "(4)");
+}
+
+#[test]
+fn test_cxxxr() {
+    assert_eq!(eval_str("(cadar '((1 2 3) 4))"), "2");
+    assert_eq!(eval_str("(caddr '((1 2 3) 4))"), "(3)");
 }
 
 #[test]
@@ -73,6 +79,18 @@ fn test_append() {
 
 #[test]
 fn test_pair() {
+    assert_eq!(
+        eval_str(
+            r#"(pair '(1 2 3)
+                     '("one" "two" "three"))
+            "#
+        ),
+        r#"((1 "one") (2 "two") (3 "three"))"#,
+    );
+}
+
+#[test]
+fn test_assoc() {
     assert_eq!(
         eval_str(
             r#"(pair '(1 2 3)
