@@ -29,6 +29,10 @@ pub fn parse_single_expr(text: &str) -> Expr {
 
 pub fn eval_str(text: &str) -> String {
     let env = Env::new_root_env();
+    eval_str_env(text, &env)
+}
+
+pub fn eval_str_env(text: &str, env: &Env) -> String {
     match eval(&parse_single_expr(text), &env) {
         Ok(expr) => expr.to_string(),
         Err(error) => format!("Err: {}", error),
