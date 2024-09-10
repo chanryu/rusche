@@ -152,10 +152,6 @@ mod tests {
         Token::Num(value.into())
     }
 
-    fn sym(name: &str) -> Token {
-        Token::Sym(name.into())
-    }
-
     #[test]
     fn test_read_string() {
         macro_rules! parse_string_assert_eq {
@@ -237,12 +233,12 @@ mod tests {
 
         let mut scanner = Scanner::new(all_tokens.chars());
         assert_eq!(scanner.get_token(), Ok(Some(Token::OpenParen)));
-        assert_eq!(scanner.get_token(), Ok(Some(sym("add"))));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::Sym("add".into()))));
         assert_eq!(scanner.get_token(), Ok(Some(num(1))));
         assert_eq!(scanner.get_token(), Ok(Some(num(2.34))));
         assert_eq!(scanner.get_token(), Ok(Some(Token::OpenParen)));
-        assert_eq!(scanner.get_token(), Ok(Some(sym("x"))));
-        assert_eq!(scanner.get_token(), Ok(Some(sym("y"))));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::Sym("x".into()))));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::Sym("y".into()))));
         assert_eq!(scanner.get_token(), Ok(Some(Token::CloseParen)));
         assert_eq!(scanner.get_token(), Ok(Some(Token::Str("test".into()))));
         assert_eq!(scanner.get_token(), Ok(Some(Token::Quote)));
