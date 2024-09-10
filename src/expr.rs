@@ -31,13 +31,6 @@ impl Expr {
     pub fn is_truthy(&self) -> bool {
         !self.is_nil()
     }
-
-    pub fn new_num<T>(value: T) -> Expr
-    where
-        T: Into<f64>,
-    {
-        Expr::Num(value.into())
-    }
 }
 
 impl fmt::Display for Expr {
@@ -82,13 +75,13 @@ impl From<&str> for Expr {
 
 impl From<i32> for Expr {
     fn from(value: i32) -> Self {
-        Expr::new_num(value)
+        Expr::Num(value.into())
     }
 }
 
 impl From<f64> for Expr {
     fn from(value: f64) -> Self {
-        Expr::new_num(value)
+        Expr::Num(value)
     }
 }
 
@@ -107,11 +100,7 @@ pub mod shortcuts {
     use super::Expr;
 
     pub fn num<T: Into<f64>>(value: T) -> Expr {
-        Expr::new_num(value)
-    }
-
-    pub fn str<T: Into<String>>(text: T) -> Expr {
-        Expr::Str(text.into())
+        Expr::Num(value.into())
     }
 
     pub fn sym<T: Into<String>>(name: T) -> Expr {
@@ -121,7 +110,7 @@ pub mod shortcuts {
 
 #[cfg(test)]
 mod tests {
-    use super::shortcuts::{num, str, sym};
+    use super::shortcuts::{num, sym};
     use super::*;
     use crate::macros::list;
 
@@ -140,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_display_str() {
-        assert_eq!(format!("{}", str("str")), "\"str\"");
+        assert_eq!(format!("{}", Expr::from("str")), "\"str\"");
     }
 
     #[test]
