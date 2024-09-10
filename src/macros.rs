@@ -1,12 +1,11 @@
 #[macro_export]
 macro_rules! list {
-    // Base case: when no items are provided, return the empty list.
     () => {
         $crate::list::List::Nil
     };
 
     ($car:literal $(, $cdr:expr)*) => {
-        $crate::list::cons($crate::expr::Expr::new_num($car), list!($($cdr),*))
+        $crate::list::cons($crate::expr::Expr::from($car), list!($($cdr),*))
     };
 
     ($car:expr $(, $cdr:expr)*) => {

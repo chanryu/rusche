@@ -88,6 +88,24 @@ impl<'a> From<ListIter<'a>> for Expr {
     }
 }
 
+impl From<&str> for Expr {
+    fn from(value: &str) -> Self {
+        Expr::new_str(value)
+    }
+}
+
+impl From<i32> for Expr {
+    fn from(value: i32) -> Self {
+        Expr::new_num(value)
+    }
+}
+
+impl From<f64> for Expr {
+    fn from(value: f64) -> Self {
+        Expr::new_num(value)
+    }
+}
+
 impl From<bool> for Expr {
     fn from(value: bool) -> Self {
         if value {
@@ -158,7 +176,7 @@ mod tests {
 
     #[test]
     fn test_display_list_3() {
-        let list = list!(0, str("str"), sym("sym"));
+        let list = list!(0, "str", sym("sym"));
         assert_eq!(format!("{}", list), r#"(0 "str" sym)"#);
     }
 

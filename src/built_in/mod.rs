@@ -238,8 +238,8 @@ mod tests {
         // (eq 1 2) => ()
         assert_eq!(eq("", &list!(1, 2), &env).unwrap(), NIL);
         // (eq "str" "str") => #t
-        assert_ne!(eq("", &list!(str("str"), str("str")), &env).unwrap(), NIL);
+        assert_ne!(eq("", &list!("str", "str"), &env).unwrap(), NIL);
         // (eq 1 "1") => ()
-        assert_eq!(eq("", &list!(1, str("1")), &env).unwrap(), NIL);
+        assert_eq!(eq("", &list!(1, "1"), &env).unwrap(), NIL);
     }
 }
