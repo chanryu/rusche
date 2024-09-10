@@ -38,20 +38,6 @@ impl Expr {
     {
         Expr::Num(value.into())
     }
-
-    pub fn new_str<T>(text: T) -> Self
-    where
-        T: Into<String>,
-    {
-        Self::Str(text.into())
-    }
-
-    pub fn new_sym<T>(text: T) -> Self
-    where
-        T: Into<String>,
-    {
-        Self::Sym(text.into())
-    }
 }
 
 impl fmt::Display for Expr {
@@ -90,7 +76,7 @@ impl<'a> From<ListIter<'a>> for Expr {
 
 impl From<&str> for Expr {
     fn from(value: &str) -> Self {
-        Expr::new_str(value)
+        Expr::Str(value.into())
     }
 }
 
@@ -125,11 +111,11 @@ pub mod shortcuts {
     }
 
     pub fn str<T: Into<String>>(text: T) -> Expr {
-        Expr::new_str(text)
+        Expr::Str(text.into())
     }
 
-    pub fn sym<T: Into<String>>(text: T) -> Expr {
-        Expr::new_sym(text)
+    pub fn sym<T: Into<String>>(name: T) -> Expr {
+        Expr::Sym(name.into())
     }
 }
 

@@ -80,7 +80,7 @@ pub fn quasiquote(proc_name: &str, args: &List, env: &Env) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::shortcuts::{num, sym};
+    use crate::expr::shortcuts::sym;
     use crate::macros::list;
     use crate::proc::Proc;
 
@@ -96,7 +96,7 @@ mod tests {
     fn test_quasiquote() {
         let env = Env::new();
 
-        env.set("x", num(2));
+        env.set("x", 2);
 
         // `(0 1 ,x 3) => (0 1 2 3)
         let result = quasiquote(

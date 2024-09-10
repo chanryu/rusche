@@ -169,7 +169,7 @@ pub fn lambda(proc_name: &str, args: &List, env: &Env) -> EvalResult {
 fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
     format!(
         "Ill-formed syntax: {}",
-        cons(Expr::new_sym(proc_name), args.clone())
+        cons(Expr::Sym(proc_name.into()), args.clone())
     )
 }
 
@@ -218,16 +218,16 @@ fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::shortcuts::{str, sym};
+    use crate::expr::shortcuts::sym;
     use crate::macros::list;
 
     #[test]
     fn test_define() {
         let env = Env::new();
         // (define name "value")
-        let ret = define("", &list!(sym("name"), str("value")), &env);
+        let ret = define("", &list!(sym("name"), "value"), &env);
         assert_eq!(ret, Ok(NIL));
-        assert_eq!(env.lookup("name"), Some(str("value")));
+        assert_eq!(env.lookup("name"), Some("value".into()));
     }
 
     #[test]

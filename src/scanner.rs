@@ -156,10 +156,6 @@ mod tests {
         Token::Sym(name.into())
     }
 
-    fn str(name: &str) -> Token {
-        Token::Str(name.into())
-    }
-
     fn ok_some<T, E>(t: T) -> Result<Option<T>, E> {
         Ok(Some(t))
     }
@@ -252,7 +248,7 @@ mod tests {
         assert_eq!(scanner.get_token(), ok_some(sym("x")));
         assert_eq!(scanner.get_token(), ok_some(sym("y")));
         assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
-        assert_eq!(scanner.get_token(), ok_some(str("test")));
+        assert_eq!(scanner.get_token(), ok_some(Token::Str("test".into())));
         assert_eq!(scanner.get_token(), ok_some(Token::Quote));
         assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
         assert_eq!(scanner.get_token(), ok_some(num(100)));

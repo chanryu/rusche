@@ -78,7 +78,7 @@ impl Parser {
                 if let Some(context) = self.contexts.last_mut() {
                     if let Some(quote_name) = get_quote_name(context.token.as_ref()) {
                         self.contexts.pop();
-                        expr = list!(Expr::new_sym(quote_name), expr).into();
+                        expr = list!(Expr::Sym(quote_name.into()), expr).into();
                         continue;
                     }
                     if context.car.is_none() {

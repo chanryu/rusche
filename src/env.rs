@@ -64,18 +64,21 @@ impl Env {
         env
     }
 
-    pub fn set<IntoExpr>(&self, name: &str, e: IntoExpr)
+    pub fn set<IntoExpr>(&self, name: &str, expr: IntoExpr)
     where
         IntoExpr: Into<Expr>,
     {
-        self.vars.borrow_mut().insert(name.into(), e.into());
+        self.vars.borrow_mut().insert(name.into(), expr.into());
     }
 
-    pub fn update(&self, name: &str, expr: Expr) -> bool {
+    pub fn update<IntoExpr>(&self, name: &str, expr: IntoExpr) -> bool
+    where
+        IntoExpr: Into<Expr>,
+    {
         let mut env = self;
         loop {
             if let Some(value) = env.vars.borrow_mut().get_mut(name) {
-                *value = expr;
+                *value = expr.into();
                 return true;
             }
             if let Some(base) = &env.base {
@@ -111,23 +114,23 @@ impl Env {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::shortcuts::{num, str};
+    use crate::expr::shortcuts::num;
 
     #[test]
     fn test_set() {
         let env = Env::new();
         assert_eq!(env.vars.borrow().len(), 0);
-        env.set("one", num(1));
+        env.set("one", 1);
         assert_eq!(env.vars.borrow().get("one"), Some(&num(1)));
     }
 
     #[test]
     fn test_update() {
         let env = Env::new();
-        assert_eq!(env.update("name", num(1)), false);
+        assert_eq!(env.update("name", 1), false);
 
-        env.set("name", num(0));
-        assert_eq!(env.update("name", num(1)), true);
+        env.set("name", 0);
+        assert_eq!(env.update("name", 1), true);
     }
 
     #[test]
@@ -143,15 +146,15 @@ mod tests {
         let base = Env::new();
         let derived = base.derive();
 
-        base.set("one", num(1));
-        derived.set("two", num(2));
+        base.set("one", 1);
+        derived.set("two", 2);
 
-        assert_eq!(derived.update("one", str("uno")), true);
-        assert_eq!(derived.update("two", str("dos")), true);
+        assert_eq!(derived.update("one", "uno"), true);
+        assert_eq!(derived.update("two", "dos"), true);
 
-        assert_eq!(base.vars.borrow().get("one"), Some(&str("uno")));
+        assert_eq!(base.vars.borrow().get("one"), Some(&"uno".into()));
         assert_eq!(derived.vars.borrow().get("one"), None);
-        assert_eq!(derived.vars.borrow().get("two"), Some(&str("dos")));
+        assert_eq!(derived.vars.borrow().get("two"), Some(&"dos".into()));
     }
 
     #[test]
@@ -160,10 +163,10 @@ mod tests {
         let derived = base.derive();
 
         assert_eq!(derived.lookup("two"), None);
-        base.set("two", num(2));
+        base.set("two", 2);
         assert_eq!(derived.lookup("two"), Some(num(2)));
 
-        derived.set("three", num(3));
+        derived.set("three", 3);
         assert_eq!(base.lookup("three"), None);
         assert_eq!(derived.lookup("three"), Some(num(3)));
     }
@@ -173,7 +176,7 @@ mod tests {
         let original = Env::new();
         let cloned = original.clone();
 
-        original.set("one", num(1));
+        original.set("one", 1);
         assert_eq!(cloned.lookup("one"), Some(num(1)));
     }
 }

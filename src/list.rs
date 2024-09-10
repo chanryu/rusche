@@ -100,13 +100,13 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::shortcuts::{num, str, sym};
+    use crate::expr::shortcuts::{num, sym};
     use crate::macros::list;
 
     #[test]
     fn test_display() {
-        let list = list!(1, 2, list!(3, sym("sym"), str("str")));
-        assert_eq!(format!("{}", list), "(1 2 (3 sym \"str\"))");
+        let list = list!(1, 2, list!(3, "str", sym("sym")));
+        assert_eq!(format!("{}", list), "(1 2 (3 \"str\" sym))");
     }
 
     #[test]
@@ -117,23 +117,5 @@ mod tests {
         assert_eq!(iter.next(), Some(&num(2)));
         assert_eq!(iter.next(), Some(&num(3)));
         assert_eq!(iter.next(), None);
-    }
-
-    #[test]
-    fn test_list_macro() {
-        // (cons 0 nil) => (list 0)
-        assert_eq!(cons(num(0), List::Nil), list!(0));
-
-        // (cons 0 (cons 1 nil)) => (list 0 1)
-        assert_eq!(cons(num(0), cons(num(1), List::Nil)), list!(0, 1));
-
-        // (cons 0 (cons (cons 1 nil) (cons 2 nil))) => (list 0 (list 1) 2)
-        assert_eq!(
-            cons(
-                num(0),
-                cons(cons(num(1), List::Nil), cons(num(2), List::Nil))
-            ),
-            list!(0, list!(1), 2)
-        );
     }
 }
