@@ -4,11 +4,11 @@ use crate::eval::{eval, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::List;
 
-pub fn quote(func_name: &str, args: &List, _env: &Env) -> EvalResult {
-    Ok(get_exact_one_arg(func_name, args)?.clone())
+pub fn quote(proc_name: &str, args: &List, _env: &Env) -> EvalResult {
+    Ok(get_exact_one_arg(proc_name, args)?.clone())
 }
 
-fn quasiquote_expr(func_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>, EvalError> {
+fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>, EvalError> {
     let Expr::List(list) = expr else {
         return Ok(vec![expr.clone()]);
     };
@@ -53,7 +53,7 @@ fn quasiquote_expr(func_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>,
         _ => {
             let mut v = Vec::new();
             for expr in list.iter() {
-                v.extend(quasiquote_expr(func_name, expr, env)?);
+                v.extend(quasiquote_expr(proc_name, expr, env)?);
             }
             exprs.push(v.into());
         }
@@ -62,15 +62,15 @@ fn quasiquote_expr(func_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>,
     Ok(exprs)
 }
 
-pub fn quasiquote(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    let expr = get_exact_one_arg(func_name, args)?;
+pub fn quasiquote(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+    let expr = get_exact_one_arg(proc_name, args)?;
 
-    match quasiquote_expr(func_name, expr, env) {
+    match quasiquote_expr(proc_name, expr, env) {
         Ok(mut exprs) => {
             if exprs.len() == 1 {
                 Ok(exprs.remove(0))
             } else {
-                Err(make_syntax_error(func_name, args))
+                Err(make_syntax_error(proc_name, args))
             }
         }
         Err(err) => Err(err),

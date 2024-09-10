@@ -1,11 +1,11 @@
-use rusp::env::Env;
-use rusp::eval::eval;
-use rusp::parser::{ParseError, Parser};
-use rusp::scanner::{Scanner, TokenError};
-use rusp::token::Token;
-
-use rustyline::error::ReadlineError;
-use rustyline::DefaultEditor;
+use rusp::{
+    env::Env,
+    eval::eval,
+    parser::{ParseError, Parser},
+    scanner::{Scanner, TokenError},
+    token::Token,
+};
+use rustyline::{error::ReadlineError, DefaultEditor};
 
 pub fn repl() {
     let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");

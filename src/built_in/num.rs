@@ -6,7 +6,7 @@ use crate::list::List;
 use super::get_exact_one_arg;
 
 fn binary_operation(
-    func_name: &str,
+    proc_name: &str,
     args: &List,
     env: &Env,
     identity: f64,
@@ -24,31 +24,31 @@ fn binary_operation(
                     result = func(result, value);
                 }
             }
-            _ => return Err(format!("{func_name}: {arg} does not evaluate to a number!")),
+            _ => return Err(format!("{proc_name}: {arg} does not evaluate to a number!")),
         }
     }
 
     Ok(Expr::Num(result))
 }
 
-pub fn add(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    binary_operation(func_name, args, env, 0_f64, true, |lhs, rhs| lhs + rhs)
+pub fn add(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+    binary_operation(proc_name, args, env, 0_f64, true, |lhs, rhs| lhs + rhs)
 }
 
-pub fn minus(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    binary_operation(func_name, args, env, 0_f64, false, |lhs, rhs| lhs - rhs)
+pub fn minus(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+    binary_operation(proc_name, args, env, 0_f64, false, |lhs, rhs| lhs - rhs)
 }
 
-pub fn multiply(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    binary_operation(func_name, args, env, 1_f64, true, |lhs, rhs| lhs * rhs)
+pub fn multiply(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+    binary_operation(proc_name, args, env, 1_f64, true, |lhs, rhs| lhs * rhs)
 }
 
-pub fn divide(func_name: &str, args: &List, env: &Env) -> EvalResult {
-    binary_operation(func_name, args, env, 1_f64, false, |lhs, rhs| lhs / rhs)
+pub fn divide(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+    binary_operation(proc_name, args, env, 1_f64, false, |lhs, rhs| lhs / rhs)
 }
 
-pub fn is_num(func_name: &str, args: &List, _env: &Env) -> EvalResult {
-    if let Expr::Num(_) = get_exact_one_arg(func_name, args)? {
+pub fn is_num(proc_name: &str, args: &List, _env: &Env) -> EvalResult {
+    if let Expr::Num(_) = get_exact_one_arg(proc_name, args)? {
         Ok(true.into())
     } else {
         Ok(false.into())

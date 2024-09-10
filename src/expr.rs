@@ -163,9 +163,25 @@ mod tests {
     }
 
     #[test]
-    fn test_vec_into_expr() {
+    fn test_expr_from_list() {
+        assert_eq!(
+            format!(
+                "{}",
+                Expr::from(list!(list!(num(1), num(2)), num(3), num(4), sym("abc")))
+            ),
+            "((1 2) 3 4 abc)"
+        );
+    }
+
+    #[test]
+    fn test_expr_from_vec() {
         let v: Vec<Expr> = vec![num(1), num(2), list!(num(3), num(4)).into()];
-        let expr: Expr = v.into();
-        assert_eq!(format!("{}", expr), "(1 2 (3 4))");
+        assert_eq!(format!("{}", Expr::from(v)), "(1 2 (3 4))");
+    }
+
+    #[test]
+    fn test_expr_from_bool() {
+        assert_eq!(Expr::from(true), Expr::new_num(1));
+        assert_eq!(Expr::from(false), NIL);
     }
 }
