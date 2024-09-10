@@ -103,11 +103,11 @@ pub mod shortcuts {
     use super::Expr;
 
     pub fn num<T: Into<f64>>(value: T) -> Expr {
-        Expr::new_num(value.into())
+        Expr::new_num(value)
     }
 
     pub fn str<T: Into<String>>(text: T) -> Expr {
-        Expr::new_str(text.into())
+        Expr::new_str(text)
     }
 
     pub fn sym<T: Into<String>>(text: T) -> Expr {
@@ -146,42 +146,39 @@ mod tests {
 
     #[test]
     fn test_display_list_1() {
-        let list = list!(num(0));
+        let list = list!(0);
         assert_eq!(format!("{}", list), "(0)");
     }
 
     #[test]
     fn test_display_list_2() {
-        let list = list!(num(0), num(1), num(2));
+        let list = list!(0, 1, 2);
         assert_eq!(format!("{}", list), "(0 1 2)");
     }
 
     #[test]
     fn test_display_list_3() {
-        let list = list!(num(0), str("string"), sym("symbol"));
+        let list = list!(0, str("string"), sym("symbol"));
         assert_eq!(format!("{}", list), r#"(0 "string" symbol)"#);
     }
 
     #[test]
     fn test_expr_from_list() {
         assert_eq!(
-            format!(
-                "{}",
-                Expr::from(list!(list!(num(1), num(2)), num(3), num(4), sym("abc")))
-            ),
+            format!("{}", Expr::from(list!(list!(1, 2), 3, 4, sym("abc")))),
             "((1 2) 3 4 abc)"
         );
     }
 
     #[test]
     fn test_expr_from_vec() {
-        let v: Vec<Expr> = vec![num(1), num(2), list!(num(3), num(4)).into()];
+        let v: Vec<Expr> = vec![num(1), num(2), list!(3, 4).into()];
         assert_eq!(format!("{}", Expr::from(v)), "(1 2 (3 4))");
     }
 
     #[test]
     fn test_expr_from_bool() {
-        assert_eq!(Expr::from(true), Expr::new_num(1));
+        assert_eq!(Expr::from(true), num(1));
         assert_eq!(Expr::from(false), NIL);
     }
 }

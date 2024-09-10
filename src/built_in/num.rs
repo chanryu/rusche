@@ -66,11 +66,11 @@ mod tests {
         let env = Env::new();
 
         // (+ 1) => 1
-        let args = list!(num(1));
+        let args = list!(1);
         assert_eq!(add("", &args, &env), Ok(num(1)));
 
         // (+ 2 1) => 3
-        let args = list!(num(2), num(1));
+        let args = list!(2, 1);
         assert_eq!(add("", &args, &env), Ok(num(3)));
     }
 
@@ -79,11 +79,11 @@ mod tests {
         let env = Env::new();
 
         // (- 1) => -1
-        let args = list!(num(1));
+        let args = list!(1);
         assert_eq!(minus("", &args, &env), Ok(num(-1)));
 
         // (- 2 1) => 1
-        let args = list!(num(2), num(1));
+        let args = list!(2, 1);
         assert_eq!(minus("", &args, &env), Ok(num(1)));
     }
 
@@ -92,15 +92,15 @@ mod tests {
         let env = Env::new();
 
         // (* 1) => 1
-        let args = list!(num(1));
+        let args = list!(1);
         assert_eq!(multiply("", &args, &env), Ok(num(1)));
 
         // (* 2 1) => 2
-        let args = list!(num(2), num(1));
+        let args = list!(2, 1);
         assert_eq!(multiply("", &args, &env), Ok(num(2)));
 
         // (* 3 2 1) => 6
-        let args = list!(num(3), num(2), num(1));
+        let args = list!(3, 2, 1);
         assert_eq!(multiply("", &args, &env), Ok(num(6)));
     }
 
@@ -109,11 +109,11 @@ mod tests {
         let env = Env::new();
 
         // (/ 2) => 0.5
-        let args = list!(num(2));
+        let args = list!(2);
         assert_eq!(divide("", &args, &env), Ok(num(0.5)));
 
         // (/ 4 2) => 2
-        let args = list!(num(4), num(2));
+        let args = list!(4, 2);
         assert_eq!(divide("", &args, &env), Ok(num(2)));
     }
 }
