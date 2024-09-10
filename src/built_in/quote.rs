@@ -81,7 +81,7 @@ pub fn quasiquote(proc_name: &str, args: &List, env: &Env) -> EvalResult {
 mod tests {
     use super::*;
     use crate::expr::shortcuts::{num, sym};
-    use crate::list::{cons, list};
+    use crate::macros::list;
     use crate::proc::Proc;
 
     #[test]

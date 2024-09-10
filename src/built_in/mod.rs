@@ -218,8 +218,8 @@ fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::shortcuts::{num, str, sym};
-    use crate::list::list;
+    use crate::expr::shortcuts::{str, sym};
+    use crate::macros::list;
 
     #[test]
     fn test_define() {

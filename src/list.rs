@@ -97,30 +97,11 @@ where
     List::Cons(Cons::new(car, cdr))
 }
 
-#[macro_export]
-macro_rules! list {
-    // Base case: when no items are provided, return the empty list.
-    () => {
-        List::Nil
-    };
-
-    ($first:literal $(, $rest:expr)*) => {
-        cons(Expr::new_num($first), list!($($rest),*))
-    };
-
-    // Recursive case: when at least one item is provided, recursively build the list.
-    ($first:expr $(, $rest:expr)*) => {
-        cons($first, list!($($rest),*))
-    };
-}
-
-pub(crate) use list;
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::expr::shortcuts::{num, str, sym};
-    use crate::list::list;
+    use crate::macros::list;
 
     #[test]
     fn test_display() {

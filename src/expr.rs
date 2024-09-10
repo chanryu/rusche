@@ -119,7 +119,7 @@ pub mod shortcuts {
 mod tests {
     use super::shortcuts::{num, str, sym};
     use super::*;
-    use crate::list::{cons, list};
+    use crate::macros::list;
 
     #[test]
     fn test_display_nil() {
@@ -158,8 +158,8 @@ mod tests {
 
     #[test]
     fn test_display_list_3() {
-        let list = list!(0, str("string"), sym("symbol"));
-        assert_eq!(format!("{}", list), r#"(0 "string" symbol)"#);
+        let list = list!(0, str("str"), sym("sym"));
+        assert_eq!(format!("{}", list), r#"(0 "str" sym)"#);
     }
 
     #[test]
