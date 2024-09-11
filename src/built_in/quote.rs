@@ -80,36 +80,31 @@ pub fn quasiquote(proc_name: &str, args: &List, env: &Env) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::shortcuts::{num, sym};
-    use crate::list::{cons, list};
+    use crate::expr::shortcuts::sym;
+    use crate::macros::list;
     use crate::proc::Proc;
 
     #[test]
     fn test_quote() {
         let env = Env::new();
         // (quote (1 2)) => (1 2)
-        let result = quote("", &list!(list!(num(1), num(2))), &env);
-        assert_eq!(result, Ok(list!(num(1), num(2)).into()));
+        let result = quote("", &list!(list!(1, 2)), &env);
+        assert_eq!(result, Ok(list!(1, 2).into()));
     }
 
     #[test]
     fn test_quasiquote() {
         let env = Env::new();
 
-        env.set("x", num(2));
+        env.set("x", 2);
 
         // `(0 1 ,x 3) => (0 1 2 3)
         let result = quasiquote(
             "",
-            &list!(list!(
-                num(0),
-                num(1),
-                list!(sym("unquote"), sym("x")),
-                num(3)
-            )),
+            &list!(list!(0, 1, list!(sym("unquote"), sym("x")), 3)),
             &env,
         );
-        assert_eq!(result, Ok(list!(num(0), num(1), num(2), num(3)).into()));
+        assert_eq!(result, Ok(list!(0, 1, 2, 3).into()));
     }
 
     #[test]
@@ -126,14 +121,10 @@ mod tests {
         // (quasiquote (0 (unquote (+ 1 2)) 4)) => (0 3 4)
         let result = quasiquote(
             "",
-            &list!(list!(
-                num(0),
-                list!(sym("unquote"), list!(sym("+"), num(1), num(2))),
-                num(4)
-            )),
+            &list!(list!(0, list!(sym("unquote"), list!(sym("+"), 1, 2)), 4)),
             &env,
         );
-        assert_eq!(result, Ok(list!(num(0), num(3), num(4)).into()));
+        assert_eq!(result, Ok(list!(0, 3, 4).into()));
     }
 
     #[test]
@@ -151,18 +142,12 @@ mod tests {
         let result = quasiquote(
             "",
             &list!(list!(
-                num(0),
-                list!(
-                    sym("unquote-splicing"),
-                    list!(sym("quote"), list!(num(1), num(2), num(3)))
-                ),
-                num(4)
+                0,
+                list!(sym("unquote-splicing"), list!(sym("quote"), list!(1, 2, 3))),
+                4
             )),
             &env,
         );
-        assert_eq!(
-            result,
-            Ok(list!(num(0), num(1), num(2), num(3), num(4)).into())
-        );
+        assert_eq!(result, Ok(list!(0, 1, 2, 3, 4).into()));
     }
 }

@@ -31,27 +31,6 @@ impl Expr {
     pub fn is_truthy(&self) -> bool {
         !self.is_nil()
     }
-
-    pub fn new_num<T>(value: T) -> Expr
-    where
-        T: Into<f64>,
-    {
-        Expr::Num(value.into())
-    }
-
-    pub fn new_str<T>(text: T) -> Self
-    where
-        T: Into<String>,
-    {
-        Self::Str(text.into())
-    }
-
-    pub fn new_sym<T>(text: T) -> Self
-    where
-        T: Into<String>,
-    {
-        Self::Sym(text.into())
-    }
 }
 
 impl fmt::Display for Expr {
@@ -88,6 +67,24 @@ impl<'a> From<ListIter<'a>> for Expr {
     }
 }
 
+impl From<&str> for Expr {
+    fn from(value: &str) -> Self {
+        Expr::Str(value.into())
+    }
+}
+
+impl From<i32> for Expr {
+    fn from(value: i32) -> Self {
+        Expr::Num(value.into())
+    }
+}
+
+impl From<f64> for Expr {
+    fn from(value: f64) -> Self {
+        Expr::Num(value)
+    }
+}
+
 impl From<bool> for Expr {
     fn from(value: bool) -> Self {
         if value {
@@ -103,23 +100,19 @@ pub mod shortcuts {
     use super::Expr;
 
     pub fn num<T: Into<f64>>(value: T) -> Expr {
-        Expr::new_num(value.into())
+        Expr::Num(value.into())
     }
 
-    pub fn str<T: Into<String>>(text: T) -> Expr {
-        Expr::new_str(text.into())
-    }
-
-    pub fn sym<T: Into<String>>(text: T) -> Expr {
-        Expr::new_sym(text)
+    pub fn sym<T: Into<String>>(name: T) -> Expr {
+        Expr::Sym(name.into())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::shortcuts::{num, str, sym};
+    use super::shortcuts::{num, sym};
     use super::*;
-    use crate::list::{cons, list};
+    use crate::macros::list;
 
     #[test]
     fn test_display_nil() {
@@ -136,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_display_str() {
-        assert_eq!(format!("{}", str("str")), "\"str\"");
+        assert_eq!(format!("{}", Expr::from("str")), "\"str\"");
     }
 
     #[test]
@@ -146,42 +139,39 @@ mod tests {
 
     #[test]
     fn test_display_list_1() {
-        let list = list!(num(0));
+        let list = list!(0);
         assert_eq!(format!("{}", list), "(0)");
     }
 
     #[test]
     fn test_display_list_2() {
-        let list = list!(num(0), num(1), num(2));
+        let list = list!(0, 1, 2);
         assert_eq!(format!("{}", list), "(0 1 2)");
     }
 
     #[test]
     fn test_display_list_3() {
-        let list = list!(num(0), str("string"), sym("symbol"));
-        assert_eq!(format!("{}", list), r#"(0 "string" symbol)"#);
+        let list = list!(0, "str", sym("sym"));
+        assert_eq!(format!("{}", list), r#"(0 "str" sym)"#);
     }
 
     #[test]
     fn test_expr_from_list() {
         assert_eq!(
-            format!(
-                "{}",
-                Expr::from(list!(list!(num(1), num(2)), num(3), num(4), sym("abc")))
-            ),
+            format!("{}", Expr::from(list!(list!(1, 2), 3, 4, sym("abc")))),
             "((1 2) 3 4 abc)"
         );
     }
 
     #[test]
     fn test_expr_from_vec() {
-        let v: Vec<Expr> = vec![num(1), num(2), list!(num(3), num(4)).into()];
+        let v: Vec<Expr> = vec![num(1), num(2), list!(3, 4).into()];
         assert_eq!(format!("{}", Expr::from(v)), "(1 2 (3 4))");
     }
 
     #[test]
     fn test_expr_from_bool() {
-        assert_eq!(Expr::from(true), Expr::new_num(1));
+        assert_eq!(Expr::from(true), num(1));
         assert_eq!(Expr::from(false), NIL);
     }
 }

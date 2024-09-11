@@ -152,18 +152,6 @@ mod tests {
         Token::Num(value.into())
     }
 
-    fn sym(name: &str) -> Token {
-        Token::Sym(name.into())
-    }
-
-    fn str(name: &str) -> Token {
-        Token::Str(name.into())
-    }
-
-    fn ok_some<T, E>(t: T) -> Result<Option<T>, E> {
-        Ok(Some(t))
-    }
-
     #[test]
     fn test_read_string() {
         macro_rules! parse_string_assert_eq {
@@ -196,9 +184,9 @@ mod tests {
             };
         }
 
-        parse_number_assert_eq!("0", ok_some(num(0)));
-        parse_number_assert_eq!("1", ok_some(num(1)));
-        parse_number_assert_eq!("1.1", ok_some(num(1.1)));
+        parse_number_assert_eq!("0", Ok(Some(num(0))));
+        parse_number_assert_eq!("1", Ok(Some(num(1))));
+        parse_number_assert_eq!("1.1", Ok(Some(num(1.1))));
     }
 
     #[test]
@@ -221,18 +209,18 @@ mod tests {
     #[test]
     fn test_scanner_parans() {
         let mut scanner = Scanner::new("()(())(()())".chars());
-        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
-        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
-        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
-        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
-        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
-        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
-        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
-        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
-        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
-        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
-        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
-        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::OpenParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::CloseParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::OpenParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::OpenParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::CloseParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::CloseParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::OpenParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::OpenParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::CloseParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::OpenParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::CloseParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::CloseParen)));
         assert_eq!(scanner.get_token(), Ok(None));
     }
 
@@ -244,22 +232,22 @@ mod tests {
         ; another comment"#;
 
         let mut scanner = Scanner::new(all_tokens.chars());
-        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
-        assert_eq!(scanner.get_token(), ok_some(sym("add")));
-        assert_eq!(scanner.get_token(), ok_some(num(1)));
-        assert_eq!(scanner.get_token(), ok_some(num(2.34)));
-        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
-        assert_eq!(scanner.get_token(), ok_some(sym("x")));
-        assert_eq!(scanner.get_token(), ok_some(sym("y")));
-        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
-        assert_eq!(scanner.get_token(), ok_some(str("test")));
-        assert_eq!(scanner.get_token(), ok_some(Token::Quote));
-        assert_eq!(scanner.get_token(), ok_some(Token::OpenParen));
-        assert_eq!(scanner.get_token(), ok_some(num(100)));
-        assert_eq!(scanner.get_token(), ok_some(num(200)));
-        assert_eq!(scanner.get_token(), ok_some(num(300)));
-        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
-        assert_eq!(scanner.get_token(), ok_some(Token::CloseParen));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::OpenParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::Sym("add".into()))));
+        assert_eq!(scanner.get_token(), Ok(Some(num(1))));
+        assert_eq!(scanner.get_token(), Ok(Some(num(2.34))));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::OpenParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::Sym("x".into()))));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::Sym("y".into()))));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::CloseParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::Str("test".into()))));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::Quote)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::OpenParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(num(100))));
+        assert_eq!(scanner.get_token(), Ok(Some(num(200))));
+        assert_eq!(scanner.get_token(), Ok(Some(num(300))));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::CloseParen)));
+        assert_eq!(scanner.get_token(), Ok(Some(Token::CloseParen)));
         assert_eq!(scanner.get_token(), Ok(None));
     }
 }

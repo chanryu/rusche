@@ -169,7 +169,7 @@ pub fn lambda(proc_name: &str, args: &List, env: &Env) -> EvalResult {
 fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
     format!(
         "Ill-formed syntax: {}",
-        cons(Expr::new_sym(proc_name), args.clone())
+        cons(Expr::Sym(proc_name.into()), args.clone())
     )
 }
 
@@ -218,28 +218,28 @@ fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::shortcuts::{num, str, sym};
-    use crate::list::list;
+    use crate::expr::shortcuts::sym;
+    use crate::macros::list;
 
     #[test]
     fn test_define() {
         let env = Env::new();
         // (define name "value")
-        let ret = define("", &list!(sym("name"), str("value")), &env);
+        let ret = define("", &list!(sym("name"), "value"), &env);
         assert_eq!(ret, Ok(NIL));
-        assert_eq!(env.lookup("name"), Some(str("value")));
+        assert_eq!(env.lookup("name"), Some("value".into()));
     }
 
     #[test]
     fn test_eq() {
         let env = Env::new();
         // (eq 1 1) => #t
-        assert_ne!(eq("", &list!(num(1), num(1)), &env).unwrap(), NIL);
+        assert_ne!(eq("", &list!(1, 1), &env).unwrap(), NIL);
         // (eq 1 2) => ()
-        assert_eq!(eq("", &list!(num(1), num(2)), &env).unwrap(), NIL);
+        assert_eq!(eq("", &list!(1, 2), &env).unwrap(), NIL);
         // (eq "str" "str") => #t
-        assert_ne!(eq("", &list!(str("str"), str("str")), &env).unwrap(), NIL);
+        assert_ne!(eq("", &list!("str", "str"), &env).unwrap(), NIL);
         // (eq 1 "1") => ()
-        assert_eq!(eq("", &list!(num(1), str("1")), &env).unwrap(), NIL);
+        assert_eq!(eq("", &list!(1, "1"), &env).unwrap(), NIL);
     }
 }
