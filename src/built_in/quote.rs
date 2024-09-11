@@ -96,7 +96,7 @@ mod tests {
     fn test_quasiquote() {
         let env = Env::new();
 
-        env.set("x", 2);
+        env.define("x", 2);
 
         // `(0 1 ,x 3) => (0 1 2 3)
         let result = quasiquote(
@@ -110,7 +110,7 @@ mod tests {
     #[test]
     fn test_quasiquote_unquote() {
         let env = Env::new();
-        env.set(
+        env.define(
             "+",
             Expr::Proc(Proc::Native {
                 name: "add".to_owned(),
@@ -130,7 +130,7 @@ mod tests {
     #[test]
     fn test_quasiquote_unquote_splicing() {
         let env = Env::new();
-        env.set(
+        env.define(
             "quote",
             Expr::Proc(Proc::Native {
                 name: "quote".to_owned(),

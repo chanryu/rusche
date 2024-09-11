@@ -25,7 +25,7 @@ impl Env {
         let env = Env::new();
 
         let set_native_func = |name, func| {
-            env.set(
+            env.define(
                 name,
                 Expr::Proc(Proc::Native {
                     name: name.to_owned(),
@@ -46,6 +46,7 @@ impl Env {
         set_native_func("eq?", built_in::eq);
         set_native_func("eval", built_in::eval_);
         set_native_func("lambda", built_in::lambda);
+        set_native_func("set!", built_in::set);
 
         // quote
         set_native_func("quote", built_in::quote::quote);
@@ -64,7 +65,7 @@ impl Env {
         env
     }
 
-    pub fn set<IntoExpr>(&self, name: &str, expr: IntoExpr)
+    pub fn define<IntoExpr>(&self, name: &str, expr: IntoExpr)
     where
         IntoExpr: Into<Expr>,
     {
@@ -120,7 +121,7 @@ mod tests {
     fn test_set() {
         let env = Env::new();
         assert_eq!(env.vars.borrow().len(), 0);
-        env.set("one", 1);
+        env.define("one", 1);
         assert_eq!(env.vars.borrow().get("one"), Some(&num(1)));
     }
 
@@ -129,7 +130,7 @@ mod tests {
         let env = Env::new();
         assert_eq!(env.update("name", 1), false);
 
-        env.set("name", 0);
+        env.define("name", 0);
         assert_eq!(env.update("name", 1), true);
     }
 
@@ -137,7 +138,7 @@ mod tests {
     fn test_lookup() {
         let env = Env::new();
         assert_eq!(env.lookup("one"), None);
-        env.set("one", num(1));
+        env.define("one", num(1));
         assert_eq!(env.lookup("one"), Some(num(1)));
     }
 
@@ -146,8 +147,8 @@ mod tests {
         let base = Env::new();
         let derived = base.derive();
 
-        base.set("one", 1);
-        derived.set("two", 2);
+        base.define("one", 1);
+        derived.define("two", 2);
 
         assert_eq!(derived.update("one", "uno"), true);
         assert_eq!(derived.update("two", "dos"), true);
@@ -163,10 +164,10 @@ mod tests {
         let derived = base.derive();
 
         assert_eq!(derived.lookup("two"), None);
-        base.set("two", 2);
+        base.define("two", 2);
         assert_eq!(derived.lookup("two"), Some(num(2)));
 
-        derived.set("three", 3);
+        derived.define("three", 3);
         assert_eq!(base.lookup("three"), None);
         assert_eq!(derived.lookup("three"), Some(num(3)));
     }
@@ -176,7 +177,7 @@ mod tests {
         let original = Env::new();
         let cloned = original.clone();
 
-        original.set("one", 1);
+        original.define("one", 1);
         assert_eq!(cloned.lookup("one"), Some(num(1)));
     }
 }

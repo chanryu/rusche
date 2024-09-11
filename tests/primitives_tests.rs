@@ -1,6 +1,6 @@
 mod common;
 
-use common::{eval_str, parse_single_expr};
+use common::{eval_str, eval_str_env, parse_single_expr};
 use rusp::env::Env;
 use rusp::eval::eval;
 
@@ -23,7 +23,26 @@ fn test_cond() {
 }
 
 #[test]
-fn test_define() {
+fn test_define_variable() {
+    let outer_env = Env::new_root_env();
+    let _ = eval_str_env("(define x 1)", &outer_env);
+    assert_eq!(eval_str_env("x", &outer_env), "1");
+    let _ = eval_str_env("(set! x 2)", &outer_env);
+    assert_eq!(eval_str_env("x", &outer_env), "2");
+
+    let inner_env = outer_env.derive();
+
+    let _ = eval_str_env("(define y 100)", &inner_env);
+    assert_eq!(eval_str_env("y", &inner_env), "100");
+    let _ = eval_str_env("(set! y 200)", &inner_env);
+    assert_eq!(eval_str_env("y", &inner_env), "200");
+
+    assert_eq!(eval_str_env("x", &inner_env), "2");
+    assert!(eval_str_env("y", &outer_env).starts_with("Err:"));
+}
+
+#[test]
+fn test_define_lambda() {
     let env = Env::new_root_env();
     let expr = parse_single_expr("(define (do-math x y) (- (* x 2) y))");
     let _ = eval(&expr, &env).unwrap();
@@ -39,6 +58,21 @@ fn test_eval() {
 #[test]
 fn test_lambda() {
     assert_eq!(eval_str("((lambda (x) (* x 2)) 5)"), "10");
+}
+
+#[test]
+fn test_set() {
+    let outer_env = Env::new_root_env();
+    let inner_env = outer_env.derive();
+
+    let _ = eval_str_env("(define x 1)", &outer_env);
+    assert_eq!(eval_str_env("x", &outer_env), "1");
+    let _ = eval_str_env("(set! x 2)", &outer_env);
+    assert_eq!(eval_str_env("x", &outer_env), "2");
+
+    let _ = eval_str_env("(set! x 3)", &inner_env);
+    assert_eq!(eval_str_env("x", &inner_env), "3");
+    assert_eq!(eval_str_env("x", &outer_env), "3");
 }
 
 #[test]
