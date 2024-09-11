@@ -98,7 +98,7 @@ fn eval_closure(
     loop {
         if let Some(formal_arg) = formal_args.next() {
             if let Some(name) = parse_name_if_variadic_args(formal_arg) {
-                closure_env.set(name, actual_args);
+                closure_env.define(name, actual_args);
                 break;
             }
 
@@ -106,7 +106,7 @@ fn eval_closure(
                 return Err(format!("{}: too few args", closure_name));
             };
 
-            closure_env.set(formal_arg, eval(expr, env)?);
+            closure_env.define(formal_arg, eval(expr, env)?);
         } else {
             if actual_args.next().is_none() {
                 break;
@@ -136,7 +136,7 @@ fn eval_macro(
     loop {
         if let Some(formal_arg) = formal_args.next() {
             if let Some(name) = parse_name_if_variadic_args(formal_arg) {
-                macro_env.set(name, actual_args);
+                macro_env.define(name, actual_args);
                 break;
             }
 
@@ -144,7 +144,7 @@ fn eval_macro(
                 return Err(format!("{}: too few args", macro_name));
             };
 
-            macro_env.set(formal_arg, expr.clone());
+            macro_env.define(formal_arg, expr.clone());
         } else {
             if actual_args.next().is_none() {
                 break;

@@ -73,7 +73,7 @@ pub fn define(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     match iter.next() {
         Some(Expr::Sym(name)) => {
             if let Some(expr) = iter.next() {
-                env.set(name, eval(expr, env)?);
+                env.define(name, eval(expr, env)?);
                 Ok(NIL)
             } else {
                 Err(format!(
@@ -88,7 +88,7 @@ pub fn define(proc_name: &str, args: &List, env: &Env) -> EvalResult {
 
             let formal_args = make_formal_args(cons.cdr.as_ref())?;
 
-            env.set(
+            env.define(
                 name,
                 Expr::Proc(Proc::Closure {
                     name: Some(name.to_string()),
@@ -114,7 +114,7 @@ pub fn defmacro(proc_name: &str, args: &List, env: &Env) -> EvalResult {
         return Err(make_syntax_error(proc_name, args));
     };
 
-    env.set(
+    env.define(
         macro_name,
         Expr::Proc(Proc::Macro {
             name: Some(macro_name.clone()),
@@ -164,6 +164,18 @@ pub fn lambda(proc_name: &str, args: &List, env: &Env) -> EvalResult {
         body: Box::new(iter.into()),
         outer_env: env.clone(),
     }))
+}
+
+pub fn set(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+    let (name_expr, value_expr) = get_exact_two_args(proc_name, args)?;
+
+    let Expr::Sym(name) = name_expr else {
+        return Err("".to_owned());
+    };
+
+    env.update(name, eval(value_expr, &env)?);
+
+    Ok(NIL)
 }
 
 fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
