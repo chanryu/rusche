@@ -5,8 +5,8 @@ use rusp::{
     parser::{ParseError, Parser},
 };
 
-pub fn run_file(file_path: &str) {
-    match std::fs::read_to_string(file_path) {
+pub fn run_file(path: &str) {
+    match std::fs::read_to_string(path) {
         Ok(contents) => {
             if let Err(e) = run_file_contents(&contents) {
                 eprintln!("{}", e);
@@ -14,7 +14,7 @@ pub fn run_file(file_path: &str) {
             }
         }
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("Failed to read file at \"{path}\": {e}");
             std::process::exit(1);
         }
     }

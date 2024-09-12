@@ -7,10 +7,9 @@ pub fn tokenize(text: &str) -> Result<Vec<Token>, TokenError> {
     let mut tokens = Vec::new();
     let mut scanner = Scanner::new(text.chars());
 
-    loop {
-        match scanner.get_token()? {
-            Some(token) => tokens.push(token),
-            None => return Ok(tokens),
-        }
+    while let Some(token) = scanner.get_token()? {
+        tokens.push(token);
     }
+
+    Ok(tokens)
 }
