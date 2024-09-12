@@ -1,13 +1,12 @@
+use crate::tokenize::tokenize;
 use rusp::{
     env::Env,
     eval::eval,
     parser::{ParseError, Parser},
-    scanner::{Scanner, TokenError},
-    token::Token,
 };
 use rustyline::{error::ReadlineError, DefaultEditor};
 
-pub fn repl() {
+pub fn run_repl() {
     let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");
 
     print_logo();
@@ -67,16 +66,4 @@ fn print_logo() {
     println!("           ┬─┐┬ ┬┌─┐┌─┐");
     println!("Welcome to ├┬┘│ │└─┐├─┘");
     println!("           ┴└─└─┘└─┘┴  !");
-}
-
-fn tokenize(text: &str) -> Result<Vec<Token>, TokenError> {
-    let mut tokens = Vec::new();
-    let mut scanner = Scanner::new(text.chars());
-
-    loop {
-        match scanner.get_token()? {
-            Some(token) => tokens.push(token),
-            None => return Ok(tokens),
-        }
-    }
 }
