@@ -6,7 +6,7 @@ use rusp::{
 };
 use rustyline::{error::ReadlineError, DefaultEditor};
 
-pub fn repl() {
+pub fn run_repl() {
     let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");
 
     print_logo();
