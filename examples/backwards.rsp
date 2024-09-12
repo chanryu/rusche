@@ -1,0 +1,6 @@
+(defmacro backwards (*args)
+    `(begin ,@(reverse args)))
+
+(define (println x) (display x) (display "\n"))
+
+(backwards (println "uno") (println "dos") (println "tres"))
