@@ -81,7 +81,6 @@ impl Proc {
         }
     }
 }
-
 fn eval_closure(
     closure_name: Option<&str>,
     formal_args: &Vec<String>,
@@ -102,9 +101,9 @@ fn eval_closure(
                 break;
             }
 
-            let Some(expr) = actual_args.next() else {
-                return Err(format!("{}: too few args", closure_name));
-            };
+            let expr = actual_args
+                .next()
+                .ok_or(format!("{}: too few args", closure_name))?;
 
             closure_env.define(formal_arg, eval(expr, env)?);
         } else {
@@ -140,9 +139,9 @@ fn eval_macro(
                 break;
             }
 
-            let Some(expr) = actual_args.next() else {
-                return Err(format!("{}: too few args", macro_name));
-            };
+            let expr = actual_args
+                .next()
+                .ok_or(format!("{}: too few args", macro_name))?;
 
             macro_env.define(formal_arg, expr.clone());
         } else {

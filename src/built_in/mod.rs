@@ -106,19 +106,31 @@ pub fn define(proc_name: &str, args: &List, env: &Env) -> EvalResult {
 pub fn defmacro(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     let mut iter = args.iter();
 
-    let Some(Expr::Sym(macro_name)) = iter.next() else {
-        return Err(make_syntax_error(proc_name, args));
-    };
+    let (macro_name, formal_args) = match iter.next() {
+        // (defmacro name (args) body)
+        Some(Expr::Sym(macro_name)) => {
+            let Some(Expr::List(list)) = iter.next() else {
+                return Err(make_syntax_error(proc_name, args));
+            };
 
-    let Some(Expr::List(list)) = iter.next() else {
-        return Err(make_syntax_error(proc_name, args));
+            (macro_name, make_formal_args(list)?)
+        }
+        // (defmacro (name args) body)
+        Some(Expr::List(List::Cons(cons))) => {
+            let Expr::Sym(macro_name) = cons.car.as_ref() else {
+                return Err(make_syntax_error(proc_name, args));
+            };
+
+            (macro_name, make_formal_args(cons.cdr.as_ref())?)
+        }
+        _ => return Err(make_syntax_error(proc_name, args)),
     };
 
     env.define(
         macro_name,
         Expr::Proc(Proc::Macro {
             name: Some(macro_name.clone()),
-            formal_args: make_formal_args(list)?,
+            formal_args: formal_args,
             body: Box::new(iter.into()),
         }),
     );
