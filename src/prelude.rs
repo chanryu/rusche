@@ -86,10 +86,10 @@ const COMPLEMENTRY_PRELUDE_MACROS: [&str; 4] = [
 const COMPLEMENTRY_PRELUDE_FUNCS: [&str; 10] = [
     // caar, cadr, cdar, cdar
     r#"
-    (define (caar  lst) (car (car lst)))
-    (define (cadr  lst) (cdr (car lst)))
-    (define (cdar  lst) (car (cdr lst)))
-    (define (cddr  lst) (cdr (cdr lst)))
+    (define (caar lst) (car (car lst)))
+    (define (cadr lst) (cdr (car lst)))
+    (define (cdar lst) (car (cdr lst)))
+    (define (cddr lst) (cdr (cdr lst)))
     "#,
     // cadar
     r#"
