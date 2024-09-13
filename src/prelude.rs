@@ -1,14 +1,61 @@
+use crate::built_in;
 use crate::env::Env;
 use crate::eval::eval;
+use crate::expr::Expr;
 use crate::parser::{ParseError, Parser};
+use crate::proc::Proc;
 use crate::scanner::Scanner;
 
-const PIECES: [&str; 15] = [
-    // #t, #f
-    r#"
-    (define #t 1)
-    (define #f '())
-    "#,
+pub fn load_prelude(env: &Env) {
+    load_native_functions(env);
+    load_complementry_items(env);
+}
+
+fn load_native_functions(env: &Env) {
+    let set_native_func = |name, func| {
+        env.define(
+            name,
+            Expr::Proc(Proc::Native {
+                name: name.to_owned(),
+                func,
+            }),
+        );
+    };
+
+    // lisp primitives
+    set_native_func("atom?", built_in::atom);
+    set_native_func("car", built_in::car);
+    set_native_func("cdr", built_in::cdr);
+    set_native_func("cons", built_in::cons_);
+    set_native_func("cond", built_in::cond);
+    set_native_func("define", built_in::define);
+    set_native_func("defmacro", built_in::defmacro);
+    set_native_func("display", built_in::display);
+    set_native_func("eq?", built_in::eq);
+    set_native_func("eval", built_in::eval_);
+    set_native_func("lambda", built_in::lambda);
+    set_native_func("set!", built_in::set);
+
+    // quote
+    set_native_func("quote", built_in::quote::quote);
+    set_native_func("quasiquote", built_in::quote::quasiquote);
+
+    // num
+    set_native_func("+", built_in::num::add);
+    set_native_func("-", built_in::num::minus);
+    set_native_func("*", built_in::num::multiply);
+    set_native_func("/", built_in::num::divide);
+    set_native_func("num?", built_in::num::is_num);
+}
+
+const COMPLEMENTRY_PRELUDE_SYMBOLS: [&str; 2] = [
+    // #t
+    "(define #t 1)",
+    // #f
+    "(define #f '())",
+];
+
+const COMPLEMENTRY_PRELUDE_MACROS: [&str; 4] = [
     // if
     r#"
     (defmacro if (pred then else)
@@ -34,12 +81,15 @@ const PIECES: [&str; 15] = [
     (defmacro begin (*exprs)
         `(let () ,@exprs))
     "#,
+];
+
+const COMPLEMENTRY_PRELUDE_FUNCS: [&str; 10] = [
     // caar, cadr, cdar, cdar
     r#"
-    (define (caar  lst) (car (car lst)))
-    (define (cadr  lst) (cdr (car lst)))
-    (define (cdar  lst) (car (cdr lst)))
-    (define (cddr  lst) (cdr (cdr lst)))
+    (define (caar lst) (car (car lst)))
+    (define (cadr lst) (cdr (car lst)))
+    (define (cdar lst) (car (cdr lst)))
+    (define (cddr lst) (cdr (cdr lst)))
     "#,
     // cadar
     r#"
@@ -103,37 +153,54 @@ const PIECES: [&str; 15] = [
     "#,
 ];
 
-pub fn load_prelude(env: &Env) {
-    let mut parser = Parser::new();
+fn load_complementry_items(env: &Env) {
+    for exprs in COMPLEMENTRY_PRELUDE_SYMBOLS {
+        eval_prelude_exprs(exprs, env);
+    }
+    for exprs in COMPLEMENTRY_PRELUDE_MACROS {
+        eval_prelude_exprs(exprs, env);
+    }
+    for exprs in COMPLEMENTRY_PRELUDE_FUNCS {
+        eval_prelude_exprs(exprs, env);
+    }
+}
 
-    for piece in PIECES {
-        let mut scanner = Scanner::new(piece.chars());
-        let tokens = std::iter::from_fn(|| match scanner.get_token() {
-            Ok(Some(token)) => Some(token),
-            Ok(None) => None,
-            Err(_) => panic!("Failed to tokenize prelude: {piece}"),
-        })
-        .collect::<Vec<_>>();
+fn eval_prelude_exprs(exprs: &str, env: &Env) {
+    let mut scanner = Scanner::new(exprs.chars());
+    let tokens = std::iter::from_fn(|| match scanner.get_token() {
+        Ok(Some(token)) => Some(token),
+        Ok(None) => None,
+        Err(_) => panic!("Failed to tokenize prelude: {exprs}"),
+    })
+    .collect::<Vec<_>>();
 
-        parser.add_tokens(tokens);
+    let mut parser = Parser::with_tokens(tokens);
 
-        loop {
-            match parser.parse() {
-                Ok(expr) => {
-                    let _ = eval(&expr, &env)
-                        .expect(format!("Failed to evaluate prelude: {piece}").as_str());
-                }
-                Err(ParseError::NeedMoreToken) => {
-                    if parser.is_parsing() {
-                        panic!("Failed to parse prelude - incomplete expression: {piece}");
-                    } else {
-                        break; // we're done!
-                    }
-                }
-                Err(ParseError::UnexpectedToken(token)) => {
-                    panic!("Failed to parse prelude - unexpected token {token} in {piece}");
+    loop {
+        match parser.parse() {
+            Ok(expr) => {
+                let _ = eval(&expr, &env)
+                    .expect(format!("Failed to evaluate prelude: {exprs}").as_str());
+            }
+            Err(ParseError::NeedMoreToken) => {
+                if parser.is_parsing() {
+                    panic!("Failed to parse prelude - incomplete expression: {exprs}");
+                } else {
+                    break; // we're done!
                 }
             }
+            Err(ParseError::UnexpectedToken(token)) => {
+                panic!("Failed to parse prelude - unexpected token {token} in {exprs}");
+            }
         }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_complementry_pieces_sanity() {
+        load_prelude(&Env::new()); // this should not panic
     }
 }

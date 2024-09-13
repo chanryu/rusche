@@ -14,8 +14,7 @@ pub fn parse_single_expr(text: &str) -> Expr {
         tokens.push(token);
     }
 
-    let mut parser = Parser::new();
-    parser.add_tokens(tokens);
+    let mut parser = Parser::with_tokens(tokens);
 
     let expr = parser
         .parse()
@@ -28,7 +27,7 @@ pub fn parse_single_expr(text: &str) -> Expr {
 }
 
 pub fn eval_str(text: &str) -> String {
-    let env = Env::new_root_env();
+    let env = Env::with_prelude();
     eval_str_env(text, &env)
 }
 

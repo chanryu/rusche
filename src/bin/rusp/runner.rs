@@ -21,32 +21,23 @@ pub fn run_file(path: &str) {
 }
 
 fn run_file_content(text: &str) -> Result<(), String> {
-    match tokenize(&text) {
-        Ok(tokens) => {
-            let env = Env::new_root_env();
+    let mut parser =
+        Parser::with_tokens(tokenize(text).map_err(|e| format!("Tokenization error: {}", e))?);
+    let env = Env::with_prelude();
 
-            let mut parser = Parser::new();
-            parser.add_tokens(tokens);
-            loop {
-                match parser.parse() {
-                    Ok(expr) => match eval(&expr, &env) {
-                        Ok(_) => {}
-                        Err(e) => {
-                            return Err(format!("{}", e));
-                        }
-                    },
-                    Err(ParseError::NeedMoreToken) => break,
-                    Err(e) => {
-                        return Err(format!("{}", e));
-                    }
-                }
+    loop {
+        match parser.parse() {
+            Ok(expr) => {
+                let _ = eval(&expr, &env).map_err(|e| format!("Evaluation error: {}", e))?;
             }
-            if parser.is_parsing() {
-                Err("Unexpected end of file.".to_owned())
-            } else {
-                Ok(())
-            }
+            Err(ParseError::NeedMoreToken) => break,
+            Err(e) => return Err(format!("Parsing error: {}", e)),
         }
-        Err(e) => Err(format!("{}", e)),
+    }
+
+    if parser.is_parsing() {
+        Err("Unexpected end of file.".to_owned())
+    } else {
+        Ok(())
     }
 }

@@ -28,7 +28,7 @@ impl List {
 
     pub fn cdr(&self) -> Option<&List> {
         if let List::Cons(cons) = &self {
-            Some(cons.cdr.as_ref())
+            Some(&cons.cdr)
         } else {
             None
         }
@@ -58,7 +58,7 @@ fn write_list(f: &mut fmt::Formatter<'_>, list: &List, is_top_level: bool) -> fm
             write!(f, " {}", cons.car)?;
         }
 
-        write_list(f, cons.cdr.as_ref(), false)?
+        write_list(f, &cons.cdr, false)?
     }
     if is_top_level {
         write!(f, ")")?;

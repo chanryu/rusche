@@ -19,7 +19,7 @@ impl Cons {
 
     pub fn cdar(&self) -> Option<&Expr> {
         if let List::Cons(cons) = self.cdr.as_ref() {
-            Some(cons.car.as_ref())
+            Some(&cons.car)
         } else {
             None
         }

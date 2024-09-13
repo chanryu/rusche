@@ -52,7 +52,7 @@ pub fn cond(proc_name: &str, args: &List, env: &Env) -> EvalResult {
                 return Ok(NIL);
             }
             Some(Expr::List(List::Cons(cons))) => {
-                let car = cons.car.as_ref();
+                let car = &cons.car;
                 if eval(car, env)?.is_truthy() {
                     if let Some(expr) = cons.cdar() {
                         return eval(expr, env);
@@ -86,7 +86,7 @@ pub fn define(proc_name: &str, args: &List, env: &Env) -> EvalResult {
                 return Err(format!("{proc_name}: expects a list of symbols"));
             };
 
-            let formal_args = make_formal_args(cons.cdr.as_ref())?;
+            let formal_args = make_formal_args(&cons.cdr)?;
 
             env.define(
                 name,
@@ -121,7 +121,7 @@ pub fn defmacro(proc_name: &str, args: &List, env: &Env) -> EvalResult {
                 return Err(make_syntax_error(proc_name, args));
             };
 
-            (macro_name, make_formal_args(cons.cdr.as_ref())?)
+            (macro_name, make_formal_args(&cons.cdr)?)
         }
         _ => return Err(make_syntax_error(proc_name, args)),
     };

@@ -13,7 +13,8 @@ pub fn eval(expr: &Expr, env: &Env) -> EvalResult {
         },
         Expr::List(List::Cons(cons)) => {
             if let Expr::Proc(proc) = eval(&cons.car, env)? {
-                proc.invoke(cons.cdr.as_ref(), env)
+                let args = &cons.cdr;
+                proc.invoke(args, env)
             } else {
                 Err(format!("{} does not evaluate to a callable.", cons.car))
             }

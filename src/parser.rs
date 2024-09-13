@@ -40,6 +40,12 @@ impl Parser {
         }
     }
 
+    pub fn with_tokens(tokens: Vec<Token>) -> Self {
+        let mut parser = Self::new();
+        parser.add_tokens(tokens);
+        parser
+    }
+
     pub fn is_parsing(&self) -> bool {
         !self.contexts.is_empty()
     }
@@ -146,10 +152,8 @@ mod tests {
 
     #[test]
     fn test_parser() {
-        let mut parser = Parser::new();
-
         // (add 1 2)
-        parser.add_tokens([
+        let mut parser = Parser::with_tokens(vec![
             Token::OpenParen,
             Token::Sym(String::from("add")),
             Token::Num(1_f64),
@@ -164,10 +168,8 @@ mod tests {
 
     #[test]
     fn test_parser_quote_atom() {
-        let mut parser = Parser::new();
-
         // '1
-        parser.add_tokens([Token::Quote, Token::Num(1_f64)]);
+        let mut parser = Parser::with_tokens(vec![Token::Quote, Token::Num(1_f64)]);
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(sym("quote"), 1).into();
@@ -176,18 +178,18 @@ mod tests {
 
     #[test]
     fn test_parser_quote_list() {
-        let mut parser = Parser::new();
-
-        // '(1 2)
-        parser.add_tokens([
-            Token::Quote,
-            Token::OpenParen,
-            Token::OpenParen,
-            Token::Num(1_f64),
-            Token::CloseParen,
-            Token::Num(2_f64),
-            Token::CloseParen,
-        ]);
+        let mut parser = Parser::with_tokens(
+            // '(1 2)
+            vec![
+                Token::Quote,
+                Token::OpenParen,
+                Token::OpenParen,
+                Token::Num(1_f64),
+                Token::CloseParen,
+                Token::Num(2_f64),
+                Token::CloseParen,
+            ],
+        );
 
         let parsed_expr = parser.parse().unwrap();
         print!("{}", parsed_expr);
