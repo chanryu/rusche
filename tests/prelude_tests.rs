@@ -46,7 +46,7 @@ fn test_map() {
 
 #[test]
 fn test_let() {
-    let env = Env::new_root_env();
+    let env = Env::with_prelude();
 
     assert_eq!(env.lookup("x"), None);
     assert_eq!(eval_str_env("(let ((x 2)) (+ x 3))", &env), "5");
