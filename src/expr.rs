@@ -69,13 +69,13 @@ impl<'a> From<ListIter<'a>> for Expr {
 
 impl From<&str> for Expr {
     fn from(value: &str) -> Self {
-        Expr::Str(value.into())
+        Expr::Str(value.to_string())
     }
 }
 
 impl From<i32> for Expr {
     fn from(value: i32) -> Self {
-        Expr::Num(value.into())
+        Expr::Num(value as f64)
     }
 }
 
@@ -88,7 +88,7 @@ impl From<f64> for Expr {
 impl From<bool> for Expr {
     fn from(value: bool) -> Self {
         if value {
-            Expr::Num(1_f64)
+            Expr::Num(1.0)
         } else {
             NIL
         }
