@@ -14,8 +14,7 @@ pub fn parse_single_expr(text: &str) -> Expr {
         tokens.push(token);
     }
 
-    let mut parser = Parser::new();
-    parser.add_tokens(tokens);
+    let mut parser = Parser::with_tokens(tokens);
 
     let expr = parser
         .parse()
