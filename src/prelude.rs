@@ -8,7 +8,7 @@ use crate::scanner::Scanner;
 
 pub fn load_prelude(env: &Env) {
     load_native_functions(env);
-    load_complementry_pieces(env);
+    load_complementry_items(env);
 }
 
 fn load_native_functions(env: &Env) {
@@ -48,13 +48,14 @@ fn load_native_functions(env: &Env) {
     set_native_func("num?", built_in::num::is_num);
 }
 
-/// The complementary pieces of the prelude
-const COMPLEMENTRY_PIECES: [&str; 15] = [
-    // #t, #f
-    r#"
-    (define #t 1)
-    (define #f '())
-    "#,
+const COMPLEMENTRY_PRELUDE_SYMBOLS: [&str; 2] = [
+    // #t
+    "(define #t 1)",
+    // #f
+    "(define #f '())",
+];
+
+const COMPLEMENTRY_PRELUDE_MACROS: [&str; 4] = [
     // if
     r#"
     (defmacro if (pred then else)
@@ -80,6 +81,9 @@ const COMPLEMENTRY_PIECES: [&str; 15] = [
     (defmacro begin (*exprs)
         `(let () ,@exprs))
     "#,
+];
+
+const COMPLEMENTRY_PRELUDE_FUNCS: [&str; 10] = [
     // caar, cadr, cdar, cdar
     r#"
     (define (caar  lst) (car (car lst)))
@@ -149,41 +153,48 @@ const COMPLEMENTRY_PIECES: [&str; 15] = [
     "#,
 ];
 
-fn load_complementry_pieces(env: &Env) {
-    let mut parser = Parser::new();
+fn load_complementry_items(env: &Env) {
+    for exprs in COMPLEMENTRY_PRELUDE_SYMBOLS {
+        eval_prelude_exprs(exprs, env);
+    }
+    for exprs in COMPLEMENTRY_PRELUDE_MACROS {
+        eval_prelude_exprs(exprs, env);
+    }
+    for exprs in COMPLEMENTRY_PRELUDE_FUNCS {
+        eval_prelude_exprs(exprs, env);
+    }
+}
 
-    for piece in COMPLEMENTRY_PIECES {
-        let mut scanner = Scanner::new(piece.chars());
-        let tokens = std::iter::from_fn(|| match scanner.get_token() {
-            Ok(Some(token)) => Some(token),
-            Ok(None) => None,
-            Err(_) => panic!("Failed to tokenize prelude: {piece}"),
-        })
-        .collect::<Vec<_>>();
+fn eval_prelude_exprs(exprs: &str, env: &Env) {
+    let mut scanner = Scanner::new(exprs.chars());
+    let tokens = std::iter::from_fn(|| match scanner.get_token() {
+        Ok(Some(token)) => Some(token),
+        Ok(None) => None,
+        Err(_) => panic!("Failed to tokenize prelude: {exprs}"),
+    })
+    .collect::<Vec<_>>();
 
-        parser.add_tokens(tokens);
+    let mut parser = Parser::with_tokens(tokens);
 
-        loop {
-            match parser.parse() {
-                Ok(expr) => {
-                    let _ = eval(&expr, &env)
-                        .expect(format!("Failed to evaluate prelude: {piece}").as_str());
+    loop {
+        match parser.parse() {
+            Ok(expr) => {
+                let _ = eval(&expr, &env)
+                    .expect(format!("Failed to evaluate prelude: {exprs}").as_str());
+            }
+            Err(ParseError::NeedMoreToken) => {
+                if parser.is_parsing() {
+                    panic!("Failed to parse prelude - incomplete expression: {exprs}");
+                } else {
+                    break; // we're done!
                 }
-                Err(ParseError::NeedMoreToken) => {
-                    if parser.is_parsing() {
-                        panic!("Failed to parse prelude - incomplete expression: {piece}");
-                    } else {
-                        break; // we're done!
-                    }
-                }
-                Err(ParseError::UnexpectedToken(token)) => {
-                    panic!("Failed to parse prelude - unexpected token {token} in {piece}");
-                }
+            }
+            Err(ParseError::UnexpectedToken(token)) => {
+                panic!("Failed to parse prelude - unexpected token {token} in {exprs}");
             }
         }
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
