@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::built_in;
 use crate::env::Env;
 use crate::eval::eval;
@@ -6,12 +8,12 @@ use crate::parser::{ParseError, Parser};
 use crate::proc::Proc;
 use crate::scanner::Scanner;
 
-pub fn load_prelude(env: &Env) {
+pub fn load_prelude(env: &Rc<Env>) {
     load_native_functions(env);
     load_complementry_items(env);
 }
 
-fn load_native_functions(env: &Env) {
+fn load_native_functions(env: &Rc<Env>) {
     let set_native_func = |name, func| {
         env.define(
             name,
@@ -153,7 +155,7 @@ const COMPLEMENTRY_PRELUDE_FUNCS: [&str; 10] = [
     "#,
 ];
 
-fn load_complementry_items(env: &Env) {
+fn load_complementry_items(env: &Rc<Env>) {
     for exprs in COMPLEMENTRY_PRELUDE_SYMBOLS {
         eval_prelude_exprs(exprs, env);
     }
@@ -165,7 +167,7 @@ fn load_complementry_items(env: &Env) {
     }
 }
 
-fn eval_prelude_exprs(exprs: &str, env: &Env) {
+fn eval_prelude_exprs(exprs: &str, env: &Rc<Env>) {
     let mut scanner = Scanner::new(exprs.chars());
     let tokens = std::iter::from_fn(|| match scanner.get_token() {
         Ok(Some(token)) => Some(token),
@@ -201,6 +203,7 @@ mod tests {
 
     #[test]
     fn test_complementry_pieces_sanity() {
-        load_prelude(&Env::new()); // this should not panic
+        let env = Rc::new(Env::new());
+        load_prelude(&env); // this should not panic
     }
 }

@@ -1,14 +1,16 @@
+use std::rc::Rc;
+
 use super::{get_exact_one_arg, make_syntax_error};
 use crate::env::Env;
 use crate::eval::{eval, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::List;
 
-pub fn quote(proc_name: &str, args: &List, _env: &Env) -> EvalResult {
+pub fn quote(proc_name: &str, args: &List, _env: &Rc<Env>) -> EvalResult {
     Ok(get_exact_one_arg(proc_name, args)?.clone())
 }
 
-fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>, EvalError> {
+fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Expr>, EvalError> {
     let Expr::List(list) = expr else {
         return Ok(vec![expr.clone()]);
     };
@@ -62,7 +64,7 @@ fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Env) -> Result<Vec<Expr>,
     Ok(exprs)
 }
 
-pub fn quasiquote(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn quasiquote(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let expr = get_exact_one_arg(proc_name, args)?;
 
     match quasiquote_expr(proc_name, expr, env) {
@@ -86,7 +88,7 @@ mod tests {
 
     #[test]
     fn test_quote() {
-        let env = Env::new();
+        let env = Rc::new(Env::new());
         // (quote (1 2)) => (1 2)
         let result = quote("", &list!(list!(1, 2)), &env);
         assert_eq!(result, Ok(list!(1, 2).into()));
@@ -94,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_quasiquote() {
-        let env = Env::new();
+        let env = Rc::new(Env::new());
 
         env.define("x", 2);
 
@@ -109,7 +111,7 @@ mod tests {
 
     #[test]
     fn test_quasiquote_unquote() {
-        let env = Env::new();
+        let env = Rc::new(Env::new());
         env.define(
             "+",
             Expr::Proc(Proc::Native {
@@ -129,7 +131,7 @@ mod tests {
 
     #[test]
     fn test_quasiquote_unquote_splicing() {
-        let env = Env::new();
+        let env = Rc::new(Env::new());
         env.define(
             "quote",
             Expr::Proc(Proc::Native {

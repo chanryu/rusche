@@ -4,24 +4,31 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Env {
-    base: Option<Box<Env>>,
-    vars: Rc<RefCell<HashMap<String, Expr>>>,
+    base: Option<Rc<Env>>,
+    vars: RefCell<HashMap<String, Expr>>,
 }
 
 impl Env {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             base: None,
-            vars: Rc::new(RefCell::new(HashMap::new())),
+            vars: RefCell::new(HashMap::new()),
         }
     }
 
-    pub fn with_prelude() -> Self {
-        let env = Self::new();
+    pub fn with_prelude() -> Rc<Self> {
+        let env = Rc::new(Self::new());
         load_prelude(&env);
         env
+    }
+
+    pub fn derive_from(base: &Rc<Env>) -> Rc<Self> {
+        Rc::new(Self {
+            base: Some(base.clone()),
+            vars: RefCell::new(HashMap::new()),
+        })
     }
 
     pub fn define<IntoExpr>(&self, name: &str, expr: IntoExpr)
@@ -63,12 +70,6 @@ impl Env {
         }
         None
     }
-
-    pub fn derive(&self) -> Env {
-        let mut derived_env = Env::new();
-        derived_env.base = Some(Box::new(self.clone()));
-        derived_env
-    }
 }
 
 #[cfg(test)]
@@ -103,8 +104,8 @@ mod tests {
 
     #[test]
     fn test_derive_update() {
-        let base = Env::new();
-        let derived = base.derive();
+        let base = Rc::new(Env::new());
+        let derived = Env::derive_from(&base);
 
         base.define("one", 1);
         derived.define("two", 2);
@@ -119,8 +120,8 @@ mod tests {
 
     #[test]
     fn test_derive_lookup() {
-        let base = Env::new();
-        let derived = base.derive();
+        let base = Rc::new(Env::new());
+        let derived = Env::derive_from(&base);
 
         assert_eq!(derived.lookup("two"), None);
         base.define("two", 2);
@@ -133,7 +134,7 @@ mod tests {
 
     #[test]
     fn test_clone() {
-        let original = Env::new();
+        let original = Rc::new(Env::new());
         let cloned = original.clone();
 
         original.define("one", 1);

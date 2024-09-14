@@ -30,7 +30,7 @@ fn test_define_variable() {
     let _ = eval_str_env("(set! x 2)", &outer_env);
     assert_eq!(eval_str_env("x", &outer_env), "2");
 
-    let inner_env = outer_env.derive();
+    let inner_env = Env::derive_from(&outer_env);
 
     let _ = eval_str_env("(define y 100)", &inner_env);
     assert_eq!(eval_str_env("y", &inner_env), "100");
@@ -63,7 +63,7 @@ fn test_lambda() {
 #[test]
 fn test_set() {
     let outer_env = Env::with_prelude();
-    let inner_env = outer_env.derive();
+    let inner_env = Env::derive_from(&outer_env);
 
     let _ = eval_str_env("(define x 1)", &outer_env);
     assert_eq!(eval_str_env("x", &outer_env), "1");

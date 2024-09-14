@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::env::Env;
 use crate::expr::Expr;
 use crate::list::List;
@@ -5,7 +7,7 @@ use crate::list::List;
 pub type EvalError = String;
 pub type EvalResult = Result<Expr, EvalError>;
 
-pub fn eval(expr: &Expr, env: &Env) -> EvalResult {
+pub fn eval(expr: &Expr, env: &Rc<Env>) -> EvalResult {
     match expr {
         Expr::Sym(name) => match env.lookup(name) {
             Some(expr) => Ok(expr.clone()),

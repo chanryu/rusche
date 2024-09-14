@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::env::Env;
 use crate::eval::{eval, EvalResult};
 use crate::expr::Expr;
@@ -8,7 +10,7 @@ use super::get_exact_one_arg;
 fn binary_operation(
     proc_name: &str,
     args: &List,
-    env: &Env,
+    env: &Rc<Env>,
     identity: f64,
     is_associative: bool,
     func: fn(lhs: f64, rhs: f64) -> f64,
@@ -31,23 +33,23 @@ fn binary_operation(
     Ok(Expr::Num(result))
 }
 
-pub fn add(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn add(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     binary_operation(proc_name, args, env, 0_f64, true, |lhs, rhs| lhs + rhs)
 }
 
-pub fn minus(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn minus(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     binary_operation(proc_name, args, env, 0_f64, false, |lhs, rhs| lhs - rhs)
 }
 
-pub fn multiply(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn multiply(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     binary_operation(proc_name, args, env, 1_f64, true, |lhs, rhs| lhs * rhs)
 }
 
-pub fn divide(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn divide(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     binary_operation(proc_name, args, env, 1_f64, false, |lhs, rhs| lhs / rhs)
 }
 
-pub fn is_num(proc_name: &str, args: &List, _env: &Env) -> EvalResult {
+pub fn is_num(proc_name: &str, args: &List, _env: &Rc<Env>) -> EvalResult {
     if let Expr::Num(_) = get_exact_one_arg(proc_name, args)? {
         Ok(true.into())
     } else {
@@ -63,7 +65,7 @@ mod tests {
 
     #[test]
     fn test_add() {
-        let env = Env::new();
+        let env = Rc::new(Env::new());
 
         // (+ 1) => 1
         let args = list!(1);
@@ -76,7 +78,7 @@ mod tests {
 
     #[test]
     fn test_minus() {
-        let env = Env::new();
+        let env = Rc::new(Env::new());
 
         // (- 1) => -1
         let args = list!(1);
@@ -89,7 +91,7 @@ mod tests {
 
     #[test]
     fn test_multiply() {
-        let env = Env::new();
+        let env = Rc::new(Env::new());
 
         // (* 1) => 1
         let args = list!(1);
@@ -106,7 +108,7 @@ mod tests {
 
     #[test]
     fn test_divide() {
-        let env = Env::new();
+        let env = Rc::new(Env::new());
 
         // (/ 2) => 0.5
         let args = list!(2);

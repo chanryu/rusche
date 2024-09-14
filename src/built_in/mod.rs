@@ -1,19 +1,21 @@
 pub mod num;
 pub mod quote;
 
+use std::rc::Rc;
+
 use crate::env::Env;
 use crate::eval::{eval, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::{cons, List};
 use crate::proc::Proc;
 
-pub fn atom(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn atom(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let expr = get_exact_one_arg(proc_name, args)?;
 
     Ok(eval(expr, env)?.is_atom().into())
 }
 
-pub fn car(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn car(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let expr = get_exact_one_arg(proc_name, args)?;
 
     if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
@@ -23,7 +25,7 @@ pub fn car(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     }
 }
 
-pub fn cdr(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn cdr(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let expr = get_exact_one_arg(proc_name, args)?;
 
     if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
@@ -33,7 +35,7 @@ pub fn cdr(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     }
 }
 
-pub fn cons_(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn cons_(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let (car, cdr) = get_exact_two_args(proc_name, args)?;
 
     let car = eval(car, env)?;
@@ -44,7 +46,7 @@ pub fn cons_(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     Ok(cons(car, cdr).into())
 }
 
-pub fn cond(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn cond(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let mut iter = args.iter();
     loop {
         match iter.next() {
@@ -68,7 +70,7 @@ pub fn cond(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     Err(make_syntax_error(proc_name, args))
 }
 
-pub fn define(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn define(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let mut iter = args.iter();
     match iter.next() {
         Some(Expr::Sym(name)) => {
@@ -103,7 +105,7 @@ pub fn define(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     }
 }
 
-pub fn defmacro(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn defmacro(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let mut iter = args.iter();
 
     let (macro_name, formal_args) = match iter.next() {
@@ -138,7 +140,7 @@ pub fn defmacro(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     Ok(NIL)
 }
 
-pub fn display(_: &str, args: &List, env: &Env) -> EvalResult {
+pub fn display(_: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     for (index, expr) in args.iter().enumerate() {
         if index > 0 {
             print!(" ");
@@ -151,19 +153,19 @@ pub fn display(_: &str, args: &List, env: &Env) -> EvalResult {
     Ok(NIL)
 }
 
-pub fn eq(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn eq(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let (left, right) = get_exact_two_args(proc_name, args)?;
 
     Ok((eval(left, env)? == eval(right, env)?).into())
 }
 
-pub fn eval_(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn eval_(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let expr = get_exact_one_arg(proc_name, args)?;
 
     eval(&eval(expr, env)?, env)
 }
 
-pub fn lambda(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn lambda(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let mut iter = args.iter();
 
     let Some(Expr::List(list)) = iter.next() else {
@@ -178,7 +180,7 @@ pub fn lambda(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     }))
 }
 
-pub fn set(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn set(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let (name_expr, value_expr) = get_exact_two_args(proc_name, args)?;
 
     let Expr::Sym(name) = name_expr else {
@@ -247,7 +249,8 @@ mod tests {
 
     #[test]
     fn test_define() {
-        let env = Env::new();
+        let env = Rc::new(Env::new());
+
         // (define name "value")
         let ret = define("", &list!(sym("name"), "value"), &env);
         assert_eq!(ret, Ok(NIL));
@@ -256,7 +259,8 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        let env = Env::new();
+        let env = Rc::new(Env::new());
+
         // (eq 1 1) => #t
         assert_ne!(eq("", &list!(1, 1), &env).unwrap(), NIL);
         // (eq 1 2) => ()
