@@ -29,7 +29,7 @@ pub fn parse_single_expr(text: &str) -> Expr {
 }
 
 pub fn eval_str(text: &str) -> String {
-    let env = Rc::new(Env::with_prelude());
+    let env = Rc::new(Env::new_root());
     eval_str_env(text, &env)
 }
 

@@ -23,7 +23,7 @@ pub fn run_file(path: &str) {
 fn run_file_content(text: &str) -> Result<(), String> {
     let mut parser =
         Parser::with_tokens(tokenize(text).map_err(|e| format!("Tokenization error: {}", e))?);
-    let env = Env::with_prelude();
+    let env = Env::new_root();
 
     loop {
         match parser.parse() {

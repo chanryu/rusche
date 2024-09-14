@@ -11,7 +11,7 @@ pub fn run_repl() {
 
     print_logo();
 
-    let env = Env::with_prelude();
+    let env = Env::new_root();
     let mut parser = Parser::new();
 
     loop {

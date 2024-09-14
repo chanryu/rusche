@@ -11,23 +11,25 @@ static mut GLOBAL_ENV_COUNTER: i32 = 0;
 pub struct Env {
     base: Option<Rc<Env>>,
     vars: RefCell<HashMap<String, Expr>>,
+    is_reachable: bool,
 }
 
 impl Env {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new() -> Rc<Self> {
         #[cfg(debug_assertions)]
         unsafe {
             GLOBAL_ENV_COUNTER += 1;
             println!("Env created: {}", GLOBAL_ENV_COUNTER);
         }
-        Self {
+        Rc::new(Self {
             base: None,
             vars: RefCell::new(HashMap::new()),
-        }
+            is_reachable: false,
+        })
     }
 
-    pub fn with_prelude() -> Rc<Self> {
-        let env = Rc::new(Self::new());
+    pub fn new_root() -> Rc<Self> {
+        let env = Self::new();
         load_prelude(&env);
         env
     }
@@ -41,6 +43,7 @@ impl Env {
         Rc::new(Self {
             base: Some(base.clone()),
             vars: RefCell::new(HashMap::new()),
+            is_reachable: false,
         })
     }
 
@@ -127,7 +130,7 @@ mod tests {
 
     #[test]
     fn test_derive_update() {
-        let base = Rc::new(Env::new());
+        let base = Env::new();
         let derived = Env::derive_from(&base);
 
         base.define("one", 1);
@@ -143,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_derive_lookup() {
-        let base = Rc::new(Env::new());
+        let base = Env::new();
         let derived = Env::derive_from(&base);
 
         assert_eq!(derived.lookup("two"), None);
@@ -157,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_clone() {
-        let original = Rc::new(Env::new());
+        let original = Env::new();
         let cloned = original.clone();
 
         original.define("one", 1);

@@ -249,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_define() {
-        let env = Rc::new(Env::new());
+        let env = Env::new();
 
         // (define name "value")
         let ret = define("", &list!(sym("name"), "value"), &env);
@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        let env = Rc::new(Env::new());
+        let env = Env::new();
 
         // (eq 1 1) => #t
         assert_ne!(eq("", &list!(1, 1), &env).unwrap(), NIL);

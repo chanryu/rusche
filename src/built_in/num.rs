@@ -65,7 +65,7 @@ mod tests {
 
     #[test]
     fn test_add() {
-        let env = Rc::new(Env::new());
+        let env = Env::new();
 
         // (+ 1) => 1
         let args = list!(1);
@@ -78,7 +78,7 @@ mod tests {
 
     #[test]
     fn test_minus() {
-        let env = Rc::new(Env::new());
+        let env = Env::new();
 
         // (- 1) => -1
         let args = list!(1);
@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn test_multiply() {
-        let env = Rc::new(Env::new());
+        let env = Env::new();
 
         // (* 1) => 1
         let args = list!(1);
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn test_divide() {
-        let env = Rc::new(Env::new());
+        let env = Env::new();
 
         // (/ 2) => 0.5
         let args = list!(2);

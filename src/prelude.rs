@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn test_complementry_pieces_sanity() {
-        let env = Rc::new(Env::new());
+        let env = Env::new();
         load_prelude(&env); // this should not panic
     }
 }
