@@ -1,6 +1,7 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::vec;
 
 use crate::expr::Expr;
 use crate::prelude::load_prelude;
@@ -10,10 +11,16 @@ use crate::proc::Proc;
 static mut GLOBAL_ENV_COUNTER: i32 = 0;
 
 #[derive(Debug, PartialEq)]
+enum EnvKind {
+    Root { descendants: RefCell<Vec<Rc<Env>>> },
+    Derived { base: Rc<Env> },
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Env {
-    base: Option<Rc<Env>>,
+    kind: EnvKind,
     vars: RefCell<HashMap<String, Expr>>,
-    is_reachable: bool,
+    is_reachable: Cell<bool>,
 }
 
 impl Env {
@@ -24,13 +31,15 @@ impl Env {
             println!("Env created: {}", GLOBAL_ENV_COUNTER);
         }
         Rc::new(Self {
-            base: None,
+            kind: EnvKind::Root {
+                descendants: RefCell::new(Vec::new()),
+            },
             vars: RefCell::new(HashMap::new()),
-            is_reachable: false,
+            is_reachable: Cell::new(false),
         })
     }
 
-    pub fn new_root() -> Rc<Self> {
+    pub fn with_prelude() -> Rc<Self> {
         let env = Self::new();
         load_builtin(&env);
         load_prelude(&env);
@@ -43,11 +52,27 @@ impl Env {
             GLOBAL_ENV_COUNTER += 1;
             println!("Env derived: {}", GLOBAL_ENV_COUNTER);
         }
-        Rc::new(Self {
-            base: Some(base.clone()),
+
+        let derived_env = Rc::new(Self {
+            kind: EnvKind::Derived { base: base.clone() },
             vars: RefCell::new(HashMap::new()),
-            is_reachable: false,
-        })
+            is_reachable: Cell::new(false),
+        });
+
+        let mut env = base.clone();
+        loop {
+            match &env.kind {
+                EnvKind::Root {
+                    descendants: derived_envs,
+                } => {
+                    derived_envs.borrow_mut().push(derived_env.clone());
+                    break;
+                }
+                EnvKind::Derived { base } => env = base.clone(),
+            }
+        }
+
+        derived_env
     }
 
     pub fn define<IntoExpr>(&self, name: &str, expr: IntoExpr)
@@ -67,11 +92,10 @@ impl Env {
                 *value = expr.into();
                 return true;
             }
-            if let Some(base) = &env.base {
-                env = base;
-            } else {
+            let EnvKind::Derived { base } = &env.kind else {
                 return false;
-            }
+            };
+            env = base;
         }
     }
 
@@ -81,13 +105,61 @@ impl Env {
             if let Some(value) = env.vars.borrow().get(name) {
                 return Some(value.clone());
             }
-            if let Some(base) = &env.base {
-                env = base;
-            } else {
-                break;
-            }
+            let EnvKind::Derived { base } = &env.kind else {
+                return None;
+            };
+            env = base;
         }
-        None
+    }
+
+    pub fn gc(&self) {
+        let EnvKind::Root { descendants } = &self.kind else {
+            return;
+        };
+
+        descendants
+            .borrow()
+            .iter()
+            .for_each(|env| env.is_reachable.set(false));
+
+        self.mark_reachable();
+
+        println!(
+            "Unreachable envs: {}",
+            descendants
+                .borrow()
+                .iter()
+                .filter(|env| !env.is_reachable.get())
+                .count()
+        );
+
+        let new_descendants = descendants
+            .borrow()
+            .iter()
+            .map(|env| {
+                if !env.is_reachable.get() {
+                    env.vars.borrow_mut().clear();
+                }
+                env.clone()
+            })
+            .filter(|env| env.is_reachable.get())
+            .collect::<Vec<_>>();
+
+        *descendants.borrow_mut() = new_descendants;
+    }
+
+    fn mark_reachable(&self) {
+        if self.is_reachable.get() {
+            return;
+        }
+
+        self.is_reachable.set(true);
+
+        self.vars.borrow().values().for_each(|expr| {
+            if let Expr::Proc(Proc::Closure { outer_env, .. }) = expr {
+                outer_env.mark_reachable();
+            }
+        });
     }
 }
 

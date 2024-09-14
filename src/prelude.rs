@@ -158,6 +158,6 @@ mod tests {
 
     #[test]
     fn test_complementry_pieces_sanity() {
-        load_prelude(&Env::new_root()); // this should not panic
+        load_prelude(&Env::with_prelude()); // this should not panic
     }
 }

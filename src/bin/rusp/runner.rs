@@ -23,7 +23,7 @@ pub fn run_file(path: &str) {
 fn run_file_content(text: &str) -> Result<(), String> {
     let mut parser =
         Parser::with_tokens(tokenize(text).map_err(|e| format!("Tokenization error: {}", e))?);
-    let env = Env::new_root();
+    let env = Env::with_prelude();
 
     loop {
         match parser.parse() {
@@ -34,6 +34,8 @@ fn run_file_content(text: &str) -> Result<(), String> {
             Err(e) => return Err(format!("Parsing error: {}", e)),
         }
     }
+
+    env.gc();
 
     if parser.is_parsing() {
         Err("Unexpected end of file.".to_owned())
