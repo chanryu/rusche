@@ -4,6 +4,9 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+#[cfg(debug_assertions)]
+static mut GLOBAL_ENV_COUNTER: i32 = 0;
+
 #[derive(Debug, PartialEq)]
 pub struct Env {
     base: Option<Rc<Env>>,
@@ -12,6 +15,11 @@ pub struct Env {
 
 impl Env {
     pub(crate) fn new() -> Self {
+        #[cfg(debug_assertions)]
+        unsafe {
+            GLOBAL_ENV_COUNTER += 1;
+            println!("Env created: {}", GLOBAL_ENV_COUNTER);
+        }
         Self {
             base: None,
             vars: RefCell::new(HashMap::new()),
@@ -25,6 +33,11 @@ impl Env {
     }
 
     pub fn derive_from(base: &Rc<Env>) -> Rc<Self> {
+        #[cfg(debug_assertions)]
+        unsafe {
+            GLOBAL_ENV_COUNTER += 1;
+            println!("Env derived: {}", GLOBAL_ENV_COUNTER);
+        }
         Rc::new(Self {
             base: Some(base.clone()),
             vars: RefCell::new(HashMap::new()),
@@ -69,6 +82,16 @@ impl Env {
             }
         }
         None
+    }
+}
+
+#[cfg(debug_assertions)]
+impl Drop for Env {
+    fn drop(&mut self) {
+        unsafe {
+            GLOBAL_ENV_COUNTER -= 1;
+            println!("Env dropped: {}", GLOBAL_ENV_COUNTER);
+        }
     }
 }
 
