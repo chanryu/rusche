@@ -1,8 +1,10 @@
-use crate::expr::Expr;
-use crate::prelude::load_prelude;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+
+use crate::expr::Expr;
+use crate::prelude::load_prelude;
+use crate::proc::Proc;
 
 #[cfg(debug_assertions)]
 static mut GLOBAL_ENV_COUNTER: i32 = 0;
@@ -30,6 +32,7 @@ impl Env {
 
     pub fn new_root() -> Rc<Self> {
         let env = Self::new();
+        load_builtin(&env);
         load_prelude(&env);
         env
     }
@@ -96,6 +99,45 @@ impl Drop for Env {
             println!("Env dropped: {}", GLOBAL_ENV_COUNTER);
         }
     }
+}
+
+fn load_builtin(env: &Rc<Env>) {
+    let set_native_func = |name, func| {
+        env.define(
+            name,
+            Expr::Proc(Proc::Native {
+                name: name.to_owned(),
+                func,
+            }),
+        );
+    };
+
+    use crate::built_in;
+
+    // lisp primitives
+    set_native_func("atom?", built_in::atom);
+    set_native_func("car", built_in::car);
+    set_native_func("cdr", built_in::cdr);
+    set_native_func("cons", built_in::cons_);
+    set_native_func("cond", built_in::cond);
+    set_native_func("define", built_in::define);
+    set_native_func("defmacro", built_in::defmacro);
+    set_native_func("display", built_in::display);
+    set_native_func("eq?", built_in::eq);
+    set_native_func("eval", built_in::eval_);
+    set_native_func("lambda", built_in::lambda);
+    set_native_func("set!", built_in::set);
+
+    // quote
+    set_native_func("quote", built_in::quote::quote);
+    set_native_func("quasiquote", built_in::quote::quasiquote);
+
+    // num
+    set_native_func("+", built_in::num::add);
+    set_native_func("-", built_in::num::minus);
+    set_native_func("*", built_in::num::multiply);
+    set_native_func("/", built_in::num::divide);
+    set_native_func("num?", built_in::num::is_num);
 }
 
 #[cfg(test)]
