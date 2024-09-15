@@ -1,7 +1,6 @@
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::vec;
 
 use crate::expr::Expr;
 use crate::prelude::load_prelude;
@@ -136,13 +135,15 @@ impl Env {
         let new_descendants = descendants
             .borrow()
             .iter()
-            .map(|env| {
-                if !env.is_reachable.get() {
+            .filter(|env| {
+                if env.is_reachable.get() {
+                    true
+                } else {
                     env.vars.borrow_mut().clear();
+                    false
                 }
-                env.clone()
             })
-            .filter(|env| env.is_reachable.get())
+            .cloned()
             .collect::<Vec<_>>();
 
         *descendants.borrow_mut() = new_descendants;
