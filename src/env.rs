@@ -1,6 +1,6 @@
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 use crate::expr::Expr;
 use crate::prelude::load_prelude;
@@ -9,10 +9,26 @@ use crate::proc::Proc;
 #[cfg(debug_assertions)]
 static mut GLOBAL_ENV_COUNTER: i32 = 0;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 enum EnvKind {
-    Root { descendants: RefCell<Vec<Rc<Env>>> },
-    Derived { base: Rc<Env> },
+    Root {
+        descendants: RefCell<Vec<Weak<Env>>>,
+    },
+    Derived {
+        base: Rc<Env>,
+    },
+}
+
+impl PartialEq for EnvKind {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Root { .. }, Self::Root { .. }) => true,
+            (Self::Derived { base: base1 }, Self::Derived { base: base2 }) => {
+                Rc::ptr_eq(base1, base2)
+            }
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -64,7 +80,7 @@ impl Env {
                 EnvKind::Root {
                     descendants: derived_envs,
                 } => {
-                    derived_envs.borrow_mut().push(derived_env.clone());
+                    derived_envs.borrow_mut().push(Rc::downgrade(&derived_env));
                     break;
                 }
                 EnvKind::Derived { base } => env = base.clone(),
@@ -116,10 +132,11 @@ impl Env {
             return;
         };
 
-        descendants
-            .borrow()
-            .iter()
-            .for_each(|env| env.is_reachable.set(false));
+        descendants.borrow().iter().for_each(|env| {
+            if let Some(env) = env.upgrade() {
+                env.is_reachable.set(false);
+            }
+        });
 
         self.gc_mark();
 
@@ -128,23 +145,32 @@ impl Env {
             descendants
                 .borrow()
                 .iter()
-                .filter(|env| !env.is_reachable.get())
+                .filter(|env| {
+                    if let Some(env) = env.upgrade() {
+                        !env.is_reachable.get()
+                    } else {
+                        false
+                    }
+                })
                 .count()
         );
 
+        // GC sweep
         let new_descendants = descendants
             .borrow()
             .iter()
             .filter(|env| {
-                if env.is_reachable.get() {
-                    true
-                } else {
+                let Some(env) = env.upgrade() else {
+                    return false;
+                };
+                if !env.is_reachable.get() {
                     env.vars.borrow_mut().clear();
-                    false
+                    return false;
                 }
+                true
             })
             .cloned()
-            .collect::<Vec<_>>();
+            .collect();
         *descendants.borrow_mut() = new_descendants;
     }
 
