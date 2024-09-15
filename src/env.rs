@@ -121,7 +121,7 @@ impl Env {
             .iter()
             .for_each(|env| env.is_reachable.set(false));
 
-        self.mark_reachable();
+        self.gc_mark();
 
         println!(
             "Unreachable envs: {}",
@@ -145,11 +145,10 @@ impl Env {
             })
             .cloned()
             .collect::<Vec<_>>();
-
         *descendants.borrow_mut() = new_descendants;
     }
 
-    fn mark_reachable(&self) {
+    fn gc_mark(&self) {
         if self.is_reachable.get() {
             return;
         }
@@ -158,7 +157,7 @@ impl Env {
 
         self.vars.borrow().values().for_each(|expr| {
             if let Expr::Proc(Proc::Closure { outer_env, .. }) = expr {
-                outer_env.mark_reachable();
+                outer_env.gc_mark();
             }
         });
     }
