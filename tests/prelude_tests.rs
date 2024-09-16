@@ -98,8 +98,3 @@ fn test_assoc() {
     assert_eq!(eval_str("(assoc 'b '((a 1) (b 2) (c 3)))"), "(b 2)");
     assert_eq!(eval_str("(assoc 'x '((a 1) (b 2) (c 3)))"), "()");
 }
-
-#[test]
-fn test_subst() {
-    assert_eq!(eval_str("(subst 'a 'b '(a b c b))"), "(a a c a)");
-}

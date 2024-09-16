@@ -40,7 +40,7 @@ const PRELUDE_MACROS: [&str; 4] = [
     "#,
 ];
 
-const PRELUDE_FUNCS: [&str; 9] = [
+const PRELUDE_FUNCS: [&str; 8] = [
     // caar, cadr, cdar, cdar
     r#"
     (define (caar lst) (car (car lst)))
@@ -92,15 +92,6 @@ const PRELUDE_FUNCS: [&str; 9] = [
             ((null? lst) #f)                       ; If the list is empty, return #f
             ((eq? (car (car lst)) key) (car lst))  ; If the car of the first element matches the key, return the pair
             (#t (assoc key (cdr lst)))))           ; Otherwise, recursively search the rest of the list
-    "#,
-    // subst
-    r#"
-    (define (subst new old lst)
-        (cond
-            ((null? lst) '())                                  ; If the list is empty, return an empty list
-            ((eq? (car lst) old)                               ; If the first element matches 'old'
-            (cons new (subst new old (cdr lst))))              ; Replace it with 'new' and recurse on the rest
-            (#t (cons (car lst) (subst new old (cdr lst))))))  ; Otherwise, keep the first element and recurse
     "#,
 ];
 
