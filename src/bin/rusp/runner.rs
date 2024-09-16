@@ -1,7 +1,6 @@
 use crate::tokenize::tokenize;
 use rusp::{
-    env::Env,
-    eval::eval,
+    eval::{eval, EvalContext},
     parser::{ParseError, Parser},
 };
 
@@ -23,19 +22,18 @@ pub fn run_file(path: &str) {
 fn run_file_content(text: &str) -> Result<(), String> {
     let mut parser =
         Parser::with_tokens(tokenize(text).map_err(|e| format!("Tokenization error: {}", e))?);
-    let env = Env::with_prelude();
+    let context = EvalContext::new();
 
     loop {
         match parser.parse() {
             Ok(expr) => {
-                let _ = eval(&expr, &env).map_err(|e| format!("Evaluation error: {}", e))?;
+                let _ = eval(&expr, context.as_ref())
+                    .map_err(|e| format!("Evaluation error: {}", e))?;
             }
             Err(ParseError::NeedMoreToken) => break,
             Err(e) => return Err(format!("Parsing error: {}", e)),
         }
     }
-
-    env.gc();
 
     if parser.is_parsing() {
         Err("Unexpected end of file.".to_owned())

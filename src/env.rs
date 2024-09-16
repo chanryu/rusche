@@ -54,7 +54,7 @@ impl Env {
         })
     }
 
-    pub fn with_prelude() -> Rc<Self> {
+    pub(crate) fn with_prelude() -> Rc<Self> {
         let env = Self::new();
         load_builtin(&env);
         load_prelude(&env);
@@ -77,10 +77,8 @@ impl Env {
         let mut env = base.clone();
         loop {
             match &env.kind {
-                EnvKind::Root {
-                    descendants: derived_envs,
-                } => {
-                    derived_envs.borrow_mut().push(Rc::downgrade(&derived_env));
+                EnvKind::Root { descendants } => {
+                    descendants.borrow_mut().push(Rc::downgrade(&derived_env));
                     break;
                 }
                 EnvKind::Derived { base } => env = base.clone(),

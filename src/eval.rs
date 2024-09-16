@@ -24,3 +24,27 @@ pub fn eval(expr: &Expr, env: &Rc<Env>) -> EvalResult {
         _ => Ok(expr.clone()),
     }
 }
+
+pub struct EvalContext {
+    env: Rc<Env>,
+}
+
+impl EvalContext {
+    pub fn new() -> Self {
+        Self {
+            env: Env::with_prelude(),
+        }
+    }
+}
+
+impl AsRef<Rc<Env>> for EvalContext {
+    fn as_ref(&self) -> &Rc<Env> {
+        &self.env
+    }
+}
+
+impl Drop for EvalContext {
+    fn drop(&mut self) {
+        self.env.gc();
+    }
+}

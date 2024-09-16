@@ -1,7 +1,6 @@
 use crate::tokenize::tokenize;
 use rusp::{
-    env::Env,
-    eval::eval,
+    eval::{eval, EvalContext},
     parser::{ParseError, Parser},
 };
 use rustyline::{error::ReadlineError, DefaultEditor};
@@ -11,7 +10,7 @@ pub fn run_repl() {
 
     print_logo();
 
-    let env = Env::with_prelude();
+    let context = EvalContext::new();
     let mut parser = Parser::new();
 
     loop {
@@ -35,7 +34,7 @@ pub fn run_repl() {
 
                 loop {
                     match parser.parse() {
-                        Ok(expr) => match eval(&expr, &env) {
+                        Ok(expr) => match eval(&expr, context.as_ref()) {
                             Ok(result) => {
                                 println!("; {}", result);
                             }
