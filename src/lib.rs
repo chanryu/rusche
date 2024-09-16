@@ -1,4 +1,4 @@
-pub mod built_in;
+pub mod builtin;
 pub mod cons;
 pub mod env;
 pub mod eval;

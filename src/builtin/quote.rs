@@ -116,7 +116,7 @@ mod tests {
             "+",
             Expr::Proc(Proc::Native {
                 name: "add".to_owned(),
-                func: crate::built_in::num::add,
+                func: crate::builtin::num::add,
             }),
         );
 

@@ -4,7 +4,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
-use crate::built_in::load_builtin;
+use crate::builtin::load_builtin;
 use crate::expr::Expr;
 use crate::prelude::load_prelude;
 use crate::proc::Proc;
