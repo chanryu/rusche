@@ -30,7 +30,6 @@ pub fn load_builtin(env: &Rc<Env>) {
     set_native_func("cond", built_in::cond);
     set_native_func("define", built_in::define);
     set_native_func("defmacro", built_in::defmacro);
-    set_native_func("display", built_in::display);
     set_native_func("eq?", built_in::eq);
     set_native_func("eval", built_in::eval_);
     set_native_func("lambda", built_in::lambda);
@@ -176,19 +175,6 @@ pub fn defmacro(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
         }),
     );
 
-    Ok(NIL)
-}
-
-pub fn display(_: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    for (index, expr) in args.iter().enumerate() {
-        if index > 0 {
-            print!(" ");
-        }
-        match eval(expr, env)? {
-            Expr::Str(text) => print!("{}", text), // w/o double quotes
-            expr => print!("{}", expr),
-        }
-    }
     Ok(NIL)
 }
 

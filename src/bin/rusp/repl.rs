@@ -5,11 +5,10 @@ use rusp::{
 };
 use rustyline::{error::ReadlineError, DefaultEditor};
 
-pub fn run_repl() {
+pub fn run_repl(context: &EvalContext) {
     print_logo();
 
     let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");
-    let context = EvalContext::new();
     let mut parser = Parser::new();
 
     loop {

@@ -4,10 +4,10 @@ use rusp::{
     parser::{ParseError, Parser},
 };
 
-pub fn run_file(path: &str) {
+pub fn run_file(path: &str, context: &EvalContext) {
     match std::fs::read_to_string(path) {
-        Ok(content) => {
-            if let Err(e) = run_file_content(&content) {
+        Ok(text) => {
+            if let Err(e) = run_file_content(&text, &context) {
                 eprintln!("{}", e);
                 std::process::exit(1);
             }
@@ -19,10 +19,9 @@ pub fn run_file(path: &str) {
     }
 }
 
-fn run_file_content(text: &str) -> Result<(), String> {
+fn run_file_content(text: &str, context: &EvalContext) -> Result<(), String> {
     let mut parser =
         Parser::with_tokens(tokenize(text).map_err(|e| format!("Tokenization error: {}", e))?);
-    let context = EvalContext::new();
 
     loop {
         match parser.parse() {
