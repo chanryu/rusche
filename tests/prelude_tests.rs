@@ -103,8 +103,3 @@ fn test_assoc() {
 fn test_subst() {
     assert_eq!(eval_str("(subst 'a 'b '(a b c b))"), "(a a c a)");
 }
-
-#[test]
-fn test_reverse() {
-    assert_eq!(eval_str("(reverse '(a b c d))"), "(d c b a)");
-}

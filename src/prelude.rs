@@ -40,7 +40,7 @@ const PRELUDE_MACROS: [&str; 4] = [
     "#,
 ];
 
-const PRELUDE_FUNCS: [&str; 10] = [
+const PRELUDE_FUNCS: [&str; 9] = [
     // caar, cadr, cdar, cdar
     r#"
     (define (caar lst) (car (car lst)))
@@ -101,12 +101,6 @@ const PRELUDE_FUNCS: [&str; 10] = [
             ((eq? (car lst) old)                               ; If the first element matches 'old'
             (cons new (subst new old (cdr lst))))              ; Replace it with 'new' and recurse on the rest
             (#t (cons (car lst) (subst new old (cdr lst))))))  ; Otherwise, keep the first element and recurse
-    "#,
-    // reverse
-    r#"
-    (define (reverse lst)
-        (if (null? lst) lst
-            (append (reverse (cdr lst)) (list (car lst)))))
     "#,
 ];
 
