@@ -1,15 +1,14 @@
 use crate::tokenize::tokenize;
 use rusp::{
-    eval::{eval, EvalContext},
+    eval::EvalContext,
     parser::{ParseError, Parser},
 };
 use rustyline::{error::ReadlineError, DefaultEditor};
 
 pub fn run_repl() {
-    let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");
-
     print_logo();
 
+    let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");
     let context = EvalContext::new();
     let mut parser = Parser::new();
 
@@ -34,7 +33,7 @@ pub fn run_repl() {
 
                 loop {
                     match parser.parse() {
-                        Ok(expr) => match eval(&expr, context.root_env()) {
+                        Ok(expr) => match context.eval(&expr) {
                             Ok(result) => {
                                 println!("; {}", result);
                             }

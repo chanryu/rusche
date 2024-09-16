@@ -1,3 +1,5 @@
+mod counter;
+
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
@@ -6,9 +8,7 @@ use crate::built_in::load_builtin;
 use crate::expr::Expr;
 use crate::prelude::load_prelude;
 use crate::proc::Proc;
-
-#[cfg(debug_assertions)]
-static mut GLOBAL_ENV_COUNTER: i32 = 0;
+use counter::{decrement_env_count, increment_env_count};
 
 #[derive(Debug)]
 enum EnvKind {
@@ -42,10 +42,8 @@ pub struct Env {
 impl Env {
     pub(crate) fn root(all_envs: Rc<RefCell<Vec<Weak<Env>>>>) -> Rc<Self> {
         #[cfg(debug_assertions)]
-        unsafe {
-            GLOBAL_ENV_COUNTER += 1;
-            println!("Env created: {}", GLOBAL_ENV_COUNTER);
-        }
+        increment_env_count("Env created");
+
         let env = Rc::new(Self {
             kind: EnvKind::Root { all_envs },
             vars: RefCell::new(HashMap::new()),
@@ -58,10 +56,7 @@ impl Env {
 
     pub fn derive_from(base: &Rc<Env>) -> Rc<Self> {
         #[cfg(debug_assertions)]
-        unsafe {
-            GLOBAL_ENV_COUNTER += 1;
-            println!("Env derived: {}", GLOBAL_ENV_COUNTER);
-        }
+        increment_env_count("Env derived");
 
         let derived_env = Rc::new(Self {
             kind: EnvKind::Derived { base: base.clone() },
@@ -69,16 +64,7 @@ impl Env {
             is_reachable: Cell::new(false),
         });
 
-        let mut env = base.clone();
-        loop {
-            match &env.kind {
-                EnvKind::Root { all_envs } => {
-                    all_envs.borrow_mut().push(Rc::downgrade(&derived_env));
-                    break;
-                }
-                EnvKind::Derived { base } => env = base.clone(),
-            }
-        }
+        base.gc_register(&derived_env);
 
         derived_env
     }
@@ -135,7 +121,7 @@ impl Env {
         self.vars.borrow_mut().clear();
     }
 
-    pub(crate) fn mark_reachable(&self) {
+    pub(crate) fn gc_mark_reachable(&self) {
         if self.is_reachable.get() {
             return;
         }
@@ -144,19 +130,27 @@ impl Env {
 
         self.vars.borrow().values().for_each(|expr| {
             if let Expr::Proc(Proc::Closure { outer_env, .. }) = expr {
-                outer_env.mark_reachable();
+                outer_env.gc_mark_reachable();
             }
         });
+    }
+
+    fn gc_register(&self, derived_env: &Rc<Self>) {
+        match &self.kind {
+            EnvKind::Root { all_envs } => {
+                all_envs.borrow_mut().push(Rc::downgrade(derived_env));
+            }
+            EnvKind::Derived { base } => {
+                base.gc_register(derived_env);
+            }
+        }
     }
 }
 
 #[cfg(debug_assertions)]
 impl Drop for Env {
     fn drop(&mut self) {
-        unsafe {
-            GLOBAL_ENV_COUNTER -= 1;
-            println!("Env dropped: {}", GLOBAL_ENV_COUNTER);
-        }
+        decrement_env_count();
     }
 }
 

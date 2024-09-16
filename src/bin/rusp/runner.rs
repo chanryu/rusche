@@ -1,6 +1,6 @@
 use crate::tokenize::tokenize;
 use rusp::{
-    eval::{eval, EvalContext},
+    eval::EvalContext,
     parser::{ParseError, Parser},
 };
 
@@ -23,12 +23,13 @@ fn run_file_content(text: &str) -> Result<(), String> {
     let mut parser =
         Parser::with_tokens(tokenize(text).map_err(|e| format!("Tokenization error: {}", e))?);
     let context = EvalContext::new();
-    let env = context.root_env();
 
     loop {
         match parser.parse() {
             Ok(expr) => {
-                let _ = eval(&expr, env).map_err(|e| format!("Evaluation error: {}", e))?;
+                let _ = context
+                    .eval(&expr)
+                    .map_err(|e| format!("Evaluation error: {}", e))?;
             }
             Err(ParseError::NeedMoreToken) => break,
             Err(e) => return Err(format!("Parsing error: {}", e)),

@@ -28,7 +28,7 @@ pub fn eval(expr: &Expr, env: &Rc<Env>) -> EvalResult {
 
 pub struct EvalContext {
     all_envs: Rc<RefCell<Vec<Weak<Env>>>>,
-    root_env: Rc<Env>,
+    root_env: Option<Rc<Env>>,
 }
 
 impl EvalContext {
@@ -38,11 +38,24 @@ impl EvalContext {
 
         all_envs.borrow_mut().push(Rc::downgrade(&root_env));
 
-        Self { all_envs, root_env }
+        Self {
+            all_envs,
+            root_env: Some(root_env),
+        }
     }
 
-    pub fn root_env<'a>(&self) -> &Rc<Env> {
-        &self.root_env
+    pub fn root_env(&self) -> &Rc<Env> {
+        self.root_env
+            .as_ref()
+            .unwrap_or_else(|| panic!("Root environment is unavailable."))
+    }
+
+    pub fn eval(&self, expr: &Expr) -> EvalResult {
+        let result = eval(expr, self.root_env());
+
+        // TODO: Collect garbage if needed
+
+        result
     }
 
     pub fn collect_garbage(&self) {
@@ -52,11 +65,11 @@ impl EvalContext {
             }
         });
 
-        self.root_env.mark_reachable();
+        self.root_env().gc_mark_reachable();
 
         #[cfg(debug_assertions)]
         println!(
-            "Unreachable envs: {}",
+            "GC: Unreachable envs: {}",
             self.all_envs
                 .borrow()
                 .iter()
@@ -97,6 +110,16 @@ impl Drop for EvalContext {
             if let Some(env) = env.upgrade() {
                 env.clear();
             }
-        })
+        });
+        self.root_env = None;
+
+        debug_assert_eq!(
+            0,
+            self.all_envs
+                .borrow()
+                .iter()
+                .filter(|env| env.upgrade().is_some())
+                .count()
+        );
     }
 }
