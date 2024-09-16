@@ -1,19 +1,60 @@
 pub mod num;
 pub mod quote;
 
+use std::rc::Rc;
+
 use crate::env::Env;
 use crate::eval::{eval, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::{cons, List};
 use crate::proc::Proc;
 
-pub fn atom(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn load_builtin(env: &Rc<Env>) {
+    let set_native_func = |name, func| {
+        env.define(
+            name,
+            Expr::Proc(Proc::Native {
+                name: name.to_owned(),
+                func,
+            }),
+        );
+    };
+
+    use crate::built_in;
+
+    // lisp primitives
+    set_native_func("atom?", built_in::atom);
+    set_native_func("car", built_in::car);
+    set_native_func("cdr", built_in::cdr);
+    set_native_func("cons", built_in::cons_);
+    set_native_func("cond", built_in::cond);
+    set_native_func("define", built_in::define);
+    set_native_func("defmacro", built_in::defmacro);
+    set_native_func("display", built_in::display);
+    set_native_func("eq?", built_in::eq);
+    set_native_func("eval", built_in::eval_);
+    set_native_func("lambda", built_in::lambda);
+    set_native_func("set!", built_in::set);
+
+    // quote
+    set_native_func("quote", built_in::quote::quote);
+    set_native_func("quasiquote", built_in::quote::quasiquote);
+
+    // num
+    set_native_func("+", built_in::num::add);
+    set_native_func("-", built_in::num::minus);
+    set_native_func("*", built_in::num::multiply);
+    set_native_func("/", built_in::num::divide);
+    set_native_func("num?", built_in::num::is_num);
+}
+
+pub fn atom(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let expr = get_exact_one_arg(proc_name, args)?;
 
     Ok(eval(expr, env)?.is_atom().into())
 }
 
-pub fn car(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn car(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let expr = get_exact_one_arg(proc_name, args)?;
 
     if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
@@ -23,7 +64,7 @@ pub fn car(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     }
 }
 
-pub fn cdr(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn cdr(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let expr = get_exact_one_arg(proc_name, args)?;
 
     if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
@@ -33,7 +74,7 @@ pub fn cdr(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     }
 }
 
-pub fn cons_(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn cons_(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let (car, cdr) = get_exact_two_args(proc_name, args)?;
 
     let car = eval(car, env)?;
@@ -44,7 +85,7 @@ pub fn cons_(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     Ok(cons(car, cdr).into())
 }
 
-pub fn cond(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn cond(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let mut iter = args.iter();
     loop {
         match iter.next() {
@@ -68,7 +109,7 @@ pub fn cond(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     Err(make_syntax_error(proc_name, args))
 }
 
-pub fn define(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn define(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let mut iter = args.iter();
     match iter.next() {
         Some(Expr::Sym(name)) => {
@@ -103,7 +144,7 @@ pub fn define(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     }
 }
 
-pub fn defmacro(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn defmacro(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let mut iter = args.iter();
 
     let (macro_name, formal_args) = match iter.next() {
@@ -138,7 +179,7 @@ pub fn defmacro(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     Ok(NIL)
 }
 
-pub fn display(_: &str, args: &List, env: &Env) -> EvalResult {
+pub fn display(_: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     for (index, expr) in args.iter().enumerate() {
         if index > 0 {
             print!(" ");
@@ -151,19 +192,19 @@ pub fn display(_: &str, args: &List, env: &Env) -> EvalResult {
     Ok(NIL)
 }
 
-pub fn eq(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn eq(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let (left, right) = get_exact_two_args(proc_name, args)?;
 
     Ok((eval(left, env)? == eval(right, env)?).into())
 }
 
-pub fn eval_(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn eval_(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let expr = get_exact_one_arg(proc_name, args)?;
 
     eval(&eval(expr, env)?, env)
 }
 
-pub fn lambda(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn lambda(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let mut iter = args.iter();
 
     let Some(Expr::List(list)) = iter.next() else {
@@ -178,7 +219,7 @@ pub fn lambda(proc_name: &str, args: &List, env: &Env) -> EvalResult {
     }))
 }
 
-pub fn set(proc_name: &str, args: &List, env: &Env) -> EvalResult {
+pub fn set(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let (name_expr, value_expr) = get_exact_two_args(proc_name, args)?;
 
     let Expr::Sym(name) = name_expr else {
@@ -247,7 +288,8 @@ mod tests {
 
     #[test]
     fn test_define() {
-        let env = Env::new();
+        let env = Env::for_unit_test();
+
         // (define name "value")
         let ret = define("", &list!(sym("name"), "value"), &env);
         assert_eq!(ret, Ok(NIL));
@@ -256,7 +298,8 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        let env = Env::new();
+        let env = Env::for_unit_test();
+
         // (eq 1 1) => #t
         assert_ne!(eq("", &list!(1, 1), &env).unwrap(), NIL);
         // (eq 1 2) => ()

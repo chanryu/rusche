@@ -1,7 +1,7 @@
 mod common;
 
 use common::{eval_str, eval_str_env};
-use rusp::env::Env;
+use rusp::eval::EvalContext;
 
 #[test]
 fn test_t_f() {
@@ -46,10 +46,11 @@ fn test_map() {
 
 #[test]
 fn test_let() {
-    let env = Env::with_prelude();
+    let context = EvalContext::new();
+    let env = context.root_env();
 
     assert_eq!(env.lookup("x"), None);
-    assert_eq!(eval_str_env("(let ((x 2)) (+ x 3))", &env), "5");
+    assert_eq!(eval_str_env("(let ((x 2)) (+ x 3))", env), "5");
     assert_eq!(env.lookup("x"), None);
 }
 

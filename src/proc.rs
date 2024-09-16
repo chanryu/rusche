@@ -1,11 +1,12 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::rc::Rc;
 
 use crate::env::Env;
 use crate::eval::{eval, EvalResult};
 use crate::expr::NIL;
 use crate::list::List;
 
-pub type NativeFunc = fn(proc_name: &str, args: &List, env: &Env) -> EvalResult;
+pub type NativeFunc = fn(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Proc {
@@ -13,7 +14,7 @@ pub enum Proc {
         name: Option<String>,
         formal_args: Vec<String>,
         body: Box<List>,
-        outer_env: Env,
+        outer_env: Rc<Env>,
     },
     Macro {
         name: Option<String>,
@@ -27,7 +28,7 @@ pub enum Proc {
 }
 
 impl Proc {
-    pub fn invoke(&self, args: &List, env: &Env) -> EvalResult {
+    pub fn invoke(&self, args: &List, env: &Rc<Env>) -> EvalResult {
         match self {
             Proc::Closure {
                 name,
@@ -85,12 +86,12 @@ fn eval_closure(
     closure_name: Option<&str>,
     formal_args: &Vec<String>,
     body: &List,
-    outer_env: &Env,
+    outer_env: &Rc<Env>,
     actual_args: &List,
-    env: &Env,
+    env: &Rc<Env>,
 ) -> EvalResult {
     let closure_name = closure_name.unwrap_or("closure");
-    let closure_env = outer_env.derive();
+    let closure_env = Env::derive_from(&outer_env);
     let mut formal_args = formal_args.iter();
     let mut actual_args = actual_args.iter();
 
@@ -125,10 +126,10 @@ fn eval_macro(
     formal_args: &Vec<String>,
     body: &List,
     actual_args: &List,
-    env: &Env,
+    env: &Rc<Env>,
 ) -> EvalResult {
     let macro_name = macro_name.unwrap_or("macro");
-    let macro_env = env.derive();
+    let macro_env = Env::derive_from(&env);
     let mut formal_args = formal_args.iter();
     let mut actual_args = actual_args.iter();
 

@@ -1,5 +1,7 @@
+use std::rc::Rc;
+
 use rusp::env::Env;
-use rusp::eval::eval;
+use rusp::eval::{eval, EvalContext};
 use rusp::expr::Expr;
 use rusp::parser::Parser;
 use rusp::scanner::Scanner;
@@ -27,12 +29,12 @@ pub fn parse_single_expr(text: &str) -> Expr {
 }
 
 pub fn eval_str(text: &str) -> String {
-    let env = Env::with_prelude();
-    eval_str_env(text, &env)
+    let context = EvalContext::new();
+    eval_str_env(text, context.root_env())
 }
 
-pub fn eval_str_env(text: &str, env: &Env) -> String {
-    match eval(&parse_single_expr(text), &env) {
+pub fn eval_str_env(text: &str, env: &Rc<Env>) -> String {
+    match eval(&parse_single_expr(text), env) {
         Ok(expr) => expr.to_string(),
         Err(error) => format!("Err: {}", error),
     }
