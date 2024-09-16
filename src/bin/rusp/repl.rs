@@ -34,7 +34,7 @@ pub fn run_repl() {
 
                 loop {
                     match parser.parse() {
-                        Ok(expr) => match eval(&expr, context.as_ref()) {
+                        Ok(expr) => match eval(&expr, context.root_env()) {
                             Ok(result) => {
                                 println!("; {}", result);
                             }

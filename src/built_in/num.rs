@@ -65,7 +65,7 @@ mod tests {
 
     #[test]
     fn test_add() {
-        let env = Env::new();
+        let env = Env::for_unit_test();
 
         // (+ 1) => 1
         let args = list!(1);
@@ -78,7 +78,7 @@ mod tests {
 
     #[test]
     fn test_minus() {
-        let env = Env::new();
+        let env = Env::for_unit_test();
 
         // (- 1) => -1
         let args = list!(1);
@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn test_multiply() {
-        let env = Env::new();
+        let env = Env::for_unit_test();
 
         // (* 1) => 1
         let args = list!(1);
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn test_divide() {
-        let env = Env::new();
+        let env = Env::for_unit_test();
 
         // (/ 2) => 0.5
         let args = list!(2);

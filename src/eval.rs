@@ -1,4 +1,5 @@
-use std::rc::Rc;
+use std::cell::RefCell;
+use std::rc::{Rc, Weak};
 
 use crate::env::Env;
 use crate::expr::Expr;
@@ -26,25 +27,76 @@ pub fn eval(expr: &Expr, env: &Rc<Env>) -> EvalResult {
 }
 
 pub struct EvalContext {
-    env: Rc<Env>,
+    all_envs: Rc<RefCell<Vec<Weak<Env>>>>,
+    root_env: Rc<Env>,
 }
 
 impl EvalContext {
     pub fn new() -> Self {
-        Self {
-            env: Env::with_prelude(),
-        }
-    }
-}
+        let all_envs = Rc::new(RefCell::new(Vec::new()));
+        let root_env = Env::root(all_envs.clone());
 
-impl AsRef<Rc<Env>> for EvalContext {
-    fn as_ref(&self) -> &Rc<Env> {
-        &self.env
+        all_envs.borrow_mut().push(Rc::downgrade(&root_env));
+
+        Self { all_envs, root_env }
+    }
+
+    pub fn root_env<'a>(&self) -> &Rc<Env> {
+        &self.root_env
+    }
+
+    pub fn collect_garbage(&self) {
+        self.all_envs.borrow().iter().for_each(|env| {
+            if let Some(env) = env.upgrade() {
+                env.is_reachable.set(false);
+            }
+        });
+
+        self.root_env.mark_reachable();
+
+        #[cfg(debug_assertions)]
+        println!(
+            "Unreachable envs: {}",
+            self.all_envs
+                .borrow()
+                .iter()
+                .filter(|env| {
+                    if let Some(env) = env.upgrade() {
+                        !env.is_reachable.get()
+                    } else {
+                        false
+                    }
+                })
+                .count()
+        );
+
+        // GC sweep
+        let reachable_envs = self
+            .all_envs
+            .borrow()
+            .iter()
+            .filter(|env| {
+                let Some(env) = env.upgrade() else {
+                    return false;
+                };
+                if !env.is_reachable.get() {
+                    env.clear();
+                    return false;
+                }
+                true
+            })
+            .cloned()
+            .collect();
+        *self.all_envs.borrow_mut() = reachable_envs;
     }
 }
 
 impl Drop for EvalContext {
     fn drop(&mut self) {
-        self.env.gc();
+        self.all_envs.borrow().iter().for_each(|env| {
+            if let Some(env) = env.upgrade() {
+                env.clear();
+            }
+        })
     }
 }

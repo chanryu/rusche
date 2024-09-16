@@ -30,7 +30,7 @@ pub fn parse_single_expr(text: &str) -> Expr {
 
 pub fn eval_str(text: &str) -> String {
     let context = EvalContext::new();
-    eval_str_env(text, context.as_ref())
+    eval_str_env(text, context.root_env())
 }
 
 pub fn eval_str_env(text: &str, env: &Rc<Env>) -> String {

@@ -12,7 +12,7 @@ static mut GLOBAL_ENV_COUNTER: i32 = 0;
 #[derive(Debug)]
 enum EnvKind {
     Root {
-        descendants: RefCell<Vec<Weak<Env>>>,
+        env_registry: Rc<RefCell<Vec<Weak<Env>>>>,
     },
     Derived {
         base: Rc<Env>,
@@ -35,27 +35,23 @@ impl PartialEq for EnvKind {
 pub struct Env {
     kind: EnvKind,
     vars: RefCell<HashMap<String, Expr>>,
-    is_reachable: Cell<bool>,
+    pub(crate) is_reachable: Cell<bool>,
 }
 
 impl Env {
-    pub(crate) fn new() -> Rc<Self> {
+    pub(crate) fn root(env_registry: Rc<RefCell<Vec<Weak<Env>>>>) -> Rc<Self> {
         #[cfg(debug_assertions)]
         unsafe {
             GLOBAL_ENV_COUNTER += 1;
             println!("Env created: {}", GLOBAL_ENV_COUNTER);
         }
-        Rc::new(Self {
+        let env = Rc::new(Self {
             kind: EnvKind::Root {
-                descendants: RefCell::new(Vec::new()),
+                env_registry: env_registry.clone(),
             },
             vars: RefCell::new(HashMap::new()),
             is_reachable: Cell::new(false),
-        })
-    }
-
-    pub(crate) fn with_prelude() -> Rc<Self> {
-        let env = Self::new();
+        });
         load_builtin(&env);
         load_prelude(&env);
         env
@@ -77,8 +73,8 @@ impl Env {
         let mut env = base.clone();
         loop {
             match &env.kind {
-                EnvKind::Root { descendants } => {
-                    descendants.borrow_mut().push(Rc::downgrade(&derived_env));
+                EnvKind::Root { env_registry } => {
+                    env_registry.borrow_mut().push(Rc::downgrade(&derived_env));
                     break;
                 }
                 EnvKind::Derived { base } => env = base.clone(),
@@ -86,6 +82,17 @@ impl Env {
         }
 
         derived_env
+    }
+
+    #[cfg(test)]
+    pub(crate) fn for_unit_test() -> Rc<Self> {
+        Rc::new(Self {
+            kind: EnvKind::Root {
+                env_registry: Rc::new(RefCell::new(Vec::new())),
+            },
+            vars: RefCell::new(HashMap::new()),
+            is_reachable: Cell::new(false),
+        })
     }
 
     pub fn define<IntoExpr>(&self, name: &str, expr: IntoExpr)
@@ -125,54 +132,11 @@ impl Env {
         }
     }
 
-    pub fn gc(&self) {
-        let EnvKind::Root { descendants } = &self.kind else {
-            return;
-        };
-
-        descendants.borrow().iter().for_each(|env| {
-            if let Some(env) = env.upgrade() {
-                env.is_reachable.set(false);
-            }
-        });
-
-        self.gc_mark();
-
-        println!(
-            "Unreachable envs: {}",
-            descendants
-                .borrow()
-                .iter()
-                .filter(|env| {
-                    if let Some(env) = env.upgrade() {
-                        !env.is_reachable.get()
-                    } else {
-                        false
-                    }
-                })
-                .count()
-        );
-
-        // GC sweep
-        let new_descendants = descendants
-            .borrow()
-            .iter()
-            .filter(|env| {
-                let Some(env) = env.upgrade() else {
-                    return false;
-                };
-                if !env.is_reachable.get() {
-                    env.vars.borrow_mut().clear();
-                    return false;
-                }
-                true
-            })
-            .cloned()
-            .collect();
-        *descendants.borrow_mut() = new_descendants;
+    pub fn clear(&self) {
+        self.vars.borrow_mut().clear();
     }
 
-    fn gc_mark(&self) {
+    pub(crate) fn mark_reachable(&self) {
         if self.is_reachable.get() {
             return;
         }
@@ -181,7 +145,7 @@ impl Env {
 
         self.vars.borrow().values().for_each(|expr| {
             if let Expr::Proc(Proc::Closure { outer_env, .. }) = expr {
-                outer_env.gc_mark();
+                outer_env.mark_reachable();
             }
         });
     }
@@ -243,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_set() {
-        let env = Env::new();
+        let env = Env::for_unit_test();
         assert_eq!(env.vars.borrow().len(), 0);
         env.define("one", 1);
         assert_eq!(env.vars.borrow().get("one"), Some(&num(1)));
@@ -251,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_update() {
-        let env = Env::new();
+        let env = Env::for_unit_test();
         assert_eq!(env.update("name", 1), false);
 
         env.define("name", 0);
@@ -260,7 +224,7 @@ mod tests {
 
     #[test]
     fn test_lookup() {
-        let env = Env::new();
+        let env = Env::for_unit_test();
         assert_eq!(env.lookup("one"), None);
         env.define("one", num(1));
         assert_eq!(env.lookup("one"), Some(num(1)));
@@ -268,7 +232,7 @@ mod tests {
 
     #[test]
     fn test_derive_update() {
-        let base = Env::new();
+        let base = Env::for_unit_test();
         let derived = Env::derive_from(&base);
 
         base.define("one", 1);
@@ -284,7 +248,7 @@ mod tests {
 
     #[test]
     fn test_derive_lookup() {
-        let base = Env::new();
+        let base = Env::for_unit_test();
         let derived = Env::derive_from(&base);
 
         assert_eq!(derived.lookup("two"), None);
@@ -298,7 +262,7 @@ mod tests {
 
     #[test]
     fn test_clone() {
-        let original = Env::new();
+        let original = Env::for_unit_test();
         let cloned = original.clone();
 
         original.define("one", 1);

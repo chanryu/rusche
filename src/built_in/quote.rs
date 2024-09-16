@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn test_quote() {
-        let env = Env::new();
+        let env = Env::for_unit_test();
         // (quote (1 2)) => (1 2)
         let result = quote("", &list!(list!(1, 2)), &env);
         assert_eq!(result, Ok(list!(1, 2).into()));
@@ -96,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_quasiquote() {
-        let env = Env::new();
+        let env = Env::for_unit_test();
 
         env.define("x", 2);
 
@@ -111,7 +111,7 @@ mod tests {
 
     #[test]
     fn test_quasiquote_unquote() {
-        let env = Env::new();
+        let env = Env::for_unit_test();
         env.define(
             "+",
             Expr::Proc(Proc::Native {
@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn test_quasiquote_unquote_splicing() {
-        let env = Env::new();
+        let env = Env::for_unit_test();
         env.define(
             "quote",
             Expr::Proc(Proc::Native {

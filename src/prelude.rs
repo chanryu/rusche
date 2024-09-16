@@ -155,9 +155,10 @@ fn eval_prelude_exprs(exprs: &str, env: &Rc<Env>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::RefCell;
 
     #[test]
     fn test_complementry_pieces_sanity() {
-        load_prelude(&Env::with_prelude()); // this should not panic
+        let _ = Env::root(Rc::new(RefCell::new(Vec::new()))); // this should not panic
     }
 }
