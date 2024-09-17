@@ -42,14 +42,15 @@ pub fn load_builtin(env: &Rc<Env>) {
     set_native_func("quasiquote", quote::quasiquote);
 
     // num
+    set_native_func("num?", num::is_num);
     set_native_func("+", num::add);
     set_native_func("-", num::minus);
     set_native_func("*", num::multiply);
     set_native_func("/", num::divide);
-    set_native_func("num?", num::is_num);
 
     // str
     set_native_func("str?", str::is_str);
+    set_native_func("str-concat", str::concat);
 }
 
 pub fn atom(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {

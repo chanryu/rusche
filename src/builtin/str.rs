@@ -14,3 +14,20 @@ pub fn is_str(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
         Ok(false.into())
     }
 }
+
+pub fn concat(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
+    let mut x = String::from("");
+    x += "abc";
+
+    let result = args
+        .iter()
+        .try_fold(String::from(""), |result, expr| match eval(expr, env)? {
+            Expr::Str(text) => Ok(result + &text),
+            _ => Err(format!(
+                "{}: `{}` does not evaluate to a string.",
+                proc_name, expr
+            )),
+        })?;
+
+    Ok(Expr::Str(result))
+}
