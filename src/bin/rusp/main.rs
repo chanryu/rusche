@@ -1,3 +1,4 @@
+mod prelude;
 mod repl;
 mod runner;
 mod tokenize;

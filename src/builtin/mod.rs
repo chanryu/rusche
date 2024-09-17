@@ -20,32 +20,29 @@ pub fn load_builtin(env: &Rc<Env>) {
         );
     };
 
-    use crate::built_in;
-
     // lisp primitives
-    set_native_func("atom?", built_in::atom);
-    set_native_func("car", built_in::car);
-    set_native_func("cdr", built_in::cdr);
-    set_native_func("cons", built_in::cons_);
-    set_native_func("cond", built_in::cond);
-    set_native_func("define", built_in::define);
-    set_native_func("defmacro", built_in::defmacro);
-    set_native_func("display", built_in::display);
-    set_native_func("eq?", built_in::eq);
-    set_native_func("eval", built_in::eval_);
-    set_native_func("lambda", built_in::lambda);
-    set_native_func("set!", built_in::set);
+    set_native_func("atom?", atom);
+    set_native_func("car", car);
+    set_native_func("cdr", cdr);
+    set_native_func("cons", cons_);
+    set_native_func("cond", cond);
+    set_native_func("define", define);
+    set_native_func("defmacro", defmacro);
+    set_native_func("eq?", eq);
+    set_native_func("eval", eval_);
+    set_native_func("lambda", lambda);
+    set_native_func("set!", set);
 
     // quote
-    set_native_func("quote", built_in::quote::quote);
-    set_native_func("quasiquote", built_in::quote::quasiquote);
+    set_native_func("quote", quote::quote);
+    set_native_func("quasiquote", quote::quasiquote);
 
     // num
-    set_native_func("+", built_in::num::add);
-    set_native_func("-", built_in::num::minus);
-    set_native_func("*", built_in::num::multiply);
-    set_native_func("/", built_in::num::divide);
-    set_native_func("num?", built_in::num::is_num);
+    set_native_func("+", num::add);
+    set_native_func("-", num::minus);
+    set_native_func("*", num::multiply);
+    set_native_func("/", num::divide);
+    set_native_func("num?", num::is_num);
 }
 
 pub fn atom(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
@@ -176,19 +173,6 @@ pub fn defmacro(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
         }),
     );
 
-    Ok(NIL)
-}
-
-pub fn display(_: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    for (index, expr) in args.iter().enumerate() {
-        if index > 0 {
-            print!(" ");
-        }
-        match eval(expr, env)? {
-            Expr::Str(text) => print!("{}", text), // w/o double quotes
-            expr => print!("{}", expr),
-        }
-    }
     Ok(NIL)
 }
 

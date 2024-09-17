@@ -1,3 +1,4 @@
+use crate::prelude::PreludeLoader;
 use crate::tokenize::tokenize;
 use rusp::{
     eval::EvalContext,
@@ -6,8 +7,8 @@ use rusp::{
 
 pub fn run_file(path: &str) {
     match std::fs::read_to_string(path) {
-        Ok(content) => {
-            if let Err(e) = run_file_content(&content) {
+        Ok(text) => {
+            if let Err(e) = run_file_content(&text) {
                 eprintln!("{}", e);
                 std::process::exit(1);
             }
@@ -22,7 +23,8 @@ pub fn run_file(path: &str) {
 fn run_file_content(text: &str) -> Result<(), String> {
     let mut parser =
         Parser::with_tokens(tokenize(text).map_err(|e| format!("Tokenization error: {}", e))?);
-    let context = EvalContext::new();
+
+    let context = EvalContext::with_prelude();
 
     loop {
         match parser.parse() {

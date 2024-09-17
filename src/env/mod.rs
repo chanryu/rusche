@@ -4,9 +4,8 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
-use crate::built_in::load_builtin;
+use crate::builtin::load_builtin;
 use crate::expr::Expr;
-use crate::prelude::load_prelude;
 use crate::proc::Proc;
 use counter::{decrement_env_count, increment_env_count};
 
@@ -50,7 +49,6 @@ impl Env {
             is_reachable: Cell::new(false),
         });
         load_builtin(&env);
-        load_prelude(&env);
         env
     }
 

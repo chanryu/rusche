@@ -1,4 +1,4 @@
-use crate::tokenize::tokenize;
+use crate::{prelude::PreludeLoader, tokenize::tokenize};
 use rusp::{
     eval::EvalContext,
     parser::{ParseError, Parser},
@@ -9,8 +9,9 @@ pub fn run_repl() {
     print_logo();
 
     let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");
-    let context = EvalContext::new();
     let mut parser = Parser::new();
+
+    let context = EvalContext::with_prelude();
 
     loop {
         let prompt = if parser.is_parsing() {
