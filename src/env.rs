@@ -1,5 +1,3 @@
-mod counter;
-
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
@@ -7,9 +5,6 @@ use std::rc::{Rc, Weak};
 use crate::builtin::load_builtin;
 use crate::expr::Expr;
 use crate::proc::Proc;
-
-#[cfg(debug_assertions)]
-use counter::{decrement_env_count, increment_env_count};
 
 #[derive(Debug)]
 enum EnvKind {
@@ -42,9 +37,6 @@ pub struct Env {
 
 impl Env {
     pub(crate) fn root(all_envs: Rc<RefCell<Vec<Weak<Env>>>>) -> Rc<Self> {
-        #[cfg(debug_assertions)]
-        increment_env_count("Env created");
-
         let env = Rc::new(Self {
             kind: EnvKind::Root { all_envs },
             vars: RefCell::new(HashMap::new()),
@@ -55,9 +47,6 @@ impl Env {
     }
 
     pub fn derive_from(base: &Rc<Env>) -> Rc<Self> {
-        #[cfg(debug_assertions)]
-        increment_env_count("Env derived");
-
         let derived_env = Rc::new(Self {
             kind: EnvKind::Derived { base: base.clone() },
             vars: RefCell::new(HashMap::new()),
@@ -150,7 +139,7 @@ impl Env {
 #[cfg(debug_assertions)]
 impl Drop for Env {
     fn drop(&mut self) {
-        decrement_env_count();
+        //decrement_env_count();
     }
 }
 
