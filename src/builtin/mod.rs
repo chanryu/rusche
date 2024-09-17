@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use crate::env::Env;
 use crate::eval::{eval, EvalError, EvalResult};
-use crate::expr::{Expr, NIL};
+use crate::expr::{intern, Expr, NIL};
 use crate::list::{cons, List};
 use crate::proc::Proc;
 
@@ -218,7 +218,7 @@ pub fn set(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
     format!(
         "Ill-formed syntax: {}",
-        cons(Expr::Sym(proc_name.into()), args.clone())
+        cons(intern(proc_name), args.clone())
     )
 }
 
@@ -267,7 +267,6 @@ fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::shortcuts::sym;
     use crate::macros::list;
 
     #[test]
@@ -275,7 +274,7 @@ mod tests {
         let env = Env::for_unit_test();
 
         // (define name "value")
-        let ret = define("", &list!(sym("name"), "value"), &env);
+        let ret = define("", &list!(intern("name"), "value"), &env);
         assert_eq!(ret, Ok(NIL));
         assert_eq!(env.lookup("name"), Some("value".into()));
     }

@@ -82,7 +82,7 @@ pub fn quasiquote(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::shortcuts::sym;
+    use crate::expr::intern;
     use crate::macros::list;
     use crate::proc::Proc;
 
@@ -103,7 +103,7 @@ mod tests {
         // `(0 1 ,x 3) => (0 1 2 3)
         let result = quasiquote(
             "",
-            &list!(list!(0, 1, list!(sym("unquote"), sym("x")), 3)),
+            &list!(list!(0, 1, list!(intern("unquote"), intern("x")), 3)),
             &env,
         );
         assert_eq!(result, Ok(list!(0, 1, 2, 3).into()));
@@ -123,7 +123,11 @@ mod tests {
         // (quasiquote (0 (unquote (+ 1 2)) 4)) => (0 3 4)
         let result = quasiquote(
             "",
-            &list!(list!(0, list!(sym("unquote"), list!(sym("+"), 1, 2)), 4)),
+            &list!(list!(
+                0,
+                list!(intern("unquote"), list!(intern("+"), 1, 2)),
+                4
+            )),
             &env,
         );
         assert_eq!(result, Ok(list!(0, 3, 4).into()));
@@ -145,7 +149,10 @@ mod tests {
             "",
             &list!(list!(
                 0,
-                list!(sym("unquote-splicing"), list!(sym("quote"), list!(1, 2, 3))),
+                list!(
+                    intern("unquote-splicing"),
+                    list!(intern("quote"), list!(1, 2, 3))
+                ),
                 4
             )),
             &env,
