@@ -1,8 +1,12 @@
+mod native;
+
 use std::rc::Rc;
 
 use rusp::env::Env;
 use rusp::eval::eval;
+use rusp::expr::Expr;
 use rusp::parser::{ParseError, Parser};
+use rusp::proc::Proc;
 use rusp::scanner::Scanner;
 
 const PRELUDE_SYMBOLS: [&str; 2] = [
@@ -12,7 +16,7 @@ const PRELUDE_SYMBOLS: [&str; 2] = [
     "(define #f '())",
 ];
 
-const PRELUDE_MACROS: [&str; 4] = [
+const PRELUDE_MACROS: [&str; 5] = [
     // if
     r#"
     (defmacro if (pred then else)
@@ -37,6 +41,21 @@ const PRELUDE_MACROS: [&str; 4] = [
     r#"
     (defmacro begin (*exprs)
         `(let () ,@exprs))
+    "#,
+    // print, println
+    r#"
+    (defmacro (print *args)
+        (if (null? args)
+            '()
+            `(begin
+                (display ,(car args))
+                (print ,@(cdr args))
+            )
+        )
+    )
+    (defmacro (println *args)
+        `(print ,@args)
+        `(print "\n"))
     "#,
 ];
 
@@ -111,23 +130,31 @@ const PRELUDE_FUNCS: [&str; 10] = [
 ];
 
 pub fn load_prelude(env: &Rc<Env>) {
+    env.define(
+        "display",
+        Expr::Proc(Proc::Native {
+            name: "display".to_owned(),
+            func: native::display,
+        }),
+    );
+
     for exprs in PRELUDE_SYMBOLS {
-        eval_prelude_exprs(exprs, env);
+        eval_prelude_str(exprs, env);
     }
     for exprs in PRELUDE_MACROS {
-        eval_prelude_exprs(exprs, env);
+        eval_prelude_str(exprs, env);
     }
     for exprs in PRELUDE_FUNCS {
-        eval_prelude_exprs(exprs, env);
+        eval_prelude_str(exprs, env);
     }
 }
 
-fn eval_prelude_exprs(exprs: &str, env: &Rc<Env>) {
-    let mut scanner = Scanner::new(exprs.chars());
+fn eval_prelude_str(text: &str, env: &Rc<Env>) {
+    let mut scanner = Scanner::new(text.chars());
     let tokens = std::iter::from_fn(|| match scanner.get_token() {
         Ok(Some(token)) => Some(token),
         Ok(None) => None,
-        Err(_) => panic!("Failed to tokenize prelude: {exprs}"),
+        Err(_) => panic!("Failed to tokenize prelude: {text}"),
     })
     .collect::<Vec<_>>();
 
@@ -137,17 +164,17 @@ fn eval_prelude_exprs(exprs: &str, env: &Rc<Env>) {
         match parser.parse() {
             Ok(expr) => {
                 let _ = eval(&expr, &env)
-                    .expect(format!("Failed to evaluate prelude: {exprs}").as_str());
+                    .expect(format!("Failed to evaluate prelude: {text}").as_str());
             }
             Err(ParseError::NeedMoreToken) => {
                 if parser.is_parsing() {
-                    panic!("Failed to parse prelude - incomplete expression: {exprs}");
+                    panic!("Failed to parse prelude - incomplete expression: {text}");
                 } else {
                     break; // we're done!
                 }
             }
             Err(ParseError::UnexpectedToken(token)) => {
-                panic!("Failed to parse prelude - unexpected token {token} in {exprs}");
+                panic!("Failed to parse prelude - unexpected token {token} in {text}");
             }
         }
     }
