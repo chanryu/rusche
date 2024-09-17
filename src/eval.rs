@@ -88,11 +88,10 @@ impl EvalContext {
                 .borrow()
                 .iter()
                 .filter(|env| {
-                    if let Some(env) = env.upgrade() {
-                        !env.is_reachable.get()
-                    } else {
-                        false
-                    }
+                    let Some(env) = env.upgrade() else {
+                        return false;
+                    };
+                    !env.is_reachable.get()
                 })
                 .count()
         );
