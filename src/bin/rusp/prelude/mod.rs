@@ -2,12 +2,13 @@ mod native;
 
 use std::rc::Rc;
 
+use crate::tokenize::tokenize;
+
 use rusp::env::Env;
 use rusp::eval::{eval, EvalContext};
 use rusp::expr::Expr;
 use rusp::parser::{ParseError, Parser};
 use rusp::proc::Proc;
-use rusp::scanner::Scanner;
 
 const PRELUDE_SYMBOLS: [&str; 2] = [
     // #t
@@ -156,13 +157,7 @@ impl PreludeLoader for EvalContext {
 }
 
 fn eval_prelude_str(text: &str, env: &Rc<Env>) {
-    let mut scanner = Scanner::new(text.chars());
-    let tokens = std::iter::from_fn(|| match scanner.get_token() {
-        Ok(Some(token)) => Some(token),
-        Ok(None) => None,
-        Err(_) => panic!("Failed to tokenize prelude: {text}"),
-    })
-    .collect::<Vec<_>>();
+    let tokens = tokenize(text).expect(format!("Failed to tokenize prelude: {text}").as_str());
 
     let mut parser = Parser::with_tokens(tokens);
 
@@ -196,24 +191,14 @@ mod tests {
     }
 
     fn eval_str_env(text: &str, env: &Rc<Env>) -> String {
-        let mut tokens = Vec::new();
-        let mut scanner = Scanner::new(text.chars());
-        while let Some(token) = scanner
-            .get_token()
-            .expect(&format!("Failed to get token: {}", text))
-        {
-            tokens.push(token);
-        }
-
+        let tokens = tokenize(text).expect(&format!("Failed to tokenize: {}", text));
         let mut parser = Parser::with_tokens(tokens);
-
         let expr = parser
             .parse()
             .expect(&format!("Failed to parse an expression: {}", text));
         if parser.is_parsing() {
             panic!("Too many tokens: {}", text);
         }
-
         eval(&expr, env)
             .expect(&format!("Failed to evaluate: {}", expr))
             .to_string()
