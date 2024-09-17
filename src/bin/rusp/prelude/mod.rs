@@ -3,7 +3,7 @@ mod native;
 use std::rc::Rc;
 
 use rusp::env::Env;
-use rusp::eval::eval;
+use rusp::eval::{eval, EvalContext};
 use rusp::expr::Expr;
 use rusp::parser::{ParseError, Parser};
 use rusp::proc::Proc;
@@ -59,26 +59,13 @@ const PRELUDE_MACROS: [&str; 5] = [
     "#,
 ];
 
-const PRELUDE_FUNCS: [&str; 10] = [
+const PRELUDE_FUNCS: [&str; 9] = [
     // caar, cadr, cdar, cdar
     r#"
     (define (caar lst) (car (car lst)))
     (define (cadr lst) (cdr (car lst)))
     (define (cdar lst) (car (cdr lst)))
     (define (cddr lst) (cdr (cdr lst)))
-    "#,
-    // cadar
-    r#"
-    (define (cadar lst) (car (cadr lst)))
-    (define (caddr lst) (cdr (cadr lst)))
-    "#,
-    // map
-    r#"
-    (define (map fn lst)
-        (if (null? lst)
-            '()                          ; Base case: empty list
-            (cons (fn (car lst))         ; Apply function to the first element
-                  (map fn (cdr lst)))))  ; Recursive call on the rest of the list
     "#,
     // and, or, not
     r#"
@@ -89,6 +76,14 @@ const PRELUDE_FUNCS: [&str; 10] = [
     // null?
     r#"
     (define (null? e) (eq? e '()))
+    "#,
+    // map
+    r#"
+    (define (map fn lst)
+        (if (null? lst)
+            '()                          ; Base case: empty list
+            (cons (fn (car lst))         ; Apply function to the first element
+                  (map fn (cdr lst)))))  ; Recursive call on the rest of the list
     "#,
     // append
     r#"
@@ -129,23 +124,34 @@ const PRELUDE_FUNCS: [&str; 10] = [
     "#,
 ];
 
-pub fn load_prelude(env: &Rc<Env>) {
-    env.define(
-        "display",
-        Expr::Proc(Proc::Native {
-            name: "display".to_owned(),
-            func: native::display,
-        }),
-    );
+pub trait PreludeLoader {
+    fn with_prelude() -> Self;
+}
 
-    for exprs in PRELUDE_SYMBOLS {
-        eval_prelude_str(exprs, env);
-    }
-    for exprs in PRELUDE_MACROS {
-        eval_prelude_str(exprs, env);
-    }
-    for exprs in PRELUDE_FUNCS {
-        eval_prelude_str(exprs, env);
+impl PreludeLoader for EvalContext {
+    fn with_prelude() -> Self {
+        let context = Self::new();
+        let env = context.root_env();
+
+        env.define(
+            "display",
+            Expr::Proc(Proc::Native {
+                name: "display".to_owned(),
+                func: native::display,
+            }),
+        );
+
+        for exprs in PRELUDE_SYMBOLS {
+            eval_prelude_str(exprs, env);
+        }
+        for exprs in PRELUDE_MACROS {
+            eval_prelude_str(exprs, env);
+        }
+        for exprs in PRELUDE_FUNCS {
+            eval_prelude_str(exprs, env);
+        }
+
+        context
     }
 }
 
@@ -184,14 +190,8 @@ mod tests {
     use super::*;
     use rusp::eval::EvalContext;
 
-    fn create_context() -> EvalContext {
-        let context = EvalContext::new();
-        load_prelude(context.root_env());
-        context
-    }
-
     fn eval_str(text: &str) -> String {
-        let context = create_context();
+        let context = EvalContext::with_prelude();
         eval_str_env(text, context.root_env())
     }
 
@@ -234,12 +234,6 @@ mod tests {
     }
 
     #[test]
-    fn test_cxxxr() {
-        assert_eq!(eval_str("(cadar '((1 2 3) 4))"), "2");
-        assert_eq!(eval_str("(caddr '((1 2 3) 4))"), "(3)");
-    }
-
-    #[test]
     fn test_if() {
         assert_eq!(eval_str("(if #t 123 456)"), "123");
         assert_eq!(eval_str("(if #f 123 456)"), "456");
@@ -262,7 +256,7 @@ mod tests {
 
     #[test]
     fn test_let() {
-        let context = create_context();
+        let context = EvalContext::with_prelude();
         let env = context.root_env();
 
         assert_eq!(env.lookup("x"), None);
