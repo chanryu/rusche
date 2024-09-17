@@ -49,8 +49,8 @@ pub fn divide(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     binary_operation(proc_name, args, env, 1_f64, false, |lhs, rhs| lhs / rhs)
 }
 
-pub fn is_num(proc_name: &str, args: &List, _env: &Rc<Env>) -> EvalResult {
-    if let Expr::Num(_) = get_exact_one_arg(proc_name, args)? {
+pub fn is_num(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
+    if let Expr::Num(_) = eval(get_exact_one_arg(proc_name, args)?, env)? {
         Ok(true.into())
     } else {
         Ok(false.into())
