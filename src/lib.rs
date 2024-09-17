@@ -6,7 +6,6 @@ pub mod expr;
 pub mod list;
 pub mod macros;
 pub mod parser;
-pub mod prelude;
 pub mod proc;
 pub mod scanner;
 pub mod token;

@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
-use crate::env::Env;
-use crate::eval::eval;
-use crate::parser::{ParseError, Parser};
-use crate::scanner::Scanner;
+use rusp::env::Env;
+use rusp::eval::eval;
+use rusp::parser::{ParseError, Parser};
+use rusp::scanner::Scanner;
 
 const PRELUDE_SYMBOLS: [&str; 2] = [
     // #t
@@ -155,10 +155,146 @@ fn eval_prelude_exprs(exprs: &str, env: &Rc<Env>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::cell::RefCell;
+    use rusp::eval::EvalContext;
+
+    fn create_context() -> EvalContext {
+        let context = EvalContext::new();
+        load_prelude(context.root_env());
+        context
+    }
+
+    fn eval_str(text: &str) -> String {
+        let context = create_context();
+        eval_str_env(text, context.root_env())
+    }
+
+    fn eval_str_env(text: &str, env: &Rc<Env>) -> String {
+        let mut tokens = Vec::new();
+        let mut scanner = Scanner::new(text.chars());
+        while let Some(token) = scanner
+            .get_token()
+            .expect(&format!("Failed to get token: {}", text))
+        {
+            tokens.push(token);
+        }
+
+        let mut parser = Parser::with_tokens(tokens);
+
+        let expr = parser
+            .parse()
+            .expect(&format!("Failed to parse an expression: {}", text));
+        if parser.is_parsing() {
+            panic!("Too many tokens: {}", text);
+        }
+
+        eval(&expr, env)
+            .expect(&format!("Failed to evaluate: {}", expr))
+            .to_string()
+    }
 
     #[test]
-    fn test_complementry_pieces_sanity() {
-        let _ = Env::root(Rc::new(RefCell::new(Vec::new()))); // this should not panic
+    fn test_t_f() {
+        assert_eq!(eval_str("#t"), "1");
+        assert_eq!(eval_str("#f"), "()");
+    }
+
+    #[test]
+    fn test_cxxr() {
+        assert_eq!(eval_str("(caar '((1 2) 3 4))"), "1");
+        assert_eq!(eval_str("(cadr '((1 2) 3 4))"), "(2)");
+        assert_eq!(eval_str("(cdar '((1 2) 3 4))"), "3");
+        assert_eq!(eval_str("(cddr '((1 2) 3 4))"), "(4)");
+    }
+
+    #[test]
+    fn test_cxxxr() {
+        assert_eq!(eval_str("(cadar '((1 2 3) 4))"), "2");
+        assert_eq!(eval_str("(caddr '((1 2 3) 4))"), "(3)");
+    }
+
+    #[test]
+    fn test_if() {
+        assert_eq!(eval_str("(if #t 123 456)"), "123");
+        assert_eq!(eval_str("(if #f 123 456)"), "456");
+        assert_eq!(eval_str("(if 1 (+ 1 2) (+ 3 4))"), "3");
+        assert_eq!(eval_str("(if '() (+ 1 2) (+ 3 4))"), "7");
+    }
+
+    #[test]
+    fn test_list() {
+        assert_eq!(eval_str("(list)"), "()");
+        assert_eq!(eval_str("(list 1)"), "(1)");
+        assert_eq!(eval_str("(list 1 2 3)"), "(1 2 3)");
+        assert_eq!(eval_str("(list 1 '(2 3))"), "(1 (2 3))");
+    }
+
+    #[test]
+    fn test_map() {
+        assert_eq!(eval_str("(map (lambda (x) (* x 2)) '(1 2 3))"), "(2 4 6)");
+    }
+
+    #[test]
+    fn test_let() {
+        let context = create_context();
+        let env = context.root_env();
+
+        assert_eq!(env.lookup("x"), None);
+        assert_eq!(eval_str_env("(let ((x 2)) (+ x 3))", env), "5");
+        assert_eq!(env.lookup("x"), None);
+    }
+
+    #[test]
+    fn test_and_or_not() {
+        assert_eq!(eval_str("(and #f #f)"), "()");
+        assert_eq!(eval_str("(and #f #t)"), "()");
+        assert_eq!(eval_str("(and #t #f)"), "()");
+        assert_eq!(eval_str("(and #t #t)"), "1");
+
+        assert_eq!(eval_str("(or #f #f)"), "()");
+        assert_eq!(eval_str("(or #f #t)"), "1");
+        assert_eq!(eval_str("(or #t #f)"), "1");
+        assert_eq!(eval_str("(or #t #t)"), "1");
+
+        assert_eq!(eval_str("(not #f)"), "1");
+        assert_eq!(eval_str("(not #t)"), "()");
+    }
+
+    #[test]
+    fn test_append() {
+        assert_eq!(eval_str("(append '() '(1))"), "(1)");
+        assert_eq!(eval_str("(append '(1) '(2))"), "(1 2)");
+        assert_eq!(eval_str("(append '(1 2 3) '(4))"), "(1 2 3 4)");
+        assert_eq!(eval_str("(append '(1 2 3) '(4 5 6))"), "(1 2 3 4 5 6)");
+    }
+
+    #[test]
+    fn test_pair() {
+        assert_eq!(
+            eval_str(
+                r#"(pair '(1 2 3)
+                     '("one" "two" "three"))
+            "#
+            ),
+            r#"((1 "one") (2 "two") (3 "three"))"#,
+        );
+
+        assert_eq!(eval_str("(pair '(1 2 3 4) '(5 6))"), "((1 5) (2 6))",);
+    }
+
+    #[test]
+    fn test_assoc() {
+        assert_eq!(eval_str("(assoc 'a '((a 1) (b 2) (c 3)))"), "(a 1)");
+        assert_eq!(eval_str("(assoc 'b '((a 1) (b 2) (c 3)))"), "(b 2)");
+        assert_eq!(eval_str("(assoc 'x '((a 1) (b 2) (c 3)))"), "()");
+    }
+
+    #[test]
+    fn test_subst() {
+        assert_eq!(eval_str("(subst 'a 'b '(a b c b))"), "(a a c a)");
+    }
+
+    #[test]
+    fn test_reverse() {
+        assert_eq!(eval_str("(reverse '(a b c d))"), "(d c b a)");
     }
 }

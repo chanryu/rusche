@@ -16,10 +16,10 @@ fn test_cdr() {
 
 #[test]
 fn test_cond() {
-    assert_eq!(eval_str("(cond (#t 0) (#t 1))"), "0");
-    assert_eq!(eval_str("(cond (#t 0) (#f 1))"), "0");
-    assert_eq!(eval_str("(cond (#f 0) (#t 1))"), "1");
-    assert_eq!(eval_str("(cond (#f 0) (#f 1))"), "()");
+    assert_eq!(eval_str("(cond ('t  0) ('t  1))"), "0");
+    assert_eq!(eval_str("(cond ('t  0) ('() 1))"), "0");
+    assert_eq!(eval_str("(cond ('() 0) ('t  1))"), "1");
+    assert_eq!(eval_str("(cond ('() 0) ('() 1))"), "()");
 }
 
 #[test]
