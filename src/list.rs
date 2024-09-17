@@ -101,7 +101,7 @@ where
 mod tests {
     use super::*;
     use crate::expr::intern;
-    use crate::expr::shortcuts::num;
+    use crate::expr::test_utils::num;
     use crate::macros::list;
 
     #[test]

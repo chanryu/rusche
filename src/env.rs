@@ -146,7 +146,7 @@ impl Drop for Env {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::shortcuts::num;
+    use crate::expr::test_utils::num;
 
     #[test]
     fn test_set() {

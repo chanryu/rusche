@@ -113,7 +113,7 @@ pub fn intern<T: Into<String>>(name: T) -> Expr {
 }
 
 #[cfg(test)]
-pub mod shortcuts {
+pub mod test_utils {
     use super::Expr;
 
     pub fn num<T: Into<f64>>(value: T) -> Expr {
@@ -123,7 +123,7 @@ pub mod shortcuts {
 
 #[cfg(test)]
 mod tests {
-    use super::shortcuts::num;
+    use super::test_utils::num;
     use super::*;
     use crate::macros::list;
 
