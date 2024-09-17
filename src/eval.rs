@@ -28,6 +28,11 @@ pub fn eval(expr: &Expr, env: &Rc<Env>) -> EvalResult {
 
 pub struct EvalContext {
     all_envs: Rc<RefCell<Vec<Weak<Env>>>>,
+
+    #[cfg(not(debug_assertions))]
+    root_env: Rc<Env>,
+
+    #[cfg(debug_assertions)]
     root_env: Option<Rc<Env>>,
 }
 
@@ -40,11 +45,20 @@ impl EvalContext {
 
         Self {
             all_envs,
+
+            #[cfg(not(debug_assertions))]
+            root_env,
+
+            #[cfg(debug_assertions)]
             root_env: Some(root_env),
         }
     }
 
     pub fn root_env(&self) -> &Rc<Env> {
+        #[cfg(not(debug_assertions))]
+        return &self.root_env;
+
+        #[cfg(debug_assertions)]
         self.root_env
             .as_ref()
             .unwrap_or_else(|| panic!("Root environment is unavailable."))
@@ -111,15 +125,18 @@ impl Drop for EvalContext {
                 env.clear();
             }
         });
-        self.root_env = None;
 
-        debug_assert_eq!(
-            0,
-            self.all_envs
-                .borrow()
-                .iter()
-                .filter(|env| env.upgrade().is_some())
-                .count()
-        );
+        #[cfg(debug_assertions)]
+        {
+            self.root_env = None;
+            debug_assert_eq!(
+                0,
+                self.all_envs
+                    .borrow()
+                    .iter()
+                    .filter(|env| env.upgrade().is_some())
+                    .count()
+            );
+        }
     }
 }
