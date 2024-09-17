@@ -100,12 +100,13 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::shortcuts::{num, sym};
+    use crate::expr::intern;
+    use crate::expr::shortcuts::num;
     use crate::macros::list;
 
     #[test]
     fn test_display() {
-        let list = list!(1, 2, list!(3, "str", sym("sym")));
+        let list = list!(1, 2, list!(3, "str", intern("sym")));
         assert_eq!(format!("{}", list), "(1 2 (3 \"str\" sym))");
     }
 

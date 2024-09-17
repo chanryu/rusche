@@ -95,6 +95,23 @@ impl From<bool> for Expr {
     }
 }
 
+/// Interns a string into an `Expr::Sym`.
+///
+/// This function takes a string and converts it into an `Expr::Sym`. The string is
+/// converted into an owned `String` and then wrapped in an `Expr::Sym` variant.
+///
+/// # Examples
+///
+/// ```
+/// use rusp::expr::{intern, Expr};
+///
+/// let symbol = intern("foo");
+/// assert_eq!(symbol, Expr::Sym(String::from("foo")));
+/// ```
+pub fn intern<T: Into<String>>(name: T) -> Expr {
+    Expr::Sym(name.into())
+}
+
 #[cfg(test)]
 pub mod shortcuts {
     use super::Expr;
@@ -102,15 +119,11 @@ pub mod shortcuts {
     pub fn num<T: Into<f64>>(value: T) -> Expr {
         Expr::Num(value.into())
     }
-
-    pub fn sym<T: Into<String>>(name: T) -> Expr {
-        Expr::Sym(name.into())
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::shortcuts::{num, sym};
+    use super::shortcuts::num;
     use super::*;
     use crate::macros::list;
 
@@ -134,7 +147,7 @@ mod tests {
 
     #[test]
     fn test_display_sym() {
-        assert_eq!(format!("{}", sym("sym")), "sym");
+        assert_eq!(format!("{}", intern("sym")), "sym");
     }
 
     #[test]
@@ -151,14 +164,14 @@ mod tests {
 
     #[test]
     fn test_display_list_3() {
-        let list = list!(0, "str", sym("sym"));
+        let list = list!(0, "str", intern("sym"));
         assert_eq!(format!("{}", list), r#"(0 "str" sym)"#);
     }
 
     #[test]
     fn test_expr_from_list() {
         assert_eq!(
-            format!("{}", Expr::from(list!(list!(1, 2), 3, 4, sym("abc")))),
+            format!("{}", Expr::from(list!(list!(1, 2), 3, 4, intern("abc")))),
             "((1 2) 3 4 abc)"
         );
     }

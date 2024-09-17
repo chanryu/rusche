@@ -1,4 +1,4 @@
-use crate::expr::Expr;
+use crate::expr::{intern, Expr};
 use crate::list::{cons, List};
 use crate::macros::list;
 use crate::token::Token;
@@ -84,7 +84,7 @@ impl Parser {
                 if let Some(context) = self.contexts.last_mut() {
                     if let Some(quote_name) = get_quote_name(context.token.as_ref()) {
                         self.contexts.pop();
-                        expr = list!(Expr::Sym(quote_name.into()), expr).into();
+                        expr = list!(intern(quote_name), expr).into();
                         continue;
                     }
                     if context.car.is_none() {
@@ -148,7 +148,6 @@ fn get_quote_name(token: Option<&Token>) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::shortcuts::sym;
 
     #[test]
     fn test_parser() {
@@ -162,7 +161,7 @@ mod tests {
         ]);
 
         let parsed_expr = parser.parse().unwrap();
-        let expected_expr = list!(sym("add"), 1, 2).into();
+        let expected_expr = list!(intern("add"), 1, 2).into();
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -172,7 +171,7 @@ mod tests {
         let mut parser = Parser::with_tokens(vec![Token::Quote, Token::Num(1_f64)]);
 
         let parsed_expr = parser.parse().unwrap();
-        let expected_expr = list!(sym("quote"), 1).into();
+        let expected_expr = list!(intern("quote"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -193,7 +192,7 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         print!("{}", parsed_expr);
-        let expected_expr = list!(sym("quote"), list!(list!(1), 2)).into();
+        let expected_expr = list!(intern("quote"), list!(list!(1), 2)).into();
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -205,21 +204,21 @@ mod tests {
         parser.add_tokens([Token::Quasiquote, Token::Num(1_f64)]);
 
         let parsed_expr = parser.parse().unwrap();
-        let expected_expr = list!(sym("quasiquote"), 1).into();
+        let expected_expr = list!(intern("quasiquote"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
 
         // ,1
         parser.add_tokens([Token::Unquote, Token::Num(1_f64)]);
 
         let parsed_expr = parser.parse().unwrap();
-        let expected_expr = list!(sym("unquote"), 1).into();
+        let expected_expr = list!(intern("unquote"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
 
         // ,@1
         parser.add_tokens([Token::UnquoteSplicing, Token::Num(1_f64)]);
 
         let parsed_expr = parser.parse().unwrap();
-        let expected_expr = list!(sym("unquote-splicing"), 1).into();
+        let expected_expr = list!(intern("unquote-splicing"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
     }
 }
