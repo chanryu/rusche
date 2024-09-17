@@ -7,6 +7,8 @@ use std::rc::{Rc, Weak};
 use crate::builtin::load_builtin;
 use crate::expr::Expr;
 use crate::proc::Proc;
+
+#[cfg(debug_assertions)]
 use counter::{decrement_env_count, increment_env_count};
 
 #[derive(Debug)]
