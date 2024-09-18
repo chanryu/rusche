@@ -76,10 +76,10 @@ pub fn slice(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
         ));
     }
 
-    let beg = beg as usize;
-    let len = len as usize;
-
     Ok(Expr::Str(
-        text.chars().skip(beg).take(len).collect::<String>(),
+        text.chars()
+            .skip(beg as usize)
+            .take(len as usize)
+            .collect::<String>(),
     ))
 }
