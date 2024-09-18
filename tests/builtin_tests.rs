@@ -46,18 +46,21 @@ fn test_define_variable() {
 fn test_define_lambda() {
     let context = EvalContext::new();
     let env = context.root_env();
-    let _ = eval_str_env("(define (do-math x y) (- (* x 2) y))", env);
+    let _ = eval_str_env(
+        "(define (do-math x y) (num-subtract (num-multiply x 2) y))",
+        env,
+    );
     assert_eq!(eval_str_env("(do-math 50 1)", &env), "99");
 }
 
 #[test]
 fn test_eval() {
-    assert_eq!(eval_str("(eval '(+ 1 2))"), "3");
+    assert_eq!(eval_str("(eval '(num-add 1 2))"), "3");
 }
 
 #[test]
 fn test_lambda() {
-    assert_eq!(eval_str("((lambda (x) (* x 2)) 5)"), "10");
+    assert_eq!(eval_str("((lambda (x) (num-multiply x 2)) 5)"), "10");
 }
 
 #[test]
@@ -90,7 +93,7 @@ fn test_quasiquote() {
     assert_eq!(eval_str("`(0 1 2)"), "(0 1 2)");
 
     // `(0 ,(+ 1 2) 4) => (0 3 4)
-    assert_eq!(eval_str("`(0 ,(+ 1 2) 4)"), "(0 3 4)");
+    assert_eq!(eval_str("`(0 ,(num-add 1 2) 4)"), "(0 3 4)");
 
     // `(0 ,@'(1 2 (3 4)) 5) => (0 1 2 (3 4) 5)
     assert_eq!(eval_str("`(0 ,@'(1 2 (3 4)) 5)"), "(0 1 2 (3 4) 5)");

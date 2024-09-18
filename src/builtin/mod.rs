@@ -39,10 +39,10 @@ pub fn load_builtin(env: &Rc<Env>) {
 
     // num
     set_native_func("num?", num::is_num);
-    set_native_func("+", num::add);
-    set_native_func("-", num::subtract);
-    set_native_func("*", num::multiply);
-    set_native_func("/", num::divide);
+    set_native_func("num-add", num::add);
+    set_native_func("num-subtract", num::subtract);
+    set_native_func("num-multiply", num::multiply);
+    set_native_func("num-divide", num::divide);
 
     // str
     set_native_func("str?", str::is_str);
