@@ -35,6 +35,7 @@ pub fn get_exact_2_args<'a>(
     }
 }
 
+#[allow(dead_code)]
 pub fn get_exact_3_args<'a>(
     proc_name: &str,
     args: &'a List,
@@ -53,6 +54,27 @@ pub fn get_exact_3_args<'a>(
         Ok((arg1, arg2, arg3))
     } else {
         Err(format!("{}: takes only 3 arguments", proc_name))
+    }
+}
+
+pub fn get_2_or_3_args<'a>(
+    proc_name: &str,
+    args: &'a List,
+) -> Result<(&'a Expr, &'a Expr, Option<&'a Expr>), EvalError> {
+    let mut iter = args.iter();
+    let Some(arg1) = iter.next() else {
+        return Err(format!("{}: requres at least 2 arguments", proc_name));
+    };
+    let Some(arg2) = iter.next() else {
+        return Err(format!("{}: requres at least 2 arguments", proc_name));
+    };
+    let Some(arg3) = iter.next() else {
+        return Ok((arg1, arg2, None));
+    };
+    if iter.next().is_none() {
+        Ok((arg1, arg2, Some(arg3)))
+    } else {
+        Err(format!("{}: takes up to 3 arguments", proc_name))
     }
 }
 
