@@ -61,7 +61,7 @@ pub fn is_num(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 mod tests {
     use super::*;
     use crate::expr::test_utils::num;
-    use crate::macros::list;
+    use crate::list::list;
 
     #[test]
     fn test_add() {

@@ -106,7 +106,7 @@ pub fn slice(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::macros::list;
+    use crate::list::list;
 
     #[test]
     fn test_is_str() {

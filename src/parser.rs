@@ -1,6 +1,5 @@
 use crate::expr::{intern, Expr};
-use crate::list::{cons, List};
-use crate::macros::list;
+use crate::list::{cons, list, List};
 use crate::token::Token;
 use std::collections::VecDeque;
 use std::fmt;

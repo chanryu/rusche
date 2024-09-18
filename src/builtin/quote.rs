@@ -83,7 +83,7 @@ fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Ex
 mod tests {
     use super::*;
     use crate::expr::intern;
-    use crate::macros::list;
+    use crate::list::list;
     use crate::proc::Proc;
 
     #[test]

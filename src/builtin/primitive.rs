@@ -183,7 +183,8 @@ pub fn set(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{expr::intern, macros::list};
+    use crate::expr::intern;
+    use crate::list::list;
 
     #[test]
     fn test_define() {
