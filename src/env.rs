@@ -60,13 +60,15 @@ impl Env {
 
     #[cfg(test)]
     pub(crate) fn for_unit_test() -> Rc<Self> {
-        Rc::new(Self {
+        let env = Rc::new(Self {
             kind: EnvKind::Root {
                 all_envs: Rc::new(RefCell::new(Vec::new())),
             },
             vars: RefCell::new(HashMap::new()),
             is_reachable: Cell::new(false),
-        })
+        });
+
+        env
     }
 
     pub fn define<IntoExpr>(&self, name: &str, expr: IntoExpr)

@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
+use crate::builtin;
 use crate::env::Env;
 use crate::expr::Expr;
 use crate::list::List;
@@ -9,19 +10,25 @@ pub type EvalError = String;
 pub type EvalResult = Result<Expr, EvalError>;
 
 pub fn eval(expr: &Expr, env: &Rc<Env>) -> EvalResult {
+    use builtin::quote::{quasiquote, quote};
+
     match expr {
         Expr::Sym(name) => match env.lookup(name) {
             Some(expr) => Ok(expr.clone()),
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
-        Expr::List(List::Cons(cons)) => {
-            if let Expr::Proc(proc) = eval(&cons.car, env)? {
-                let args = &cons.cdr;
-                proc.invoke(args, env)
-            } else {
-                Err(format!("{} does not evaluate to a callable.", cons.car))
+        Expr::List(List::Cons(cons)) => match cons.car.as_ref() {
+            Expr::Sym(text) if text == "quote" => quote(text, &cons.cdr, env),
+            Expr::Sym(text) if text == "quasiquote" => quasiquote(text, &cons.cdr, env),
+            _ => {
+                if let Expr::Proc(proc) = eval(&cons.car, env)? {
+                    let args = &cons.cdr;
+                    proc.invoke(args, env)
+                } else {
+                    Err(format!("{} does not evaluate to a callable.", cons.car))
+                }
             }
-        }
+        },
         _ => Ok(expr.clone()),
     }
 }
