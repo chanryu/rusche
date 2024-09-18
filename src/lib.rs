@@ -1,5 +1,4 @@
 pub mod builtin;
-pub mod cons;
 pub mod env;
 pub mod eval;
 pub mod expr;
