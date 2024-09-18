@@ -37,7 +37,7 @@ pub fn add(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     binary_operation(proc_name, args, env, 0_f64, true, |lhs, rhs| lhs + rhs)
 }
 
-pub fn minus(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
+pub fn subtract(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     binary_operation(proc_name, args, env, 0_f64, false, |lhs, rhs| lhs - rhs)
 }
 
@@ -82,11 +82,11 @@ mod tests {
 
         // (- 1) => -1
         let args = list!(1);
-        assert_eq!(minus("", &args, &env), Ok(num(-1)));
+        assert_eq!(subtract("", &args, &env), Ok(num(-1)));
 
         // (- 2 1) => 1
         let args = list!(2, 1);
-        assert_eq!(minus("", &args, &env), Ok(num(1)));
+        assert_eq!(subtract("", &args, &env), Ok(num(1)));
     }
 
     #[test]

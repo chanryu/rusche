@@ -44,13 +44,16 @@ pub fn load_builtin(env: &Rc<Env>) {
     // num
     set_native_func("num?", num::is_num);
     set_native_func("+", num::add);
-    set_native_func("-", num::minus);
+    set_native_func("-", num::subtract);
     set_native_func("*", num::multiply);
     set_native_func("/", num::divide);
 
     // str
     set_native_func("str?", str::is_str);
+    set_native_func("str-compare", str::compare);
     set_native_func("str-concat", str::concat);
+    set_native_func("str-length", str::length);
+    set_native_func("str-slice", str::slice);
 }
 
 pub fn atom(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
