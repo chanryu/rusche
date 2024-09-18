@@ -83,3 +83,95 @@ pub fn slice(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
             .collect::<String>(),
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::macros::list;
+
+    #[test]
+    fn test_is_str() {
+        let env = Env::for_unit_test();
+
+        // (str? "abc") => 1
+        assert_eq!(is_str("", &list!("abc"), &env), Ok(Expr::from(true)));
+
+        // (str? 1) => '()
+        assert_eq!(is_str("", &list!(1), &env), Ok(Expr::from(false)));
+
+        // (str? "abc" "def") => error
+        assert!(is_str("", &list!("abc", "def"), &env).is_err());
+    }
+
+    #[test]
+    fn test_compare() {
+        let env = Env::for_unit_test();
+
+        // (str-compare "abc" "def") => 1
+        assert_eq!(compare("", &list!("abc", "def"), &env), Ok(Expr::from(-1)));
+
+        // (str-compare "abc" "abc") => 1
+        assert_eq!(compare("", &list!("def", "def"), &env), Ok(Expr::from(0)));
+
+        // (str-compare "def" "abc") => 1
+        assert_eq!(compare("", &list!("def", "abc"), &env), Ok(Expr::from(1)));
+
+        // (str? "abc") => error
+        assert!(compare("", &list!("abc"), &env).is_err());
+
+        // (str? "abc" "abc" "abc") => error
+        assert!(compare("", &list!("abc", "abc", "abc"), &env).is_err());
+    }
+
+    #[test]
+    fn test_concat() {
+        let env = Env::for_unit_test();
+
+        // (str-concat "abc" "def") => "abcdef"
+        assert_eq!(
+            concat("", &list!("abc", "def"), &env),
+            Ok(Expr::from("abcdef"))
+        );
+
+        // (str-concat "abc" "-" "def" "-" "123") => "abc-def-123"
+        assert_eq!(
+            concat("", &list!("abc", "-", "def", "-", "123"), &env),
+            Ok(Expr::from("abc-def-123"))
+        );
+
+        // edge case: (str-conca) => ""
+        assert_eq!(concat("", &list!(), &env), Ok(Expr::from("")));
+
+        // edge case: (str-concat "abc") => "abc"
+        assert_eq!(concat("", &list!("abc"), &env), Ok(Expr::from("abc")));
+    }
+
+    #[test]
+    fn test_slice() {
+        let env = Env::for_unit_test();
+
+        // (str-slice "abcdef" 0 1) => "a"
+        assert_eq!(slice("", &list!("abcdef", 0, 1), &env), Ok(Expr::from("a")));
+
+        // (str-slice "abcdef" 0 2) => "ab"
+        assert_eq!(
+            slice("", &list!("abcdef", 0, 2), &env),
+            Ok(Expr::from("ab"))
+        );
+
+        // (str-slice "abcdef" 1 2) => "bc"
+        assert_eq!(
+            slice("", &list!("abcdef", 1, 2), &env),
+            Ok(Expr::from("bc"))
+        );
+
+        // edge case: (str-slice "abcdef" 0 999) => "abcdef"
+        assert_eq!(
+            slice("", &list!("abcdef", 0, 999), &env),
+            Ok(Expr::from("abcdef"))
+        );
+
+        // error: (str-slice "abcdef" 0.5 1)
+        assert!(slice("", &list!("abcdef", 0.5, 1), &env).is_err());
+    }
+}
