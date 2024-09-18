@@ -1,13 +1,13 @@
 use std::rc::Rc;
 
-use super::{get_exact_one_arg, make_syntax_error};
+use super::{get_exact_1_arg, make_syntax_error};
 use crate::env::Env;
 use crate::eval::{eval, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::List;
 
 pub fn quote(proc_name: &str, args: &List, _env: &Rc<Env>) -> EvalResult {
-    Ok(get_exact_one_arg(proc_name, args)?.clone())
+    Ok(get_exact_1_arg(proc_name, args)?.clone())
 }
 
 fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Expr>, EvalError> {
@@ -65,7 +65,7 @@ fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Ex
 }
 
 pub fn quasiquote(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let expr = get_exact_one_arg(proc_name, args)?;
+    let expr = get_exact_1_arg(proc_name, args)?;
 
     match quasiquote_expr(proc_name, expr, env) {
         Ok(mut exprs) => {

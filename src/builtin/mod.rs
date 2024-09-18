@@ -1,7 +1,11 @@
-pub mod num;
-pub mod quote;
+mod num;
+mod quote;
+mod str;
+mod utils;
 
 use std::rc::Rc;
+
+use utils::{get_exact_1_arg, get_exact_2_args, make_formal_args};
 
 use crate::env::Env;
 use crate::eval::{eval, EvalError, EvalResult};
@@ -38,21 +42,28 @@ pub fn load_builtin(env: &Rc<Env>) {
     set_native_func("quasiquote", quote::quasiquote);
 
     // num
+    set_native_func("num?", num::is_num);
     set_native_func("+", num::add);
-    set_native_func("-", num::minus);
+    set_native_func("-", num::subtract);
     set_native_func("*", num::multiply);
     set_native_func("/", num::divide);
-    set_native_func("num?", num::is_num);
+
+    // str
+    set_native_func("str?", str::is_str);
+    set_native_func("str-compare", str::compare);
+    set_native_func("str-concat", str::concat);
+    set_native_func("str-length", str::length);
+    set_native_func("str-slice", str::slice);
 }
 
 pub fn atom(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let expr = get_exact_one_arg(proc_name, args)?;
+    let expr = get_exact_1_arg(proc_name, args)?;
 
     Ok(eval(expr, env)?.is_atom().into())
 }
 
 pub fn car(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let expr = get_exact_one_arg(proc_name, args)?;
+    let expr = get_exact_1_arg(proc_name, args)?;
 
     if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
         Ok(cons.car.as_ref().clone())
@@ -62,7 +73,7 @@ pub fn car(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 }
 
 pub fn cdr(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let expr = get_exact_one_arg(proc_name, args)?;
+    let expr = get_exact_1_arg(proc_name, args)?;
 
     if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
         Ok(cons.cdr.as_ref().clone().into())
@@ -72,7 +83,7 @@ pub fn cdr(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 }
 
 pub fn cons_(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let (car, cdr) = get_exact_two_args(proc_name, args)?;
+    let (car, cdr) = get_exact_2_args(proc_name, args)?;
 
     let car = eval(car, env)?;
     let Expr::List(cdr) = eval(cdr, env)? else {
@@ -177,13 +188,13 @@ pub fn defmacro(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 }
 
 pub fn eq(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let (left, right) = get_exact_two_args(proc_name, args)?;
+    let (left, right) = get_exact_2_args(proc_name, args)?;
 
     Ok((eval(left, env)? == eval(right, env)?).into())
 }
 
 pub fn eval_(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let expr = get_exact_one_arg(proc_name, args)?;
+    let expr = get_exact_1_arg(proc_name, args)?;
 
     eval(&eval(expr, env)?, env)
 }
@@ -204,7 +215,7 @@ pub fn lambda(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 }
 
 pub fn set(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let (name_expr, value_expr) = get_exact_two_args(proc_name, args)?;
+    let (name_expr, value_expr) = get_exact_2_args(proc_name, args)?;
 
     let Expr::Sym(name) = name_expr else {
         return Err("".to_owned());
@@ -220,48 +231,6 @@ fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
         "Ill-formed syntax: {}",
         cons(intern(proc_name), args.clone())
     )
-}
-
-fn get_exact_one_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, EvalError> {
-    let mut iter = args.iter();
-    let Some(arg) = iter.next() else {
-        return Err(format!("{proc_name} needs an argument."));
-    };
-    if iter.next().is_none() {
-        Ok(arg)
-    } else {
-        Err(format!("{proc_name} expects only 1 argument."))
-    }
-}
-
-fn get_exact_two_args<'a>(
-    proc_name: &str,
-    args: &'a List,
-) -> Result<(&'a Expr, &'a Expr), EvalError> {
-    let mut iter = args.iter();
-    let Some(arg0) = iter.next() else {
-        return Err(format!("{}: requres two arguments", proc_name));
-    };
-    let Some(arg1) = iter.next() else {
-        return Err(format!("{}: requres two arguments", proc_name));
-    };
-    if iter.next().is_none() {
-        Ok((arg0, arg1))
-    } else {
-        Err(format!("{}: takes only two arguments", proc_name))
-    }
-}
-
-fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
-    let mut formal_args = Vec::new();
-    for item in list.iter() {
-        let Expr::Sym(formal_arg) = item else {
-            return Err(format!("{item} is not a symbol."));
-        };
-        formal_args.push(formal_arg.clone());
-    }
-
-    Ok(formal_args)
 }
 
 #[cfg(test)]

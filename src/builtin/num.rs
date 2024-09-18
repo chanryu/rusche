@@ -5,7 +5,7 @@ use crate::eval::{eval, EvalResult};
 use crate::expr::Expr;
 use crate::list::List;
 
-use super::get_exact_one_arg;
+use super::get_exact_1_arg;
 
 fn binary_operation(
     proc_name: &str,
@@ -37,7 +37,7 @@ pub fn add(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     binary_operation(proc_name, args, env, 0_f64, true, |lhs, rhs| lhs + rhs)
 }
 
-pub fn minus(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
+pub fn subtract(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     binary_operation(proc_name, args, env, 0_f64, false, |lhs, rhs| lhs - rhs)
 }
 
@@ -49,8 +49,8 @@ pub fn divide(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     binary_operation(proc_name, args, env, 1_f64, false, |lhs, rhs| lhs / rhs)
 }
 
-pub fn is_num(proc_name: &str, args: &List, _env: &Rc<Env>) -> EvalResult {
-    if let Expr::Num(_) = get_exact_one_arg(proc_name, args)? {
+pub fn is_num(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
+    if let Expr::Num(_) = eval(get_exact_1_arg(proc_name, args)?, env)? {
         Ok(true.into())
     } else {
         Ok(false.into())
@@ -82,11 +82,11 @@ mod tests {
 
         // (- 1) => -1
         let args = list!(1);
-        assert_eq!(minus("", &args, &env), Ok(num(-1)));
+        assert_eq!(subtract("", &args, &env), Ok(num(-1)));
 
         // (- 2 1) => 1
         let args = list!(2, 1);
-        assert_eq!(minus("", &args, &env), Ok(num(1)));
+        assert_eq!(subtract("", &args, &env), Ok(num(1)));
     }
 
     #[test]
