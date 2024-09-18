@@ -64,7 +64,16 @@ where
             Some('"') => self.read_string(),
 
             // number
-            Some(ch) if ch.is_ascii_digit() || ch == '.' => self.read_number(ch),
+            Some(ch) if ch.is_ascii_digit() || ch == '.' => self.read_number(ch, 1),
+
+            // number or symbol
+            Some('-') => {
+                if let Some(ch) = self.iter.next_if(|ch| ch.is_ascii_digit()) {
+                    self.read_number(ch, -1)
+                } else {
+                    self.read_symbol('-')
+                }
+            }
 
             // we allow all other characters to be a symbol
             Some(ch) => self.read_symbol(ch),
@@ -108,7 +117,7 @@ where
         Err(TokenError::IncompleteString)
     }
 
-    fn read_number(&mut self, first_char: char) -> ScanResult {
+    fn read_number(&mut self, first_char: char, sign: i32) -> ScanResult {
         let mut has_decimal_point = first_char == '.';
         let mut digits = String::new();
 
@@ -125,7 +134,7 @@ where
 
         digits
             .parse::<f64>()
-            .map(|value| Some(Token::Num(value)))
+            .map(|value| Some(Token::Num(value * sign as f64)))
             .map_err(|_| TokenError::InvalidNumber)
     }
 
@@ -180,13 +189,14 @@ mod tests {
                 assert!(!$source.is_empty());
                 let mut chars = $source.chars();
                 let first_char = chars.next().unwrap();
-                assert_eq!(Scanner::new(chars).read_number(first_char), $expected);
+                assert_eq!(Scanner::new(chars).read_number(first_char, 1), $expected);
             };
         }
 
         parse_number_assert_eq!("0", Ok(Some(num(0))));
         parse_number_assert_eq!("1", Ok(Some(num(1))));
         parse_number_assert_eq!("1.1", Ok(Some(num(1.1))));
+        parse_number_assert_eq!("-1", Ok(Some(num(-1))));
     }
 
     #[test]

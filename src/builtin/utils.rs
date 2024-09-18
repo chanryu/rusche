@@ -5,7 +5,7 @@ use crate::eval::{eval, EvalError};
 use crate::expr::Expr;
 use crate::list::List;
 
-pub fn get_exact_one_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, EvalError> {
+pub fn get_exact_1_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, EvalError> {
     let mut iter = args.iter();
     let Some(arg) = iter.next() else {
         return Err(format!("{proc_name} needs an argument."));
@@ -17,7 +17,7 @@ pub fn get_exact_one_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr
     }
 }
 
-pub fn get_exact_two_args<'a>(
+pub fn get_exact_2_args<'a>(
     proc_name: &str,
     args: &'a List,
 ) -> Result<(&'a Expr, &'a Expr), EvalError> {

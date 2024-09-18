@@ -5,7 +5,7 @@ use crate::eval::{eval, EvalResult};
 use crate::expr::Expr;
 use crate::list::List;
 
-use super::get_exact_one_arg;
+use super::get_exact_1_arg;
 
 fn binary_operation(
     proc_name: &str,
@@ -50,7 +50,7 @@ pub fn divide(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 }
 
 pub fn is_num(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    if let Expr::Num(_) = eval(get_exact_one_arg(proc_name, args)?, env)? {
+    if let Expr::Num(_) = eval(get_exact_1_arg(proc_name, args)?, env)? {
         Ok(true.into())
     } else {
         Ok(false.into())

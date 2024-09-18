@@ -5,7 +5,7 @@ mod utils;
 
 use std::rc::Rc;
 
-use utils::{get_exact_one_arg, get_exact_two_args, make_formal_args};
+use utils::{get_exact_1_arg, get_exact_2_args, make_formal_args};
 
 use crate::env::Env;
 use crate::eval::{eval, EvalError, EvalResult};
@@ -57,13 +57,13 @@ pub fn load_builtin(env: &Rc<Env>) {
 }
 
 pub fn atom(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let expr = get_exact_one_arg(proc_name, args)?;
+    let expr = get_exact_1_arg(proc_name, args)?;
 
     Ok(eval(expr, env)?.is_atom().into())
 }
 
 pub fn car(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let expr = get_exact_one_arg(proc_name, args)?;
+    let expr = get_exact_1_arg(proc_name, args)?;
 
     if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
         Ok(cons.car.as_ref().clone())
@@ -73,7 +73,7 @@ pub fn car(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 }
 
 pub fn cdr(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let expr = get_exact_one_arg(proc_name, args)?;
+    let expr = get_exact_1_arg(proc_name, args)?;
 
     if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
         Ok(cons.cdr.as_ref().clone().into())
@@ -83,7 +83,7 @@ pub fn cdr(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 }
 
 pub fn cons_(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let (car, cdr) = get_exact_two_args(proc_name, args)?;
+    let (car, cdr) = get_exact_2_args(proc_name, args)?;
 
     let car = eval(car, env)?;
     let Expr::List(cdr) = eval(cdr, env)? else {
@@ -188,13 +188,13 @@ pub fn defmacro(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 }
 
 pub fn eq(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let (left, right) = get_exact_two_args(proc_name, args)?;
+    let (left, right) = get_exact_2_args(proc_name, args)?;
 
     Ok((eval(left, env)? == eval(right, env)?).into())
 }
 
 pub fn eval_(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let expr = get_exact_one_arg(proc_name, args)?;
+    let expr = get_exact_1_arg(proc_name, args)?;
 
     eval(&eval(expr, env)?, env)
 }
@@ -215,7 +215,7 @@ pub fn lambda(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 }
 
 pub fn set(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let (name_expr, value_expr) = get_exact_two_args(proc_name, args)?;
+    let (name_expr, value_expr) = get_exact_2_args(proc_name, args)?;
 
     let Expr::Sym(name) = name_expr else {
         return Err("".to_owned());
