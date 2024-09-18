@@ -10,6 +10,21 @@ pub fn quote(proc_name: &str, args: &List, _env: &Rc<Env>) -> EvalResult {
     Ok(get_exact_1_arg(proc_name, args)?.clone())
 }
 
+pub fn quasiquote(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
+    let expr = get_exact_1_arg(proc_name, args)?;
+
+    match quasiquote_expr(proc_name, expr, env) {
+        Ok(mut exprs) => {
+            if exprs.len() == 1 {
+                Ok(exprs.remove(0))
+            } else {
+                Err(make_syntax_error(proc_name, args))
+            }
+        }
+        Err(err) => Err(err),
+    }
+}
+
 fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Expr>, EvalError> {
     let Expr::List(list) = expr else {
         return Ok(vec![expr.clone()]);
@@ -64,26 +79,11 @@ fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Ex
     Ok(exprs)
 }
 
-pub fn quasiquote(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    let expr = get_exact_1_arg(proc_name, args)?;
-
-    match quasiquote_expr(proc_name, expr, env) {
-        Ok(mut exprs) => {
-            if exprs.len() == 1 {
-                Ok(exprs.remove(0))
-            } else {
-                Err(make_syntax_error(proc_name, args))
-            }
-        }
-        Err(err) => Err(err),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::expr::intern;
-    use crate::macros::list;
+    use crate::list::list;
     use crate::proc::Proc;
 
     #[test]

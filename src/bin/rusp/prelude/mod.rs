@@ -10,11 +10,18 @@ use rusp::expr::Expr;
 use rusp::parser::{ParseError, Parser};
 use rusp::proc::Proc;
 
-const PRELUDE_SYMBOLS: [&str; 2] = [
+const PRELUDE_SYMBOLS: [&str; 3] = [
     // #t
     "(define #t 1)",
     // #f
     "(define #f '())",
+    // numeric operators
+    r#"
+    (define + num-add)
+    (define - num-subtract)
+    (define * num-multiply)
+    (define / num-divide)
+    "#,
 ];
 
 const PRELUDE_MACROS: [&str; 5] = [

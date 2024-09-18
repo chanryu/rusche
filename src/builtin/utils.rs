@@ -2,8 +2,15 @@ use std::rc::Rc;
 
 use crate::env::Env;
 use crate::eval::{eval, EvalError};
-use crate::expr::Expr;
-use crate::list::List;
+use crate::expr::{intern, Expr};
+use crate::list::{cons, List};
+
+pub fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
+    format!(
+        "Ill-formed syntax: {}",
+        cons(intern(proc_name), args.clone())
+    )
+}
 
 pub fn get_exact_1_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, EvalError> {
     let mut iter = args.iter();

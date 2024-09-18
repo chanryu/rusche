@@ -125,7 +125,7 @@ pub mod test_utils {
 mod tests {
     use super::test_utils::num;
     use super::*;
-    use crate::macros::list;
+    use crate::list::list;
 
     #[test]
     fn test_display_nil() {
