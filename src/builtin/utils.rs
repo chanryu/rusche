@@ -97,16 +97,20 @@ pub fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
     Ok(formal_args)
 }
 
-pub fn eval_to_str(expr: &Expr, env: &Rc<Env>) -> Result<String, EvalError> {
+pub fn eval_to_str(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<String, EvalError> {
     match eval(expr, env)? {
         Expr::Str(text) => Ok(text),
-        _ => Err(format!("{expr} does not evaluate to a string.")),
+        _ => Err(format!(
+            "{proc_name}: {expr} does not evaluate to a string."
+        )),
     }
 }
 
-pub fn eval_to_num(expr: &Expr, env: &Rc<Env>) -> Result<f64, EvalError> {
+pub fn eval_to_num(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<f64, EvalError> {
     match eval(expr, env)? {
         Expr::Num(value) => Ok(value),
-        _ => Err(format!("{expr} does not evaluate to a number.")),
+        _ => Err(format!(
+            "{proc_name}: {expr} does not evaluate to a number."
+        )),
     }
 }

@@ -43,6 +43,7 @@ pub fn load_builtin(env: &Rc<Env>) {
     set_native_func("num-subtract", num::subtract);
     set_native_func("num-multiply", num::multiply);
     set_native_func("num-divide", num::divide);
+    set_native_func("num-modulo", num::modulo);
 
     // str
     set_native_func("str?", str::is_str);

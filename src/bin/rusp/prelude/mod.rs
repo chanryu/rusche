@@ -21,6 +21,7 @@ const PRELUDE_SYMBOLS: [&str; 3] = [
     (define - num-subtract)
     (define * num-multiply)
     (define / num-divide)
+    (define % num-modulo)
     "#,
 ];
 

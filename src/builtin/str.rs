@@ -63,12 +63,12 @@ pub fn length(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 pub fn slice(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let (arg1, arg2, opt_arg3) = get_2_or_3_args(proc_name, args)?;
 
-    let text = eval_to_str(arg1, env)?;
+    let text = eval_to_str(proc_name, arg1, env)?;
     let text_len = text.chars().count() as i32;
 
-    let beg = eval_to_num(arg2, env)?;
+    let beg = eval_to_num(proc_name, arg2, env)?;
     let end = if let Some(arg3) = opt_arg3 {
-        eval_to_num(arg3, env)?
+        eval_to_num(proc_name, arg3, env)?
     } else {
         text_len as f64
     };
