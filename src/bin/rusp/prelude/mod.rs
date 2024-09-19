@@ -15,7 +15,7 @@ const PRELUDE_SYMBOLS: [&str; 4] = [
     "(define #t 1)",
     // #f
     "(define #f '())",
-    // numeric operators
+    // numeric operation aliases
     r#"
     (define + num-add)
     (define - num-subtract)
@@ -25,11 +25,11 @@ const PRELUDE_SYMBOLS: [&str; 4] = [
     (define < num-less)
     (define > num-greater)
     "#,
-    // equal
+    // eq? alias
     "(define = eq?)",
 ];
 
-const PRELUDE_MACROS: [&str; 7] = [
+const PRELUDE_MACROS: [&str; 6] = [
     // if
     r#"
     (defmacro if (pred then else)
@@ -55,23 +55,10 @@ const PRELUDE_MACROS: [&str; 7] = [
     (defmacro begin (*exprs)
         `(let () ,@exprs))
     "#,
-    // print
-    r#"
-    (defmacro (print *args)
-        (if (null? args)
-            '()
-            `(begin
-                (display ,(car args))
-                (print ,@(cdr args))
-            )
-        )
-    )
-    "#,
     // println
     r#"
     (defmacro (println *args)
-        `(print ,@args)
-        `(print "\n"))
+        `(print ,@args "\n"))
     "#,
     // while
     r#"
@@ -161,10 +148,10 @@ impl PreludeLoader for EvalContext {
         let env = context.root_env();
 
         env.define(
-            "display",
+            "print",
             Expr::Proc(Proc::Native {
-                name: "display".to_owned(),
-                func: native::display,
+                name: "print".to_owned(),
+                func: native::print,
             }),
         );
 
