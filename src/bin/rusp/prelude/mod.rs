@@ -10,21 +10,26 @@ use rusp::expr::Expr;
 use rusp::parser::{ParseError, Parser};
 use rusp::proc::Proc;
 
-const PRELUDE_SYMBOLS: [&str; 3] = [
+const PRELUDE_SYMBOLS: [&str; 4] = [
     // #t
     "(define #t 1)",
     // #f
     "(define #f '())",
-    // numeric operators
+    // numeric operation aliases
     r#"
     (define + num-add)
     (define - num-subtract)
     (define * num-multiply)
     (define / num-divide)
+    (define % num-modulo)
+    (define < num-less)
+    (define > num-greater)
     "#,
+    // eq? alias
+    "(define = eq?)",
 ];
 
-const PRELUDE_MACROS: [&str; 5] = [
+const PRELUDE_MACROS: [&str; 6] = [
     // if
     r#"
     (defmacro if (pred then else)
@@ -50,20 +55,21 @@ const PRELUDE_MACROS: [&str; 5] = [
     (defmacro begin (*exprs)
         `(let () ,@exprs))
     "#,
-    // print, println
+    // println
     r#"
-    (defmacro (print *args)
-        (if (null? args)
-            '()
-            `(begin
-                (display ,(car args))
-                (print ,@(cdr args))
-            )
-        )
-    )
     (defmacro (println *args)
-        `(print ,@args)
-        `(print "\n"))
+        `(print ,@args "\n"))
+    "#,
+    // while
+    r#"
+    (defmacro while (condition *body)
+        `(begin
+            (define (loop)
+            (if ,condition
+                (begin ,@body (loop))
+                #f))
+            (loop)))
+
     "#,
 ];
 
@@ -142,10 +148,10 @@ impl PreludeLoader for EvalContext {
         let env = context.root_env();
 
         env.define(
-            "display",
+            "print",
             Expr::Proc(Proc::Native {
-                name: "display".to_owned(),
-                func: native::display,
+                name: "print".to_owned(),
+                func: native::print,
             }),
         );
 

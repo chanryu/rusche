@@ -7,7 +7,7 @@ use rusp::{
     list::List,
 };
 
-pub fn display(_: &str, args: &List, env: &Rc<Env>) -> EvalResult {
+pub fn print(_: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     for (index, expr) in args.iter().enumerate() {
         if index > 0 {
             print!(" ");
