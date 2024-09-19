@@ -4,7 +4,7 @@ use std::rc::{Rc, Weak};
 
 use crate::builtin::load_builtin;
 use crate::expr::Expr;
-use crate::proc::Proc;
+use crate::proc::{NativeFunc, Proc};
 
 #[derive(Debug)]
 enum EnvKind {
@@ -110,6 +110,16 @@ impl Env {
 
     pub fn clear(&self) {
         self.vars.borrow_mut().clear();
+    }
+
+    pub fn define_native_proc(&self, name: &str, func: NativeFunc) {
+        self.define(
+            name,
+            Expr::Proc(Proc::Native {
+                name: name.to_owned(),
+                func,
+            }),
+        );
     }
 
     pub(crate) fn gc_mark_reachable(&self) {

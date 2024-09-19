@@ -1,56 +1,44 @@
 pub mod quote;
+pub mod utils;
 
 mod num;
 mod primitive;
 mod str;
-mod utils;
 
 use std::rc::Rc;
 
 use utils::{get_exact_1_arg, make_syntax_error};
 
 use crate::env::Env;
-use crate::expr::Expr;
-use crate::proc::Proc;
 
 pub fn load_builtin(env: &Rc<Env>) {
-    let set_native_func = |name, func| {
-        env.define(
-            name,
-            Expr::Proc(Proc::Native {
-                name: name.to_owned(),
-                func,
-            }),
-        );
-    };
-
     // lisp primitives
-    set_native_func("atom?", primitive::atom);
-    set_native_func("car", primitive::car);
-    set_native_func("cdr", primitive::cdr);
-    set_native_func("cons", primitive::cons);
-    set_native_func("cond", primitive::cond);
-    set_native_func("define", primitive::define);
-    set_native_func("defmacro", primitive::defmacro);
-    set_native_func("eq?", primitive::eq);
-    set_native_func("eval", primitive::eval_);
-    set_native_func("lambda", primitive::lambda);
-    set_native_func("set!", primitive::set);
+    env.define_native_proc("atom?", primitive::atom);
+    env.define_native_proc("car", primitive::car);
+    env.define_native_proc("cdr", primitive::cdr);
+    env.define_native_proc("cons", primitive::cons);
+    env.define_native_proc("cond", primitive::cond);
+    env.define_native_proc("define", primitive::define);
+    env.define_native_proc("defmacro", primitive::defmacro);
+    env.define_native_proc("eq?", primitive::eq);
+    env.define_native_proc("eval", primitive::eval_);
+    env.define_native_proc("lambda", primitive::lambda);
+    env.define_native_proc("set!", primitive::set);
 
     // num
-    set_native_func("num?", num::is_num);
-    set_native_func("num-add", num::add);
-    set_native_func("num-subtract", num::subtract);
-    set_native_func("num-multiply", num::multiply);
-    set_native_func("num-divide", num::divide);
-    set_native_func("num-modulo", num::modulo);
-    set_native_func("num-less", num::less);
-    set_native_func("num-greater", num::greater);
+    env.define_native_proc("num?", num::is_num);
+    env.define_native_proc("num-add", num::add);
+    env.define_native_proc("num-subtract", num::subtract);
+    env.define_native_proc("num-multiply", num::multiply);
+    env.define_native_proc("num-divide", num::divide);
+    env.define_native_proc("num-modulo", num::modulo);
+    env.define_native_proc("num-less", num::less);
+    env.define_native_proc("num-greater", num::greater);
 
     // str
-    set_native_func("str?", str::is_str);
-    set_native_func("str-compare", str::compare);
-    set_native_func("str-concat", str::concat);
-    set_native_func("str-length", str::length);
-    set_native_func("str-slice", str::slice);
+    env.define_native_proc("str?", str::is_str);
+    env.define_native_proc("str-compare", str::compare);
+    env.define_native_proc("str-concat", str::concat);
+    env.define_native_proc("str-length", str::length);
+    env.define_native_proc("str-slice", str::slice);
 }

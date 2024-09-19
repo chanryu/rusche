@@ -6,9 +6,7 @@ use crate::tokenize::tokenize;
 
 use rusp::env::Env;
 use rusp::eval::{eval, EvalContext};
-use rusp::expr::Expr;
 use rusp::parser::{ParseError, Parser};
-use rusp::proc::Proc;
 
 const PRELUDE_SYMBOLS: [&str; 4] = [
     // #t
@@ -63,17 +61,13 @@ const PRELUDE_MACROS: [&str; 6] = [
     // while
     r#"
     (defmacro while (condition *body)
-        `(begin
-            (define (loop)
-            (if ,condition
-                (begin ,@body (loop))
-                #f))
-            (loop)))
-
+        `(define (loop)
+            (cond (,condition (begin ,@body (loop)))))
+        (loop))
     "#,
 ];
 
-const PRELUDE_FUNCS: [&str; 9] = [
+const PRELUDE_FUNCS: [&str; 10] = [
     // caar, cadr, cdar, cdar
     r#"
     (define (caar lst) (car (car lst)))
@@ -136,6 +130,11 @@ const PRELUDE_FUNCS: [&str; 9] = [
         (if (null? lst) lst
             (append (reverse (cdr lst)) (list (car lst)))))
     "#,
+    // numeric operations
+    r#"
+    (define (<= x y) (or (< x y) (= x y)))
+    (define (>= x y) (or (> x y) (= x y)))
+    "#,
 ];
 
 pub trait PreludeLoader {
@@ -147,13 +146,9 @@ impl PreludeLoader for EvalContext {
         let context = Self::new();
         let env = context.root_env();
 
-        env.define(
-            "print",
-            Expr::Proc(Proc::Native {
-                name: "print".to_owned(),
-                func: native::print,
-            }),
-        );
+        env.define_native_proc("print", native::print);
+        env.define_native_proc("read", native::read);
+        env.define_native_proc("parse-num", native::parse_num);
 
         for exprs in PRELUDE_SYMBOLS {
             eval_prelude_str(exprs, env);
