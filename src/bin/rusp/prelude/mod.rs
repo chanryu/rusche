@@ -10,7 +10,7 @@ use rusp::expr::Expr;
 use rusp::parser::{ParseError, Parser};
 use rusp::proc::Proc;
 
-const PRELUDE_SYMBOLS: [&str; 3] = [
+const PRELUDE_SYMBOLS: [&str; 4] = [
     // #t
     "(define #t 1)",
     // #f
@@ -22,10 +22,14 @@ const PRELUDE_SYMBOLS: [&str; 3] = [
     (define * num-multiply)
     (define / num-divide)
     (define % num-modulo)
+    (define < num-less)
+    (define > num-greater)
     "#,
+    // equal
+    "(define = eq?)",
 ];
 
-const PRELUDE_MACROS: [&str; 5] = [
+const PRELUDE_MACROS: [&str; 7] = [
     // if
     r#"
     (defmacro if (pred then else)
@@ -51,7 +55,7 @@ const PRELUDE_MACROS: [&str; 5] = [
     (defmacro begin (*exprs)
         `(let () ,@exprs))
     "#,
-    // print, println
+    // print
     r#"
     (defmacro (print *args)
         (if (null? args)
@@ -62,9 +66,23 @@ const PRELUDE_MACROS: [&str; 5] = [
             )
         )
     )
+    "#,
+    // println
+    r#"
     (defmacro (println *args)
         `(print ,@args)
         `(print "\n"))
+    "#,
+    // while
+    r#"
+    (defmacro while (condition *body)
+        `(begin
+            (define (loop)
+            (if ,condition
+                (begin ,@body (loop))
+                #f))
+            (loop)))
+
     "#,
 ];
 

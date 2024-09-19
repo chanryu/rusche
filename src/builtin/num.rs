@@ -61,6 +61,27 @@ pub fn modulo(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     Ok(Expr::Num(lhs % rhs))
 }
 
+fn logical_operation(
+    proc_name: &str,
+    args: &List,
+    env: &Rc<Env>,
+    func: fn(lhs: f64, rhs: f64) -> bool,
+) -> EvalResult {
+    let (lhs, rhs) = get_exact_2_args(proc_name, args)?;
+    Ok(Expr::from(func(
+        eval_to_num(proc_name, lhs, env)?,
+        eval_to_num(proc_name, rhs, env)?,
+    )))
+}
+
+pub fn less(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
+    logical_operation(proc_name, args, env, |lhs, rhs| lhs < rhs)
+}
+
+pub fn greater(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
+    logical_operation(proc_name, args, env, |lhs, rhs| lhs > rhs)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
