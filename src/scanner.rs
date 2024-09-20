@@ -293,7 +293,7 @@ mod tests {
 
         match_next_token!(Token::OpenParen);
         match_next_token!(Token::Sym("add".into()));
-        // assert_eq!(scanner.get_token(), Ok(Some(Token::Num(1.0))));
+        match_next_token!(Token::Num(1.0));
         // assert_eq!(scanner.get_token(), Ok(Some(Token::Num(2.34))));
         // assert_eq!(scanner.get_token(), Ok(Some(Token::OpenParen)));
         // assert_eq!(scanner.get_token(), Ok(Some(Token::Sym("x".into()))));
