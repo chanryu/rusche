@@ -44,9 +44,8 @@ mod tests {
 
     #[test]
     fn test_parse_num() {
-        let ctx = EvalContext::new();
-        let env = ctx.root_env();
-        let parse_num = |args| parse_num("parse-num", &args, env);
+        let context = EvalContext::new();
+        let parse_num = |args| parse_num("parse-num", &args, context.root_env());
 
         assert_eq!(parse_num(list!("1")), Ok(Expr::from(1)));
         assert_eq!(parse_num(list!("-24.5")), Ok(Expr::from(-24.5)));
