@@ -25,7 +25,7 @@ pub struct Scanner<Iter>
 where
     Iter: Iterator<Item = char>,
 {
-    iter: Peekable<Iter>,
+    __iter: Peekable<Iter>,
     loc: Loc,
 }
 
@@ -35,8 +35,8 @@ where
 {
     pub fn new(iter: Iter) -> Self {
         Self {
-            iter: iter.peekable(),
-            loc: Loc::new(1, 1),
+            __iter: iter.peekable(),
+            loc: Loc::new(1, 0),
         }
     }
 
@@ -48,14 +48,14 @@ where
             }
         }
 
-        match self.iter.next() {
+        match self.next_char() {
             Some('(') => Ok(Some(Token::OpenParen(self.loc))),
             Some(')') => Ok(Some(Token::CloseParen(self.loc))),
 
             Some('\'') => Ok(Some(Token::Quote(self.loc))),
             Some('`') => Ok(Some(Token::Quasiquote(self.loc))),
             Some(',') => {
-                if self.iter.next_if_eq(&'@').is_some() {
+                if self.next_char_if(|ch| *ch == '@').is_some() {
                     Ok(Some(Token::UnquoteSplicing(self.loc)))
                 } else {
                     Ok(Some(Token::Unquote(self.loc)))
@@ -70,7 +70,7 @@ where
 
             // number or symbol
             Some('-') => {
-                if let Some(ch) = self.iter.next_if(|ch| ch.is_ascii_digit()) {
+                if let Some(ch) = self.next_char_if(|ch| ch.is_ascii_digit()) {
                     self.read_number(ch, -1)
                 } else {
                     self.read_symbol('-')
@@ -85,12 +85,13 @@ where
     }
 
     fn skip_spaces(&mut self) {
-        while self.iter.next_if(|&ch| ch.is_whitespace()).is_some() {}
+        while self.next_char_if(|&ch| ch.is_whitespace()).is_some() {}
     }
 
     fn skip_comment(&mut self) -> bool {
-        if self.iter.next_if_eq(&';').is_some() {
-            self.iter.find(|&ch| ch == '\r' || ch == '\n');
+        if self.__iter.next_if_eq(&';').is_some() {
+            let _ = self.__iter.find(|&ch| ch == '\n');
+            self.advance_loc(&Some('\n'));
             true
         } else {
             false
@@ -101,8 +102,9 @@ where
         let loc = self.loc;
         let mut text = String::new();
         let mut escaped = false;
-        for ch in &mut self.iter {
+        while let Some(ch) = self.next_char() {
             match (ch, escaped) {
+                ('\n', _) => return Err(TokenError::IncompleteString),
                 (ch, true) => {
                     escaped = false;
                     match ch {
@@ -126,9 +128,8 @@ where
         let mut digits = String::new();
 
         digits.push(first_char);
-        while let Some(ch) = self
-            .iter
-            .next_if(|&ch| ch.is_ascii_digit() || (!has_decimal_point && ch == '.'))
+        while let Some(ch) =
+            self.next_char_if(|&ch| ch.is_ascii_digit() || (!has_decimal_point && ch == '.'))
         {
             digits.push(ch);
             if ch == '.' {
@@ -147,11 +148,39 @@ where
         let mut name = String::with_capacity(16);
         name.push(first_char);
 
-        while let Some(ch) = self.iter.next_if(|&ch| !SYMBOL_DELIMITERS.contains(ch)) {
+        while let Some(ch) = self.next_char_if(|ch| !SYMBOL_DELIMITERS.contains(*ch)) {
             name.push(ch);
         }
 
         Ok(Some(Token::Sym(loc, name)))
+    }
+}
+
+impl<Iter> Scanner<Iter>
+where
+    Iter: Iterator<Item = char>,
+{
+    fn next_char(&mut self) -> Option<char> {
+        let ch = self.__iter.next();
+        self.advance_loc(&ch);
+        ch
+    }
+
+    fn next_char_if(&mut self, func: impl FnOnce(&char) -> bool) -> Option<char> {
+        let ch = self.__iter.next_if(func);
+        self.advance_loc(&ch);
+        ch
+    }
+
+    fn advance_loc(&mut self, ch: &Option<char>) {
+        if let Some(ch) = ch {
+            if *ch == '\n' {
+                self.loc.line += 1;
+                self.loc.column = 1;
+            } else {
+                self.loc.column += 1;
+            }
+        }
     }
 }
 
@@ -165,7 +194,7 @@ mod tests {
     where
         T: Into<f64>,
     {
-        Token::Num(Loc::new(1, 1), value.into())
+        Token::Num(Loc::new(1, 0), value.into())
     }
 
     #[test]
@@ -178,7 +207,7 @@ mod tests {
             };
         }
 
-        let loc = Loc::new(1, 1);
+        let loc = Loc::new(1, 0);
 
         parse_string_assert_eq!(
             r#""valid string""#,
