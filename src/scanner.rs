@@ -281,32 +281,35 @@ mod tests {
 
         let mut scanner = Scanner::new(all_tokens.chars());
         macro_rules! match_next_token {
-            (Token::$token_case:ident) => {
+            (None) => {
+                assert_eq!(scanner.get_token().unwrap(), None);
+            };
+            (Some(Token::$token_case:ident)) => {
                 let token = scanner.get_token().unwrap().unwrap();
                 assert_eq!(token, Token::$token_case(token.loc()));
             };
-            (Token::$token_case:ident($value:expr)) => {
+            (Some(Token::$token_case:ident($value:expr))) => {
                 let token = scanner.get_token().unwrap().unwrap();
                 assert_eq!(token, Token::$token_case(token.loc(), $value));
             };
         }
 
-        match_next_token!(Token::OpenParen);
-        match_next_token!(Token::Sym("add".into()));
-        match_next_token!(Token::Num(1.0));
-        // assert_eq!(scanner.get_token(), Ok(Some(Token::Num(2.34))));
-        // assert_eq!(scanner.get_token(), Ok(Some(Token::OpenParen)));
-        // assert_eq!(scanner.get_token(), Ok(Some(Token::Sym("x".into()))));
-        // assert_eq!(scanner.get_token(), Ok(Some(Token::Sym("y".into()))));
-        // assert_eq!(scanner.get_token(), Ok(Some(Token::CloseParen)));
-        // assert_eq!(scanner.get_token(), Ok(Some(Token::Str("test".into()))));
-        // assert_eq!(scanner.get_token(), Ok(Some(Token::Quote)));
-        // assert_eq!(scanner.get_token(), Ok(Some(Token::OpenParen)));
-        // assert_eq!(scanner.get_token(), Ok(Some(Token::Num(100.0))));
-        // assert_eq!(scanner.get_token(), Ok(Some(Token::Num(200.0))));
-        // assert_eq!(scanner.get_token(), Ok(Some(Token::Num(300.0))));
-        // assert_eq!(scanner.get_token(), Ok(Some(Token::CloseParen)));
-        // assert_eq!(scanner.get_token(), Ok(Some(Token::CloseParen)));
-        // assert_eq!(scanner.get_token(), Ok(None));
+        match_next_token!(Some(Token::OpenParen));
+        match_next_token!(Some(Token::Sym("add".into())));
+        match_next_token!(Some(Token::Num(1.0)));
+        match_next_token!(Some(Token::Num(2.34)));
+        match_next_token!(Some(Token::OpenParen));
+        match_next_token!(Some(Token::Sym("x".into())));
+        match_next_token!(Some(Token::Sym("y".into())));
+        match_next_token!(Some(Token::CloseParen));
+        match_next_token!(Some(Token::Str("test".into())));
+        match_next_token!(Some(Token::Quote));
+        match_next_token!(Some(Token::OpenParen));
+        match_next_token!(Some(Token::Num(100.0)));
+        match_next_token!(Some(Token::Num(200.0)));
+        match_next_token!(Some(Token::Num(300.0)));
+        match_next_token!(Some(Token::CloseParen));
+        match_next_token!(Some(Token::CloseParen));
+        match_next_token!(None);
     }
 }
