@@ -186,55 +186,53 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::token::Loc;
-
     use super::*;
-
-    fn num<T>(value: T) -> Token
-    where
-        T: Into<f64>,
-    {
-        Token::Num(Loc::new(1, 0), value.into())
-    }
+    use crate::token::Loc;
 
     #[test]
     fn test_read_string() {
-        macro_rules! parse_string_assert_eq {
-            ($source:literal, $expected:expr) => {
+        macro_rules! assert_parse_string {
+            ($source:literal, $expected:literal) => {
                 let mut chars = $source.chars();
                 assert_eq!(chars.next().unwrap(), '"');
-                assert_eq!(Scanner::new(chars).read_string(), $expected);
+                assert_eq!(
+                    Scanner::new(chars).read_string().unwrap(),
+                    Some(Token::Str(Loc::new(1, 0), String::from($expected)))
+                );
+            };
+            ($source:literal, $expected:ident) => {
+                let mut chars = $source.chars();
+                assert_eq!(chars.next().unwrap(), '"');
+                assert_eq!(
+                    Scanner::new(chars).read_string(),
+                    Err(TokenError::$expected)
+                );
             };
         }
 
-        let loc = Loc::new(1, 0);
-
-        parse_string_assert_eq!(
-            r#""valid string""#,
-            Ok(Some(Token::Str(loc, "valid string".into())))
-        );
-        parse_string_assert_eq!(
-            r#""an escaped\" string""#,
-            Ok(Some(Token::Str(loc, String::from("an escaped\" string"))))
-        );
-        parse_string_assert_eq!(r#""incomplete string"#, Err(TokenError::IncompleteString));
+        assert_parse_string!(r#""valid string""#, "valid string");
+        assert_parse_string!(r#""an escaped\" string""#, "an escaped\" string");
+        assert_parse_string!(r#""incomplete string"#, IncompleteString);
     }
 
     #[test]
     fn test_read_number() {
-        macro_rules! parse_number_assert_eq {
-            ($source:literal, $expected:expr) => {
+        macro_rules! assert_parsed_number {
+            ($source:literal, $expected:literal) => {
                 assert!(!$source.is_empty());
                 let mut chars = $source.chars();
                 let first_char = chars.next().unwrap();
-                assert_eq!(Scanner::new(chars).read_number(first_char, 1), $expected);
+                assert_eq!(
+                    Scanner::new(chars).read_number(first_char, 1),
+                    Ok(Some(Token::Num(Loc::new(1, 0), $expected.into())))
+                );
             };
         }
 
-        parse_number_assert_eq!("0", Ok(Some(num(0))));
-        parse_number_assert_eq!("1", Ok(Some(num(1))));
-        parse_number_assert_eq!("1.1", Ok(Some(num(1.1))));
-        parse_number_assert_eq!("-1", Ok(Some(num(-1))));
+        assert_parsed_number!("0", 0);
+        assert_parsed_number!("1", 1);
+        assert_parsed_number!("1.1", 1.1);
+        assert_parsed_number!("-1", -1);
     }
 
     #[test]

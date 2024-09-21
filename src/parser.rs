@@ -178,10 +178,8 @@ mod tests {
 
     #[test]
     fn test_parser_quote_atom() {
-        let loc = Loc::new(1, 0);
-
         // '1
-        let mut parser = Parser::with_tokens(vec![Token::Quote(loc), Token::Num(loc, 1_f64)]);
+        let mut parser = Parser::with_tokens(token_vec![Quote, Num(1_f64)]);
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("quote"), 1).into();
@@ -212,7 +210,6 @@ mod tests {
     #[test]
     fn test_parser_other_quotes() {
         let mut parser = Parser::new();
-        let loc = Loc::new(1, 0);
 
         // `1
         parser.add_tokens(token_vec![Quasiquote, Num(1_f64)]);
