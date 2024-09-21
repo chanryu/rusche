@@ -8,7 +8,7 @@ use crate::list::List;
 
 pub type NativeFunc = fn(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum Proc {
     Closure {
         name: Option<String>,
@@ -52,10 +52,11 @@ impl Proc {
                 name,
                 formal_args,
                 body,
-                outer_env: _,
+                outer_env,
             } => {
                 formal_args.hash(&mut hasher);
                 body.to_string().hash(&mut hasher);
+                Rc::as_ptr(&outer_env).hash(&mut hasher);
                 format!(
                     "proc/closure:{}:{:x}",
                     name.as_deref().unwrap_or("unnamed"),
@@ -82,6 +83,34 @@ impl Proc {
         }
     }
 }
+
+impl PartialEq for Proc {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                Proc::Closure {
+                    name: name1,
+                    formal_args: formal_args1,
+                    body: body1,
+                    outer_env: outer_env1,
+                },
+                Proc::Closure {
+                    name: name2,
+                    formal_args: formal_args2,
+                    body: body2,
+                    outer_env: outer_env2,
+                },
+            ) => {
+                name1 == name2
+                    && formal_args1 == formal_args2
+                    && body1 == body2
+                    && Rc::ptr_eq(outer_env1, outer_env2)
+            }
+            (lhs, rhs) => lhs == rhs,
+        }
+    }
+}
+
 fn eval_closure(
     closure_name: Option<&str>,
     formal_args: &Vec<String>,

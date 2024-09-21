@@ -89,13 +89,11 @@ pub fn define(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
                 return Err(format!("{proc_name}: expects a list of symbols"));
             };
 
-            let formal_args = make_formal_args(&cons.cdr)?;
-
             env.define(
                 name,
                 Expr::Proc(Proc::Closure {
                     name: Some(name.to_string()),
-                    formal_args: formal_args.clone(),
+                    formal_args: make_formal_args(&cons.cdr)?,
                     body: Box::new(iter.into()),
                     outer_env: env.clone(),
                 }),
@@ -133,7 +131,7 @@ pub fn defmacro(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
         macro_name,
         Expr::Proc(Proc::Macro {
             name: Some(macro_name.clone()),
-            formal_args: formal_args,
+            formal_args,
             body: Box::new(iter.into()),
         }),
     );
@@ -183,12 +181,14 @@ pub fn set(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::eval::Evaluator;
     use crate::expr::intern;
     use crate::list::list;
 
     #[test]
     fn test_define() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         // (define name "value")
         let ret = define("", &list!(intern("name"), "value"), &env);
@@ -198,7 +198,8 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         // (eq 1 1) => #t
         assert_ne!(eq("", &list!(1, 1), &env).unwrap(), NIL);

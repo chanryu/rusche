@@ -82,13 +82,14 @@ fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Ex
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::eval::Evaluator;
     use crate::expr::intern;
     use crate::list::list;
-    use crate::proc::Proc;
 
     #[test]
     fn test_quote() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
         // (quote (1 2)) => (1 2)
         let result = quote("", &list!(list!(1, 2)), &env);
         assert_eq!(result, Ok(list!(1, 2).into()));
@@ -96,7 +97,8 @@ mod tests {
 
     #[test]
     fn test_quasiquote() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         env.define("x", 2);
 
@@ -111,21 +113,15 @@ mod tests {
 
     #[test]
     fn test_quasiquote_unquote() {
-        let env = Env::for_unit_test();
-        env.define(
-            "+",
-            Expr::Proc(Proc::Native {
-                name: "add".to_owned(),
-                func: crate::builtin::num::add,
-            }),
-        );
+        let evaluator = Evaluator::with_builtin(); // make `num-add` available
+        let env = evaluator.root_env();
 
         // (quasiquote (0 (unquote (+ 1 2)) 4)) => (0 3 4)
         let result = quasiquote(
             "",
             &list!(list!(
                 0,
-                list!(intern("unquote"), list!(intern("+"), 1, 2)),
+                list!(intern("unquote"), list!(intern("num-add"), 1, 2)),
                 4
             )),
             &env,
@@ -135,14 +131,8 @@ mod tests {
 
     #[test]
     fn test_quasiquote_unquote_splicing() {
-        let env = Env::for_unit_test();
-        env.define(
-            "quote",
-            Expr::Proc(Proc::Native {
-                name: "quote".to_owned(),
-                func: quote,
-            }),
-        );
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         // (quasiquote (0 (unquote-splicing (quote (1 2 3))) 4)) => (0 1 2 3 4)
         let result = quasiquote(

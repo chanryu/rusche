@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::tokenize::tokenize;
 
 use rusp::env::Env;
-use rusp::eval::{eval, EvalContext};
+use rusp::eval::{eval, Evaluator};
 use rusp::parser::{ParseError, Parser};
 
 const PRELUDE_SYMBOLS: [&str; 4] = [
@@ -141,10 +141,10 @@ pub trait PreludeLoader {
     fn with_prelude() -> Self;
 }
 
-impl PreludeLoader for EvalContext {
+impl PreludeLoader for Evaluator {
     fn with_prelude() -> Self {
-        let context = Self::new();
-        let env = context.root_env();
+        let evaulator = Self::with_builtin();
+        let env = evaulator.root_env();
 
         env.define_native_proc("print", native::print);
         env.define_native_proc("read", native::read);
@@ -160,7 +160,7 @@ impl PreludeLoader for EvalContext {
             eval_prelude_str(exprs, env);
         }
 
-        context
+        evaulator
     }
 }
 
@@ -191,11 +191,11 @@ fn eval_prelude_str(text: &str, env: &Rc<Env>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rusp::eval::EvalContext;
+    use rusp::eval::Evaluator;
 
     fn eval_str(text: &str) -> String {
-        let context = EvalContext::with_prelude();
-        eval_str_env(text, context.root_env())
+        let evaluator = Evaluator::with_prelude();
+        eval_str_env(text, evaluator.root_env())
     }
 
     fn eval_str_env(text: &str, env: &Rc<Env>) -> String {
@@ -249,8 +249,8 @@ mod tests {
 
     #[test]
     fn test_let() {
-        let context = EvalContext::with_prelude();
-        let env = context.root_env();
+        let evaluator = Evaluator::with_prelude();
+        let env = evaluator.root_env();
 
         assert_eq!(env.lookup("x"), None);
         assert_eq!(eval_str_env("(let ((x 2)) (+ x 3))", env), "5");

@@ -1,7 +1,7 @@
 use crate::prelude::PreludeLoader;
 use crate::tokenize::tokenize;
 use rusp::{
-    eval::EvalContext,
+    eval::Evaluator,
     parser::{ParseError, Parser},
 };
 
@@ -24,12 +24,12 @@ fn run_file_content(text: &str) -> Result<(), String> {
     let mut parser =
         Parser::with_tokens(tokenize(text).map_err(|e| format!("Tokenization error: {}", e))?);
 
-    let context = EvalContext::with_prelude();
+    let evaluator = Evaluator::with_prelude();
 
     loop {
         match parser.parse() {
             Ok(expr) => {
-                let _ = context
+                let _ = evaluator
                     .eval(&expr)
                     .map_err(|e| format!("Evaluation error: {}", e))?;
             }
