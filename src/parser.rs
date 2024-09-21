@@ -144,80 +144,95 @@ fn get_quote_name(token: Option<&Token>) -> Option<&'static str> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::token::Loc;
 
-//     #[test]
-//     fn test_parser() {
-//         // (add 1 2)
-//         let mut parser = Parser::with_tokens(vec![
-//             Token::OpenParen,
-//             Token::Sym(String::from("add")),
-//             Token::Num(1_f64),
-//             Token::Num(2_f64),
-//             Token::CloseParen,
-//         ]);
+    // location agnostic token vector generator
+    macro_rules! token_vec {
+        ($($token_case:ident$(($value:expr))?),* $(,)?) => {{
+            let mut v = Vec::new();
+            $(
+                v.push(Token::$token_case(Loc::new(1, 1)$(, $value)?));
+            )*
+            v
+        }};
+    }
 
-//         let parsed_expr = parser.parse().unwrap();
-//         let expected_expr = list!(intern("add"), 1, 2).into();
-//         assert_eq!(parsed_expr, expected_expr);
-//     }
+    #[test]
+    fn test_parser() {
+        // (add 1 2)
+        let mut parser = Parser::with_tokens(token_vec![
+            OpenParen,
+            Sym(String::from("add")),
+            Num(1_f64),
+            Num(2_f64),
+            CloseParen,
+        ]);
 
-//     #[test]
-//     fn test_parser_quote_atom() {
-//         // '1
-//         let mut parser = Parser::with_tokens(vec![Token::Quote, Token::Num(1_f64)]);
+        let parsed_expr = parser.parse().unwrap();
+        let expected_expr = list!(intern("add"), 1, 2).into();
+        assert_eq!(parsed_expr, expected_expr);
+    }
 
-//         let parsed_expr = parser.parse().unwrap();
-//         let expected_expr = list!(intern("quote"), 1).into();
-//         assert_eq!(parsed_expr, expected_expr);
-//     }
+    #[test]
+    fn test_parser_quote_atom() {
+        let loc = Loc::new(1, 0);
 
-//     #[test]
-//     fn test_parser_quote_list() {
-//         let mut parser = Parser::with_tokens(
-//             // '(1 2)
-//             vec![
-//                 Token::Quote,
-//                 Token::OpenParen,
-//                 Token::OpenParen,
-//                 Token::Num(1_f64),
-//                 Token::CloseParen,
-//                 Token::Num(2_f64),
-//                 Token::CloseParen,
-//             ],
-//         );
+        // '1
+        let mut parser = Parser::with_tokens(vec![Token::Quote(loc), Token::Num(loc, 1_f64)]);
 
-//         let parsed_expr = parser.parse().unwrap();
-//         print!("{}", parsed_expr);
-//         let expected_expr = list!(intern("quote"), list!(list!(1), 2)).into();
-//         assert_eq!(parsed_expr, expected_expr);
-//     }
+        let parsed_expr = parser.parse().unwrap();
+        let expected_expr = list!(intern("quote"), 1).into();
+        assert_eq!(parsed_expr, expected_expr);
+    }
 
-//     #[test]
-//     fn test_parser_other_quotes() {
-//         let mut parser = Parser::new();
+    #[test]
+    fn test_parser_quote_list() {
+        let mut parser = Parser::with_tokens(
+            // '(1 2)
+            token_vec![
+                Quote,
+                OpenParen,
+                OpenParen,
+                Num(1_f64),
+                CloseParen,
+                Num(2_f64),
+                CloseParen,
+            ],
+        );
 
-//         // `1
-//         parser.add_tokens([Token::Quasiquote, Token::Num(1_f64)]);
+        let parsed_expr = parser.parse().unwrap();
+        print!("{}", parsed_expr);
+        let expected_expr = list!(intern("quote"), list!(list!(1), 2)).into();
+        assert_eq!(parsed_expr, expected_expr);
+    }
 
-//         let parsed_expr = parser.parse().unwrap();
-//         let expected_expr = list!(intern("quasiquote"), 1).into();
-//         assert_eq!(parsed_expr, expected_expr);
+    #[test]
+    fn test_parser_other_quotes() {
+        let mut parser = Parser::new();
+        let loc = Loc::new(1, 0);
 
-//         // ,1
-//         parser.add_tokens([Token::Unquote, Token::Num(1_f64)]);
+        // `1
+        parser.add_tokens(token_vec![Quasiquote, Num(1_f64)]);
 
-//         let parsed_expr = parser.parse().unwrap();
-//         let expected_expr = list!(intern("unquote"), 1).into();
-//         assert_eq!(parsed_expr, expected_expr);
+        let parsed_expr = parser.parse().unwrap();
+        let expected_expr = list!(intern("quasiquote"), 1).into();
+        assert_eq!(parsed_expr, expected_expr);
 
-//         // ,@1
-//         parser.add_tokens([Token::UnquoteSplicing, Token::Num(1_f64)]);
+        // ,1
+        parser.add_tokens(token_vec![Unquote, Num(1_f64)]);
 
-//         let parsed_expr = parser.parse().unwrap();
-//         let expected_expr = list!(intern("unquote-splicing"), 1).into();
-//         assert_eq!(parsed_expr, expected_expr);
-//     }
-// }
+        let parsed_expr = parser.parse().unwrap();
+        let expected_expr = list!(intern("unquote"), 1).into();
+        assert_eq!(parsed_expr, expected_expr);
+
+        // ,@1
+        parser.add_tokens(token_vec![UnquoteSplicing, Num(1_f64)]);
+
+        let parsed_expr = parser.parse().unwrap();
+        let expected_expr = list!(intern("unquote-splicing"), 1).into();
+        assert_eq!(parsed_expr, expected_expr);
+    }
+}

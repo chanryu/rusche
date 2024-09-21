@@ -57,23 +57,24 @@ impl fmt::Display for Token {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     #[test]
-//     fn test_display() {
-//         assert_eq!(format!("{}", Token::OpenParen), "(");
-//         assert_eq!(format!("{}", Token::CloseParen), ")");
-//         assert_eq!(format!("{}", Token::Quote), "'");
-//         assert_eq!(format!("{}", Token::Quasiquote), "`");
-//         assert_eq!(format!("{}", Token::Unquote), ",");
-//         assert_eq!(format!("{}", Token::UnquoteSplicing), ",@");
-//         assert_eq!(format!("{}", Token::Num(0.0)), "0");
-//         assert_eq!(format!("{}", Token::Num(0.5)), "0.5");
-//         assert_eq!(format!("{}", Token::Num(1.0)), "1");
-//         assert_eq!(format!("{}", Token::Num(123.456)), "123.456");
-//         assert_eq!(format!("{}", Token::Str("str".into())), "\"str\"");
-//         assert_eq!(format!("{}", Token::Sym("sym".into())), "sym");
-//     }
-// }
+    #[test]
+    fn test_display() {
+        let loc = Loc::new(1, 0);
+        assert_eq!(format!("{}", Token::OpenParen(loc)), "(");
+        assert_eq!(format!("{}", Token::CloseParen(loc)), ")");
+        assert_eq!(format!("{}", Token::Quote(loc)), "'");
+        assert_eq!(format!("{}", Token::Quasiquote(loc)), "`");
+        assert_eq!(format!("{}", Token::Unquote(loc)), ",");
+        assert_eq!(format!("{}", Token::UnquoteSplicing(loc)), ",@");
+        assert_eq!(format!("{}", Token::Num(loc, 0.0)), "0");
+        assert_eq!(format!("{}", Token::Num(loc, 0.5)), "0.5");
+        assert_eq!(format!("{}", Token::Num(loc, 1.0)), "1");
+        assert_eq!(format!("{}", Token::Num(loc, 123.456)), "123.456");
+        assert_eq!(format!("{}", Token::Str(loc, "str".into())), "\"str\"");
+        assert_eq!(format!("{}", Token::Sym(loc, "sym".into())), "sym");
+    }
+}
