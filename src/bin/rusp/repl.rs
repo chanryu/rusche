@@ -6,8 +6,6 @@ use rusp::{
 use rustyline::{error::ReadlineError, DefaultEditor};
 
 pub fn run_repl() {
-    print_logo();
-
     let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");
     let mut parser = Parser::new();
 
@@ -59,10 +57,4 @@ pub fn run_repl() {
             }
         }
     }
-}
-
-fn print_logo() {
-    println!("           ┬─┐┬ ┬┌─┐┌─┐");
-    println!("Welcome to ├┬┘│ │└─┐├─┘");
-    println!("           ┴└─└─┘└─┘┴  !");
 }
