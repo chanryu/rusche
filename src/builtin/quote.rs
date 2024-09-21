@@ -85,7 +85,6 @@ mod tests {
     use crate::eval::Evaluator;
     use crate::expr::intern;
     use crate::list::list;
-    use crate::proc::Proc;
 
     #[test]
     fn test_quote() {
@@ -114,22 +113,15 @@ mod tests {
 
     #[test]
     fn test_quasiquote_unquote() {
-        let evaluator = Evaluator::new();
+        let evaluator = Evaluator::with_builtin(); // make `num-add` available
         let env = evaluator.root_env();
-        env.define(
-            "+",
-            Expr::Proc(Proc::Native {
-                name: "add".to_owned(),
-                func: crate::builtin::num::add,
-            }),
-        );
 
         // (quasiquote (0 (unquote (+ 1 2)) 4)) => (0 3 4)
         let result = quasiquote(
             "",
             &list!(list!(
                 0,
-                list!(intern("unquote"), list!(intern("+"), 1, 2)),
+                list!(intern("unquote"), list!(intern("num-add"), 1, 2)),
                 4
             )),
             &env,
@@ -141,14 +133,6 @@ mod tests {
     fn test_quasiquote_unquote_splicing() {
         let evaluator = Evaluator::new();
         let env = evaluator.root_env();
-
-        env.define(
-            "quote",
-            Expr::Proc(Proc::Native {
-                name: "quote".to_owned(),
-                func: quote,
-            }),
-        );
 
         // (quasiquote (0 (unquote-splicing (quote (1 2 3))) 4)) => (0 1 2 3 4)
         let result = quasiquote(
