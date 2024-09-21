@@ -24,7 +24,7 @@ impl fmt::Display for ExprKind {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Expr {
     pub kind: ExprKind,
     pub span: Option<Span>,
@@ -57,6 +57,13 @@ impl Expr {
         }
     }
 
+    pub fn new_sym<T: Into<String>>(name: T) -> Self {
+        Self {
+            kind: ExprKind::Sym(name.into()),
+            span: None,
+        }
+    }
+
     pub fn new_native_proc(name: &str, func: NativeFunc) -> Self {
         Self {
             kind: ExprKind::Proc(Proc::Native {
@@ -83,6 +90,12 @@ impl Expr {
 
     pub fn is_truthy(&self) -> bool {
         !self.is_nil()
+    }
+}
+
+impl PartialEq for Expr {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
     }
 }
 
@@ -168,7 +181,7 @@ impl From<bool> for Expr {
 /// use rusp::expr::{intern, Expr};
 ///
 /// let symbol = intern("foo");
-/// assert_eq!(symbol, Expr::new(ExprKind::Sym(String::from("foo")), None));
+/// assert_eq!(symbol, Expr::new_sym("foo"));
 /// ```
 pub fn intern<T: Into<String>>(name: T) -> Expr {
     Expr {
