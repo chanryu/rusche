@@ -1,13 +1,13 @@
 use std::rc::Rc;
 
 use rusp::env::Env;
-use rusp::eval::{eval, EvalContext};
+use rusp::eval::{eval, Evaluator};
 use rusp::parser::Parser;
 use rusp::scanner::Scanner;
 
 pub fn eval_str(text: &str) -> String {
-    let context = EvalContext::new();
-    eval_str_env(text, context.root_env())
+    let evaluator = Evaluator::new();
+    eval_str_env(text, evaluator.root_env())
 }
 
 pub fn eval_str_env(text: &str, env: &Rc<Env>) -> String {

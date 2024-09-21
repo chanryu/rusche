@@ -33,42 +33,23 @@ pub fn eval(expr: &Expr, env: &Rc<Env>) -> EvalResult {
     }
 }
 
-pub struct EvalContext {
+pub struct Evaluator {
     all_envs: Rc<RefCell<Vec<Weak<Env>>>>,
-
-    #[cfg(not(debug_assertions))]
     root_env: Rc<Env>,
-
-    #[cfg(debug_assertions)]
-    root_env: Option<Rc<Env>>,
 }
 
-impl EvalContext {
+impl Evaluator {
     pub fn new() -> Self {
         let all_envs = Rc::new(RefCell::new(Vec::new()));
         let root_env = Env::root(all_envs.clone());
 
         all_envs.borrow_mut().push(Rc::downgrade(&root_env));
 
-        Self {
-            all_envs,
-
-            #[cfg(not(debug_assertions))]
-            root_env,
-
-            #[cfg(debug_assertions)]
-            root_env: Some(root_env),
-        }
+        Self { all_envs, root_env }
     }
 
     pub fn root_env(&self) -> &Rc<Env> {
-        #[cfg(not(debug_assertions))]
         return &self.root_env;
-
-        #[cfg(debug_assertions)]
-        self.root_env
-            .as_ref()
-            .unwrap_or_else(|| panic!("Root environment is unavailable."))
     }
 
     pub fn eval(&self, expr: &Expr) -> EvalResult {
@@ -124,25 +105,20 @@ impl EvalContext {
     }
 }
 
-impl Drop for EvalContext {
+impl Drop for Evaluator {
     fn drop(&mut self) {
         self.all_envs.borrow().iter().for_each(|env| {
-            if let Some(env) = env.upgrade() {
-                env.clear();
-            }
+            env.upgrade().map(|env| env.clear());
         });
 
-        #[cfg(debug_assertions)]
-        {
-            self.root_env = None;
-            debug_assert_eq!(
-                0,
-                self.all_envs
-                    .borrow()
-                    .iter()
-                    .filter(|env| env.upgrade().is_some())
-                    .count()
-            );
-        }
+        // at this point, we should only have the root_env
+        debug_assert_eq!(
+            1,
+            self.all_envs
+                .borrow()
+                .iter()
+                .filter(|env| env.upgrade().is_some())
+                .count()
+        );
     }
 }
