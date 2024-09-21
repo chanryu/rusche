@@ -3,7 +3,7 @@ use std::rc::Rc;
 use super::{get_exact_1_arg, make_syntax_error};
 use crate::env::Env;
 use crate::eval::{eval, EvalError, EvalResult};
-use crate::expr::{Expr, NIL};
+use crate::expr::{Expr, ExprKind, NIL};
 use crate::list::List;
 
 pub fn quote(proc_name: &str, args: &List, _env: &Rc<Env>) -> EvalResult {
@@ -26,7 +26,7 @@ pub fn quasiquote(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 }
 
 fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Expr>, EvalError> {
-    let Expr::List(list) = expr else {
+    let ExprKind::List(list) = &expr.kind else {
         return Ok(vec![expr.clone()]);
     };
 
@@ -34,7 +34,7 @@ fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Ex
         return Ok(vec![NIL]);
     };
 
-    let car_name = if let Expr::Sym(name) = cons.car.as_ref() {
+    let car_name = if let ExprKind::Sym(name) = &cons.car.kind {
         Some(name.as_str())
     } else {
         None
@@ -51,8 +51,8 @@ fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Ex
         }
         Some("unquote-splicing") => {
             if let Some(cdar) = cons.cdar() {
-                match eval(cdar, env)? {
-                    Expr::List(list) => {
+                match eval(cdar, env)?.kind {
+                    ExprKind::List(list) => {
                         // TODO: implement consuming `into_iter()`
                         exprs.extend(list.iter().map(|e| e.clone()));
                     }

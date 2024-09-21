@@ -4,14 +4,14 @@ use rusp::{
     builtin::utils::{eval_to_str, get_exact_1_arg},
     env::Env,
     eval::{eval, EvalResult},
-    expr::{Expr, NIL},
+    expr::{Expr, ExprKind, NIL},
     list::List,
 };
 
 pub fn print(_: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     for expr in args.iter() {
-        match eval(expr, env)? {
-            Expr::Str(text) => print!("{}", text), // w/o double quotes
+        match eval(expr, env)?.kind {
+            ExprKind::Str(text) => print!("{}", text), // w/o double quotes
             expr => print!("{}", expr),
         }
     }

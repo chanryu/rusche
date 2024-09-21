@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
-use crate::expr::Expr;
+use crate::expr::{Expr, ExprKind};
 use crate::proc::{NativeFunc, Proc};
 
 #[derive(Debug)]
@@ -76,13 +76,7 @@ impl Env {
     }
 
     pub fn define_native_proc(&self, name: &str, func: NativeFunc) {
-        self.define(
-            name,
-            Expr::Proc(Proc::Native {
-                name: name.to_owned(),
-                func,
-            }),
-        );
+        self.define(name, Expr::new_native_proc(name, func));
     }
 }
 
@@ -100,7 +94,11 @@ impl Env {
         self.is_reachable.set(true);
 
         self.vars.borrow().values().for_each(|expr| {
-            if let Expr::Proc(Proc::Closure { outer_env, .. }) = expr {
+            if let Expr {
+                kind: ExprKind::Proc(Proc::Closure { outer_env, .. }),
+                ..
+            } = expr
+            {
                 outer_env.gc_mark();
             }
         });

@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::env::Env;
 use crate::eval::{eval, EvalError};
-use crate::expr::{intern, Expr};
+use crate::expr::{intern, Expr, ExprKind};
 use crate::list::{cons, List};
 
 pub fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
@@ -88,7 +88,7 @@ pub fn get_2_or_3_args<'a>(
 pub fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
     let mut formal_args = Vec::new();
     for item in list.iter() {
-        let Expr::Sym(formal_arg) = item else {
+        let ExprKind::Sym(formal_arg) = &item.kind else {
             return Err(format!("{item} is not a symbol."));
         };
         formal_args.push(formal_arg.clone());
@@ -98,8 +98,8 @@ pub fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
 }
 
 pub fn eval_to_str(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<String, EvalError> {
-    match eval(expr, env)? {
-        Expr::Str(text) => Ok(text),
+    match eval(expr, env)?.kind {
+        ExprKind::Str(text) => Ok(text),
         _ => Err(format!(
             "{proc_name}: {expr} does not evaluate to a string."
         )),
@@ -107,8 +107,8 @@ pub fn eval_to_str(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<String
 }
 
 pub fn eval_to_num(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<f64, EvalError> {
-    match eval(expr, env)? {
-        Expr::Num(value) => Ok(value),
+    match eval(expr, env)?.kind {
+        ExprKind::Num(value) => Ok(value),
         _ => Err(format!(
             "{proc_name}: {expr} does not evaluate to a number."
         )),

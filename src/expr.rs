@@ -1,9 +1,10 @@
 use crate::list::{cons, List, ListIter};
-use crate::proc::Proc;
+use crate::proc::{NativeFunc, Proc};
+use crate::token::Span;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Expr {
+pub enum ExprKind {
     Num(f64),
     Str(String),
     Sym(String),
@@ -11,19 +12,71 @@ pub enum Expr {
     List(List),
 }
 
-pub const NIL: Expr = Expr::List(List::Nil);
+impl fmt::Display for ExprKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self {
+            ExprKind::Num(value) => write!(f, "{}", value),
+            ExprKind::Str(text) => write!(f, "\"{}\"", text), // TODO: escape control chars
+            ExprKind::Sym(name) => write!(f, "{}", name),
+            ExprKind::Proc(proc) => write!(f, "<{}>", proc.fingerprint()),
+            ExprKind::List(list) => write!(f, "{}", list),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Expr {
+    pub kind: ExprKind,
+    pub span: Option<Span>,
+}
+
+pub const NIL: Expr = Expr {
+    kind: ExprKind::List(List::Nil),
+    span: None,
+};
 
 impl Expr {
+    pub fn new(kind: ExprKind, span: Option<Span>) -> Self {
+        Self { kind, span }
+    }
+
+    pub fn new_num<T>(value: T) -> Self
+    where
+        T: Into<f64>,
+    {
+        Self {
+            kind: ExprKind::Num(value.into()),
+            span: None,
+        }
+    }
+
+    pub fn new_str<T: Into<String>>(text: T) -> Self {
+        Self {
+            kind: ExprKind::Str(text.into()),
+            span: None,
+        }
+    }
+
+    pub fn new_native_proc(name: &str, func: NativeFunc) -> Self {
+        Self {
+            kind: ExprKind::Proc(Proc::Native {
+                name: name.to_owned(),
+                func: func,
+            }),
+            span: None,
+        }
+    }
+
     pub fn is_atom(&self) -> bool {
-        match self {
-            Expr::List(List::Cons(_)) => false,
+        match self.kind {
+            ExprKind::List(List::Cons(_)) => false,
             _ => true,
         }
     }
 
     pub fn is_nil(&self) -> bool {
-        match self {
-            Expr::List(List::Nil) => true,
+        match self.kind {
+            ExprKind::List(List::Nil) => true,
             _ => false,
         }
     }
@@ -35,19 +88,16 @@ impl Expr {
 
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Expr::Num(value) => write!(f, "{}", value),
-            Expr::Str(text) => write!(f, "\"{}\"", text), // TODO: escape control chars
-            Expr::Sym(name) => write!(f, "{}", name),
-            Expr::Proc(proc) => write!(f, "<{}>", proc.fingerprint()),
-            Expr::List(list) => write!(f, "{}", list),
-        }
+        self.kind.fmt(f)
     }
 }
 
 impl From<List> for Expr {
     fn from(val: List) -> Self {
-        Expr::List(val)
+        Expr {
+            kind: ExprKind::List(val),
+            span: None,
+        }
     }
 }
 
@@ -69,26 +119,38 @@ impl<'a> From<ListIter<'a>> for Expr {
 
 impl From<&str> for Expr {
     fn from(value: &str) -> Self {
-        Expr::Str(value.to_string())
+        Expr {
+            kind: ExprKind::Str(value.to_string()),
+            span: None,
+        }
     }
 }
 
 impl From<i32> for Expr {
     fn from(value: i32) -> Self {
-        Expr::Num(value as f64)
+        Expr {
+            kind: ExprKind::Num(value as f64),
+            span: None,
+        }
     }
 }
 
 impl From<f64> for Expr {
     fn from(value: f64) -> Self {
-        Expr::Num(value)
+        Expr {
+            kind: ExprKind::Num(value),
+            span: None,
+        }
     }
 }
 
 impl From<bool> for Expr {
     fn from(value: bool) -> Self {
         if value {
-            Expr::Num(1.0)
+            Expr {
+                kind: ExprKind::Num(1.0),
+                span: None,
+            }
         } else {
             NIL
         }
@@ -106,18 +168,21 @@ impl From<bool> for Expr {
 /// use rusp::expr::{intern, Expr};
 ///
 /// let symbol = intern("foo");
-/// assert_eq!(symbol, Expr::Sym(String::from("foo")));
+/// assert_eq!(symbol, Expr::new(ExprKind::Sym(String::from("foo")), None));
 /// ```
 pub fn intern<T: Into<String>>(name: T) -> Expr {
-    Expr::Sym(name.into())
+    Expr {
+        kind: ExprKind::Sym(name.into()),
+        span: None,
+    }
 }
 
 #[cfg(test)]
 pub mod test_utils {
-    use super::Expr;
+    use super::*;
 
     pub fn num<T: Into<f64>>(value: T) -> Expr {
-        Expr::Num(value.into())
+        Expr::new_num(value)
     }
 }
 

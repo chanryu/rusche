@@ -3,7 +3,7 @@ use std::rc::{Rc, Weak};
 
 use crate::builtin::{self, load_builtin};
 use crate::env::Env;
-use crate::expr::Expr;
+use crate::expr::{Expr, ExprKind};
 use crate::list::List;
 
 pub type EvalError = String;
@@ -12,16 +12,16 @@ pub type EvalResult = Result<Expr, EvalError>;
 pub fn eval(expr: &Expr, env: &Rc<Env>) -> EvalResult {
     use builtin::quote::{quasiquote, quote};
 
-    match expr {
-        Expr::Sym(name) => match env.lookup(name) {
+    match &expr.kind {
+        ExprKind::Sym(name) => match env.lookup(name) {
             Some(expr) => Ok(expr.clone()),
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
-        Expr::List(List::Cons(cons)) => match cons.car.as_ref() {
-            Expr::Sym(text) if text == "quote" => quote(text, &cons.cdr, env),
-            Expr::Sym(text) if text == "quasiquote" => quasiquote(text, &cons.cdr, env),
+        ExprKind::List(List::Cons(cons)) => match &cons.car.kind {
+            ExprKind::Sym(text) if text == "quote" => quote(text, &cons.cdr, env),
+            ExprKind::Sym(text) if text == "quasiquote" => quasiquote(text, &cons.cdr, env),
             _ => {
-                if let Expr::Proc(proc) = eval(&cons.car, env)? {
+                if let ExprKind::Proc(proc) = eval(&cons.car, env)?.kind {
                     let args = &cons.cdr;
                     proc.invoke(args, env)
                 } else {

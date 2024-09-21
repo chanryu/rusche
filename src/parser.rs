@@ -1,4 +1,4 @@
-use crate::expr::{intern, Expr};
+use crate::expr::{intern, Expr, ExprKind};
 use crate::list::{cons, list, List};
 use crate::token::Token;
 use std::collections::VecDeque;
@@ -76,9 +76,9 @@ impl Parser {
                     continue;
                 }
                 Token::CloseParen(_) => self.end_list(token)?,
-                Token::Sym(_, name) => Expr::Sym(name),
-                Token::Str(_, text) => Expr::Str(text),
-                Token::Num(_, value) => Expr::Num(value),
+                Token::Sym(span, name) => Expr::new(ExprKind::Sym(name), Some(span)),
+                Token::Str(span, text) => Expr::new(ExprKind::Str(text), Some(span)),
+                Token::Num(span, value) => Expr::new(ExprKind::Num(value), Some(span)),
             };
 
             loop {
