@@ -75,10 +75,6 @@ impl Env {
         }
     }
 
-    pub fn clear(&self) {
-        self.vars.borrow_mut().clear();
-    }
-
     pub fn define_native_proc(&self, name: &str, func: NativeFunc) {
         self.define(
             name,
@@ -88,8 +84,15 @@ impl Env {
             }),
         );
     }
+}
 
-    pub(crate) fn mark_reachable(&self) {
+/// Garbage collection
+impl Env {
+    pub(crate) fn gc_prepare(&self) {
+        self.is_reachable.set(false);
+    }
+
+    pub(crate) fn gc_mark(&self) {
         if self.is_reachable.get() {
             return;
         }
@@ -98,13 +101,13 @@ impl Env {
 
         self.vars.borrow().values().for_each(|expr| {
             if let Expr::Proc(Proc::Closure { outer_env, .. }) = expr {
-                outer_env.mark_reachable();
+                outer_env.gc_mark();
             }
         });
     }
 
-    pub(crate) fn clear_reachable(&self) {
-        self.is_reachable.set(false);
+    pub(crate) fn gc_sweep(&self) {
+        self.vars.borrow_mut().clear();
     }
 
     pub(crate) fn is_reachable(&self) -> bool {

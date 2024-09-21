@@ -67,28 +67,19 @@ impl Evaluator {
     }
 
     pub fn collect_garbage(&self) {
+        #[cfg(debug_assertions)]
+        println!("GC: begin garbage collection");
+
         self.all_envs.borrow().iter().for_each(|env| {
             if let Some(env) = env.upgrade() {
-                env.clear_reachable();
+                env.gc_prepare();
             }
         });
 
-        self.root_env().mark_reachable();
+        self.root_env().gc_mark();
 
         #[cfg(debug_assertions)]
-        println!(
-            "GC: Unreachable envs: {}",
-            self.all_envs
-                .borrow()
-                .iter()
-                .filter(|env| {
-                    let Some(env) = env.upgrade() else {
-                        return false;
-                    };
-                    !env.is_reachable()
-                })
-                .count()
-        );
+        let mut reachable_env_count = 0;
 
         // GC sweep
         let reachable_envs = self
@@ -100,7 +91,11 @@ impl Evaluator {
                     return false;
                 };
                 if !env.is_reachable() {
-                    env.clear();
+                    env.gc_sweep();
+                    #[cfg(debug_assertions)]
+                    {
+                        reachable_env_count += 1;
+                    }
                     return false;
                 }
                 true
@@ -108,16 +103,22 @@ impl Evaluator {
             .cloned()
             .collect();
         *self.all_envs.borrow_mut() = reachable_envs;
+
+        #[cfg(debug_assertions)]
+        println!(
+            "GC: end garbage collection: {} envs recliamed",
+            reachable_env_count
+        );
     }
 }
 
 impl Drop for Evaluator {
     fn drop(&mut self) {
         self.all_envs.borrow().iter().for_each(|env| {
-            env.upgrade().map(|env| env.clear());
+            env.upgrade().map(|env| env.gc_sweep());
         });
 
-        // at this point, we should only have the root_env
+        // at this point, we should only have `root_env`
         debug_assert_eq!(
             1,
             self.all_envs
