@@ -69,11 +69,11 @@ impl Evaluator {
     pub fn collect_garbage(&self) {
         self.all_envs.borrow().iter().for_each(|env| {
             if let Some(env) = env.upgrade() {
-                env.is_reachable.set(false);
+                env.clear_reachable();
             }
         });
 
-        self.root_env().gc_mark_reachable();
+        self.root_env().mark_reachable();
 
         #[cfg(debug_assertions)]
         println!(
@@ -85,7 +85,7 @@ impl Evaluator {
                     let Some(env) = env.upgrade() else {
                         return false;
                     };
-                    !env.is_reachable.get()
+                    !env.is_reachable()
                 })
                 .count()
         );
@@ -99,7 +99,7 @@ impl Evaluator {
                 let Some(env) = env.upgrade() else {
                     return false;
                 };
-                if !env.is_reachable.get() {
+                if !env.is_reachable() {
                     env.clear();
                     return false;
                 }

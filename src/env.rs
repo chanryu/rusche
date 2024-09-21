@@ -6,35 +6,17 @@ use crate::expr::Expr;
 use crate::proc::{NativeFunc, Proc};
 
 #[derive(Debug)]
-enum EnvKind {
-    Root,
-    Derived { base: Rc<Env> },
-}
-
-impl PartialEq for EnvKind {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Root { .. }, Self::Root { .. }) => true,
-            (Self::Derived { base: base1 }, Self::Derived { base: base2 }) => {
-                Rc::ptr_eq(base1, base2)
-            }
-            _ => false,
-        }
-    }
-}
-
-#[derive(Debug)]
 pub struct Env {
-    kind: EnvKind,
+    base: Option<Rc<Env>>,
     vars: RefCell<HashMap<String, Expr>>,
     all_envs: Weak<RefCell<Vec<Weak<Env>>>>,
-    pub(crate) is_reachable: Cell<bool>,
+    is_reachable: Cell<bool>,
 }
 
 impl Env {
     pub(crate) fn root(all_envs: Weak<RefCell<Vec<Weak<Env>>>>) -> Rc<Self> {
         Rc::new(Self {
-            kind: EnvKind::Root,
+            base: None,
             vars: RefCell::new(HashMap::new()),
             all_envs,
             is_reachable: Cell::new(false),
@@ -43,13 +25,15 @@ impl Env {
 
     pub fn derive_from(base: &Rc<Env>) -> Rc<Self> {
         let derived_env = Rc::new(Self {
-            kind: EnvKind::Derived { base: base.clone() },
+            base: Some(base.clone()),
             vars: RefCell::new(HashMap::new()),
             all_envs: base.all_envs.clone(),
             is_reachable: Cell::new(false),
         });
 
-        base.gc_register(&derived_env);
+        if let Some(all_envs) = base.all_envs.upgrade() {
+            all_envs.borrow_mut().push(Rc::downgrade(&derived_env));
+        }
 
         derived_env
     }
@@ -71,7 +55,7 @@ impl Env {
                 *value = expr.into();
                 return true;
             }
-            let EnvKind::Derived { base } = &env.kind else {
+            let Some(base) = &env.base else {
                 return false;
             };
             env = base;
@@ -84,7 +68,7 @@ impl Env {
             if let Some(value) = env.vars.borrow().get(name) {
                 return Some(value.clone());
             }
-            let EnvKind::Derived { base } = &env.kind else {
+            let Some(base) = &env.base else {
                 return None;
             };
             env = base;
@@ -105,7 +89,7 @@ impl Env {
         );
     }
 
-    pub(crate) fn gc_mark_reachable(&self) {
+    pub(crate) fn mark_reachable(&self) {
         if self.is_reachable.get() {
             return;
         }
@@ -114,28 +98,17 @@ impl Env {
 
         self.vars.borrow().values().for_each(|expr| {
             if let Expr::Proc(Proc::Closure { outer_env, .. }) = expr {
-                outer_env.gc_mark_reachable();
+                outer_env.mark_reachable();
             }
         });
     }
 
-    fn gc_register(&self, derived_env: &Rc<Self>) {
-        if let Some(all_envs) = self.all_envs.upgrade() {
-            all_envs.borrow_mut().push(Rc::downgrade(derived_env));
-        }
+    pub(crate) fn clear_reachable(&self) {
+        self.is_reachable.set(false);
     }
-}
 
-impl PartialEq for Env {
-    fn eq(&self, other: &Self) -> bool {
-        self.kind == other.kind && self.vars == other.vars
-    }
-}
-
-#[cfg(debug_assertions)]
-impl Drop for Env {
-    fn drop(&mut self) {
-        //decrement_env_count();
+    pub(crate) fn is_reachable(&self) -> bool {
+        self.is_reachable.get()
     }
 }
 
