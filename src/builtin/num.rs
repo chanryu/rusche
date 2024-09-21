@@ -85,12 +85,14 @@ pub fn greater(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::eval::Evaluator;
     use crate::expr::test_utils::num;
     use crate::list::list;
 
     #[test]
     fn test_add() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         // (+ 1) => 1
         let args = list!(1);
@@ -103,7 +105,8 @@ mod tests {
 
     #[test]
     fn test_minus() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         // (- 1) => -1
         let args = list!(1);
@@ -116,7 +119,8 @@ mod tests {
 
     #[test]
     fn test_multiply() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         // (* 1) => 1
         let args = list!(1);
@@ -133,7 +137,8 @@ mod tests {
 
     #[test]
     fn test_divide() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         // (/ 2) => 0.5
         let args = list!(2);
@@ -146,7 +151,8 @@ mod tests {
 
     #[test]
     fn test_modulo() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         // (% 1 2) => 1
         assert_eq!(modulo("", &list!(1, 2), &env), Ok(Expr::from(1)));

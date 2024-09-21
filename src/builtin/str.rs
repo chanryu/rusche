@@ -106,11 +106,12 @@ pub fn slice(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::list::list;
+    use crate::{eval::Evaluator, list::list};
 
     #[test]
     fn test_is_str() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         // (str? "abc") => 1
         assert_eq!(is_str("", &list!("abc"), &env), Ok(Expr::from(true)));
@@ -124,7 +125,8 @@ mod tests {
 
     #[test]
     fn test_compare() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         // (str-compare "abc" "def") => 1
         assert_eq!(compare("", &list!("abc", "def"), &env), Ok(Expr::from(-1)));
@@ -144,7 +146,8 @@ mod tests {
 
     #[test]
     fn test_concat() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         // (str-concat "abc" "def") => "abcdef"
         assert_eq!(
@@ -167,7 +170,8 @@ mod tests {
 
     #[test]
     fn test_slice() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         // (str-slice "abcdef" 0 1) => "a"
         assert_eq!(slice("", &list!("abcdef", 0, 1), &env), Ok(Expr::from("a")));

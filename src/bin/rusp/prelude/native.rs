@@ -40,12 +40,12 @@ pub fn parse_num(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rusp::{eval::EvalContext, list};
+    use rusp::{eval::Evaluator, list};
 
     #[test]
     fn test_parse_num() {
-        let context = EvalContext::new();
-        let parse_num = |args| parse_num("parse-num", &args, context.root_env());
+        let evaluator = Evaluator::with_builtin();
+        let parse_num = |args| parse_num("parse-num", &args, evaluator.root_env());
 
         assert_eq!(parse_num(list!("1")), Ok(Expr::from(1)));
         assert_eq!(parse_num(list!("-24.5")), Ok(Expr::from(-24.5)));

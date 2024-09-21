@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
-use crate::builtin;
+use crate::builtin::{self, load_builtin};
 use crate::env::Env;
 use crate::expr::Expr;
 use crate::list::List;
@@ -33,42 +33,29 @@ pub fn eval(expr: &Expr, env: &Rc<Env>) -> EvalResult {
     }
 }
 
-pub struct EvalContext {
+pub struct Evaluator {
     all_envs: Rc<RefCell<Vec<Weak<Env>>>>,
-
-    #[cfg(not(debug_assertions))]
     root_env: Rc<Env>,
-
-    #[cfg(debug_assertions)]
-    root_env: Option<Rc<Env>>,
 }
 
-impl EvalContext {
+impl Evaluator {
     pub fn new() -> Self {
         let all_envs = Rc::new(RefCell::new(Vec::new()));
-        let root_env = Env::root(all_envs.clone());
+        let root_env = Env::root(Rc::downgrade(&all_envs));
 
         all_envs.borrow_mut().push(Rc::downgrade(&root_env));
 
-        Self {
-            all_envs,
+        Self { all_envs, root_env }
+    }
 
-            #[cfg(not(debug_assertions))]
-            root_env,
-
-            #[cfg(debug_assertions)]
-            root_env: Some(root_env),
-        }
+    pub fn with_builtin() -> Self {
+        let evaluator = Self::new();
+        load_builtin(&evaluator.root_env());
+        evaluator
     }
 
     pub fn root_env(&self) -> &Rc<Env> {
-        #[cfg(not(debug_assertions))]
         return &self.root_env;
-
-        #[cfg(debug_assertions)]
-        self.root_env
-            .as_ref()
-            .unwrap_or_else(|| panic!("Root environment is unavailable."))
     }
 
     pub fn eval(&self, expr: &Expr) -> EvalResult {
@@ -80,28 +67,19 @@ impl EvalContext {
     }
 
     pub fn collect_garbage(&self) {
+        #[cfg(debug_assertions)]
+        println!("GC: begin garbage collection");
+
         self.all_envs.borrow().iter().for_each(|env| {
             if let Some(env) = env.upgrade() {
-                env.is_reachable.set(false);
+                env.gc_prepare();
             }
         });
 
-        self.root_env().gc_mark_reachable();
+        self.root_env().gc_mark();
 
         #[cfg(debug_assertions)]
-        println!(
-            "GC: Unreachable envs: {}",
-            self.all_envs
-                .borrow()
-                .iter()
-                .filter(|env| {
-                    let Some(env) = env.upgrade() else {
-                        return false;
-                    };
-                    !env.is_reachable.get()
-                })
-                .count()
-        );
+        let mut reachable_env_count = 0;
 
         // GC sweep
         let reachable_envs = self
@@ -112,8 +90,12 @@ impl EvalContext {
                 let Some(env) = env.upgrade() else {
                     return false;
                 };
-                if !env.is_reachable.get() {
-                    env.clear();
+                if !env.is_reachable() {
+                    env.gc_sweep();
+                    #[cfg(debug_assertions)]
+                    {
+                        reachable_env_count += 1;
+                    }
                     return false;
                 }
                 true
@@ -121,28 +103,29 @@ impl EvalContext {
             .cloned()
             .collect();
         *self.all_envs.borrow_mut() = reachable_envs;
+
+        #[cfg(debug_assertions)]
+        println!(
+            "GC: end garbage collection: {} envs recliamed",
+            reachable_env_count
+        );
     }
 }
 
-impl Drop for EvalContext {
+impl Drop for Evaluator {
     fn drop(&mut self) {
         self.all_envs.borrow().iter().for_each(|env| {
-            if let Some(env) = env.upgrade() {
-                env.clear();
-            }
+            env.upgrade().map(|env| env.gc_sweep());
         });
 
-        #[cfg(debug_assertions)]
-        {
-            self.root_env = None;
-            debug_assert_eq!(
-                0,
-                self.all_envs
-                    .borrow()
-                    .iter()
-                    .filter(|env| env.upgrade().is_some())
-                    .count()
-            );
-        }
+        // at this point, we should only have `root_env`
+        debug_assert_eq!(
+            1,
+            self.all_envs
+                .borrow()
+                .iter()
+                .filter(|env| env.upgrade().is_some())
+                .count()
+        );
     }
 }
