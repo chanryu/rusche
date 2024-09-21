@@ -82,13 +82,15 @@ fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Ex
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::eval::Evaluator;
     use crate::expr::intern;
     use crate::list::list;
     use crate::proc::Proc;
 
     #[test]
     fn test_quote() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
         // (quote (1 2)) => (1 2)
         let result = quote("", &list!(list!(1, 2)), &env);
         assert_eq!(result, Ok(list!(1, 2).into()));
@@ -96,7 +98,8 @@ mod tests {
 
     #[test]
     fn test_quasiquote() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         env.define("x", 2);
 
@@ -111,7 +114,8 @@ mod tests {
 
     #[test]
     fn test_quasiquote_unquote() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
         env.define(
             "+",
             Expr::Proc(Proc::Native {
@@ -135,7 +139,9 @@ mod tests {
 
     #[test]
     fn test_quasiquote_unquote_splicing() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
+
         env.define(
             "quote",
             Expr::Proc(Proc::Native {

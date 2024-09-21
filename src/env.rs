@@ -2,14 +2,13 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
-use crate::builtin::load_builtin;
 use crate::expr::Expr;
 use crate::proc::{NativeFunc, Proc};
 
 #[derive(Debug)]
 enum EnvKind {
     Root {
-        all_envs: Rc<RefCell<Vec<Weak<Env>>>>,
+        all_envs: Weak<RefCell<Vec<Weak<Env>>>>,
     },
     Derived {
         base: Rc<Env>,
@@ -36,14 +35,12 @@ pub struct Env {
 }
 
 impl Env {
-    pub(crate) fn root(all_envs: Rc<RefCell<Vec<Weak<Env>>>>) -> Rc<Self> {
-        let env = Rc::new(Self {
+    pub(crate) fn root(all_envs: Weak<RefCell<Vec<Weak<Env>>>>) -> Rc<Self> {
+        Rc::new(Self {
             kind: EnvKind::Root { all_envs },
             vars: RefCell::new(HashMap::new()),
             is_reachable: Cell::new(false),
-        });
-        load_builtin(&env);
-        env
+        })
     }
 
     pub fn derive_from(base: &Rc<Env>) -> Rc<Self> {
@@ -56,19 +53,6 @@ impl Env {
         base.gc_register(&derived_env);
 
         derived_env
-    }
-
-    #[cfg(test)]
-    pub(crate) fn for_unit_test() -> Rc<Self> {
-        let env = Rc::new(Self {
-            kind: EnvKind::Root {
-                all_envs: Rc::new(RefCell::new(Vec::new())),
-            },
-            vars: RefCell::new(HashMap::new()),
-            is_reachable: Cell::new(false),
-        });
-
-        env
     }
 
     pub fn define<IntoExpr>(&self, name: &str, expr: IntoExpr)
@@ -139,7 +123,11 @@ impl Env {
     fn gc_register(&self, derived_env: &Rc<Self>) {
         match &self.kind {
             EnvKind::Root { all_envs } => {
-                all_envs.borrow_mut().push(Rc::downgrade(derived_env));
+                if let Some(all_envs) = all_envs.upgrade() {
+                    all_envs.borrow_mut().push(Rc::downgrade(derived_env));
+                } else {
+                    panic!("Root env is already dropped"); // FIXME! make this impossible
+                }
             }
             EnvKind::Derived { base } => {
                 base.gc_register(derived_env);
@@ -158,11 +146,12 @@ impl Drop for Env {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expr::test_utils::num;
+    use crate::{eval::Evaluator, expr::test_utils::num};
 
     #[test]
     fn test_set() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
         assert_eq!(env.vars.borrow().len(), 0);
         env.define("one", 1);
         assert_eq!(env.vars.borrow().get("one"), Some(&num(1)));
@@ -170,7 +159,8 @@ mod tests {
 
     #[test]
     fn test_update() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
         assert_eq!(env.update("name", 1), false);
 
         env.define("name", 0);
@@ -179,7 +169,8 @@ mod tests {
 
     #[test]
     fn test_lookup() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
         assert_eq!(env.lookup("one"), None);
         env.define("one", num(1));
         assert_eq!(env.lookup("one"), Some(num(1)));
@@ -187,7 +178,8 @@ mod tests {
 
     #[test]
     fn test_derive_update() {
-        let base = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let base = evaluator.root_env();
         let derived = Env::derive_from(&base);
 
         base.define("one", 1);
@@ -203,7 +195,8 @@ mod tests {
 
     #[test]
     fn test_derive_lookup() {
-        let base = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let base = evaluator.root_env();
         let derived = Env::derive_from(&base);
 
         assert_eq!(derived.lookup("two"), None);
@@ -217,7 +210,8 @@ mod tests {
 
     #[test]
     fn test_clone() {
-        let original = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let original = evaluator.root_env();
         let cloned = original.clone();
 
         original.define("one", 1);

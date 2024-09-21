@@ -183,12 +183,14 @@ pub fn set(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::eval::Evaluator;
     use crate::expr::intern;
     use crate::list::list;
 
     #[test]
     fn test_define() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         // (define name "value")
         let ret = define("", &list!(intern("name"), "value"), &env);
@@ -198,7 +200,8 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        let env = Env::for_unit_test();
+        let evaluator = Evaluator::new();
+        let env = evaluator.root_env();
 
         // (eq 1 1) => #t
         assert_ne!(eq("", &list!(1, 1), &env).unwrap(), NIL);

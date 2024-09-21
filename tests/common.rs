@@ -6,7 +6,7 @@ use rusp::parser::Parser;
 use rusp::scanner::Scanner;
 
 pub fn eval_str(text: &str) -> String {
-    let evaluator = Evaluator::new();
+    let evaluator = Evaluator::with_builtin();
     eval_str_env(text, evaluator.root_env())
 }
 

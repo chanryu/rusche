@@ -24,7 +24,7 @@ fn test_cond() {
 
 #[test]
 fn test_define_variable() {
-    let evaluator = Evaluator::new();
+    let evaluator = Evaluator::with_builtin();
     let outer_env = evaluator.root_env();
     let _ = eval_str_env("(define x 1)", &outer_env);
     assert_eq!(eval_str_env("x", &outer_env), "1");
@@ -44,7 +44,7 @@ fn test_define_variable() {
 
 #[test]
 fn test_define_lambda() {
-    let evaluator = Evaluator::new();
+    let evaluator = Evaluator::with_builtin();
     let env = evaluator.root_env();
     let _ = eval_str_env(
         "(define (do-math x y) (num-subtract (num-multiply x 2) y))",
@@ -65,7 +65,7 @@ fn test_lambda() {
 
 #[test]
 fn test_set() {
-    let evaluator = Evaluator::new();
+    let evaluator = Evaluator::with_builtin();
     let outer_env = evaluator.root_env();
     let inner_env = Env::derive_from(&outer_env);
 

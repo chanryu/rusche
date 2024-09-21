@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
-use crate::builtin;
+use crate::builtin::{self, load_builtin};
 use crate::env::Env;
 use crate::expr::Expr;
 use crate::list::List;
@@ -41,11 +41,17 @@ pub struct Evaluator {
 impl Evaluator {
     pub fn new() -> Self {
         let all_envs = Rc::new(RefCell::new(Vec::new()));
-        let root_env = Env::root(all_envs.clone());
+        let root_env = Env::root(Rc::downgrade(&all_envs));
 
         all_envs.borrow_mut().push(Rc::downgrade(&root_env));
 
         Self { all_envs, root_env }
+    }
+
+    pub fn with_builtin() -> Self {
+        let evaluator = Self::new();
+        load_builtin(&evaluator.root_env());
+        evaluator
     }
 
     pub fn root_env(&self) -> &Rc<Env> {

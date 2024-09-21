@@ -143,8 +143,8 @@ pub trait PreludeLoader {
 
 impl PreludeLoader for Evaluator {
     fn with_prelude() -> Self {
-        let context = Self::new();
-        let env = context.root_env();
+        let evaulator = Self::with_builtin();
+        let env = evaulator.root_env();
 
         env.define_native_proc("print", native::print);
         env.define_native_proc("read", native::read);
@@ -160,7 +160,7 @@ impl PreludeLoader for Evaluator {
             eval_prelude_str(exprs, env);
         }
 
-        context
+        evaulator
     }
 }
 
