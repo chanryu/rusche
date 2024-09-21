@@ -171,6 +171,14 @@ mod tests {
         }};
     }
 
+    macro_rules! span_agnostic_expr_eq {
+        ($expr1:expr, $expr2:expr) => {{
+            let left: &Expr = &$expr1;
+            let right: &Expr = &$expr2;
+            assert_eq!(left.kind, right.kind);
+        }};
+    }
+
     #[test]
     fn test_parser() {
         // (add 1 2)
@@ -184,7 +192,7 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("add"), 1, 2).into();
-        assert_eq!(parsed_expr, expected_expr);
+        span_agnostic_expr_eq!(parsed_expr, expected_expr);
     }
 
     #[test]
@@ -194,7 +202,7 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("quote"), 1).into();
-        assert_eq!(parsed_expr, expected_expr);
+        span_agnostic_expr_eq!(parsed_expr, expected_expr);
     }
 
     #[test]
@@ -213,9 +221,8 @@ mod tests {
         );
 
         let parsed_expr = parser.parse().unwrap();
-        print!("{}", parsed_expr);
         let expected_expr = list!(intern("quote"), list!(list!(1), 2)).into();
-        assert_eq!(parsed_expr, expected_expr);
+        span_agnostic_expr_eq!(parsed_expr, expected_expr);
     }
 
     #[test]
@@ -227,20 +234,20 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("quasiquote"), 1).into();
-        assert_eq!(parsed_expr, expected_expr);
+        span_agnostic_expr_eq!(parsed_expr, expected_expr);
 
         // ,1
         parser.add_tokens(token_vec![Unquote, Num(1_f64)]);
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("unquote"), 1).into();
-        assert_eq!(parsed_expr, expected_expr);
+        span_agnostic_expr_eq!(parsed_expr, expected_expr);
 
         // ,@1
         parser.add_tokens(token_vec![UnquoteSplicing, Num(1_f64)]);
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("unquote-splicing"), 1).into();
-        assert_eq!(parsed_expr, expected_expr);
+        span_agnostic_expr_eq!(parsed_expr, expected_expr);
     }
 }
