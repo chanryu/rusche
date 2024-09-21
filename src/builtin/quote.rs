@@ -53,7 +53,7 @@ fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Ex
             if let Some(cdar) = cons.cdar() {
                 match eval(cdar, env)? {
                     Expr::List(list) => {
-                        // TODO: implement comsuming `into_iter()`
+                        // TODO: implement consuming `into_iter()`
                         exprs.extend(list.iter().map(|e| e.clone()));
                     }
                     _ => {
