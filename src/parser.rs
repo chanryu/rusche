@@ -14,7 +14,9 @@ impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ParseError::NeedMoreToken => write!(f, "Ran out of tokens"),
-            ParseError::UnexpectedToken(token) => write!(f, "Unexpected token: {}", token),
+            ParseError::UnexpectedToken(token) => {
+                write!(f, "{}: Unexpected token: {}", token.loc(), token)
+            }
         }
     }
 }
@@ -147,14 +149,23 @@ fn get_quote_name(token: Option<&Token>) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::token::Loc;
+    use crate::token::{Loc, Span};
+
+    impl Loc {
+        fn to_span(&self) -> Span {
+            Span::new(*self, 1)
+        }
+    }
 
     // location agnostic token vector generator
     macro_rules! token_vec {
         ($($token_case:ident$(($value:expr))?),* $(,)?) => {{
             let mut v = Vec::new();
             $(
-                v.push(Token::$token_case(Loc::new(1, 1)$(, $value)?));
+                v.push(Token::$token_case(
+                    Loc::new(1, 1)
+                    $(.to_span(), $value)?
+                ));
             )*
             v
         }};

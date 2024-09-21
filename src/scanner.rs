@@ -1,4 +1,4 @@
-use crate::token::{Loc, Token};
+use crate::token::{Loc, Span, Token};
 use std::fmt;
 use std::iter::{Iterator, Peekable};
 
@@ -114,7 +114,12 @@ where
                         _ => text.push(ch),
                     }
                 }
-                ('"', false) => return Ok(Some(Token::Str(loc, text))),
+                ('"', false) => {
+                    return Ok(Some(Token::Str(
+                        Span::new(loc, self.loc.column - loc.column),
+                        text,
+                    )))
+                }
                 ('\\', false) => escaped = true,
                 (ch, false) => text.push(ch),
             }
@@ -139,7 +144,12 @@ where
 
         digits
             .parse::<f64>()
-            .map(|value| Some(Token::Num(loc, value * sign as f64)))
+            .map(|value| {
+                Some(Token::Num(
+                    Span::new(loc, self.loc.column - loc.column),
+                    value * sign as f64,
+                ))
+            })
             .map_err(|_| TokenError::InvalidNumber)
     }
 
@@ -152,7 +162,10 @@ where
             name.push(ch);
         }
 
-        Ok(Some(Token::Sym(loc, name)))
+        Ok(Some(Token::Sym(
+            Span::new(loc, self.loc.column - loc.column),
+            name,
+        )))
     }
 }
 
@@ -187,7 +200,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::token::Loc;
 
     #[test]
     fn test_read_string() {
@@ -195,10 +207,8 @@ mod tests {
             ($source:literal, $expected:literal) => {
                 let mut chars = $source.chars();
                 assert_eq!(chars.next().unwrap(), '"');
-                assert_eq!(
-                    Scanner::new(chars).read_string().unwrap(),
-                    Some(Token::Str(Loc::new(1, 0), String::from($expected)))
-                );
+                let token = Scanner::new(chars).read_string().unwrap().unwrap();
+                assert_eq!(token, Token::Str(token.span(), String::from($expected)));
             };
             ($source:literal, $expected:ident) => {
                 let mut chars = $source.chars();
@@ -222,10 +232,11 @@ mod tests {
                 assert!(!$source.is_empty());
                 let mut chars = $source.chars();
                 let first_char = chars.next().unwrap();
-                assert_eq!(
-                    Scanner::new(chars).read_number(first_char, 1),
-                    Ok(Some(Token::Num(Loc::new(1, 0), $expected.into())))
-                );
+                let token = Scanner::new(chars)
+                    .read_number(first_char, 1)
+                    .unwrap()
+                    .unwrap();
+                assert_eq!(token, Token::Num(token.span(), $expected.into()));
             };
         }
 
@@ -261,7 +272,7 @@ mod tests {
             };
             (Some($token_case:ident)) => {
                 let token = scanner.get_token().unwrap().unwrap();
-                assert_eq!(token, Token::$token_case(token.loc()));
+                assert_eq!(token, Token::$token_case(*token.loc()));
             };
         }
 
@@ -295,11 +306,11 @@ mod tests {
             };
             (Some($token_case:ident)) => {
                 let token = scanner.get_token().unwrap().unwrap();
-                assert_eq!(token, Token::$token_case(token.loc()));
+                assert_eq!(token, Token::$token_case(*token.loc()));
             };
             (Some($token_case:ident($value:expr))) => {
                 let token = scanner.get_token().unwrap().unwrap();
-                assert_eq!(token, Token::$token_case(token.loc(), $value));
+                assert_eq!(token, Token::$token_case(token.span(), $value));
             };
         }
 

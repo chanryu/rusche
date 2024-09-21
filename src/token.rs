@@ -12,6 +12,24 @@ impl Loc {
     }
 }
 
+impl fmt::Display for Loc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}", self.line, self.column)
+    }
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub struct Span {
+    pub loc: Loc,
+    pub len: usize,
+}
+
+impl Span {
+    pub fn new(loc: Loc, len: usize) -> Self {
+        Self { loc, len }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     OpenParen(Loc),
@@ -20,13 +38,24 @@ pub enum Token {
     Quasiquote(Loc),
     Unquote(Loc),
     UnquoteSplicing(Loc),
-    Num(Loc, f64),
-    Str(Loc, String),
-    Sym(Loc, String),
+    Num(Span, f64),
+    Str(Span, String),
+    Sym(Span, String),
 }
 
 impl Token {
-    pub fn loc(&self) -> Loc {
+    pub fn span(&self) -> Span {
+        match self {
+            Token::OpenParen(loc)
+            | Token::CloseParen(loc)
+            | Token::Quote(loc)
+            | Token::Unquote(loc) => Span::new(*loc, 1),
+            Token::Quasiquote(loc) | Token::UnquoteSplicing(loc) => Span::new(*loc, 2),
+            Token::Num(span, _) | Token::Str(span, _) | Token::Sym(span, _) => *span,
+        }
+    }
+
+    pub fn loc(&self) -> &Loc {
         match self {
             Token::OpenParen(loc)
             | Token::CloseParen(loc)
@@ -34,9 +63,9 @@ impl Token {
             | Token::Quasiquote(loc)
             | Token::Unquote(loc)
             | Token::UnquoteSplicing(loc)
-            | Token::Num(loc, _)
-            | Token::Str(loc, _)
-            | Token::Sym(loc, _) => *loc,
+            | Token::Num(Span { loc, .. }, _)
+            | Token::Str(Span { loc, .. }, _)
+            | Token::Sym(Span { loc, .. }, _) => loc,
         }
     }
 }
@@ -63,18 +92,41 @@ mod tests {
 
     #[test]
     fn test_display() {
-        let loc = Loc::new(1, 0);
+        let loc = Loc::new(1, 1);
         assert_eq!(format!("{}", Token::OpenParen(loc)), "(");
         assert_eq!(format!("{}", Token::CloseParen(loc)), ")");
         assert_eq!(format!("{}", Token::Quote(loc)), "'");
         assert_eq!(format!("{}", Token::Quasiquote(loc)), "`");
         assert_eq!(format!("{}", Token::Unquote(loc)), ",");
         assert_eq!(format!("{}", Token::UnquoteSplicing(loc)), ",@");
-        assert_eq!(format!("{}", Token::Num(loc, 0.0)), "0");
-        assert_eq!(format!("{}", Token::Num(loc, 0.5)), "0.5");
-        assert_eq!(format!("{}", Token::Num(loc, 1.0)), "1");
-        assert_eq!(format!("{}", Token::Num(loc, 123.456)), "123.456");
-        assert_eq!(format!("{}", Token::Str(loc, "str".into())), "\"str\"");
-        assert_eq!(format!("{}", Token::Sym(loc, "sym".into())), "sym");
+        assert_eq!(format!("{}", Token::Num(Span::new(loc, 1), 0.0)), "0");
+        assert_eq!(format!("{}", Token::Num(Span::new(loc, 3), 0.5)), "0.5");
+        assert_eq!(format!("{}", Token::Num(Span::new(loc, 1), 1.0)), "1");
+        assert_eq!(
+            format!("{}", Token::Num(Span::new(loc, 7), 123.456)),
+            "123.456"
+        );
+        assert_eq!(
+            format!("{}", Token::Str(Span::new(loc, 5), "str".into())),
+            "\"str\""
+        );
+        assert_eq!(
+            format!("{}", Token::Sym(Span::new(loc, 3), "sym".into())),
+            "sym"
+        );
+    }
+
+    #[test]
+    fn test_loc() {
+        let loc = Loc::new(1, 1);
+        assert_eq!(*Token::OpenParen(loc).loc(), loc);
+        assert_eq!(*Token::CloseParen(loc).loc(), loc);
+        assert_eq!(*Token::Quote(loc).loc(), loc);
+        assert_eq!(*Token::Quasiquote(loc).loc(), loc);
+        assert_eq!(*Token::Unquote(loc).loc(), loc);
+        assert_eq!(*Token::UnquoteSplicing(loc).loc(), loc);
+        assert_eq!(*Token::Num(Span::new(loc, 1), 0.0).loc(), loc);
+        assert_eq!(*Token::Str(Span::new(loc, 5), "str".into()).loc(), loc);
+        assert_eq!(*Token::Sym(Span::new(loc, 3), "sym".into()).loc(), loc);
     }
 }
