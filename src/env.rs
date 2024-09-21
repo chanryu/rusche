@@ -7,12 +7,8 @@ use crate::proc::{NativeFunc, Proc};
 
 #[derive(Debug)]
 enum EnvKind {
-    Root {
-        all_envs: Weak<RefCell<Vec<Weak<Env>>>>,
-    },
-    Derived {
-        base: Rc<Env>,
-    },
+    Root,
+    Derived { base: Rc<Env> },
 }
 
 impl PartialEq for EnvKind {
@@ -27,18 +23,20 @@ impl PartialEq for EnvKind {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct Env {
     kind: EnvKind,
     vars: RefCell<HashMap<String, Expr>>,
+    all_envs: Weak<RefCell<Vec<Weak<Env>>>>,
     pub(crate) is_reachable: Cell<bool>,
 }
 
 impl Env {
     pub(crate) fn root(all_envs: Weak<RefCell<Vec<Weak<Env>>>>) -> Rc<Self> {
         Rc::new(Self {
-            kind: EnvKind::Root { all_envs },
+            kind: EnvKind::Root,
             vars: RefCell::new(HashMap::new()),
+            all_envs,
             is_reachable: Cell::new(false),
         })
     }
@@ -47,6 +45,7 @@ impl Env {
         let derived_env = Rc::new(Self {
             kind: EnvKind::Derived { base: base.clone() },
             vars: RefCell::new(HashMap::new()),
+            all_envs: base.all_envs.clone(),
             is_reachable: Cell::new(false),
         });
 
@@ -121,18 +120,15 @@ impl Env {
     }
 
     fn gc_register(&self, derived_env: &Rc<Self>) {
-        match &self.kind {
-            EnvKind::Root { all_envs } => {
-                if let Some(all_envs) = all_envs.upgrade() {
-                    all_envs.borrow_mut().push(Rc::downgrade(derived_env));
-                } else {
-                    panic!("Root env is already dropped"); // FIXME! make this impossible
-                }
-            }
-            EnvKind::Derived { base } => {
-                base.gc_register(derived_env);
-            }
+        if let Some(all_envs) = self.all_envs.upgrade() {
+            all_envs.borrow_mut().push(Rc::downgrade(derived_env));
         }
+    }
+}
+
+impl PartialEq for Env {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind && self.vars == other.vars
     }
 }
 
