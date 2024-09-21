@@ -157,25 +157,16 @@ mod tests {
         }
     }
 
-    // location agnostic token vector generator
     macro_rules! token_vec {
         ($($token_case:ident$(($value:expr))?),* $(,)?) => {{
             let mut v = Vec::new();
             $(
                 v.push(Token::$token_case(
-                    Loc::new(1, 1)
+                    Loc::new(1, 1) // we don't care about the location
                     $(.to_span(), $value)?
                 ));
             )*
             v
-        }};
-    }
-
-    macro_rules! span_agnostic_expr_eq {
-        ($expr1:expr, $expr2:expr) => {{
-            let left: &Expr = &$expr1;
-            let right: &Expr = &$expr2;
-            assert_eq!(left.kind, right.kind);
         }};
     }
 
@@ -192,7 +183,7 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("add"), 1, 2).into();
-        span_agnostic_expr_eq!(parsed_expr, expected_expr);
+        assert_eq!(parsed_expr, expected_expr);
     }
 
     #[test]
@@ -202,7 +193,7 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("quote"), 1).into();
-        span_agnostic_expr_eq!(parsed_expr, expected_expr);
+        assert_eq!(parsed_expr, expected_expr);
     }
 
     #[test]
@@ -222,7 +213,7 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("quote"), list!(list!(1), 2)).into();
-        span_agnostic_expr_eq!(parsed_expr, expected_expr);
+        assert_eq!(parsed_expr, expected_expr);
     }
 
     #[test]
@@ -234,20 +225,20 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("quasiquote"), 1).into();
-        span_agnostic_expr_eq!(parsed_expr, expected_expr);
+        assert_eq!(parsed_expr, expected_expr);
 
         // ,1
         parser.add_tokens(token_vec![Unquote, Num(1_f64)]);
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("unquote"), 1).into();
-        span_agnostic_expr_eq!(parsed_expr, expected_expr);
+        assert_eq!(parsed_expr, expected_expr);
 
         // ,@1
         parser.add_tokens(token_vec![UnquoteSplicing, Num(1_f64)]);
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("unquote-splicing"), 1).into();
-        span_agnostic_expr_eq!(parsed_expr, expected_expr);
+        assert_eq!(parsed_expr, expected_expr);
     }
 }

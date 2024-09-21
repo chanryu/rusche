@@ -30,7 +30,7 @@ impl Span {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub enum Token {
     OpenParen(Loc),
     CloseParen(Loc),
@@ -66,6 +66,23 @@ impl Token {
             | Token::Num(Span { loc, .. }, _)
             | Token::Str(Span { loc, .. }, _)
             | Token::Sym(Span { loc, .. }, _) => loc,
+        }
+    }
+}
+
+impl PartialEq for Token {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Token::OpenParen(_), Token::OpenParen(_)) => true,
+            (Token::CloseParen(_), Token::CloseParen(_)) => true,
+            (Token::Quote(_), Token::Quote(_)) => true,
+            (Token::Quasiquote(_), Token::Quasiquote(_)) => true,
+            (Token::Unquote(_), Token::Unquote(_)) => true,
+            (Token::UnquoteSplicing(_), Token::UnquoteSplicing(_)) => true,
+            (Token::Num(_, a), Token::Num(_, b)) => a == b,
+            (Token::Str(_, a), Token::Str(_, b)) => a == b,
+            (Token::Sym(_, a), Token::Sym(_, b)) => a == b,
+            _ => false,
         }
     }
 }
