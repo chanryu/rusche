@@ -272,7 +272,7 @@ mod tests {
             };
             (Some($token_case:ident)) => {
                 let token = scanner.get_token().unwrap().unwrap();
-                assert_eq!(token, Token::$token_case(*token.loc()));
+                assert_eq!(token, Token::$token_case(token.loc()));
             };
         }
 
@@ -306,7 +306,7 @@ mod tests {
             };
             (Some($token_case:ident)) => {
                 let token = scanner.get_token().unwrap().unwrap();
-                assert_eq!(token, Token::$token_case(*token.loc()));
+                assert_eq!(token, Token::$token_case(token.loc()));
             };
             (Some($token_case:ident($value:expr))) => {
                 let token = scanner.get_token().unwrap().unwrap();

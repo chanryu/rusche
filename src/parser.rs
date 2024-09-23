@@ -157,14 +157,17 @@ mod tests {
         }
     }
 
-    // location agnostic token vector generator
     macro_rules! token_vec {
         ($($token_case:ident$(($value:expr))?),* $(,)?) => {{
+            let loc = Loc::new(1, 1); // we don't care about the actual location here.
             let mut v = Vec::new();
             $(
                 v.push(Token::$token_case(
-                    Loc::new(1, 1)
-                    $(.to_span(), $value)?
+                    loc
+                    $(
+                        .to_span(), // `loc.to_span()`` in case of Num, Str and Sym.
+                        $value
+                    )?
                 ));
             )*
             v
