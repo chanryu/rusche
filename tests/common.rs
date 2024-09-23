@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use rusp::env::Env;
 use rusp::eval::{eval, Evaluator};
+use rusp::lexer::Lexer;
 use rusp::parser::Parser;
-use rusp::scanner::Scanner;
 
 pub fn eval_str(text: &str) -> String {
     let evaluator = Evaluator::with_builtin();
@@ -12,8 +12,8 @@ pub fn eval_str(text: &str) -> String {
 
 pub fn eval_str_env(text: &str, env: &Rc<Env>) -> String {
     let mut tokens = Vec::new();
-    let mut scanner = Scanner::new(text.chars());
-    while let Some(token) = scanner
+    let mut lexer = Lexer::new(text.chars());
+    while let Some(token) = lexer
         .get_token()
         .expect(&format!("Failed to get token: {}", text))
     {

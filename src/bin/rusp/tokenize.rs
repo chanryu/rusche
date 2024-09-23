@@ -1,13 +1,13 @@
 use rusp::{
-    scanner::{Scanner, TokenError},
+    lexer::{LexError, Lexer},
     token::Token,
 };
 
-pub fn tokenize(text: &str) -> Result<Vec<Token>, TokenError> {
+pub fn tokenize(text: &str) -> Result<Vec<Token>, LexError> {
     let mut tokens = Vec::new();
-    let mut scanner = Scanner::new(text.chars());
+    let mut lexer = Lexer::new(text.chars());
 
-    while let Some(token) = scanner.get_token()? {
+    while let Some(token) = lexer.get_token()? {
         tokens.push(token);
     }
 
