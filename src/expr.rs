@@ -1,29 +1,30 @@
 use crate::list::{cons, List, ListIter};
 use crate::proc::Proc;
+use crate::span::Span;
 use std::fmt;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum Expr {
-    Num(f64),
-    Str(String),
-    Sym(String),
-    Proc(Proc),
-    List(List),
+    Num(f64, Option<Span>),
+    Str(String, Option<Span>),
+    Sym(String, Option<Span>),
+    Proc(Proc, Option<Span>),
+    List(List, Option<Span>),
 }
 
-pub const NIL: Expr = Expr::List(List::Nil);
+pub const NIL: Expr = Expr::List(List::Nil, None);
 
 impl Expr {
     pub fn is_atom(&self) -> bool {
         match self {
-            Expr::List(List::Cons(_)) => false,
+            Expr::List(List::Cons(_), _) => false,
             _ => true,
         }
     }
 
     pub fn is_nil(&self) -> bool {
         match self {
-            Expr::List(List::Nil) => true,
+            Expr::List(List::Nil, _) => true,
             _ => false,
         }
     }
@@ -33,21 +34,34 @@ impl Expr {
     }
 }
 
+impl PartialEq for Expr {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Expr::Num(lhs, _), Expr::Num(rhs, _)) => lhs == rhs,
+            (Expr::Str(lhs, _), Expr::Str(rhs, _)) => lhs == rhs,
+            (Expr::Sym(lhs, _), Expr::Sym(rhs, _)) => lhs == rhs,
+            (Expr::Proc(lhs, _), Expr::Proc(rhs, _)) => lhs == rhs,
+            (Expr::List(lhs, _), Expr::List(rhs, _)) => lhs == rhs,
+            _ => false,
+        }
+    }
+}
+
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Expr::Num(value) => write!(f, "{}", value),
-            Expr::Str(text) => write!(f, "\"{}\"", text), // TODO: escape control chars
-            Expr::Sym(name) => write!(f, "{}", name),
-            Expr::Proc(proc) => write!(f, "<{}>", proc.fingerprint()),
-            Expr::List(list) => write!(f, "{}", list),
+            Expr::Num(value, _) => write!(f, "{}", value),
+            Expr::Str(text, _) => write!(f, "\"{}\"", text), // TODO: escape control chars
+            Expr::Sym(name, _) => write!(f, "{}", name),
+            Expr::Proc(proc, _) => write!(f, "<{}>", proc.fingerprint()),
+            Expr::List(list, _) => write!(f, "{}", list),
         }
     }
 }
 
 impl From<List> for Expr {
     fn from(val: List) -> Self {
-        Expr::List(val)
+        Expr::List(val, None)
     }
 }
 
@@ -69,26 +83,26 @@ impl<'a> From<ListIter<'a>> for Expr {
 
 impl From<&str> for Expr {
     fn from(value: &str) -> Self {
-        Expr::Str(value.to_string())
+        Expr::Str(value.to_string(), None)
     }
 }
 
 impl From<i32> for Expr {
     fn from(value: i32) -> Self {
-        Expr::Num(value as f64)
+        Expr::Num(value as f64, None)
     }
 }
 
 impl From<f64> for Expr {
     fn from(value: f64) -> Self {
-        Expr::Num(value)
+        Expr::Num(value, None)
     }
 }
 
 impl From<bool> for Expr {
     fn from(value: bool) -> Self {
         if value {
-            Expr::Num(1.0)
+            Expr::Num(1.0, None)
         } else {
             NIL
         }
@@ -106,10 +120,10 @@ impl From<bool> for Expr {
 /// use rusp::expr::{intern, Expr};
 ///
 /// let symbol = intern("foo");
-/// assert_eq!(symbol, Expr::Sym(String::from("foo")));
+/// assert_eq!(symbol, Expr::Sym(String::from("foo"), None));
 /// ```
 pub fn intern<T: Into<String>>(name: T) -> Expr {
-    Expr::Sym(name.into())
+    Expr::Sym(name.into(), None)
 }
 
 #[cfg(test)]
@@ -117,7 +131,7 @@ pub mod test_utils {
     use super::Expr;
 
     pub fn num<T: Into<f64>>(value: T) -> Expr {
-        Expr::Num(value.into())
+        Expr::Num(value.into(), None)
     }
 }
 

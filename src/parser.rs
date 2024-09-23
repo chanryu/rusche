@@ -76,9 +76,9 @@ impl Parser {
                     continue;
                 }
                 Token::CloseParen(_) => self.end_list(token)?,
-                Token::Sym(_, name) => Expr::Sym(name),
-                Token::Str(_, text) => Expr::Str(text),
-                Token::Num(_, value) => Expr::Num(value),
+                Token::Sym(name, span) => Expr::Sym(name, Some(span)),
+                Token::Str(text, span) => Expr::Str(text, Some(span)),
+                Token::Num(value, span) => Expr::Num(value, Some(span)),
             };
 
             loop {
@@ -149,37 +149,26 @@ fn get_quote_name(token: Option<&Token>) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::token::{Loc, Span};
+    use crate::span::{Loc, Span};
 
-    impl Loc {
-        fn to_span(&self) -> Span {
-            Span::new(*self, 1)
-        }
-    }
-
-    // location agnostic token vector generator
-    macro_rules! token_vec {
-        ($($token_case:ident$(($value:expr))?),* $(,)?) => {{
-            let mut v = Vec::new();
-            $(
-                v.push(Token::$token_case(
-                    Loc::new(1, 1)
-                    $(.to_span(), $value)?
-                ));
-            )*
-            v
-        }};
+    macro_rules! tok {
+        ($token_case:ident) => {
+            Token::$token_case(Loc::new(1, 1))
+        };
+        ($token_case:ident($value:expr)) => {
+            Token::$token_case($value, Span::new(Loc::new(1, 1), 1))
+        };
     }
 
     #[test]
     fn test_parser() {
         // (add 1 2)
-        let mut parser = Parser::with_tokens(token_vec![
-            OpenParen,
-            Sym(String::from("add")),
-            Num(1_f64),
-            Num(2_f64),
-            CloseParen,
+        let mut parser = Parser::with_tokens(vec![
+            tok!(OpenParen),
+            tok!(Sym(String::from("add"))),
+            tok!(Num(1_f64)),
+            tok!(Num(2_f64)),
+            tok!(CloseParen),
         ]);
 
         let parsed_expr = parser.parse().unwrap();
@@ -190,7 +179,7 @@ mod tests {
     #[test]
     fn test_parser_quote_atom() {
         // '1
-        let mut parser = Parser::with_tokens(token_vec![Quote, Num(1_f64)]);
+        let mut parser = Parser::with_tokens(vec![tok!(Quote), tok!(Num(1_f64))]);
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("quote"), 1).into();
@@ -201,14 +190,14 @@ mod tests {
     fn test_parser_quote_list() {
         let mut parser = Parser::with_tokens(
             // '(1 2)
-            token_vec![
-                Quote,
-                OpenParen,
-                OpenParen,
-                Num(1_f64),
-                CloseParen,
-                Num(2_f64),
-                CloseParen,
+            vec![
+                tok!(Quote),
+                tok!(OpenParen),
+                tok!(OpenParen),
+                tok!(Num(1_f64)),
+                tok!(CloseParen),
+                tok!(Num(2_f64)),
+                tok!(CloseParen),
             ],
         );
 
@@ -223,21 +212,21 @@ mod tests {
         let mut parser = Parser::new();
 
         // `1
-        parser.add_tokens(token_vec![Quasiquote, Num(1_f64)]);
+        parser.add_tokens(vec![tok!(Quasiquote), tok!(Num(1_f64))]);
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("quasiquote"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
 
         // ,1
-        parser.add_tokens(token_vec![Unquote, Num(1_f64)]);
+        parser.add_tokens(vec![tok!(Unquote), tok!(Num(1_f64))]);
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("unquote"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
 
         // ,@1
-        parser.add_tokens(token_vec![UnquoteSplicing, Num(1_f64)]);
+        parser.add_tokens(vec![tok!(UnquoteSplicing), tok!(Num(1_f64))]);
 
         let parsed_expr = parser.parse().unwrap();
         let expected_expr = list!(intern("unquote-splicing"), 1).into();

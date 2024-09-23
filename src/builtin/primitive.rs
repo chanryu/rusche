@@ -19,7 +19,7 @@ pub fn atom(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 pub fn car(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
 
-    if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
+    if let Expr::List(List::Cons(cons), _) = eval(expr, env)? {
         Ok(cons.car.as_ref().clone())
     } else {
         Err(make_syntax_error(proc_name, args))
@@ -29,7 +29,7 @@ pub fn car(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 pub fn cdr(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
 
-    if let Expr::List(List::Cons(cons)) = eval(expr, env)? {
+    if let Expr::List(List::Cons(cons), _) = eval(expr, env)? {
         Ok(cons.cdr.as_ref().clone().into())
     } else {
         Err(make_syntax_error(proc_name, args))
@@ -40,7 +40,7 @@ pub fn cons(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let (car, cdr) = get_exact_2_args(proc_name, args)?;
 
     let car = eval(car, env)?;
-    let Expr::List(cdr) = eval(cdr, env)? else {
+    let Expr::List(cdr, _) = eval(cdr, env)? else {
         return Err(format!("{proc_name}: {cdr} does not evaluate to a list."));
     };
 
@@ -54,7 +54,7 @@ pub fn cond(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
             None => {
                 return Ok(NIL);
             }
-            Some(Expr::List(List::Cons(cons))) => {
+            Some(Expr::List(List::Cons(cons), _)) => {
                 let car = &cons.car;
                 if eval(car, env)?.is_truthy() {
                     if let Some(expr) = cons.cdar() {
@@ -74,7 +74,7 @@ pub fn cond(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 pub fn define(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let mut iter = args.iter();
     match iter.next() {
-        Some(Expr::Sym(name)) => {
+        Some(Expr::Sym(name, _)) => {
             if let Some(expr) = iter.next() {
                 env.define(name, eval(expr, env)?);
                 Ok(NIL)
@@ -84,19 +84,22 @@ pub fn define(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
                 ))
             }
         }
-        Some(Expr::List(List::Cons(cons))) => {
-            let Expr::Sym(name) = cons.car.as_ref() else {
+        Some(Expr::List(List::Cons(cons), _)) => {
+            let Expr::Sym(name, _) = cons.car.as_ref() else {
                 return Err(format!("{proc_name}: expects a list of symbols"));
             };
 
             env.define(
                 name,
-                Expr::Proc(Proc::Closure {
-                    name: Some(name.to_string()),
-                    formal_args: make_formal_args(&cons.cdr)?,
-                    body: Box::new(iter.into()),
-                    outer_env: env.clone(),
-                }),
+                Expr::Proc(
+                    Proc::Closure {
+                        name: Some(name.to_string()),
+                        formal_args: make_formal_args(&cons.cdr)?,
+                        body: Box::new(iter.into()),
+                        outer_env: env.clone(),
+                    },
+                    None,
+                ),
             );
             Ok(NIL)
         }
@@ -109,16 +112,16 @@ pub fn defmacro(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 
     let (macro_name, formal_args) = match iter.next() {
         // (defmacro name (args) body)
-        Some(Expr::Sym(macro_name)) => {
-            let Some(Expr::List(list)) = iter.next() else {
+        Some(Expr::Sym(macro_name, _)) => {
+            let Some(Expr::List(list, _)) = iter.next() else {
                 return Err(make_syntax_error(proc_name, args));
             };
 
             (macro_name, make_formal_args(list)?)
         }
         // (defmacro (name args) body)
-        Some(Expr::List(List::Cons(cons))) => {
-            let Expr::Sym(macro_name) = cons.car.as_ref() else {
+        Some(Expr::List(List::Cons(cons), _)) => {
+            let Expr::Sym(macro_name, _) = cons.car.as_ref() else {
                 return Err(make_syntax_error(proc_name, args));
             };
 
@@ -129,11 +132,14 @@ pub fn defmacro(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 
     env.define(
         macro_name,
-        Expr::Proc(Proc::Macro {
-            name: Some(macro_name.clone()),
-            formal_args,
-            body: Box::new(iter.into()),
-        }),
+        Expr::Proc(
+            Proc::Macro {
+                name: Some(macro_name.clone()),
+                formal_args,
+                body: Box::new(iter.into()),
+            },
+            None, // TODO: add span
+        ),
     );
 
     Ok(NIL)
@@ -154,22 +160,25 @@ pub fn eval_(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 pub fn lambda(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let mut iter = args.iter();
 
-    let Some(Expr::List(list)) = iter.next() else {
+    let Some(Expr::List(list, _)) = iter.next() else {
         return Err(make_syntax_error(proc_name, args));
     };
 
-    Ok(Expr::Proc(Proc::Closure {
-        name: None,
-        formal_args: make_formal_args(list)?,
-        body: Box::new(iter.into()),
-        outer_env: env.clone(),
-    }))
+    Ok(Expr::Proc(
+        Proc::Closure {
+            name: None,
+            formal_args: make_formal_args(list)?,
+            body: Box::new(iter.into()),
+            outer_env: env.clone(),
+        },
+        None, // TODO: add span
+    ))
 }
 
 pub fn set(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let (name_expr, value_expr) = get_exact_2_args(proc_name, args)?;
 
-    let Expr::Sym(name) = name_expr else {
+    let Expr::Sym(name, _) = name_expr else {
         return Err("".to_owned());
     };
 

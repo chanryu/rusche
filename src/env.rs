@@ -78,10 +78,13 @@ impl Env {
     pub fn define_native_proc(&self, name: &str, func: NativeFunc) {
         self.define(
             name,
-            Expr::Proc(Proc::Native {
-                name: name.to_owned(),
-                func,
-            }),
+            Expr::Proc(
+                Proc::Native {
+                    name: name.to_owned(),
+                    func,
+                },
+                None,
+            ),
         );
     }
 }
@@ -100,7 +103,7 @@ impl Env {
         self.is_reachable.set(true);
 
         self.vars.borrow().values().for_each(|expr| {
-            if let Expr::Proc(Proc::Closure { outer_env, .. }) = expr {
+            if let Expr::Proc(Proc::Closure { outer_env, .. }, _) = expr {
                 outer_env.gc_mark();
             }
         });
