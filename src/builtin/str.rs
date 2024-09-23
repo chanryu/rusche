@@ -8,7 +8,7 @@ use crate::list::List;
 use super::utils::{eval_to_num, eval_to_str, get_2_or_3_args, get_exact_1_arg, get_exact_2_args};
 
 pub fn is_str(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    if let Expr::Str(_) = eval(get_exact_1_arg(proc_name, args)?, env)? {
+    if let Expr::Str(_, _) = eval(get_exact_1_arg(proc_name, args)?, env)? {
         Ok(Expr::from(true))
     } else {
         Ok(Expr::from(false))
@@ -19,7 +19,7 @@ pub fn compare(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let (arg1, arg2) = get_exact_2_args(proc_name, args)?;
 
     let result = match (eval(arg1, env)?, eval(arg2, env)?) {
-        (Expr::Str(lhs), Expr::Str(rhs)) => lhs.cmp(&rhs),
+        (Expr::Str(lhs, _), Expr::Str(rhs, _)) => lhs.cmp(&rhs),
         _ => {
             return Err(format!(
                 "{}: both arguments must evaluate to strings.",
@@ -36,7 +36,7 @@ pub fn concat(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let mut result = String::from("");
     while let Some(expr) = args.next() {
         match eval(expr, env)? {
-            Expr::Str(text) => result += &text,
+            Expr::Str(text, _) => result += &text,
             _ => {
                 return Err(format!(
                     "{}: `{}` does not evaluate to a string.",
@@ -45,12 +45,12 @@ pub fn concat(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
             }
         }
     }
-    Ok(Expr::Str(result))
+    Ok(Expr::Str(result, None))
 }
 
 pub fn length(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
-    if let Expr::Str(text) = eval(expr, env)? {
+    if let Expr::Str(text, _) = eval(expr, env)? {
         Ok(Expr::from(text.chars().count() as i32))
     } else {
         Err(format!(
@@ -100,7 +100,10 @@ pub fn slice(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let end = to_index(end);
     let (beg, end) = if beg <= end { (beg, end) } else { (end, beg) };
 
-    Ok(Expr::Str(text.chars().skip(beg).take(end - beg).collect()))
+    Ok(Expr::Str(
+        text.chars().skip(beg).take(end - beg).collect(),
+        None,
+    ))
 }
 
 #[cfg(test)]

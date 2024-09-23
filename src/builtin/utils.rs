@@ -99,7 +99,7 @@ pub fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
 
 pub fn eval_to_str(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<String, EvalError> {
     match eval(expr, env)? {
-        Expr::Str(text) => Ok(text),
+        Expr::Str(text, _) => Ok(text),
         _ => Err(format!(
             "{proc_name}: {expr} does not evaluate to a string."
         )),

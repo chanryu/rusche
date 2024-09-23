@@ -1,11 +1,12 @@
 use crate::list::{cons, List, ListIter};
 use crate::proc::Proc;
+use crate::span::Span;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
     Num(f64),
-    Str(String),
+    Str(String, Option<Span>),
     Sym(String),
     Proc(Proc),
     List(List),
@@ -37,7 +38,7 @@ impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Expr::Num(value) => write!(f, "{}", value),
-            Expr::Str(text) => write!(f, "\"{}\"", text), // TODO: escape control chars
+            Expr::Str(text, _) => write!(f, "\"{}\"", text), // TODO: escape control chars
             Expr::Sym(name) => write!(f, "{}", name),
             Expr::Proc(proc) => write!(f, "<{}>", proc.fingerprint()),
             Expr::List(list) => write!(f, "{}", list),
@@ -69,7 +70,7 @@ impl<'a> From<ListIter<'a>> for Expr {
 
 impl From<&str> for Expr {
     fn from(value: &str) -> Self {
-        Expr::Str(value.to_string())
+        Expr::Str(value.to_string(), None)
     }
 }
 

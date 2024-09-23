@@ -11,7 +11,7 @@ use rusp::{
 pub fn print(_: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     for expr in args.iter() {
         match eval(expr, env)? {
-            Expr::Str(text) => print!("{}", text), // w/o double quotes
+            Expr::Str(text, _) => print!("{}", text), // w/o double quotes
             expr => print!("{}", expr),
         }
     }
