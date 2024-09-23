@@ -6,23 +6,23 @@ use std::iter::{Iterator, Peekable};
 const SYMBOL_DELIMITERS: &str = " \t\r\n()';\"";
 
 #[derive(Debug, PartialEq)]
-pub enum TokenError {
+pub enum LexError {
     IncompleteString,
     InvalidNumber,
 }
 
-impl fmt::Display for TokenError {
+impl fmt::Display for LexError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TokenError::IncompleteString => write!(f, "Incomplete string"),
-            TokenError::InvalidNumber => write!(f, "Invalid number"),
+            LexError::IncompleteString => write!(f, "Incomplete string"),
+            LexError::InvalidNumber => write!(f, "Invalid number"),
         }
     }
 }
 
-type ScanResult = Result<Option<Token>, TokenError>;
+type LexResult = Result<Option<Token>, LexError>;
 
-pub struct Scanner<Iter>
+pub struct Lexer<Iter>
 where
     Iter: Iterator<Item = char>,
 {
@@ -30,7 +30,7 @@ where
     loc: Loc,
 }
 
-impl<Iter> Scanner<Iter>
+impl<Iter> Lexer<Iter>
 where
     Iter: Iterator<Item = char>,
 {
@@ -41,7 +41,7 @@ where
         }
     }
 
-    pub fn get_token(&mut self) -> ScanResult {
+    pub fn get_token(&mut self) -> LexResult {
         loop {
             self.skip_spaces();
             if !self.skip_comment() {
@@ -99,13 +99,13 @@ where
         }
     }
 
-    fn read_string(&mut self) -> ScanResult {
+    fn read_string(&mut self) -> LexResult {
         let loc = self.loc;
         let mut text = String::new();
         let mut escaped = false;
         while let Some(ch) = self.next_char() {
             match (ch, escaped) {
-                ('\n', _) => return Err(TokenError::IncompleteString),
+                ('\n', _) => return Err(LexError::IncompleteString),
                 (ch, true) => {
                     escaped = false;
                     match ch {
@@ -125,10 +125,10 @@ where
                 (ch, false) => text.push(ch),
             }
         }
-        Err(TokenError::IncompleteString)
+        Err(LexError::IncompleteString)
     }
 
-    fn read_number(&mut self, first_char: char, sign: i32) -> ScanResult {
+    fn read_number(&mut self, first_char: char, sign: i32) -> LexResult {
         let loc = self.loc;
         let mut has_decimal_point = first_char == '.';
         let mut digits = String::new();
@@ -151,10 +151,10 @@ where
                     Span::new(loc, self.loc.column - loc.column),
                 ))
             })
-            .map_err(|_| TokenError::InvalidNumber)
+            .map_err(|_| LexError::InvalidNumber)
     }
 
-    fn read_symbol(&mut self, first_char: char) -> ScanResult {
+    fn read_symbol(&mut self, first_char: char) -> LexResult {
         let loc = self.loc;
         let mut name = String::with_capacity(16);
         name.push(first_char);
@@ -170,7 +170,7 @@ where
     }
 }
 
-impl<Iter> Scanner<Iter>
+impl<Iter> Lexer<Iter>
 where
     Iter: Iterator<Item = char>,
 {
@@ -208,16 +208,13 @@ mod tests {
             ($source:literal, $expected:literal) => {
                 let mut chars = $source.chars();
                 assert_eq!(chars.next().unwrap(), '"');
-                let token = Scanner::new(chars).read_string().unwrap().unwrap();
+                let token = Lexer::new(chars).read_string().unwrap().unwrap();
                 assert_eq!(token, Token::Str(String::from($expected), token.span()));
             };
             ($source:literal, $expected:ident) => {
                 let mut chars = $source.chars();
                 assert_eq!(chars.next().unwrap(), '"');
-                assert_eq!(
-                    Scanner::new(chars).read_string(),
-                    Err(TokenError::$expected)
-                );
+                assert_eq!(Lexer::new(chars).read_string(), Err(LexError::$expected));
             };
         }
 
@@ -233,7 +230,7 @@ mod tests {
                 assert!(!$source.is_empty());
                 let mut chars = $source.chars();
                 let first_char = chars.next().unwrap();
-                let token = Scanner::new(chars)
+                let token = Lexer::new(chars)
                     .read_number(first_char, 1)
                     .unwrap()
                     .unwrap();
@@ -249,30 +246,30 @@ mod tests {
 
     #[test]
     fn test_scanner_eof() {
-        let mut scanner = Scanner::new("".chars());
-        assert_eq!(scanner.get_token(), Ok(None));
+        let mut lexer = Lexer::new("".chars());
+        assert_eq!(lexer.get_token(), Ok(None));
 
-        let mut scanner = Scanner::new("    ".chars());
-        assert_eq!(scanner.get_token(), Ok(None));
+        let mut lexer = Lexer::new("    ".chars());
+        assert_eq!(lexer.get_token(), Ok(None));
 
-        let mut scanner = Scanner::new("   ; comment".chars());
-        assert_eq!(scanner.get_token(), Ok(None));
+        let mut lexer = Lexer::new("   ; comment".chars());
+        assert_eq!(lexer.get_token(), Ok(None));
 
-        let mut scanner = Scanner::new("".chars());
-        assert_eq!(scanner.get_token(), Ok(None));
-        assert_eq!(scanner.get_token(), Ok(None));
-        assert_eq!(scanner.get_token(), Ok(None));
+        let mut lexer = Lexer::new("".chars());
+        assert_eq!(lexer.get_token(), Ok(None));
+        assert_eq!(lexer.get_token(), Ok(None));
+        assert_eq!(lexer.get_token(), Ok(None));
     }
 
     #[test]
     fn test_scanner_parans() {
-        let mut scanner = Scanner::new("()(())(()())".chars());
+        let mut lexer = Lexer::new("()(())(()())".chars());
         macro_rules! match_next_paran {
             (None) => {
-                assert_eq!(scanner.get_token().unwrap(), None);
+                assert_eq!(lexer.get_token().unwrap(), None);
             };
             (Some($token_case:ident)) => {
-                let token = scanner.get_token().unwrap().unwrap();
+                let token = lexer.get_token().unwrap().unwrap();
                 assert_eq!(token, Token::$token_case(token.loc()));
             };
         }
@@ -300,17 +297,17 @@ mod tests {
             ; another comment
         "#;
 
-        let mut scanner = Scanner::new(all_tokens.chars());
+        let mut lexer = Lexer::new(all_tokens.chars());
         macro_rules! match_next_token {
             (None) => {
-                assert_eq!(scanner.get_token().unwrap(), None);
+                assert_eq!(lexer.get_token().unwrap(), None);
             };
             (Some($token_case:ident)) => {
-                let token = scanner.get_token().unwrap().unwrap();
+                let token = lexer.get_token().unwrap().unwrap();
                 assert_eq!(token, Token::$token_case(token.loc()));
             };
             (Some($token_case:ident($value:expr))) => {
-                let token = scanner.get_token().unwrap().unwrap();
+                let token = lexer.get_token().unwrap().unwrap();
                 assert_eq!(token, Token::$token_case($value, token.span()));
             };
         }
