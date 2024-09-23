@@ -149,7 +149,7 @@ fn get_quote_name(token: Option<&Token>) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::token::{Loc, Span};
+    use crate::span::{Loc, Span};
 
     impl Loc {
         fn to_span(&self) -> Span {

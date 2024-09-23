@@ -6,4 +6,5 @@ pub mod list;
 pub mod parser;
 pub mod proc;
 pub mod scanner;
+pub mod span;
 pub mod token;

@@ -1,4 +1,5 @@
-use crate::token::{Loc, Span, Token};
+use crate::span::{Loc, Span};
+use crate::token::Token;
 use std::fmt;
 use std::iter::{Iterator, Peekable};
 
