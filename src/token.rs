@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 
 use crate::span::{Loc, Span};
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub enum Token {
     OpenParen(Loc),
     CloseParen(Loc),

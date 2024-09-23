@@ -34,7 +34,7 @@ fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Ex
         return Ok(vec![NIL]);
     };
 
-    let car_name = if let Expr::Sym(name) = cons.car.as_ref() {
+    let car_name = if let Expr::Sym(name, _) = cons.car.as_ref() {
         Some(name.as_str())
     } else {
         None

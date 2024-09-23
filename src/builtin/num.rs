@@ -8,7 +8,7 @@ use crate::list::List;
 use super::utils::{eval_to_num, get_exact_1_arg, get_exact_2_args};
 
 pub fn is_num(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
-    if let Expr::Num(_) = eval(get_exact_1_arg(proc_name, args)?, env)? {
+    if let Expr::Num(_, _) = eval(get_exact_1_arg(proc_name, args)?, env)? {
         Ok(true.into())
     } else {
         Ok(false.into())
@@ -34,7 +34,7 @@ fn binary_operation(
         }
     }
 
-    Ok(Expr::Num(result))
+    Ok(Expr::Num(result, None))
 }
 
 pub fn add(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
@@ -58,7 +58,7 @@ pub fn modulo(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     let lhs = eval_to_num(proc_name, lhs, env)?;
     let rhs = eval_to_num(proc_name, rhs, env)?;
 
-    Ok(Expr::Num(lhs % rhs))
+    Ok(Expr::Num(lhs % rhs, None))
 }
 
 fn logical_operation(

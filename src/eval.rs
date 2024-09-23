@@ -13,13 +13,13 @@ pub fn eval(expr: &Expr, env: &Rc<Env>) -> EvalResult {
     use builtin::quote::{quasiquote, quote};
 
     match expr {
-        Expr::Sym(name) => match env.lookup(name) {
+        Expr::Sym(name, _) => match env.lookup(name) {
             Some(expr) => Ok(expr.clone()),
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
         Expr::List(List::Cons(cons)) => match cons.car.as_ref() {
-            Expr::Sym(text) if text == "quote" => quote(text, &cons.cdr, env),
-            Expr::Sym(text) if text == "quasiquote" => quasiquote(text, &cons.cdr, env),
+            Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, env),
+            Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, env),
             _ => {
                 if let Expr::Proc(proc) = eval(&cons.car, env)? {
                     let args = &cons.cdr;

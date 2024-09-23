@@ -3,11 +3,11 @@ use crate::proc::Proc;
 use crate::span::Span;
 use std::fmt;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum Expr {
-    Num(f64),
+    Num(f64, Option<Span>),
     Str(String, Option<Span>),
-    Sym(String),
+    Sym(String, Option<Span>),
     Proc(Proc),
     List(List),
 }
@@ -34,12 +34,25 @@ impl Expr {
     }
 }
 
+impl PartialEq for Expr {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Expr::Num(lhs, _), Expr::Num(rhs, _)) => lhs == rhs,
+            (Expr::Str(lhs, _), Expr::Str(rhs, _)) => lhs == rhs,
+            (Expr::Sym(lhs, _), Expr::Sym(rhs, _)) => lhs == rhs,
+            (Expr::Proc(lhs), Expr::Proc(rhs)) => lhs == rhs,
+            (Expr::List(lhs), Expr::List(rhs)) => lhs == rhs,
+            _ => false,
+        }
+    }
+}
+
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Expr::Num(value) => write!(f, "{}", value),
+            Expr::Num(value, _) => write!(f, "{}", value),
             Expr::Str(text, _) => write!(f, "\"{}\"", text), // TODO: escape control chars
-            Expr::Sym(name) => write!(f, "{}", name),
+            Expr::Sym(name, _) => write!(f, "{}", name),
             Expr::Proc(proc) => write!(f, "<{}>", proc.fingerprint()),
             Expr::List(list) => write!(f, "{}", list),
         }
@@ -76,20 +89,20 @@ impl From<&str> for Expr {
 
 impl From<i32> for Expr {
     fn from(value: i32) -> Self {
-        Expr::Num(value as f64)
+        Expr::Num(value as f64, None)
     }
 }
 
 impl From<f64> for Expr {
     fn from(value: f64) -> Self {
-        Expr::Num(value)
+        Expr::Num(value, None)
     }
 }
 
 impl From<bool> for Expr {
     fn from(value: bool) -> Self {
         if value {
-            Expr::Num(1.0)
+            Expr::Num(1.0, None)
         } else {
             NIL
         }
@@ -107,10 +120,10 @@ impl From<bool> for Expr {
 /// use rusp::expr::{intern, Expr};
 ///
 /// let symbol = intern("foo");
-/// assert_eq!(symbol, Expr::Sym(String::from("foo")));
+/// assert_eq!(symbol, Expr::Sym(String::from("foo"), None));
 /// ```
 pub fn intern<T: Into<String>>(name: T) -> Expr {
-    Expr::Sym(name.into())
+    Expr::Sym(name.into(), None)
 }
 
 #[cfg(test)]
@@ -118,7 +131,7 @@ pub mod test_utils {
     use super::Expr;
 
     pub fn num<T: Into<f64>>(value: T) -> Expr {
-        Expr::Num(value.into())
+        Expr::Num(value.into(), None)
     }
 }
 

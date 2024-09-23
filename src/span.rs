@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter, Result};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Loc {
     pub line: usize,
     pub column: usize,
@@ -18,7 +18,7 @@ impl Display for Loc {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Span {
     pub loc: Loc,
     pub len: usize,

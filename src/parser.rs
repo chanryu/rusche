@@ -76,9 +76,9 @@ impl Parser {
                     continue;
                 }
                 Token::CloseParen(_) => self.end_list(token)?,
-                Token::Sym(_, name) => Expr::Sym(name),
+                Token::Sym(span, name) => Expr::Sym(name, Some(span)),
                 Token::Str(span, text) => Expr::Str(text, Some(span)),
-                Token::Num(_, value) => Expr::Num(value),
+                Token::Num(span, value) => Expr::Num(value, Some(span)),
             };
 
             loop {
