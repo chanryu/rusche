@@ -10,9 +10,9 @@ pub enum Token {
     Quasiquote(Loc),
     Unquote(Loc),
     UnquoteSplicing(Loc),
-    Num(Span, f64),
-    Str(Span, String),
-    Sym(Span, String),
+    Num(f64, Span),
+    Str(String, Span),
+    Sym(String, Span),
 }
 
 impl Token {
@@ -24,7 +24,7 @@ impl Token {
             | Token::Quasiquote(loc)
             | Token::Unquote(loc) => Span::new(*loc, 1),
             Token::UnquoteSplicing(loc) => Span::new(*loc, 2),
-            Token::Num(span, _) | Token::Str(span, _) | Token::Sym(span, _) => *span,
+            Token::Num(_, span) | Token::Str(_, span) | Token::Sym(_, span) => *span,
         }
     }
 
@@ -36,9 +36,9 @@ impl Token {
             | Token::Quasiquote(loc)
             | Token::Unquote(loc)
             | Token::UnquoteSplicing(loc)
-            | Token::Num(Span { loc, .. }, _)
-            | Token::Str(Span { loc, .. }, _)
-            | Token::Sym(Span { loc, .. }, _) => *loc,
+            | Token::Num(_, Span { loc, .. })
+            | Token::Str(_, Span { loc, .. })
+            | Token::Sym(_, Span { loc, .. }) => *loc,
         }
     }
 }
@@ -69,9 +69,9 @@ impl Display for Token {
             Token::Quasiquote(_) => write!(f, "`"),
             Token::Unquote(_) => write!(f, ","),
             Token::UnquoteSplicing(_) => write!(f, ",@"),
-            Token::Num(_, value) => write!(f, "{}", value),
-            Token::Str(_, text) => write!(f, "\"{}\"", text),
-            Token::Sym(_, name) => write!(f, "{}", name),
+            Token::Num(value, _) => write!(f, "{}", value),
+            Token::Str(text, _) => write!(f, "\"{}\"", text),
+            Token::Sym(name, _) => write!(f, "{}", name),
         }
     }
 }
@@ -90,14 +90,14 @@ mod tests {
         assert_eq!(expected_loc, Token::Quasiquote(loc).loc());
         assert_eq!(expected_loc, Token::Unquote(loc).loc());
         assert_eq!(expected_loc, Token::UnquoteSplicing(loc).loc());
-        assert_eq!(expected_loc, Token::Num(Span::new(loc, 1), 0.0).loc());
+        assert_eq!(expected_loc, Token::Num(0.0, Span::new(loc, 1)).loc());
         assert_eq!(
             expected_loc,
-            Token::Str(Span::new(loc, 5), "str".to_string()).loc()
+            Token::Str("str".to_string(), Span::new(loc, 5)).loc()
         );
         assert_eq!(
             expected_loc,
-            Token::Sym(Span::new(loc, 3), "sym".to_string()).loc()
+            Token::Sym("sym".to_string(), Span::new(loc, 3)).loc()
         );
     }
 
@@ -129,7 +129,7 @@ mod tests {
                 assert_eq!(
                     format!(
                         "{}",
-                        Token::$token_case(Span::new(Loc::new(1, 1), 1), $value)
+                        Token::$token_case($value, Span::new(Loc::new(1, 1), 1))
                     ),
                     $formatted
                 );
