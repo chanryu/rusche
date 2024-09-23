@@ -9,22 +9,22 @@ pub enum Expr {
     Str(String, Option<Span>),
     Sym(String, Option<Span>),
     Proc(Proc),
-    List(List),
+    List(List, Option<Span>),
 }
 
-pub const NIL: Expr = Expr::List(List::Nil);
+pub const NIL: Expr = Expr::List(List::Nil, None);
 
 impl Expr {
     pub fn is_atom(&self) -> bool {
         match self {
-            Expr::List(List::Cons(_)) => false,
+            Expr::List(List::Cons(_), _) => false,
             _ => true,
         }
     }
 
     pub fn is_nil(&self) -> bool {
         match self {
-            Expr::List(List::Nil) => true,
+            Expr::List(List::Nil, _) => true,
             _ => false,
         }
     }
@@ -41,7 +41,7 @@ impl PartialEq for Expr {
             (Expr::Str(lhs, _), Expr::Str(rhs, _)) => lhs == rhs,
             (Expr::Sym(lhs, _), Expr::Sym(rhs, _)) => lhs == rhs,
             (Expr::Proc(lhs), Expr::Proc(rhs)) => lhs == rhs,
-            (Expr::List(lhs), Expr::List(rhs)) => lhs == rhs,
+            (Expr::List(lhs, _), Expr::List(rhs, _)) => lhs == rhs,
             _ => false,
         }
     }
@@ -54,14 +54,14 @@ impl fmt::Display for Expr {
             Expr::Str(text, _) => write!(f, "\"{}\"", text), // TODO: escape control chars
             Expr::Sym(name, _) => write!(f, "{}", name),
             Expr::Proc(proc) => write!(f, "<{}>", proc.fingerprint()),
-            Expr::List(list) => write!(f, "{}", list),
+            Expr::List(list, _) => write!(f, "{}", list),
         }
     }
 }
 
 impl From<List> for Expr {
     fn from(val: List) -> Self {
-        Expr::List(val)
+        Expr::List(val, None)
     }
 }
 

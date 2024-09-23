@@ -26,7 +26,7 @@ pub fn quasiquote(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 }
 
 fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Expr>, EvalError> {
-    let Expr::List(list) = expr else {
+    let Expr::List(list, _) = expr else {
         return Ok(vec![expr.clone()]);
     };
 
@@ -52,7 +52,7 @@ fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Ex
         Some("unquote-splicing") => {
             if let Some(cdar) = cons.cdar() {
                 match eval(cdar, env)? {
-                    Expr::List(list) => {
+                    Expr::List(list, _) => {
                         // TODO: implement consuming `into_iter()`
                         exprs.extend(list.iter().map(|e| e.clone()));
                     }

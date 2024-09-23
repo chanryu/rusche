@@ -17,7 +17,7 @@ pub fn eval(expr: &Expr, env: &Rc<Env>) -> EvalResult {
             Some(expr) => Ok(expr.clone()),
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
-        Expr::List(List::Cons(cons)) => match cons.car.as_ref() {
+        Expr::List(List::Cons(cons), _) => match cons.car.as_ref() {
             Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, env),
             Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, env),
             _ => {
