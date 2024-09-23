@@ -91,12 +91,15 @@ pub fn define(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 
             env.define(
                 name,
-                Expr::Proc(Proc::Closure {
-                    name: Some(name.to_string()),
-                    formal_args: make_formal_args(&cons.cdr)?,
-                    body: Box::new(iter.into()),
-                    outer_env: env.clone(),
-                }),
+                Expr::Proc(
+                    Proc::Closure {
+                        name: Some(name.to_string()),
+                        formal_args: make_formal_args(&cons.cdr)?,
+                        body: Box::new(iter.into()),
+                        outer_env: env.clone(),
+                    },
+                    None,
+                ),
             );
             Ok(NIL)
         }
@@ -129,11 +132,14 @@ pub fn defmacro(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
 
     env.define(
         macro_name,
-        Expr::Proc(Proc::Macro {
-            name: Some(macro_name.clone()),
-            formal_args,
-            body: Box::new(iter.into()),
-        }),
+        Expr::Proc(
+            Proc::Macro {
+                name: Some(macro_name.clone()),
+                formal_args,
+                body: Box::new(iter.into()),
+            },
+            None, // TODO: add span
+        ),
     );
 
     Ok(NIL)
@@ -158,12 +164,15 @@ pub fn lambda(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
         return Err(make_syntax_error(proc_name, args));
     };
 
-    Ok(Expr::Proc(Proc::Closure {
-        name: None,
-        formal_args: make_formal_args(list)?,
-        body: Box::new(iter.into()),
-        outer_env: env.clone(),
-    }))
+    Ok(Expr::Proc(
+        Proc::Closure {
+            name: None,
+            formal_args: make_formal_args(list)?,
+            body: Box::new(iter.into()),
+            outer_env: env.clone(),
+        },
+        None, // TODO: add span
+    ))
 }
 
 pub fn set(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {

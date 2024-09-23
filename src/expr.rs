@@ -8,7 +8,7 @@ pub enum Expr {
     Num(f64, Option<Span>),
     Str(String, Option<Span>),
     Sym(String, Option<Span>),
-    Proc(Proc),
+    Proc(Proc, Option<Span>),
     List(List, Option<Span>),
 }
 
@@ -40,7 +40,7 @@ impl PartialEq for Expr {
             (Expr::Num(lhs, _), Expr::Num(rhs, _)) => lhs == rhs,
             (Expr::Str(lhs, _), Expr::Str(rhs, _)) => lhs == rhs,
             (Expr::Sym(lhs, _), Expr::Sym(rhs, _)) => lhs == rhs,
-            (Expr::Proc(lhs), Expr::Proc(rhs)) => lhs == rhs,
+            (Expr::Proc(lhs, _), Expr::Proc(rhs, _)) => lhs == rhs,
             (Expr::List(lhs, _), Expr::List(rhs, _)) => lhs == rhs,
             _ => false,
         }
@@ -53,7 +53,7 @@ impl fmt::Display for Expr {
             Expr::Num(value, _) => write!(f, "{}", value),
             Expr::Str(text, _) => write!(f, "\"{}\"", text), // TODO: escape control chars
             Expr::Sym(name, _) => write!(f, "{}", name),
-            Expr::Proc(proc) => write!(f, "<{}>", proc.fingerprint()),
+            Expr::Proc(proc, _) => write!(f, "<{}>", proc.fingerprint()),
             Expr::List(list, _) => write!(f, "{}", list),
         }
     }

@@ -21,7 +21,7 @@ pub fn eval(expr: &Expr, env: &Rc<Env>) -> EvalResult {
             Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, env),
             Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, env),
             _ => {
-                if let Expr::Proc(proc) = eval(&cons.car, env)? {
+                if let Expr::Proc(proc, _) = eval(&cons.car, env)? {
                     let args = &cons.cdr;
                     proc.invoke(args, env)
                 } else {
