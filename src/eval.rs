@@ -138,7 +138,7 @@ impl Drop for Evaluator {
             env.upgrade().map(|env| env.gc_sweep());
         });
 
-        // at this point, we should only have `root_env`
+        // at this point, we should only have `context.env`
         debug_assert_eq!(
             1,
             self.all_envs
