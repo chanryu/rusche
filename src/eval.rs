@@ -48,7 +48,7 @@ pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
 
 pub struct Evaluator {
     all_envs: Rc<RefCell<Vec<Weak<Env>>>>,
-    root_env: Rc<Env>,
+    context: EvalContext,
 }
 
 impl Evaluator {
@@ -58,7 +58,10 @@ impl Evaluator {
 
         all_envs.borrow_mut().push(Rc::downgrade(&root_env));
 
-        Self { all_envs, root_env }
+        Self {
+            all_envs,
+            context: EvalContext { env: root_env },
+        }
     }
 
     pub fn with_builtin() -> Self {
@@ -68,7 +71,7 @@ impl Evaluator {
     }
 
     pub fn root_env(&self) -> &Rc<Env> {
-        return &self.root_env;
+        return &self.context.env;
     }
 
     pub fn root_context(&self) -> EvalContext {
