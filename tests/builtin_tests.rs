@@ -1,8 +1,7 @@
 mod common;
 
 use common::{eval_str, eval_str_env};
-use rusp::env::Env;
-use rusp::eval::Evaluator;
+use rusp::eval::{EvalContext, Evaluator};
 
 #[test]
 fn test_car() {
@@ -25,32 +24,32 @@ fn test_cond() {
 #[test]
 fn test_define_variable() {
     let evaluator = Evaluator::with_builtin();
-    let outer_env = evaluator.root_env();
-    let _ = eval_str_env("(define x 1)", &outer_env);
-    assert_eq!(eval_str_env("x", &outer_env), "1");
-    let _ = eval_str_env("(set! x 2)", &outer_env);
-    assert_eq!(eval_str_env("x", &outer_env), "2");
+    let outer_context = evaluator.context();
+    let _ = eval_str_env("(define x 1)", &outer_context);
+    assert_eq!(eval_str_env("x", &outer_context), "1");
+    let _ = eval_str_env("(set! x 2)", &outer_context);
+    assert_eq!(eval_str_env("x", &outer_context), "2");
 
-    let inner_env = Env::derive_from(&outer_env);
+    let inner_context = EvalContext::derive_from(&outer_context);
 
-    let _ = eval_str_env("(define y 100)", &inner_env);
-    assert_eq!(eval_str_env("y", &inner_env), "100");
-    let _ = eval_str_env("(set! y 200)", &inner_env);
-    assert_eq!(eval_str_env("y", &inner_env), "200");
+    let _ = eval_str_env("(define y 100)", &inner_context);
+    assert_eq!(eval_str_env("y", &inner_context), "100");
+    let _ = eval_str_env("(set! y 200)", &inner_context);
+    assert_eq!(eval_str_env("y", &inner_context), "200");
 
-    assert_eq!(eval_str_env("x", &inner_env), "2");
-    assert!(eval_str_env("y", &outer_env).starts_with("Err:"));
+    assert_eq!(eval_str_env("x", &inner_context), "2");
+    assert!(eval_str_env("y", &outer_context).starts_with("Err:"));
 }
 
 #[test]
 fn test_define_lambda() {
     let evaluator = Evaluator::with_builtin();
-    let env = evaluator.root_env();
+    let context = evaluator.context();
     let _ = eval_str_env(
         "(define (do-math x y) (num-subtract (num-multiply x 2) y))",
-        env,
+        context,
     );
-    assert_eq!(eval_str_env("(do-math 50 1)", &env), "99");
+    assert_eq!(eval_str_env("(do-math 50 1)", context), "99");
 }
 
 #[test]
@@ -66,17 +65,17 @@ fn test_lambda() {
 #[test]
 fn test_set() {
     let evaluator = Evaluator::with_builtin();
-    let outer_env = evaluator.root_env();
-    let inner_env = Env::derive_from(&outer_env);
+    let outer_context = evaluator.context();
+    let inner_context = EvalContext::derive_from(&outer_context);
 
-    let _ = eval_str_env("(define x 1)", &outer_env);
-    assert_eq!(eval_str_env("x", &outer_env), "1");
-    let _ = eval_str_env("(set! x 2)", &outer_env);
-    assert_eq!(eval_str_env("x", &outer_env), "2");
+    let _ = eval_str_env("(define x 1)", &outer_context);
+    assert_eq!(eval_str_env("x", &outer_context), "1");
+    let _ = eval_str_env("(set! x 2)", &outer_context);
+    assert_eq!(eval_str_env("x", &outer_context), "2");
 
-    let _ = eval_str_env("(set! x 3)", &inner_env);
-    assert_eq!(eval_str_env("x", &inner_env), "3");
-    assert_eq!(eval_str_env("x", &outer_env), "3");
+    let _ = eval_str_env("(set! x 3)", &inner_context);
+    assert_eq!(eval_str_env("x", &inner_context), "3");
+    assert_eq!(eval_str_env("x", &outer_context), "3");
 }
 
 #[test]

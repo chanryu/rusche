@@ -1,16 +1,15 @@
-use std::{io::Write, rc::Rc};
+use std::io::Write;
 
 use rusp::{
     builtin::utils::{eval_to_str, get_exact_1_arg},
-    env::Env,
-    eval::{eval, EvalResult},
+    eval::{eval, EvalContext, EvalResult},
     expr::{Expr, NIL},
     list::List,
 };
 
-pub fn print(_: &str, args: &List, env: &Rc<Env>) -> EvalResult {
+pub fn print(_: &str, args: &List, context: &EvalContext) -> EvalResult {
     for expr in args.iter() {
-        match eval(expr, env)? {
+        match eval(expr, context)? {
             Expr::Str(text, _) => print!("{}", text), // w/o double quotes
             expr => print!("{}", expr),
         }
@@ -19,7 +18,7 @@ pub fn print(_: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     Ok(NIL)
 }
 
-pub fn read(_: &str, _: &List, _: &Rc<Env>) -> EvalResult {
+pub fn read(_: &str, _: &List, _: &EvalContext) -> EvalResult {
     let mut input = String::new();
     if let Err(error) = std::io::stdin().read_line(&mut input) {
         return Err(format!("Error reading input: {}", error));
@@ -27,9 +26,9 @@ pub fn read(_: &str, _: &List, _: &Rc<Env>) -> EvalResult {
     Ok(Expr::from(input.trim()))
 }
 
-pub fn parse_num(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
+pub fn parse_num(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
-    let text = eval_to_str(proc_name, expr, env)?;
+    let text = eval_to_str(proc_name, expr, context)?;
 
     match text.parse::<f64>() {
         Ok(num) => Ok(Expr::from(num)),
@@ -45,7 +44,7 @@ mod tests {
     #[test]
     fn test_parse_num() {
         let evaluator = Evaluator::with_builtin();
-        let parse_num = |args| parse_num("parse-num", &args, evaluator.root_env());
+        let parse_num = |args| parse_num("parse-num", &args, &evaluator.context());
 
         assert_eq!(parse_num(list!("1")), Ok(Expr::from(1)));
         assert_eq!(parse_num(list!("-24.5")), Ok(Expr::from(-24.5)));
