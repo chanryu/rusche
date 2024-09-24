@@ -121,12 +121,11 @@ impl Env {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{eval::Evaluator, expr::test_utils::num};
+    use crate::expr::test_utils::num;
 
     #[test]
     fn test_set() {
-        let evaluator = Evaluator::new();
-        let env = evaluator.root_env();
+        let env = Env::root(Weak::new());
         assert_eq!(env.vars.borrow().len(), 0);
         env.define("one", 1);
         assert_eq!(env.vars.borrow().get("one"), Some(&num(1)));
@@ -134,8 +133,7 @@ mod tests {
 
     #[test]
     fn test_update() {
-        let evaluator = Evaluator::new();
-        let env = evaluator.root_env();
+        let env = Env::root(Weak::new());
         assert_eq!(env.update("name", 1), false);
 
         env.define("name", 0);
@@ -144,8 +142,7 @@ mod tests {
 
     #[test]
     fn test_lookup() {
-        let evaluator = Evaluator::new();
-        let env = evaluator.root_env();
+        let env = Env::root(Weak::new());
         assert_eq!(env.lookup("one"), None);
         env.define("one", num(1));
         assert_eq!(env.lookup("one"), Some(num(1)));
@@ -153,8 +150,7 @@ mod tests {
 
     #[test]
     fn test_derive_update() {
-        let evaluator = Evaluator::new();
-        let base = evaluator.root_env();
+        let base = Env::root(Weak::new());
         let derived = Env::derive_from(&base);
 
         base.define("one", 1);
@@ -170,8 +166,7 @@ mod tests {
 
     #[test]
     fn test_derive_lookup() {
-        let evaluator = Evaluator::new();
-        let base = evaluator.root_env();
+        let base = Env::root(Weak::new());
         let derived = Env::derive_from(&base);
 
         assert_eq!(derived.lookup("two"), None);
@@ -185,8 +180,7 @@ mod tests {
 
     #[test]
     fn test_clone() {
-        let evaluator = Evaluator::new();
-        let original = evaluator.root_env();
+        let original = Env::root(Weak::new());
         let cloned = original.clone();
 
         original.define("one", 1);
