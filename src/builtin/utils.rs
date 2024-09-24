@@ -1,7 +1,4 @@
-use std::rc::Rc;
-
-use crate::env::Env;
-use crate::eval::{eval, EvalError};
+use crate::eval::{eval, EvalContext, EvalError};
 use crate::expr::{intern, Expr};
 use crate::list::{cons, List};
 
@@ -97,8 +94,12 @@ pub fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
     Ok(formal_args)
 }
 
-pub fn eval_to_str(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<String, EvalError> {
-    match eval(expr, env)? {
+pub fn eval_to_str(
+    proc_name: &str,
+    expr: &Expr,
+    context: &EvalContext,
+) -> Result<String, EvalError> {
+    match eval(expr, context)? {
         Expr::Str(text, _) => Ok(text),
         _ => Err(format!(
             "{proc_name}: {expr} does not evaluate to a string."
@@ -106,8 +107,8 @@ pub fn eval_to_str(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<String
     }
 }
 
-pub fn eval_to_num(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<f64, EvalError> {
-    match eval(expr, env)? {
+pub fn eval_to_num(proc_name: &str, expr: &Expr, context: &EvalContext) -> Result<f64, EvalError> {
+    match eval(expr, context)? {
         Expr::Num(value, _) => Ok(value),
         _ => Err(format!(
             "{proc_name}: {expr} does not evaluate to a number."

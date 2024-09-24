@@ -23,7 +23,7 @@ impl Env {
         })
     }
 
-    pub fn derive_from(base: &Rc<Env>) -> Rc<Self> {
+    pub(crate) fn derive_from(base: &Rc<Env>) -> Rc<Self> {
         let derived_env = Rc::new(Self {
             base: Some(base.clone()),
             vars: RefCell::new(HashMap::new()),
@@ -103,8 +103,8 @@ impl Env {
         self.is_reachable.set(true);
 
         self.vars.borrow().values().for_each(|expr| {
-            if let Expr::Proc(Proc::Closure { outer_env, .. }, _) = expr {
-                outer_env.gc_mark();
+            if let Expr::Proc(Proc::Closure { outer_context, .. }, _) = expr {
+                outer_context.env.gc_mark();
             }
         });
     }

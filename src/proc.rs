@@ -1,12 +1,11 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::rc::Rc;
 
-use crate::env::Env;
-use crate::eval::{eval, EvalResult};
+use crate::eval::{eval, EvalContext, EvalResult};
 use crate::expr::NIL;
 use crate::list::List;
 
-pub type NativeFunc = fn(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult;
+pub type NativeFunc = fn(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult;
 
 #[derive(Clone, Debug)]
 pub enum Proc {
@@ -14,7 +13,7 @@ pub enum Proc {
         name: Option<String>,
         formal_args: Vec<String>,
         body: Box<List>,
-        outer_env: Rc<Env>,
+        outer_context: EvalContext,
     },
     Macro {
         name: Option<String>,
@@ -28,20 +27,27 @@ pub enum Proc {
 }
 
 impl Proc {
-    pub fn invoke(&self, args: &List, env: &Rc<Env>) -> EvalResult {
+    pub fn invoke(&self, args: &List, context: &EvalContext) -> EvalResult {
         match self {
             Proc::Closure {
                 name,
                 formal_args,
                 body,
-                outer_env,
-            } => eval_closure(name.as_deref(), formal_args, body, outer_env, args, env),
+                outer_context,
+            } => eval_closure(
+                name.as_deref(),
+                formal_args,
+                body,
+                outer_context,
+                args,
+                context,
+            ),
             Proc::Macro {
                 name,
                 formal_args,
                 body,
-            } => eval_macro(name.as_deref(), formal_args, body, args, env),
-            Proc::Native { name, func } => func(name, args, env),
+            } => eval_macro(name.as_deref(), formal_args, body, args, context),
+            Proc::Native { name, func } => func(name, args, context),
         }
     }
 
@@ -52,11 +58,11 @@ impl Proc {
                 name,
                 formal_args,
                 body,
-                outer_env,
+                outer_context,
             } => {
                 formal_args.hash(&mut hasher);
                 body.to_string().hash(&mut hasher);
-                Rc::as_ptr(&outer_env).hash(&mut hasher);
+                Rc::as_ptr(&outer_context.env).hash(&mut hasher);
                 format!(
                     "proc/closure:{}:{:x}",
                     name.as_deref().unwrap_or("unnamed"),
@@ -92,19 +98,19 @@ impl PartialEq for Proc {
                     name: name1,
                     formal_args: formal_args1,
                     body: body1,
-                    outer_env: outer_env1,
+                    outer_context: outer_context1,
                 },
                 Proc::Closure {
                     name: name2,
                     formal_args: formal_args2,
                     body: body2,
-                    outer_env: outer_env2,
+                    outer_context: outer_context2,
                 },
             ) => {
                 name1 == name2
                     && formal_args1 == formal_args2
                     && body1 == body2
-                    && Rc::ptr_eq(outer_env1, outer_env2)
+                    && Rc::ptr_eq(&outer_context1.env, &outer_context2.env)
             }
             (lhs, rhs) => lhs == rhs,
         }
@@ -115,19 +121,19 @@ fn eval_closure(
     closure_name: Option<&str>,
     formal_args: &Vec<String>,
     body: &List,
-    outer_env: &Rc<Env>,
+    outer_context: &EvalContext,
     actual_args: &List,
-    env: &Rc<Env>,
+    context: &EvalContext,
 ) -> EvalResult {
     let closure_name = closure_name.unwrap_or("closure");
-    let closure_env = Env::derive_from(&outer_env);
+    let closure_context = EvalContext::derive_from(&outer_context);
     let mut formal_args = formal_args.iter();
     let mut actual_args = actual_args.iter();
 
     loop {
         if let Some(formal_arg) = formal_args.next() {
             if let Some(name) = parse_name_if_variadic_args(formal_arg) {
-                closure_env.define(name, actual_args);
+                closure_context.env.define(name, actual_args);
                 break;
             }
 
@@ -135,7 +141,7 @@ fn eval_closure(
                 .next()
                 .ok_or(format!("{}: too few args", closure_name))?;
 
-            closure_env.define(formal_arg, eval(expr, env)?);
+            closure_context.env.define(formal_arg, eval(expr, context)?);
         } else {
             if actual_args.next().is_none() {
                 break;
@@ -146,7 +152,7 @@ fn eval_closure(
 
     let result = body
         .iter()
-        .try_fold(NIL, |_, expr| eval(expr, &closure_env))?;
+        .try_fold(NIL, |_, expr| eval(expr, &closure_context))?;
     Ok(result)
 }
 
@@ -155,17 +161,17 @@ fn eval_macro(
     formal_args: &Vec<String>,
     body: &List,
     actual_args: &List,
-    env: &Rc<Env>,
+    context: &EvalContext,
 ) -> EvalResult {
     let macro_name = macro_name.unwrap_or("macro");
-    let macro_env = Env::derive_from(&env);
+    let macro_context = EvalContext::derive_from(&context);
     let mut formal_args = formal_args.iter();
     let mut actual_args = actual_args.iter();
 
     loop {
         if let Some(formal_arg) = formal_args.next() {
             if let Some(name) = parse_name_if_variadic_args(formal_arg) {
-                macro_env.define(name, actual_args);
+                macro_context.env.define(name, actual_args);
                 break;
             }
 
@@ -173,7 +179,7 @@ fn eval_macro(
                 .next()
                 .ok_or(format!("{}: too few args", macro_name))?;
 
-            macro_env.define(formal_arg, expr.clone());
+            macro_context.env.define(formal_arg, expr.clone());
         } else {
             if actual_args.next().is_none() {
                 break;
@@ -184,8 +190,8 @@ fn eval_macro(
 
     let mut result = NIL;
     for expr in body.iter() {
-        let expanded = eval(expr, &macro_env)?;
-        result = eval(&expanded, env)?;
+        let expanded = eval(expr, &macro_context)?;
+        result = eval(&expanded, context)?;
     }
     Ok(result)
 }

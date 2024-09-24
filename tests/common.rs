@@ -1,16 +1,13 @@
-use std::rc::Rc;
-
-use rusp::env::Env;
-use rusp::eval::{eval, Evaluator};
+use rusp::eval::{eval, EvalContext, Evaluator};
 use rusp::lexer::Lexer;
 use rusp::parser::Parser;
 
 pub fn eval_str(text: &str) -> String {
     let evaluator = Evaluator::with_builtin();
-    eval_str_env(text, evaluator.root_env())
+    eval_str_env(text, &evaluator.root_context())
 }
 
-pub fn eval_str_env(text: &str, env: &Rc<Env>) -> String {
+pub fn eval_str_env(text: &str, context: &EvalContext) -> String {
     let mut tokens = Vec::new();
     let mut lexer = Lexer::new(text.chars());
     while let Some(token) = lexer
@@ -28,7 +25,7 @@ pub fn eval_str_env(text: &str, env: &Rc<Env>) -> String {
         panic!("Too many tokens: {}", text);
     }
 
-    match eval(&expr, env) {
+    match eval(&expr, context) {
         Ok(expr) => expr.to_string(),
         Err(error) => format!("Err: {}", error),
     }

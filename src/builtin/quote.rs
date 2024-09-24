@@ -1,19 +1,16 @@
-use std::rc::Rc;
-
 use super::{get_exact_1_arg, make_syntax_error};
-use crate::env::Env;
-use crate::eval::{eval, EvalError, EvalResult};
+use crate::eval::{eval, EvalContext, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::List;
 
-pub fn quote(proc_name: &str, args: &List, _env: &Rc<Env>) -> EvalResult {
+pub fn quote(proc_name: &str, args: &List, _context: &EvalContext) -> EvalResult {
     Ok(get_exact_1_arg(proc_name, args)?.clone())
 }
 
-pub fn quasiquote(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
+pub fn quasiquote(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
 
-    match quasiquote_expr(proc_name, expr, env) {
+    match quasiquote_expr(proc_name, expr, context) {
         Ok(mut exprs) => {
             if exprs.len() == 1 {
                 Ok(exprs.remove(0))
@@ -25,7 +22,11 @@ pub fn quasiquote(proc_name: &str, args: &List, env: &Rc<Env>) -> EvalResult {
     }
 }
 
-fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Expr>, EvalError> {
+fn quasiquote_expr(
+    proc_name: &str,
+    expr: &Expr,
+    context: &EvalContext,
+) -> Result<Vec<Expr>, EvalError> {
     let Expr::List(list, _) = expr else {
         return Ok(vec![expr.clone()]);
     };
@@ -44,14 +45,14 @@ fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Ex
     match car_name {
         Some("unquote") => {
             if let Some(cdar) = cons.cdar() {
-                exprs.push(eval(cdar, env)?);
+                exprs.push(eval(cdar, context)?);
             } else {
                 return Err(make_syntax_error("unquote", &List::Nil));
             }
         }
         Some("unquote-splicing") => {
             if let Some(cdar) = cons.cdar() {
-                match eval(cdar, env)? {
+                match eval(cdar, context)? {
                     Expr::List(list, _) => {
                         // TODO: implement consuming `into_iter()`
                         exprs.extend(list.iter().map(|e| e.clone()));
@@ -70,7 +71,7 @@ fn quasiquote_expr(proc_name: &str, expr: &Expr, env: &Rc<Env>) -> Result<Vec<Ex
         _ => {
             let mut v = Vec::new();
             for expr in list.iter() {
-                v.extend(quasiquote_expr(proc_name, expr, env)?);
+                v.extend(quasiquote_expr(proc_name, expr, context)?);
             }
             exprs.push(v.into());
         }
@@ -89,24 +90,24 @@ mod tests {
     #[test]
     fn test_quote() {
         let evaluator = Evaluator::new();
-        let env = evaluator.root_env();
+        let context = evaluator.root_context();
         // (quote (1 2)) => (1 2)
-        let result = quote("", &list!(list!(1, 2)), &env);
+        let result = quote("", &list!(list!(1, 2)), &context);
         assert_eq!(result, Ok(list!(1, 2).into()));
     }
 
     #[test]
     fn test_quasiquote() {
         let evaluator = Evaluator::new();
-        let env = evaluator.root_env();
+        let context = evaluator.root_context();
 
-        env.define("x", 2);
+        context.env.define("x", 2);
 
         // `(0 1 ,x 3) => (0 1 2 3)
         let result = quasiquote(
             "",
             &list!(list!(0, 1, list!(intern("unquote"), intern("x")), 3)),
-            &env,
+            &context,
         );
         assert_eq!(result, Ok(list!(0, 1, 2, 3).into()));
     }
@@ -114,7 +115,7 @@ mod tests {
     #[test]
     fn test_quasiquote_unquote() {
         let evaluator = Evaluator::with_builtin(); // make `num-add` available
-        let env = evaluator.root_env();
+        let context = evaluator.root_context();
 
         // (quasiquote (0 (unquote (+ 1 2)) 4)) => (0 3 4)
         let result = quasiquote(
@@ -124,7 +125,7 @@ mod tests {
                 list!(intern("unquote"), list!(intern("num-add"), 1, 2)),
                 4
             )),
-            &env,
+            &context,
         );
         assert_eq!(result, Ok(list!(0, 3, 4).into()));
     }
@@ -132,7 +133,7 @@ mod tests {
     #[test]
     fn test_quasiquote_unquote_splicing() {
         let evaluator = Evaluator::new();
-        let env = evaluator.root_env();
+        let context = evaluator.root_context();
 
         // (quasiquote (0 (unquote-splicing (quote (1 2 3))) 4)) => (0 1 2 3 4)
         let result = quasiquote(
@@ -145,7 +146,7 @@ mod tests {
                 ),
                 4
             )),
-            &env,
+            &context,
         );
         assert_eq!(result, Ok(list!(0, 1, 2, 3, 4).into()));
     }

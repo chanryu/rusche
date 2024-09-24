@@ -1,11 +1,7 @@
 mod native;
 
-use std::rc::Rc;
-
 use crate::tokenize::tokenize;
-
-use rusp::env::Env;
-use rusp::eval::{eval, Evaluator};
+use rusp::eval::{eval, EvalContext, Evaluator};
 use rusp::parser::{ParseError, Parser};
 
 const PRELUDE_SYMBOLS: [&str; 4] = [
@@ -144,27 +140,29 @@ pub trait PreludeLoader {
 impl PreludeLoader for Evaluator {
     fn with_prelude() -> Self {
         let evaulator = Self::with_builtin();
-        let env = evaulator.root_env();
+        let context = evaulator.root_context();
 
-        env.define_native_proc("print", native::print);
-        env.define_native_proc("read", native::read);
-        env.define_native_proc("parse-num", native::parse_num);
+        context.env.define_native_proc("print", native::print);
+        context.env.define_native_proc("read", native::read);
+        context
+            .env
+            .define_native_proc("parse-num", native::parse_num);
 
         for exprs in PRELUDE_SYMBOLS {
-            eval_prelude_str(exprs, env);
+            eval_prelude_str(exprs, &context);
         }
         for exprs in PRELUDE_MACROS {
-            eval_prelude_str(exprs, env);
+            eval_prelude_str(exprs, &context);
         }
         for exprs in PRELUDE_FUNCS {
-            eval_prelude_str(exprs, env);
+            eval_prelude_str(exprs, &context);
         }
 
         evaulator
     }
 }
 
-fn eval_prelude_str(text: &str, env: &Rc<Env>) {
+fn eval_prelude_str(text: &str, context: &EvalContext) {
     let tokens = tokenize(text).expect(format!("Failed to tokenize prelude: {text}").as_str());
 
     let mut parser = Parser::with_tokens(tokens);
@@ -172,7 +170,7 @@ fn eval_prelude_str(text: &str, env: &Rc<Env>) {
     loop {
         match parser.parse() {
             Ok(expr) => {
-                let _ = eval(&expr, &env)
+                let _ = eval(&expr, &context)
                     .expect(format!("Failed to evaluate prelude: {text}").as_str());
             }
             Err(ParseError::NeedMoreToken) => {
@@ -195,10 +193,10 @@ mod tests {
 
     fn eval_str(text: &str) -> String {
         let evaluator = Evaluator::with_prelude();
-        eval_str_env(text, evaluator.root_env())
+        eval_str_env(text, &evaluator.root_context())
     }
 
-    fn eval_str_env(text: &str, env: &Rc<Env>) -> String {
+    fn eval_str_env(text: &str, context: &EvalContext) -> String {
         let tokens = tokenize(text).expect(&format!("Failed to tokenize: {}", text));
         let mut parser = Parser::with_tokens(tokens);
         let expr = parser
@@ -207,7 +205,7 @@ mod tests {
         if parser.is_parsing() {
             panic!("Too many tokens: {}", text);
         }
-        eval(&expr, env)
+        eval(&expr, context)
             .expect(&format!("Failed to evaluate: {}", expr))
             .to_string()
     }
@@ -250,11 +248,11 @@ mod tests {
     #[test]
     fn test_let() {
         let evaluator = Evaluator::with_prelude();
-        let env = evaluator.root_env();
+        let context = evaluator.root_context();
 
-        assert_eq!(env.lookup("x"), None);
-        assert_eq!(eval_str_env("(let ((x 2)) (+ x 3))", env), "5");
-        assert_eq!(env.lookup("x"), None);
+        assert_eq!(context.env.lookup("x"), None);
+        assert_eq!(eval_str_env("(let ((x 2)) (+ x 3))", &context), "5");
+        assert_eq!(context.env.lookup("x"), None);
     }
 
     #[test]
