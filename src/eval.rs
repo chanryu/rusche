@@ -12,13 +12,59 @@ pub type EvalResult = Result<Expr, EvalError>;
 #[derive(Clone, Debug)]
 pub struct EvalContext {
     pub env: Rc<Env>,
+    call_stack: Rc<RefCell<Vec<String>>>,
 }
 
 impl EvalContext {
     pub fn derive_from(base: &EvalContext) -> Self {
         Self {
             env: Env::derive_from(&base.env),
+            call_stack: base.call_stack.clone(),
         }
+    }
+
+    pub fn push_call(&self, name: String) {
+        self.call_stack
+            .borrow()
+            .iter()
+            .position(|n| n == &name)
+            .map(|_| {
+                println!("Recursive call detected: {}", name);
+            });
+
+        self.call_stack.borrow_mut().push(name);
+
+        #[cfg(debug_assertions)]
+        {
+            use std::cmp::min;
+            let call_stack = self.call_stack.borrow();
+            call_stack.last().map(|name| {
+                println!(
+                    "{}{} -> {}",
+                    " ".repeat(min(call_stack.len() - 1, 100)),
+                    call_stack.len(),
+                    name
+                );
+            });
+        }
+    }
+
+    pub fn pop_call(&self) {
+        #[cfg(debug_assertions)]
+        {
+            use std::cmp::min;
+            let call_stack = self.call_stack.borrow();
+            call_stack.last().map(|name| {
+                println!(
+                    "{}{} <- {}",
+                    " ".repeat(min(call_stack.len() - 1, 100)),
+                    call_stack.len(),
+                    name
+                );
+            });
+        }
+
+        self.call_stack.borrow_mut().pop();
     }
 }
 
@@ -60,7 +106,10 @@ impl Evaluator {
 
         Self {
             all_envs,
-            context: EvalContext { env: root_env },
+            context: EvalContext {
+                env: root_env,
+                call_stack: Rc::new(RefCell::new(Vec::new())),
+            },
         }
     }
 

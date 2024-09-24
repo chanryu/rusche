@@ -28,7 +28,8 @@ pub enum Proc {
 
 impl Proc {
     pub fn invoke(&self, args: &List, context: &EvalContext) -> EvalResult {
-        match self {
+        context.push_call(self.fingerprint());
+        let result = match self {
             Proc::Closure {
                 name,
                 formal_args,
@@ -48,7 +49,9 @@ impl Proc {
                 body,
             } => eval_macro(name.as_deref(), formal_args, body, args, context),
             Proc::Native { name, func } => func(name, args, context),
-        }
+        };
+        context.pop_call();
+        result
     }
 
     pub fn fingerprint(&self) -> String {
