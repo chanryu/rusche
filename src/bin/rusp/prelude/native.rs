@@ -2,7 +2,7 @@ use std::io::Write;
 
 use rusp::{
     builtin::utils::{eval_to_str, get_exact_1_arg},
-    eval::{eval, EvalContext, EvalResult},
+    eval::{eval, EvalContext, EvalError, EvalResult},
     expr::{Expr, NIL},
     list::List,
 };
@@ -21,7 +21,10 @@ pub fn print(_: &str, args: &List, context: &EvalContext) -> EvalResult {
 pub fn read(_: &str, _: &List, _: &EvalContext) -> EvalResult {
     let mut input = String::new();
     if let Err(error) = std::io::stdin().read_line(&mut input) {
-        return Err(format!("Error reading input: {}", error));
+        return Err(EvalError::General(format!(
+            "Error reading input: {}",
+            error
+        )));
     }
     Ok(Expr::from(input.trim()))
 }
@@ -32,7 +35,10 @@ pub fn parse_num(proc_name: &str, args: &List, context: &EvalContext) -> EvalRes
 
     match text.parse::<f64>() {
         Ok(num) => Ok(Expr::from(num)),
-        Err(_) => Err(format!("{}: '{}' is not a number", proc_name, text)),
+        Err(_) => Err(EvalError::General(format!(
+            "{}: '{}' is not a number",
+            proc_name, text
+        ))),
     }
 }
 

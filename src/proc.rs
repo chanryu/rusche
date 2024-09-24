@@ -1,7 +1,7 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::rc::Rc;
 
-use crate::eval::{eval, EvalContext, EvalResult};
+use crate::eval::{eval, eval_error, EvalContext, EvalResult};
 use crate::expr::NIL;
 use crate::list::List;
 
@@ -140,16 +140,18 @@ fn eval_closure(
                 break;
             }
 
-            let expr = actual_args
-                .next()
-                .ok_or(format!("{}: too few args", closure_name))?;
+            let expr = actual_args.next().ok_or(eval_error!(
+                ArityError,
+                "{}: too few args",
+                closure_name
+            ))?;
 
             closure_context.env.define(formal_arg, eval(expr, context)?);
         } else {
             if actual_args.next().is_none() {
                 break;
             }
-            return Err(format!("{}: too many args", closure_name));
+            return Err(eval_error!(ArityError, "{}: too many args", closure_name));
         }
     }
 
@@ -178,16 +180,18 @@ fn eval_macro(
                 break;
             }
 
-            let expr = actual_args
-                .next()
-                .ok_or(format!("{}: too few args", macro_name))?;
+            let expr = actual_args.next().ok_or(eval_error!(
+                ArityError,
+                "{}: too few args",
+                macro_name
+            ))?;
 
             macro_context.env.define(formal_arg, expr.clone());
         } else {
             if actual_args.next().is_none() {
                 break;
             }
-            return Err(format!("{}: too many args", macro_name));
+            return Err(eval_error!(ArityError, "{}: too many args", macro_name));
         }
     }
 

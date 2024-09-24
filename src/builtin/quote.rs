@@ -1,5 +1,5 @@
-use super::{get_exact_1_arg, make_syntax_error};
-use crate::eval::{eval, EvalContext, EvalError, EvalResult};
+use super::{get_exact_1_arg, syntax_error};
+use crate::eval::{eval, eval_error, EvalContext, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::List;
 
@@ -15,7 +15,7 @@ pub fn quasiquote(proc_name: &str, args: &List, context: &EvalContext) -> EvalRe
             if exprs.len() == 1 {
                 Ok(exprs.remove(0))
             } else {
-                Err(make_syntax_error(proc_name, args))
+                Err(syntax_error(proc_name, args))
             }
         }
         Err(err) => Err(err),
@@ -47,7 +47,7 @@ fn quasiquote_expr(
             if let Some(cdar) = cons.cdar() {
                 exprs.push(eval(cdar, context)?);
             } else {
-                return Err(make_syntax_error("unquote", &List::Nil));
+                return Err(syntax_error("unquote", &List::Nil));
             }
         }
         Some("unquote-splicing") => {
@@ -58,14 +58,15 @@ fn quasiquote_expr(
                         exprs.extend(list.iter().map(|e| e.clone()));
                     }
                     _ => {
-                        return Err(format!(
+                        return Err(eval_error!(
+                            General,
                             "unquote-splicing: \"{}\" does not evaluate to a list",
                             cdar
                         ));
                     }
                 }
             } else {
-                return Err(make_syntax_error("unquote-splicing", &List::Nil));
+                return Err(syntax_error("unquote-splicing", &List::Nil));
             }
         }
         _ => {
