@@ -31,8 +31,8 @@ pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
         Expr::List(List::Cons(cons), _) => match cons.car.as_ref() {
-            Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, &context),
-            Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, &context),
+            Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, context),
+            Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, context),
             _ => {
                 if let Expr::Proc(proc, _) = eval(&cons.car, context)? {
                     let args = &cons.cdr;
@@ -74,14 +74,12 @@ impl Evaluator {
         return &self.context.env;
     }
 
-    pub fn root_context(&self) -> EvalContext {
-        EvalContext {
-            env: self.root_env().clone(),
-        }
+    pub fn context(&self) -> &EvalContext {
+        &self.context
     }
 
     pub fn eval(&self, expr: &Expr) -> EvalResult {
-        let result = eval(expr, &self.root_context());
+        let result = eval(expr, &self.context());
 
         // TODO: Collect garbage if needed
 

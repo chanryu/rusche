@@ -24,7 +24,7 @@ fn test_cond() {
 #[test]
 fn test_define_variable() {
     let evaluator = Evaluator::with_builtin();
-    let outer_context = evaluator.root_context();
+    let outer_context = evaluator.context();
     let _ = eval_str_env("(define x 1)", &outer_context);
     assert_eq!(eval_str_env("x", &outer_context), "1");
     let _ = eval_str_env("(set! x 2)", &outer_context);
@@ -44,12 +44,12 @@ fn test_define_variable() {
 #[test]
 fn test_define_lambda() {
     let evaluator = Evaluator::with_builtin();
-    let context = evaluator.root_context();
+    let context = evaluator.context();
     let _ = eval_str_env(
         "(define (do-math x y) (num-subtract (num-multiply x 2) y))",
-        &context,
+        context,
     );
-    assert_eq!(eval_str_env("(do-math 50 1)", &context), "99");
+    assert_eq!(eval_str_env("(do-math 50 1)", context), "99");
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn test_lambda() {
 #[test]
 fn test_set() {
     let evaluator = Evaluator::with_builtin();
-    let outer_context = evaluator.root_context();
+    let outer_context = evaluator.context();
     let inner_context = EvalContext::derive_from(&outer_context);
 
     let _ = eval_str_env("(define x 1)", &outer_context);

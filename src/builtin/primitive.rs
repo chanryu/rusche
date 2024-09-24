@@ -194,10 +194,10 @@ mod tests {
     #[test]
     fn test_define() {
         let evaluator = Evaluator::new();
-        let context = evaluator.root_context();
+        let context = evaluator.context();
 
         // (define name "value")
-        let ret = define("", &list!(intern("name"), "value"), &context);
+        let ret = define("", &list!(intern("name"), "value"), context);
         assert_eq!(ret, Ok(NIL));
         assert_eq!(context.env.lookup("name"), Some("value".into()));
     }
@@ -205,15 +205,15 @@ mod tests {
     #[test]
     fn test_eq() {
         let evaluator = Evaluator::new();
-        let context = evaluator.root_context();
+        let context = evaluator.context();
 
         // (eq 1 1) => #t
-        assert_ne!(eq("", &list!(1, 1), &context).unwrap(), NIL);
+        assert_ne!(eq("", &list!(1, 1), context).unwrap(), NIL);
         // (eq 1 2) => ()
-        assert_eq!(eq("", &list!(1, 2), &context).unwrap(), NIL);
+        assert_eq!(eq("", &list!(1, 2), context).unwrap(), NIL);
         // (eq "str" "str") => #t
-        assert_ne!(eq("", &list!("str", "str"), &context).unwrap(), NIL);
+        assert_ne!(eq("", &list!("str", "str"), context).unwrap(), NIL);
         // (eq 1 "1") => ()
-        assert_eq!(eq("", &list!(1, "1"), &context).unwrap(), NIL);
+        assert_eq!(eq("", &list!(1, "1"), context).unwrap(), NIL);
     }
 }

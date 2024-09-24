@@ -90,16 +90,16 @@ mod tests {
     #[test]
     fn test_quote() {
         let evaluator = Evaluator::new();
-        let context = evaluator.root_context();
+        let context = evaluator.context();
         // (quote (1 2)) => (1 2)
-        let result = quote("", &list!(list!(1, 2)), &context);
+        let result = quote("", &list!(list!(1, 2)), context);
         assert_eq!(result, Ok(list!(1, 2).into()));
     }
 
     #[test]
     fn test_quasiquote() {
         let evaluator = Evaluator::new();
-        let context = evaluator.root_context();
+        let context = evaluator.context();
 
         context.env.define("x", 2);
 
@@ -107,7 +107,7 @@ mod tests {
         let result = quasiquote(
             "",
             &list!(list!(0, 1, list!(intern("unquote"), intern("x")), 3)),
-            &context,
+            context,
         );
         assert_eq!(result, Ok(list!(0, 1, 2, 3).into()));
     }
@@ -115,7 +115,7 @@ mod tests {
     #[test]
     fn test_quasiquote_unquote() {
         let evaluator = Evaluator::with_builtin(); // make `num-add` available
-        let context = evaluator.root_context();
+        let context = evaluator.context();
 
         // (quasiquote (0 (unquote (+ 1 2)) 4)) => (0 3 4)
         let result = quasiquote(
@@ -125,7 +125,7 @@ mod tests {
                 list!(intern("unquote"), list!(intern("num-add"), 1, 2)),
                 4
             )),
-            &context,
+            context,
         );
         assert_eq!(result, Ok(list!(0, 3, 4).into()));
     }
@@ -133,7 +133,7 @@ mod tests {
     #[test]
     fn test_quasiquote_unquote_splicing() {
         let evaluator = Evaluator::new();
-        let context = evaluator.root_context();
+        let context = evaluator.context();
 
         // (quasiquote (0 (unquote-splicing (quote (1 2 3))) 4)) => (0 1 2 3 4)
         let result = quasiquote(
@@ -146,7 +146,7 @@ mod tests {
                 ),
                 4
             )),
-            &context,
+            context,
         );
         assert_eq!(result, Ok(list!(0, 1, 2, 3, 4).into()));
     }

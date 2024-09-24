@@ -140,7 +140,7 @@ pub trait PreludeLoader {
 impl PreludeLoader for Evaluator {
     fn with_prelude() -> Self {
         let evaulator = Self::with_builtin();
-        let context = evaulator.root_context();
+        let context = evaulator.context();
 
         context.env.define_native_proc("print", native::print);
         context.env.define_native_proc("read", native::read);
@@ -149,13 +149,13 @@ impl PreludeLoader for Evaluator {
             .define_native_proc("parse-num", native::parse_num);
 
         for exprs in PRELUDE_SYMBOLS {
-            eval_prelude_str(exprs, &context);
+            eval_prelude_str(exprs, context);
         }
         for exprs in PRELUDE_MACROS {
-            eval_prelude_str(exprs, &context);
+            eval_prelude_str(exprs, context);
         }
         for exprs in PRELUDE_FUNCS {
-            eval_prelude_str(exprs, &context);
+            eval_prelude_str(exprs, context);
         }
 
         evaulator
@@ -170,7 +170,7 @@ fn eval_prelude_str(text: &str, context: &EvalContext) {
     loop {
         match parser.parse() {
             Ok(expr) => {
-                let _ = eval(&expr, &context)
+                let _ = eval(&expr, context)
                     .expect(format!("Failed to evaluate prelude: {text}").as_str());
             }
             Err(ParseError::NeedMoreToken) => {
@@ -193,7 +193,7 @@ mod tests {
 
     fn eval_str(text: &str) -> String {
         let evaluator = Evaluator::with_prelude();
-        eval_str_env(text, &evaluator.root_context())
+        eval_str_env(text, &evaluator.context())
     }
 
     fn eval_str_env(text: &str, context: &EvalContext) -> String {
@@ -248,10 +248,10 @@ mod tests {
     #[test]
     fn test_let() {
         let evaluator = Evaluator::with_prelude();
-        let context = evaluator.root_context();
+        let context = evaluator.context();
 
         assert_eq!(context.env.lookup("x"), None);
-        assert_eq!(eval_str_env("(let ((x 2)) (+ x 3))", &context), "5");
+        assert_eq!(eval_str_env("(let ((x 2)) (+ x 3))", context), "5");
         assert_eq!(context.env.lookup("x"), None);
     }
 

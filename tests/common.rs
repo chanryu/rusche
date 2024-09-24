@@ -4,7 +4,7 @@ use rusp::parser::Parser;
 
 pub fn eval_str(text: &str) -> String {
     let evaluator = Evaluator::with_builtin();
-    eval_str_env(text, &evaluator.root_context())
+    eval_str_env(text, &evaluator.context())
 }
 
 pub fn eval_str_env(text: &str, context: &EvalContext) -> String {

@@ -164,7 +164,7 @@ fn eval_macro(
     context: &EvalContext,
 ) -> EvalResult {
     let macro_name = macro_name.unwrap_or("macro");
-    let macro_context = EvalContext::derive_from(&context);
+    let macro_context = EvalContext::derive_from(context);
     let mut formal_args = formal_args.iter();
     let mut actual_args = actual_args.iter();
 

@@ -44,7 +44,7 @@ mod tests {
     #[test]
     fn test_parse_num() {
         let evaluator = Evaluator::with_builtin();
-        let parse_num = |args| parse_num("parse-num", &args, &evaluator.root_context());
+        let parse_num = |args| parse_num("parse-num", &args, &evaluator.context());
 
         assert_eq!(parse_num(list!("1")), Ok(Expr::from(1)));
         assert_eq!(parse_num(list!("-24.5")), Ok(Expr::from(-24.5)));

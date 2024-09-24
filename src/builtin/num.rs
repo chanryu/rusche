@@ -89,84 +89,84 @@ mod tests {
     #[test]
     fn test_add() {
         let evaluator = Evaluator::new();
-        let context = evaluator.root_context();
+        let context = evaluator.context();
 
         // (+ 1) => 1
         let args = list!(1);
-        assert_eq!(add("", &args, &context), Ok(num(1)));
+        assert_eq!(add("", &args, context), Ok(num(1)));
 
         // (+ 2 1) => 3
         let args = list!(2, 1);
-        assert_eq!(add("", &args, &context), Ok(num(3)));
+        assert_eq!(add("", &args, context), Ok(num(3)));
     }
 
     #[test]
     fn test_minus() {
         let evaluator = Evaluator::new();
-        let context = evaluator.root_context();
+        let context = evaluator.context();
 
         // (- 1) => -1
         let args = list!(1);
-        assert_eq!(subtract("", &args, &context), Ok(num(-1)));
+        assert_eq!(subtract("", &args, context), Ok(num(-1)));
 
         // (- 2 1) => 1
         let args = list!(2, 1);
-        assert_eq!(subtract("", &args, &context), Ok(num(1)));
+        assert_eq!(subtract("", &args, context), Ok(num(1)));
     }
 
     #[test]
     fn test_multiply() {
         let evaluator = Evaluator::new();
-        let context = evaluator.root_context();
+        let context = evaluator.context();
 
         // (* 1) => 1
         let args = list!(1);
-        assert_eq!(multiply("", &args, &context), Ok(num(1)));
+        assert_eq!(multiply("", &args, context), Ok(num(1)));
 
         // (* 2 1) => 2
         let args = list!(2, 1);
-        assert_eq!(multiply("", &args, &context), Ok(num(2)));
+        assert_eq!(multiply("", &args, context), Ok(num(2)));
 
         // (* 3 2 1) => 6
         let args = list!(3, 2, 1);
-        assert_eq!(multiply("", &args, &context), Ok(num(6)));
+        assert_eq!(multiply("", &args, context), Ok(num(6)));
     }
 
     #[test]
     fn test_divide() {
         let evaluator = Evaluator::new();
-        let context = evaluator.root_context();
+        let context = evaluator.context();
 
         // (/ 2) => 0.5
         let args = list!(2);
-        assert_eq!(divide("", &args, &context), Ok(num(0.5)));
+        assert_eq!(divide("", &args, context), Ok(num(0.5)));
 
         // (/ 4 2) => 2
         let args = list!(4, 2);
-        assert_eq!(divide("", &args, &context), Ok(num(2)));
+        assert_eq!(divide("", &args, context), Ok(num(2)));
     }
 
     #[test]
     fn test_modulo() {
         let evaluator = Evaluator::new();
-        let context = evaluator.root_context();
+        let context = evaluator.context();
 
         // (% 1 2) => 1
-        assert_eq!(modulo("", &list!(1, 2), &context), Ok(Expr::from(1)));
+        assert_eq!(modulo("", &list!(1, 2), context), Ok(Expr::from(1)));
 
         // (% 11 3) => 2
-        assert_eq!(modulo("", &list!(11, 3), &context), Ok(num(2)));
+        assert_eq!(modulo("", &list!(11, 3), context), Ok(num(2)));
 
         // (% 11 4) => 3
-        assert_eq!(modulo("", &list!(11, 4), &context), Ok(num(3)));
+        assert_eq!(modulo("", &list!(11, 4), context), Ok(num(3)));
 
         // (% 1) => error
-        assert!(modulo("", &list!(1), &context).is_err());
+        assert!(modulo("", &list!(1), context).is_err());
 
         // (% 1 1 1) => error
-        assert!(modulo("", &list!(1, 1, 1), &context).is_err());
+        assert!(modulo("", &list!(1, 1, 1), context).is_err());
 
         // (% "1" "2") => error
-        assert!(modulo("", &list!("1", "2"), &context).is_err());
+        assert!(modulo("", &list!("1", "2"), context).is_err());
     }
 }
