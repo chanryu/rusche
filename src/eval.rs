@@ -1,48 +1,135 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
 use crate::builtin::{self, load_builtin};
 use crate::env::Env;
 use crate::expr::Expr;
-use crate::list::List;
+use crate::list::{Cons, List};
+use crate::proc::Proc;
 
 pub type EvalError = String;
 pub type EvalResult = Result<Expr, EvalError>;
 
+#[cfg(debug_assertions)]
+const SHOW_TAIL_CALL_DEBUG_INFO: bool = false;
+
 #[derive(Clone, Debug)]
 pub struct EvalContext {
     pub env: Rc<Env>,
+    call_depth: Rc<Cell<usize>>,
+
+    #[cfg(debug_assertions)]
+    call_stack: Rc<RefCell<Vec<String>>>,
 }
 
 impl EvalContext {
     pub fn derive_from(base: &EvalContext) -> Self {
         Self {
             env: Env::derive_from(&base.env),
+            call_depth: base.call_depth.clone(),
+            #[cfg(debug_assertions)]
+            call_stack: base.call_stack.clone(),
         }
+    }
+
+    pub fn push_call(&self, proc: &Proc) {
+        #[cfg(not(debug_assertions))]
+        let _ = proc;
+
+        self.call_depth.set(self.call_depth.get() + 1);
+
+        #[cfg(debug_assertions)]
+        {
+            self.call_stack.borrow_mut().push(proc.fingerprint());
+            if SHOW_TAIL_CALL_DEBUG_INFO {
+                let call_stack = self.call_stack.borrow();
+                call_stack.last().map(|name| {
+                    println!(
+                        "{:03}{} -> {}",
+                        call_stack.len() - 1,
+                        " ".repeat(call_stack.len() - 1),
+                        name
+                    );
+                });
+            }
+        }
+    }
+
+    pub fn pop_call(&self) {
+        self.call_depth.set(self.call_depth.get() - 1);
+
+        #[cfg(debug_assertions)]
+        {
+            if SHOW_TAIL_CALL_DEBUG_INFO {
+                let call_stack = self.call_stack.borrow();
+                call_stack.last().map(|name| {
+                    println!(
+                        "{:03}{} <- {}",
+                        call_stack.len() - 1,
+                        " ".repeat(call_stack.len() - 1),
+                        name
+                    );
+                });
+            }
+            self.call_stack.borrow_mut().pop();
+        }
+    }
+
+    pub fn is_in_proc(&self) -> bool {
+        self.call_depth.get() > 0
     }
 }
 
 pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
-    use builtin::quote::{quasiquote, quote};
+    eval_internal(expr, context, /*is_tail*/ false)
+}
 
+pub fn eval_tail(expr: &Expr, context: &EvalContext) -> EvalResult {
+    eval_internal(expr, context, /*is_tail*/ true)
+}
+
+fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResult {
     match expr {
         Expr::Sym(name, _) => match context.env.lookup(name) {
             Some(expr) => Ok(expr.clone()),
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
-        Expr::List(List::Cons(cons), _) => match cons.car.as_ref() {
-            Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, context),
-            Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, context),
-            _ => {
-                if let Expr::Proc(proc, _) = eval(&cons.car, context)? {
-                    let args = &cons.cdr;
-                    proc.invoke(args, context)
-                } else {
-                    Err(format!("{} does not evaluate to a callable.", cons.car))
-                }
+        Expr::List(List::Cons(cons), _) => {
+            use builtin::quote::{quasiquote, quote};
+            match cons.car.as_ref() {
+                Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, context),
+                Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, context),
+                _ => eval_s_expr(cons, context, is_tail),
             }
-        },
+        }
         _ => Ok(expr.clone()),
+    }
+}
+
+fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResult {
+    if let Expr::Proc(proc, _) = eval(&s_expr.car, context)? {
+        let args = &s_expr.cdr;
+
+        if is_tail && context.is_in_proc() {
+            Ok(Expr::TailCall {
+                proc: proc.clone(),
+                args: args.as_ref().clone(),
+                context: context.clone(),
+            })
+        } else {
+            let mut res = proc.invoke(args, context)?;
+            while let Expr::TailCall {
+                proc,
+                args,
+                context,
+            } = &res
+            {
+                res = proc.invoke(args, context)?;
+            }
+            Ok(res)
+        }
+    } else {
+        Err(format!("{} does not evaluate to a callable.", s_expr.car))
     }
 }
 
@@ -60,7 +147,12 @@ impl Evaluator {
 
         Self {
             all_envs,
-            context: EvalContext { env: root_env },
+            context: EvalContext {
+                env: root_env,
+                call_depth: Rc::new(Cell::new(0)),
+                #[cfg(debug_assertions)]
+                call_stack: Rc::new(RefCell::new(Vec::new())),
+            },
         }
     }
 

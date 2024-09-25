@@ -1,3 +1,4 @@
+use crate::eval::EvalContext;
 use crate::list::{cons, List, ListIter};
 use crate::proc::Proc;
 use crate::span::Span;
@@ -10,6 +11,14 @@ pub enum Expr {
     Sym(String, Option<Span>),
     Proc(Proc, Option<Span>),
     List(List, Option<Span>),
+
+    // Internal use only
+    TailCall {
+        proc: Proc,
+        args: List,
+        context: EvalContext,
+        // TODO: needed EvalContext here?
+    },
 }
 
 pub const NIL: Expr = Expr::List(List::Nil, None);
@@ -55,6 +64,7 @@ impl fmt::Display for Expr {
             Expr::Sym(name, _) => write!(f, "{}", name),
             Expr::Proc(proc, _) => write!(f, "<{}>", proc.fingerprint()),
             Expr::List(list, _) => write!(f, "{}", list),
+            Expr::TailCall { proc, .. } => write!(f, "<TailCall:{}>", proc.fingerprint()),
         }
     }
 }
