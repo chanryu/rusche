@@ -1,5 +1,5 @@
 use core::fmt;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
 use crate::builtin::{self, load_builtin};
@@ -92,9 +92,21 @@ impl EvalContext {
 
         self.call_stack.borrow_mut().pop();
     }
+
+    pub fn is_in_proc(&self) -> bool {
+        self.call_stack.borrow().len() > 0
+    }
 }
 
 pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
+    eval_internal(expr, context, /*is_tail*/ false)
+}
+
+pub fn eval_tail(expr: &Expr, context: &EvalContext) -> EvalResult {
+    eval_internal(expr, context, /*is_tail*/ true)
+}
+
+fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResult {
     match expr {
         Expr::Sym(name, _) => match context.env.lookup(name) {
             Some(expr) => Ok(expr.clone()),
@@ -108,7 +120,11 @@ pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
                 _ => {
                     if let Expr::Proc(proc, _) = eval(&cons.car, context)? {
                         let args = &cons.cdr;
-                        proc.invoke(args, context)
+                        if context.is_in_proc() && is_tail {
+                            todo!("return Expr::TailCall::new(proc, args, context)");
+                        } else {
+                            proc.invoke(args, context)
+                        }
                     } else {
                         Err(eval_error!(
                             TypeError,
