@@ -1,11 +1,11 @@
 use core::fmt;
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
 use crate::builtin::{self, load_builtin};
 use crate::env::Env;
 use crate::expr::Expr;
-use crate::list::List;
+use crate::list::{Cons, List};
 
 #[derive(Debug, PartialEq)]
 pub enum EvalError {
@@ -50,25 +50,16 @@ impl EvalContext {
     }
 
     pub fn push_call(&self, name: String) {
-        self.call_stack
-            .borrow()
-            .iter()
-            .position(|n| n == &name)
-            .map(|_| {
-                println!("Recursive call detected: {}", name);
-            });
-
         self.call_stack.borrow_mut().push(name);
 
         #[cfg(debug_assertions)]
         {
-            use std::cmp::min;
             let call_stack = self.call_stack.borrow();
             call_stack.last().map(|name| {
                 println!(
                     "{}{} -> {}",
-                    " ".repeat(min(call_stack.len() - 1, 100)),
-                    call_stack.len(),
+                    " ".repeat(call_stack.len() - 1),
+                    call_stack.len() - 1,
                     name
                 );
             });
@@ -78,13 +69,12 @@ impl EvalContext {
     pub fn pop_call(&self) {
         #[cfg(debug_assertions)]
         {
-            use std::cmp::min;
             let call_stack = self.call_stack.borrow();
             call_stack.last().map(|name| {
                 println!(
                     "{}{} <- {}",
-                    " ".repeat(min(call_stack.len() - 1, 100)),
-                    call_stack.len(),
+                    " ".repeat(call_stack.len() - 1),
+                    call_stack.len() - 1,
                     name
                 );
             });
@@ -117,25 +107,40 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
             match cons.car.as_ref() {
                 Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, context),
                 Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, context),
-                _ => {
-                    if let Expr::Proc(proc, _) = eval(&cons.car, context)? {
-                        let args = &cons.cdr;
-                        if context.is_in_proc() && is_tail {
-                            todo!("return Expr::TailCall::new(proc, args, context)");
-                        } else {
-                            proc.invoke(args, context)
-                        }
-                    } else {
-                        Err(eval_error!(
-                            TypeError,
-                            "{} does not evaluate to a callable.",
-                            cons.car
-                        ))
-                    }
-                }
+                _ => eval_s_expr(cons, context, is_tail),
             }
         }
         _ => Ok(expr.clone()),
+    }
+}
+
+fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResult {
+    if let Expr::Proc(proc, _) = eval(&s_expr.car, context)? {
+        let args = &s_expr.cdr;
+        if context.is_in_proc() && is_tail {
+            Ok(Expr::TailCall {
+                proc: proc.clone(),
+                args: args.as_ref().clone(),
+                context: context.clone(), // FIXME: not needed?
+            })
+        } else {
+            let mut res = proc.invoke(args, context)?;
+            while let Expr::TailCall {
+                proc,
+                args,
+                context,
+            } = &res
+            {
+                res = proc.invoke(args, context)?;
+            }
+            Ok(res)
+        }
+    } else {
+        Err(eval_error!(
+            TypeError,
+            "{} does not evaluate to a callable.",
+            s_expr.car
+        ))
     }
 }
 
