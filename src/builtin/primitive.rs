@@ -1,5 +1,5 @@
 use crate::{
-    eval::{eval, EvalContext, EvalResult},
+    eval::{eval, eval_tail, EvalContext, EvalResult},
     expr::{Expr, NIL},
     list::List,
     proc::Proc,
@@ -55,7 +55,7 @@ pub fn cond(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
                 let car = &cons.car;
                 if eval(car, context)?.is_truthy() {
                     if let Some(expr) = cons.cdar() {
-                        return eval(expr, context);
+                        return eval_tail(expr, context);
                     } else {
                         break;
                     }

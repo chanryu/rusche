@@ -31,9 +31,9 @@ impl EvalContext {
             let call_stack = self.call_stack.borrow();
             call_stack.last().map(|name| {
                 println!(
-                    "{}{} -> {}",
-                    " ".repeat(call_stack.len() - 1),
+                    "{:03}{} -> {}",
                     call_stack.len() - 1,
+                    " ".repeat(call_stack.len() - 1),
                     name
                 );
             });
@@ -46,9 +46,9 @@ impl EvalContext {
             let call_stack = self.call_stack.borrow();
             call_stack.last().map(|name| {
                 println!(
-                    "{}{} <- {}",
-                    " ".repeat(call_stack.len() - 1),
+                    "{:03}{} <- {}",
                     call_stack.len() - 1,
+                    " ".repeat(call_stack.len() - 1),
                     name
                 );
             });
@@ -95,16 +95,10 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
             Ok(Expr::TailCall {
                 proc: proc.clone(),
                 args: args.as_ref().clone(),
-                context: context.clone(), // FIXME: not needed?
             })
         } else {
             let mut res = proc.invoke(args, context)?;
-            while let Expr::TailCall {
-                proc,
-                args,
-                context,
-            } = &res
-            {
+            while let Expr::TailCall { proc, args } = &res {
                 res = proc.invoke(args, context)?;
             }
             Ok(res)

@@ -1,4 +1,3 @@
-use crate::eval::EvalContext;
 use crate::list::{cons, List, ListIter};
 use crate::proc::Proc;
 use crate::span::Span;
@@ -16,7 +15,7 @@ pub enum Expr {
     TailCall {
         proc: Proc,
         args: List,
-        context: EvalContext, // FIXME: not needed?
+        // TODO: needed EvalContext here?
     },
 }
 
