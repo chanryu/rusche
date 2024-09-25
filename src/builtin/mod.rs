@@ -7,7 +7,7 @@ mod str;
 
 use std::rc::Rc;
 
-use utils::{get_exact_1_arg, syntax_error};
+use utils::{get_exact_1_arg, make_syntax_error};
 
 use crate::env::Env;
 

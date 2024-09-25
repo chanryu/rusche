@@ -1,4 +1,4 @@
-use crate::eval::{eval, eval_error, EvalContext, EvalResult};
+use crate::eval::{eval, EvalContext, EvalResult};
 use crate::expr::Expr;
 use crate::list::List;
 
@@ -18,8 +18,7 @@ pub fn compare(proc_name: &str, args: &List, context: &EvalContext) -> EvalResul
     let result = match (eval(arg1, context)?, eval(arg2, context)?) {
         (Expr::Str(lhs, _), Expr::Str(rhs, _)) => lhs.cmp(&rhs),
         _ => {
-            return Err(eval_error!(
-                TypeError,
+            return Err(format!(
                 "{}: both arguments must evaluate to strings.",
                 proc_name
             ))
@@ -36,11 +35,9 @@ pub fn concat(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
         match eval(expr, context)? {
             Expr::Str(text, _) => result += &text,
             _ => {
-                return Err(eval_error!(
-                    TypeError,
+                return Err(format!(
                     "{}: `{}` does not evaluate to a string.",
-                    proc_name,
-                    expr
+                    proc_name, expr
                 ))
             }
         }
@@ -53,11 +50,9 @@ pub fn length(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     if let Expr::Str(text, _) = eval(expr, context)? {
         Ok(Expr::from(text.chars().count() as i32))
     } else {
-        Err(eval_error!(
-            TypeError,
+        Err(format!(
             "{}: `{}` does not evaluate to a string.",
-            proc_name,
-            expr
+            proc_name, expr
         ))
     }
 }
@@ -76,20 +71,16 @@ pub fn slice(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult 
     };
 
     if beg.fract() != 0.0 {
-        return Err(eval_error!(
-            General,
+        return Err(format!(
             "{}: start index must be an integer, but got {}.",
-            proc_name,
-            beg
+            proc_name, beg
         ));
     }
 
     if end.fract() != 0.0 {
-        return Err(eval_error!(
-            General,
+        return Err(format!(
             "{}: end index must be an integer, but got {}.",
-            proc_name,
-            end
+            proc_name, end
         ));
     }
 

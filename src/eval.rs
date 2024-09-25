@@ -1,4 +1,3 @@
-use core::fmt;
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
@@ -7,32 +6,7 @@ use crate::env::Env;
 use crate::expr::Expr;
 use crate::list::{Cons, List};
 
-#[derive(Debug, PartialEq)]
-pub enum EvalError {
-    General(String),
-    ArityError(String),
-    TypeError(String),
-    SyntaxError(String),
-}
-
-impl fmt::Display for EvalError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            EvalError::General(message) => write!(f, "EvalError: {}", message),
-            EvalError::ArityError(message) => write!(f, "ArityError: {}", message),
-            EvalError::SyntaxError(message) => write!(f, "SyntaxError: {}", message),
-            EvalError::TypeError(message) => write!(f, "TypeError: {}", message),
-        }
-    }
-}
-
-macro_rules! eval_error {
-    ($kind:ident, $($arg:tt)*) => {
-        crate::eval::EvalError::$kind(format!($($arg)*))
-    };
-}
-pub(crate) use eval_error;
-
+pub type EvalError = String;
 pub type EvalResult = Result<Expr, EvalError>;
 
 #[derive(Clone, Debug)]
@@ -100,7 +74,7 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
     match expr {
         Expr::Sym(name, _) => match context.env.lookup(name) {
             Some(expr) => Ok(expr.clone()),
-            None => Err(eval_error!(General, "Undefined symbol: {:?}", name)),
+            None => Err(format!("Undefined symbol: {:?}", name)),
         },
         Expr::List(List::Cons(cons), _) => {
             use builtin::quote::{quasiquote, quote};
@@ -136,11 +110,7 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
             Ok(res)
         }
     } else {
-        Err(eval_error!(
-            TypeError,
-            "{} does not evaluate to a callable.",
-            s_expr.car
-        ))
+        Err(format!("{} does not evaluate to a callable.", s_expr.car))
     }
 }
 
