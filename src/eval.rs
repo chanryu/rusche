@@ -85,7 +85,7 @@ pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
 }
 
 pub fn eval_tail(expr: &Expr, context: &EvalContext) -> EvalResult {
-    eval_internal(expr, context, /*is_tail*/ false)
+    eval_internal(expr, context, /*is_tail*/ true)
 }
 
 fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResult {
