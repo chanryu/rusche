@@ -97,10 +97,16 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
             Ok(Expr::TailCall {
                 proc: proc.clone(),
                 args: args.as_ref().clone(),
+                context: context.clone(),
             })
         } else {
             let mut res = proc.invoke(args, context)?;
-            while let Expr::TailCall { proc, args } = &res {
+            while let Expr::TailCall {
+                proc,
+                args,
+                context,
+            } = &res
+            {
                 println!("invoking TailCall: {}", proc.fingerprint());
                 res = proc.invoke(args, context)?;
             }

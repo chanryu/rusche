@@ -1,7 +1,7 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::rc::Rc;
 
-use crate::eval::{eval, EvalContext, EvalResult};
+use crate::eval::{eval, eval_tail, EvalContext, EvalResult};
 use crate::expr::NIL;
 use crate::list::List;
 
@@ -153,10 +153,15 @@ fn eval_closure(
         }
     }
 
-    let result = body
-        .iter()
-        .try_fold(NIL, |_, expr| eval(expr, &closure_context))?;
-    Ok(result)
+    let mut iter = body.iter().peekable();
+    while let Some(expr) = iter.next() {
+        if iter.peek().is_none() {
+            return eval_tail(expr, &closure_context);
+        } else {
+            eval(expr, &closure_context)?;
+        }
+    }
+    Ok(NIL)
 }
 
 fn eval_macro(
@@ -191,12 +196,16 @@ fn eval_macro(
         }
     }
 
-    let mut result = NIL;
-    for expr in body.iter() {
-        let expanded = eval(expr, &macro_context)?;
-        result = eval(&expanded, context)?;
+    let mut iter = body.iter().peekable();
+    while let Some(expr) = iter.next() {
+        let expanded_expr = eval(expr, &macro_context)?;
+        if iter.peek().is_none() {
+            return eval_tail(&expanded_expr, context);
+        } else {
+            eval(&expanded_expr, context)?;
+        }
     }
-    Ok(result)
+    Ok(NIL)
 }
 
 fn parse_name_if_variadic_args(name: &str) -> Option<&str> {
