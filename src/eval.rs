@@ -9,6 +9,9 @@ use crate::list::{Cons, List};
 pub type EvalError = String;
 pub type EvalResult = Result<Expr, EvalError>;
 
+#[cfg(debug_assertions)]
+const TAIL_CALL_DEBUG: bool = false;
+
 #[derive(Clone, Debug)]
 pub struct EvalContext {
     pub env: Rc<Env>,
@@ -27,7 +30,7 @@ impl EvalContext {
         self.call_stack.borrow_mut().push(name);
 
         #[cfg(debug_assertions)]
-        {
+        if TAIL_CALL_DEBUG {
             let call_stack = self.call_stack.borrow();
             call_stack.last().map(|name| {
                 println!(
@@ -42,7 +45,7 @@ impl EvalContext {
 
     pub fn pop_call(&self) {
         #[cfg(debug_assertions)]
-        {
+        if TAIL_CALL_DEBUG {
             let call_stack = self.call_stack.borrow();
             call_stack.last().map(|name| {
                 println!(
@@ -67,7 +70,7 @@ pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
 }
 
 pub fn eval_tail(expr: &Expr, context: &EvalContext) -> EvalResult {
-    eval_internal(expr, context, /*is_tail*/ true)
+    eval_internal(expr, context, /*is_tail*/ false)
 }
 
 fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResult {
@@ -93,7 +96,6 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
         let args = &s_expr.cdr;
 
         if is_tail && context.is_in_proc() {
-            println!("returning TailCall: {}", proc.fingerprint());
             Ok(Expr::TailCall {
                 proc: proc.clone(),
                 args: args.as_ref().clone(),
@@ -107,7 +109,6 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
                 context,
             } = &res
             {
-                println!("invoking TailCall: {}", proc.fingerprint());
                 res = proc.invoke(args, context)?;
             }
             Ok(res)
