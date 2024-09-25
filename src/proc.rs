@@ -28,7 +28,7 @@ pub enum Proc {
 
 impl Proc {
     pub fn invoke(&self, args: &List, context: &EvalContext) -> EvalResult {
-        context.push_call(self.fingerprint());
+        context.push_call(self);
         let result = match self {
             Proc::Closure {
                 name,

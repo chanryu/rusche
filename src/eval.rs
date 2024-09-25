@@ -1,20 +1,24 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
 use crate::builtin::{self, load_builtin};
 use crate::env::Env;
 use crate::expr::Expr;
 use crate::list::{Cons, List};
+use crate::proc::Proc;
 
 pub type EvalError = String;
 pub type EvalResult = Result<Expr, EvalError>;
 
 #[cfg(debug_assertions)]
-const TAIL_CALL_DEBUG: bool = false;
+const SHOW_TAIL_CALL_DEBUG_INFO: bool = false;
 
 #[derive(Clone, Debug)]
 pub struct EvalContext {
     pub env: Rc<Env>,
+    call_depth: Rc<Cell<usize>>,
+
+    #[cfg(debug_assertions)]
     call_stack: Rc<RefCell<Vec<String>>>,
 }
 
@@ -22,46 +26,57 @@ impl EvalContext {
     pub fn derive_from(base: &EvalContext) -> Self {
         Self {
             env: Env::derive_from(&base.env),
+            call_depth: base.call_depth.clone(),
+            #[cfg(debug_assertions)]
             call_stack: base.call_stack.clone(),
         }
     }
 
-    pub fn push_call(&self, name: String) {
-        self.call_stack.borrow_mut().push(name);
+    pub fn push_call(&self, proc: &Proc) {
+        #[cfg(not(debug_assertions))]
+        let _ = proc;
+
+        self.call_depth.set(self.call_depth.get() + 1);
 
         #[cfg(debug_assertions)]
-        if TAIL_CALL_DEBUG {
-            let call_stack = self.call_stack.borrow();
-            call_stack.last().map(|name| {
-                println!(
-                    "{:03}{} -> {}",
-                    call_stack.len() - 1,
-                    " ".repeat(call_stack.len() - 1),
-                    name
-                );
-            });
+        {
+            self.call_stack.borrow_mut().push(proc.fingerprint());
+            if SHOW_TAIL_CALL_DEBUG_INFO {
+                let call_stack = self.call_stack.borrow();
+                call_stack.last().map(|name| {
+                    println!(
+                        "{:03}{} -> {}",
+                        call_stack.len() - 1,
+                        " ".repeat(call_stack.len() - 1),
+                        name
+                    );
+                });
+            }
         }
     }
 
     pub fn pop_call(&self) {
-        #[cfg(debug_assertions)]
-        if TAIL_CALL_DEBUG {
-            let call_stack = self.call_stack.borrow();
-            call_stack.last().map(|name| {
-                println!(
-                    "{:03}{} <- {}",
-                    call_stack.len() - 1,
-                    " ".repeat(call_stack.len() - 1),
-                    name
-                );
-            });
-        }
+        self.call_depth.set(self.call_depth.get() - 1);
 
-        self.call_stack.borrow_mut().pop();
+        #[cfg(debug_assertions)]
+        {
+            if SHOW_TAIL_CALL_DEBUG_INFO {
+                let call_stack = self.call_stack.borrow();
+                call_stack.last().map(|name| {
+                    println!(
+                        "{:03}{} <- {}",
+                        call_stack.len() - 1,
+                        " ".repeat(call_stack.len() - 1),
+                        name
+                    );
+                });
+            }
+            self.call_stack.borrow_mut().pop();
+        }
     }
 
     pub fn is_in_proc(&self) -> bool {
-        self.call_stack.borrow().len() > 0
+        self.call_depth.get() > 0
     }
 }
 
@@ -134,6 +149,8 @@ impl Evaluator {
             all_envs,
             context: EvalContext {
                 env: root_env,
+                call_depth: Rc::new(Cell::new(0)),
+                #[cfg(debug_assertions)]
                 call_stack: Rc::new(RefCell::new(Vec::new())),
             },
         }
