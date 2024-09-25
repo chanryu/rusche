@@ -91,7 +91,9 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
 fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResult {
     if let Expr::Proc(proc, _) = eval(&s_expr.car, context)? {
         let args = &s_expr.cdr;
-        if context.is_in_proc() && is_tail {
+
+        if is_tail && context.is_in_proc() {
+            println!("returning TailCall: {}", proc.fingerprint());
             Ok(Expr::TailCall {
                 proc: proc.clone(),
                 args: args.as_ref().clone(),
@@ -99,6 +101,7 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
         } else {
             let mut res = proc.invoke(args, context)?;
             while let Expr::TailCall { proc, args } = &res {
+                println!("invoking TailCall: {}", proc.fingerprint());
                 res = proc.invoke(args, context)?;
             }
             Ok(res)
