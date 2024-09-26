@@ -133,7 +133,7 @@ const PRELUDE_FUNCS: [&str; 11] = [
     "#,
     // IO: read-num
     r#"
-    (define (read-num) (parse-num (read)))
+    (define (read-num) (num-parse (read)))
     "#,
 ];
 
@@ -148,9 +148,6 @@ impl PreludeLoader for Evaluator {
 
         context.env.define_native_proc("print", native::print);
         context.env.define_native_proc("read", native::read);
-        context
-            .env
-            .define_native_proc("parse-num", native::parse_num);
 
         for exprs in PRELUDE_SYMBOLS {
             eval_prelude_str(exprs, context);
