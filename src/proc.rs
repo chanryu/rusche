@@ -54,42 +54,45 @@ impl Proc {
         result
     }
 
+    pub fn identity(&self) -> String {
+        match self {
+            Proc::Closure { name, .. } => {
+                format!("proc/closure:{}", name.as_deref().unwrap_or("unnamed"),)
+            }
+            Proc::Macro { name, .. } => {
+                format!("proc/macro:{}", name.as_deref().unwrap_or("unnamed"),)
+            }
+            Proc::Native { name, .. } => {
+                format!("proc/native:{}", name)
+            }
+        }
+    }
+
     pub fn fingerprint(&self) -> String {
         let mut hasher = DefaultHasher::new();
         match self {
             Proc::Closure {
-                name,
                 formal_args,
                 body,
                 outer_context,
+                ..
             } => {
                 formal_args.hash(&mut hasher);
                 body.to_string().hash(&mut hasher);
                 Rc::as_ptr(&outer_context.env).hash(&mut hasher);
-                format!(
-                    "proc/closure:{}:{:x}",
-                    name.as_deref().unwrap_or("unnamed"),
-                    hasher.finish()
-                )
             }
             Proc::Macro {
-                name,
-                formal_args,
-                body,
+                formal_args, body, ..
             } => {
                 formal_args.hash(&mut hasher);
                 body.to_string().hash(&mut hasher);
-                format!(
-                    "proc/macro:{}:{:x}",
-                    name.as_deref().unwrap_or("unnamed"),
-                    hasher.finish()
-                )
             }
-            Proc::Native { name, func } => {
+            Proc::Native { func, .. } => {
                 func.hash(&mut hasher);
-                format!("proc/native:{}:{:x}", name, hasher.finish())
             }
         }
+
+        format!("{}:{:x}", self.identity(), hasher.finish())
     }
 }
 

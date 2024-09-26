@@ -11,7 +11,7 @@ pub type EvalError = String;
 pub type EvalResult = Result<Expr, EvalError>;
 
 #[cfg(debug_assertions)]
-const SHOW_TAIL_CALL_DEBUG_INFO: bool = false;
+const TRACE_CALL_STACK: bool = false;
 
 #[derive(Clone, Debug)]
 pub struct EvalContext {
@@ -36,21 +36,14 @@ impl EvalContext {
         #[cfg(not(debug_assertions))]
         let _ = proc;
 
-        self.call_depth.set(self.call_depth.get() + 1);
+        let depth = self.call_depth.get();
+        self.call_depth.set(depth + 1);
 
         #[cfg(debug_assertions)]
         {
-            self.call_stack.borrow_mut().push(proc.fingerprint());
-            if SHOW_TAIL_CALL_DEBUG_INFO {
-                let call_stack = self.call_stack.borrow();
-                call_stack.last().map(|name| {
-                    println!(
-                        "{:03}{} -> {}",
-                        call_stack.len() - 1,
-                        " ".repeat(call_stack.len() - 1),
-                        name
-                    );
-                });
+            self.call_stack.borrow_mut().push(proc.identity());
+            if TRACE_CALL_STACK {
+                println!("{:03}{} -> {}", depth, " ".repeat(depth), proc.identity());
             }
         }
     }
@@ -60,18 +53,14 @@ impl EvalContext {
 
         #[cfg(debug_assertions)]
         {
-            if SHOW_TAIL_CALL_DEBUG_INFO {
-                let call_stack = self.call_stack.borrow();
-                call_stack.last().map(|name| {
-                    println!(
-                        "{:03}{} <- {}",
-                        call_stack.len() - 1,
-                        " ".repeat(call_stack.len() - 1),
-                        name
-                    );
-                });
+            let identity = self.call_stack.borrow_mut().pop();
+
+            if TRACE_CALL_STACK {
+                if let Some(identity) = identity {
+                    let depth = self.call_depth.get();
+                    println!("{:03}{} <- {}", depth, " ".repeat(depth), identity);
+                }
             }
-            self.call_stack.borrow_mut().pop();
         }
     }
 
