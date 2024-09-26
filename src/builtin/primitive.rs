@@ -72,14 +72,14 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     let mut iter = args.iter();
     match iter.next() {
         Some(Expr::Sym(name, _)) => {
-            if let Some(expr) = iter.next() {
-                context.env.define(name, eval(expr, context)?);
-                Ok(NIL)
-            } else {
-                Err(format!(
+            let Some(expr) = iter.next() else {
+                return Err(format!(
                     "{proc_name}: define expects a expression after symbol"
-                ))
-            }
+                ));
+            };
+
+            context.env.define(name, eval(expr, context)?);
+            Ok(NIL)
         }
         Some(Expr::List(List::Cons(cons), _)) => {
             let Expr::Sym(name, _) = cons.car.as_ref() else {
@@ -151,7 +151,7 @@ pub fn eq(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 pub fn eval_(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
 
-    eval(&eval(expr, context)?, context)
+    eval_tail(&eval(expr, context)?, context)
 }
 
 pub fn lambda(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
