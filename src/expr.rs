@@ -2,6 +2,7 @@ use crate::eval::EvalContext;
 use crate::list::{cons, List, ListIter};
 use crate::proc::Proc;
 use crate::span::Span;
+use core::panic;
 use std::fmt;
 
 #[derive(Clone, Debug)]
@@ -12,12 +13,11 @@ pub enum Expr {
     Proc(Proc, Option<Span>),
     List(List, Option<Span>),
 
-    // Internal use only
+    /// A special case for tail-call optimization.
     TailCall {
         proc: Proc,
         args: List,
         context: EvalContext,
-        // TODO: needed EvalContext here?
     },
 }
 
@@ -64,7 +64,9 @@ impl fmt::Display for Expr {
             Expr::Sym(name, _) => write!(f, "{}", name),
             Expr::Proc(proc, _) => write!(f, "<{}>", proc.fingerprint()),
             Expr::List(list, _) => write!(f, "{}", list),
-            Expr::TailCall { proc, .. } => write!(f, "<TailCall:{}>", proc.fingerprint()),
+
+            // TailCall is a special case and should not be displayed.
+            Expr::TailCall { proc, .. } => panic!("Unexpected TailCall: {:?}", proc),
         }
     }
 }
