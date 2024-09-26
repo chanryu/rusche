@@ -63,7 +63,7 @@ const PRELUDE_MACROS: [&str; 6] = [
     "#,
 ];
 
-const PRELUDE_FUNCS: [&str; 10] = [
+const PRELUDE_FUNCS: [&str; 11] = [
     // caar, cadr, cdar, cdar
     r#"
     (define (caar lst) (car (car lst)))
@@ -130,6 +130,10 @@ const PRELUDE_FUNCS: [&str; 10] = [
     r#"
     (define (<= x y) (or (< x y) (= x y)))
     (define (>= x y) (or (> x y) (= x y)))
+    "#,
+    // IO: read-num
+    r#"
+    (define (read-num) (parse-num (read)))
     "#,
 ];
 
