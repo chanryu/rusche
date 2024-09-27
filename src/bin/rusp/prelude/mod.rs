@@ -24,11 +24,17 @@ const PRELUDE_SYMBOLS: [&str; 4] = [
 ];
 
 const PRELUDE_MACROS: [&str; 6] = [
-    // if
+    // cond
     r#"
-    (defmacro if (pred then else)
-        `(cond (,pred ,then)
-               (#t    ,else)))
+    (defmacro (cond *clauses)
+        (if (null? clauses)
+            #f                                          ; No more clauses, return #f by default
+            (let ((clause (car clauses)))
+                (if (eq? (car clause) 'else)            ; If the first clause is 'else'
+                    `(,@(cdr clause))                   ; Expand to the else expression(s)
+                    `(if ,(car clause)                  ; Otherwise, expand to an if expression
+                        (begin ,@(cdr clause))          ; If condition is true, evaluate the body
+                        (cond ,@(cdr clauses)))))))     ; Else, recursively process remaining clauses
     "#,
     // list
     r#"
