@@ -129,7 +129,7 @@ impl From<bool> for Expr {
 /// # Examples
 ///
 /// ```
-/// use rusp::expr::{intern, Expr};
+/// use rusche::expr::{intern, Expr};
 ///
 /// let symbol = intern("foo");
 /// assert_eq!(symbol, Expr::Sym(String::from("foo"), None));
