@@ -64,7 +64,7 @@ const PRELUDE_MACROS: [&str; 6] = [
     r#"
     (defmacro while (condition *body)
         `(define (loop)
-            (cond (,condition (begin ,@body (loop)))))
+            (if ,condition (begin ,@body (loop))))
         (loop))
     "#,
 ];
