@@ -63,7 +63,7 @@ const PRELUDE_MACROS: [&str; 6] = [
     "#,
 ];
 
-const PRELUDE_FUNCS: [&str; 10] = [
+const PRELUDE_FUNCS: [&str; 11] = [
     // caar, cadr, cdar, cdar
     r#"
     (define (caar lst) (car (car lst)))
@@ -131,6 +131,10 @@ const PRELUDE_FUNCS: [&str; 10] = [
     (define (<= x y) (or (< x y) (= x y)))
     (define (>= x y) (or (> x y) (= x y)))
     "#,
+    // IO: read-num
+    r#"
+    (define (read-num) (num-parse (read)))
+    "#,
 ];
 
 pub trait PreludeLoader {
@@ -144,9 +148,6 @@ impl PreludeLoader for Evaluator {
 
         context.env.define_native_proc("print", native::print);
         context.env.define_native_proc("read", native::read);
-        context
-            .env
-            .define_native_proc("parse-num", native::parse_num);
 
         for exprs in PRELUDE_SYMBOLS {
             eval_prelude_str(exprs, context);

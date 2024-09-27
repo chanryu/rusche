@@ -8,7 +8,7 @@
 (print "Enter a number: ")
 
 (let ((n 1)
-      (m (parse-num (read))))
+      (m (read-num)))
     (while (<= n m)
         (println (fizzbuzz n))
         (set! n (+ n 1))))
