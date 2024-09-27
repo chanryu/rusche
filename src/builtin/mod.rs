@@ -17,7 +17,6 @@ pub fn load_builtin(env: &Rc<Env>) {
     env.define_native_proc("car", primitive::car);
     env.define_native_proc("cdr", primitive::cdr);
     env.define_native_proc("cons", primitive::cons);
-    env.define_native_proc("cond", primitive::cond);
     env.define_native_proc("define", primitive::define);
     env.define_native_proc("defmacro", primitive::defmacro);
     env.define_native_proc("eq?", primitive::eq);

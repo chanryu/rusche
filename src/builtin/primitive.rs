@@ -46,30 +46,6 @@ pub fn cons(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     Ok(crate::list::cons(car, cdr).into())
 }
 
-pub fn cond(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let mut iter = args.iter();
-    loop {
-        match iter.next() {
-            None => {
-                return Ok(NIL);
-            }
-            Some(Expr::List(List::Cons(cons), _)) => {
-                let car = &cons.car;
-                if eval(car, context)?.is_truthy() {
-                    if let Some(expr) = cons.cdar() {
-                        return eval_tail(expr, context);
-                    } else {
-                        break;
-                    }
-                }
-            }
-            _ => break,
-        }
-    }
-
-    Err(make_syntax_error(proc_name, args))
-}
-
 pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let mut iter = args.iter();
     match iter.next() {

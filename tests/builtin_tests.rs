@@ -14,14 +14,6 @@ fn test_cdr() {
 }
 
 #[test]
-fn test_cond() {
-    assert_eq!(eval_str("(cond ('t  0) ('t  1))"), "0");
-    assert_eq!(eval_str("(cond ('t  0) ('() 1))"), "0");
-    assert_eq!(eval_str("(cond ('() 0) ('t  1))"), "1");
-    assert_eq!(eval_str("(cond ('() 0) ('() 1))"), "()");
-}
-
-#[test]
 fn test_define_variable() {
     let evaluator = Evaluator::with_builtin();
     let outer_context = evaluator.context();
@@ -55,6 +47,15 @@ fn test_define_lambda() {
 #[test]
 fn test_eval() {
     assert_eq!(eval_str("(eval '(num-add 1 2))"), "3");
+}
+
+#[test]
+fn test_if() {
+    assert_eq!(eval_str("(if 't 1)"), "1");
+    assert_eq!(eval_str("(if 't 1 2)"), "1");
+
+    assert_eq!(eval_str("(if '() 1)"), "()");
+    assert_eq!(eval_str("(if '() 1 2)"), "2");
 }
 
 #[test]
