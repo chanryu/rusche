@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use rusp::{
+use rusche::{
     eval::{eval, EvalContext, EvalResult},
     expr::{Expr, NIL},
     list::List,

@@ -1,6 +1,6 @@
-# Rusp
+# Rusche
 
-Teaching myself Rust by writing a Lisp interpreter.
+Teaching myself **Rus**t by writing a **Sche**me interpreter.
 
 ## Background
 

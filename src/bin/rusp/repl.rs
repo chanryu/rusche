@@ -1,5 +1,5 @@
 use crate::{prelude::PreludeLoader, tokenize::tokenize};
-use rusp::{
+use rusche::{
     eval::Evaluator,
     parser::{ParseError, Parser},
 };
@@ -13,9 +13,9 @@ pub fn run_repl() {
 
     loop {
         let prompt = if parser.is_parsing() {
-            ".... > "
+            "...... > "
         } else {
-            "rusp > "
+            "rusche > "
         };
 
         match rl.readline(prompt) {

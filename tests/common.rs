@@ -1,6 +1,6 @@
-use rusp::eval::{eval, EvalContext, Evaluator};
-use rusp::lexer::Lexer;
-use rusp::parser::Parser;
+use rusche::eval::{eval, EvalContext, Evaluator};
+use rusche::lexer::Lexer;
+use rusche::parser::Parser;
 
 pub fn eval_str(text: &str) -> String {
     let evaluator = Evaluator::with_builtin();

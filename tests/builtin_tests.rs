@@ -1,7 +1,7 @@
 mod common;
 
 use common::{eval_str, eval_str_env};
-use rusp::eval::{EvalContext, Evaluator};
+use rusche::eval::{EvalContext, Evaluator};
 
 #[test]
 fn test_car() {
