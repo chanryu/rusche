@@ -22,6 +22,7 @@ pub fn load_builtin(env: &Rc<Env>) {
     env.define_native_proc("defmacro", primitive::defmacro);
     env.define_native_proc("eq?", primitive::eq);
     env.define_native_proc("eval", primitive::eval_);
+    env.define_native_proc("if", primitive::if_);
     env.define_native_proc("lambda", primitive::lambda);
     env.define_native_proc("set!", primitive::set);
 
