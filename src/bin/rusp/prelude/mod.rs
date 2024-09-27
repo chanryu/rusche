@@ -24,11 +24,17 @@ const PRELUDE_SYMBOLS: [&str; 4] = [
 ];
 
 const PRELUDE_MACROS: [&str; 6] = [
-    // if
+    // cond
     r#"
-    (defmacro if (pred then else)
-        `(cond (,pred ,then)
-               (#t    ,else)))
+    (defmacro (cond *clauses)
+        (if (null? clauses)
+            #f                                          ; No more clauses, return #f by default
+            (let ((clause (car clauses)))
+                (if (eq? (car clause) 'else)            ; If the first clause is 'else'
+                    `(,@(cdr clause))                   ; Expand to the else expression(s)
+                    `(if ,(car clause)                  ; Otherwise, expand to an if expression
+                        (begin ,@(cdr clause))          ; If condition is true, evaluate the body
+                        (cond ,@(cdr clauses)))))))     ; Else, recursively process remaining clauses
     "#,
     // list
     r#"
@@ -58,7 +64,7 @@ const PRELUDE_MACROS: [&str; 6] = [
     r#"
     (defmacro while (condition *body)
         `(define (loop)
-            (cond (,condition (begin ,@body (loop)))))
+            (if ,condition (begin ,@body (loop))))
         (loop))
     "#,
 ];
@@ -278,6 +284,14 @@ mod tests {
         assert_eq!(eval_str("(append '(1) '(2))"), "(1 2)");
         assert_eq!(eval_str("(append '(1 2 3) '(4))"), "(1 2 3 4)");
         assert_eq!(eval_str("(append '(1 2 3) '(4 5 6))"), "(1 2 3 4 5 6)");
+    }
+
+    #[test]
+    fn test_cond() {
+        assert_eq!(eval_str("(cond ('t  0) ('t  1))"), "0");
+        assert_eq!(eval_str("(cond ('t  0) ('() 1))"), "0");
+        assert_eq!(eval_str("(cond ('() 0) ('t  1))"), "1");
+        assert_eq!(eval_str("(cond ('() 0) ('() 1))"), "()");
     }
 
     #[test]

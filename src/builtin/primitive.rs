@@ -5,7 +5,9 @@ use crate::{
     proc::Proc,
 };
 
-use super::utils::{get_exact_1_arg, get_exact_2_args, make_formal_args, make_syntax_error};
+use super::utils::{
+    get_2_or_3_args, get_exact_1_arg, get_exact_2_args, make_formal_args, make_syntax_error,
+};
 
 pub fn atom(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
@@ -42,30 +44,6 @@ pub fn cons(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     };
 
     Ok(crate::list::cons(car, cdr).into())
-}
-
-pub fn cond(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let mut iter = args.iter();
-    loop {
-        match iter.next() {
-            None => {
-                return Ok(NIL);
-            }
-            Some(Expr::List(List::Cons(cons), _)) => {
-                let car = &cons.car;
-                if eval(car, context)?.is_truthy() {
-                    if let Some(expr) = cons.cdar() {
-                        return eval_tail(expr, context);
-                    } else {
-                        break;
-                    }
-                }
-            }
-            _ => break,
-        }
-    }
-
-    Err(make_syntax_error(proc_name, args))
 }
 
 pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -152,6 +130,18 @@ pub fn eval_(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult 
     let expr = get_exact_1_arg(proc_name, args)?;
 
     eval_tail(&eval(expr, context)?, context)
+}
+
+pub fn if_(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let (condition, then_clause, else_clause) = get_2_or_3_args(proc_name, args)?;
+
+    if eval(condition, context)?.is_truthy() {
+        eval_tail(then_clause, context)
+    } else if let Some(else_clause) = else_clause {
+        eval_tail(else_clause, context)
+    } else {
+        Ok(NIL)
+    }
 }
 
 pub fn lambda(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
