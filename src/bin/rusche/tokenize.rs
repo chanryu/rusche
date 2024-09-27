@@ -1,4 +1,4 @@
-use rusp::{
+use rusche::{
     lexer::{LexError, Lexer},
     token::Token,
 };

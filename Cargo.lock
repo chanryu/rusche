@@ -127,7 +127,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rusp"
+name = "rusche"
 version = "0.1.0"
 dependencies = [
  "rustyline",

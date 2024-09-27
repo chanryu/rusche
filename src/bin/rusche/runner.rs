@@ -1,6 +1,6 @@
 use crate::prelude::PreludeLoader;
 use crate::tokenize::tokenize;
-use rusp::{
+use rusche::{
     eval::Evaluator,
     parser::{ParseError, Parser},
 };

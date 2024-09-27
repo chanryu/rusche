@@ -1,8 +1,8 @@
 mod native;
 
 use crate::tokenize::tokenize;
-use rusp::eval::{eval, EvalContext, Evaluator};
-use rusp::parser::{ParseError, Parser};
+use rusche::eval::{eval, EvalContext, Evaluator};
+use rusche::parser::{ParseError, Parser};
 
 const PRELUDE_SYMBOLS: [&str; 4] = [
     // #t
@@ -196,7 +196,7 @@ fn eval_prelude_str(text: &str, context: &EvalContext) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rusp::eval::Evaluator;
+    use rusche::eval::Evaluator;
 
     fn eval_str(text: &str) -> String {
         let evaluator = Evaluator::with_prelude();
