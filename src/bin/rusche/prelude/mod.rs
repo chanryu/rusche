@@ -69,7 +69,7 @@ const PRELUDE_MACROS: [&str; 6] = [
     "#,
 ];
 
-const PRELUDE_FUNCS: [&str; 11] = [
+const PRELUDE_FUNCS: [&str; 12] = [
     // caar, cadr, cdar, cdar
     r#"
     (define (caar lst) (car (car lst)))
@@ -100,6 +100,11 @@ const PRELUDE_FUNCS: [&str; 11] = [
     (define (append lst1 lst2)
         (if (null? lst1) lst2                             ; If lst1 is empty, return lst2
             (cons (car lst1) (append (cdr lst1) lst2))))  ; Otherwise, prepend the first element of lst1 and recurse
+    "#,
+    // apply
+    r#"
+    (define (apply f args)
+        (eval (cons f args)))
     "#,
     // pair
     r#"
