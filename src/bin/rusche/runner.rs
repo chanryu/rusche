@@ -32,19 +32,21 @@ fn run_file_content(text: &str) -> Result<(), String> {
 
     loop {
         match parser.parse() {
-            Ok(expr) => {
+            Ok(None) => {
+                break;
+            }
+            Ok(Some(expr)) => {
                 let _ = evaluator
                     .eval(&expr)
                     .map_err(|e| format!("Evaluation error: {}", e))?;
             }
-            Err(ParseError::NeedMoreToken) => break,
+            Err(ParseError::NeedMoreToken) => {
+                assert!(parser.is_parsing());
+                return Err("Failed to parse - incomplete expression".to_string());
+            }
             Err(e) => return Err(format!("Parsing error: {}", e)),
         }
     }
 
-    if parser.is_parsing() {
-        Err("Unexpected end of file.".to_owned())
-    } else {
-        Ok(())
-    }
+    Ok(())
 }

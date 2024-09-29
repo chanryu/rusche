@@ -1,5 +1,5 @@
 use rusche::eval::{eval, EvalContext, Evaluator};
-use rusche::lexer::Lexer;
+use rusche::lexer::tokenize;
 use rusche::parser::Parser;
 
 pub fn eval_str(text: &str) -> String {
@@ -8,25 +8,17 @@ pub fn eval_str(text: &str) -> String {
 }
 
 pub fn eval_str_env(text: &str, context: &EvalContext) -> String {
-    let mut tokens = Vec::new();
-    let mut lexer = Lexer::new(text.chars());
-    while let Some(token) = lexer
-        .get_token()
-        .expect(&format!("Failed to get token: {}", text))
-    {
-        tokens.push(token);
-    }
-
+    let tokens = tokenize(text).expect(&format!("Failed to tokenize: {}", text));
     let mut parser = Parser::with_tokens(tokens);
-    let expr = parser
+    let Some(expr) = parser
         .parse()
-        .expect(&format!("Failed to parse an expression: {}", text));
-    if parser.is_parsing() {
-        panic!("Too many tokens: {}", text);
-    }
+        .expect(&format!("Failed to parse an expression: {}", text))
+    else {
+        panic!("No expression parsed from: {}", text);
+    };
 
     match eval(&expr, context) {
-        Ok(expr) => expr.to_string(),
+        Ok(result) => result.to_string(),
         Err(error) => format!("Err: {}", error),
     }
 }

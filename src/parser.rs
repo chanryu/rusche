@@ -21,7 +21,7 @@ impl fmt::Display for ParseError {
     }
 }
 
-type ParseResult = Result<Expr, ParseError>;
+type ParseResult = Result<Option<Expr>, ParseError>;
 
 struct ParseContext {
     token: Option<Token>,
@@ -65,7 +65,14 @@ impl Parser {
 
     pub fn parse(&mut self) -> ParseResult {
         loop {
-            let token = self.get_token()?;
+            let Some(token) = self.get_token() else {
+                return if self.is_parsing() {
+                    Err(ParseError::NeedMoreToken)
+                } else {
+                    Ok(None)
+                };
+            };
+
             let mut expr = match token {
                 Token::OpenParen(_)
                 | Token::Quote(_)
@@ -98,18 +105,14 @@ impl Parser {
                     }
                     break;
                 } else {
-                    return Ok(expr);
+                    return Ok(Some(expr));
                 }
             }
         }
     }
 
-    fn get_token(&mut self) -> Result<Token, ParseError> {
-        if let Some(token) = self.tokens.pop_front() {
-            Ok(token)
-        } else {
-            Err(ParseError::NeedMoreToken)
-        }
+    fn get_token(&mut self) -> Option<Token> {
+        self.tokens.pop_front()
     }
 
     fn begin_list(&mut self, token: Token) {
@@ -119,7 +122,7 @@ impl Parser {
         })
     }
 
-    fn end_list(&mut self, token: Token) -> ParseResult {
+    fn end_list(&mut self, token: Token) -> Result<Expr, ParseError> {
         let mut list = List::Nil;
         while let Some(context) = self.contexts.pop() {
             if get_quote_name(context.token.as_ref()).is_some() {
@@ -171,7 +174,7 @@ mod tests {
             tok!(CloseParen),
         ]);
 
-        let parsed_expr = parser.parse().unwrap();
+        let parsed_expr = parser.parse().unwrap().unwrap();
         let expected_expr = list!(intern("add"), 1, 2).into();
         assert_eq!(parsed_expr, expected_expr);
     }
@@ -181,7 +184,7 @@ mod tests {
         // '1
         let mut parser = Parser::with_tokens(vec![tok!(Quote), tok!(Num(1_f64))]);
 
-        let parsed_expr = parser.parse().unwrap();
+        let parsed_expr = parser.parse().unwrap().unwrap();
         let expected_expr = list!(intern("quote"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
     }
@@ -201,7 +204,7 @@ mod tests {
             ],
         );
 
-        let parsed_expr = parser.parse().unwrap();
+        let parsed_expr = parser.parse().unwrap().unwrap();
         print!("{}", parsed_expr);
         let expected_expr = list!(intern("quote"), list!(list!(1), 2)).into();
         assert_eq!(parsed_expr, expected_expr);
@@ -214,21 +217,21 @@ mod tests {
         // `1
         parser.add_tokens(vec![tok!(Quasiquote), tok!(Num(1_f64))]);
 
-        let parsed_expr = parser.parse().unwrap();
+        let parsed_expr = parser.parse().unwrap().unwrap();
         let expected_expr = list!(intern("quasiquote"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
 
         // ,1
         parser.add_tokens(vec![tok!(Unquote), tok!(Num(1_f64))]);
 
-        let parsed_expr = parser.parse().unwrap();
+        let parsed_expr = parser.parse().unwrap().unwrap();
         let expected_expr = list!(intern("unquote"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
 
         // ,@1
         parser.add_tokens(vec![tok!(UnquoteSplicing), tok!(Num(1_f64))]);
 
-        let parsed_expr = parser.parse().unwrap();
+        let parsed_expr = parser.parse().unwrap().unwrap();
         let expected_expr = list!(intern("unquote-splicing"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
     }

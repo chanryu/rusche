@@ -46,16 +46,16 @@ fn eval_prelude_str(text: &str, context: &EvalContext) {
 
     loop {
         match parser.parse() {
-            Ok(expr) => {
+            Ok(None) => {
+                break; // we're done!
+            }
+            Ok(Some(expr)) => {
                 let _ = eval(&expr, context)
                     .expect(format!("Failed to evaluate prelude: {text}").as_str());
             }
             Err(ParseError::NeedMoreToken) => {
-                if parser.is_parsing() {
-                    panic!("Failed to parse prelude - incomplete expression: {text}");
-                } else {
-                    break; // we're done!
-                }
+                assert!(parser.is_parsing());
+                panic!("Failed to parse prelude - incomplete expression: {text}");
             }
             Err(ParseError::UnexpectedToken(token)) => {
                 panic!("Failed to parse prelude - unexpected token {token} in {text}");

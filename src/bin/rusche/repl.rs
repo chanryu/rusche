@@ -37,7 +37,10 @@ pub fn run_repl() {
 
                 loop {
                     match parser.parse() {
-                        Ok(expr) => match evaluator.eval(&expr) {
+                        Ok(None) => {
+                            break;
+                        }
+                        Ok(Some(expr)) => match evaluator.eval(&expr) {
                             Ok(result) => {
                                 println!("; {}", result);
                             }

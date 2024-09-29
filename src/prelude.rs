@@ -167,16 +167,16 @@ fn eval_prelude_str(text: &str, context: &EvalContext) {
 
     loop {
         match parser.parse() {
-            Ok(expr) => {
+            Ok(None) => {
+                break; // we're done!
+            }
+            Ok(Some(expr)) => {
                 let _ = eval(&expr, context)
                     .expect(format!("Failed to evaluate prelude: {text}").as_str());
             }
             Err(ParseError::NeedMoreToken) => {
-                if parser.is_parsing() {
-                    panic!("Failed to parse prelude - incomplete expression: {text}");
-                } else {
-                    break; // we're done!
-                }
+                assert!(parser.is_parsing());
+                panic!("Failed to parse prelude - incomplete expression: {text}");
             }
             Err(ParseError::UnexpectedToken(token)) => {
                 panic!("Failed to parse prelude - unexpected token {token} in {text}");
@@ -187,6 +187,8 @@ fn eval_prelude_str(text: &str, context: &EvalContext) {
 
 #[cfg(test)]
 mod tests {
+    use core::panic;
+
     use super::*;
     use crate::eval::Evaluator;
 
@@ -198,12 +200,12 @@ mod tests {
     fn eval_str_env(text: &str, context: &EvalContext) -> String {
         let tokens = tokenize(text).expect(&format!("Failed to tokenize: {}", text));
         let mut parser = Parser::with_tokens(tokens);
-        let expr = parser
+        let Some(expr) = parser
             .parse()
-            .expect(&format!("Failed to parse an expression: {}", text));
-        if parser.is_parsing() {
-            panic!("Too many tokens: {}", text);
-        }
+            .expect(&format!("Failed to parse an expression: {}", text))
+        else {
+            panic!("No expression parsed from: {}", text);
+        };
         eval(&expr, context)
             .expect(&format!("Failed to evaluate: {}", expr))
             .to_string()
