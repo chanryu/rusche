@@ -3,16 +3,18 @@ mod common;
 use common::EvalToStr;
 use rusche::eval::{EvalContext, Evaluator};
 
+fn eval_str(src: &str) -> String {
+    Evaluator::with_prelude().eval_to_str(src)
+}
+
 #[test]
 fn test_car() {
-    let e = Evaluator::with_builtin();
-    assert_eq!(e.eval_to_str("(car '(1 2))"), "1");
+    assert_eq!(eval_str("(car '(1 2))"), "1");
 }
 
 #[test]
 fn test_cdr() {
-    let e = Evaluator::with_builtin();
-    assert_eq!(e.eval_to_str("(cdr '(1 2))"), "(2)");
+    assert_eq!(eval_str("(cdr '(1 2))"), "(2)");
 }
 
 #[test]
@@ -44,25 +46,21 @@ fn test_define_lambda() {
 
 #[test]
 fn test_eval() {
-    let e = Evaluator::with_builtin();
-    assert_eq!(e.eval_to_str("(eval '(num-add 1 2))"), "3");
+    assert_eq!(eval_str("(eval '(num-add 1 2))"), "3");
 }
 
 #[test]
 fn test_if() {
-    let e = Evaluator::with_builtin();
+    assert_eq!(eval_str("(if 't 1)"), "1");
+    assert_eq!(eval_str("(if 't 1 2)"), "1");
 
-    assert_eq!(e.eval_to_str("(if 't 1)"), "1");
-    assert_eq!(e.eval_to_str("(if 't 1 2)"), "1");
-
-    assert_eq!(e.eval_to_str("(if '() 1)"), "()");
-    assert_eq!(e.eval_to_str("(if '() 1 2)"), "2");
+    assert_eq!(eval_str("(if '() 1)"), "()");
+    assert_eq!(eval_str("(if '() 1 2)"), "2");
 }
 
 #[test]
 fn test_lambda() {
-    let e = Evaluator::with_builtin();
-    assert_eq!(e.eval_to_str("((lambda (x) (num-multiply x 2)) 5)"), "10");
+    assert_eq!(eval_str("((lambda (x) (num-multiply x 2)) 5)"), "10");
 }
 
 #[test]
