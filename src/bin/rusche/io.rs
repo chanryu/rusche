@@ -1,5 +1,5 @@
 use rusche::{
-    eval::{eval, eval_src, EvalContext, EvalResult},
+    eval::{eval, exec_src, EvalContext, EvalResult},
     expr::{Expr, NIL},
     list::List,
 };
@@ -9,7 +9,7 @@ pub fn load_io_procs(context: &EvalContext) {
     context.env.define_native_proc("print", print);
     context.env.define_native_proc("read", read);
 
-    eval_src(
+    exec_src(
         r#"
             (define (read-num) (num-parse (read)))
             (define (println *args) (print *args "\n"))

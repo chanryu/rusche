@@ -2,7 +2,6 @@ use rusche::{
     eval::Evaluator,
     lexer::tokenize,
     parser::{ParseError, Parser},
-    prelude::PreludeLoader,
 };
 
 use crate::io::load_io_procs;

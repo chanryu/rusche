@@ -1,10 +1,11 @@
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
-use crate::builtin::{self, load_builtin};
+use crate::builtin::load_builtin;
 use crate::env::Env;
 use crate::expr::Expr;
 use crate::list::{Cons, List};
+use crate::prelude::load_prelude;
 use crate::proc::Proc;
 
 pub type EvalError = String;
@@ -144,6 +145,12 @@ impl Evaluator {
         evaluator
     }
 
+    pub fn with_prelude() -> Self {
+        let evaluator = Self::with_builtin();
+        load_prelude(&evaluator.context());
+        evaluator
+    }
+
     pub fn root_env(&self) -> &Rc<Env> {
         return &self.context.env;
     }
@@ -224,7 +231,7 @@ impl Drop for Evaluator {
     }
 }
 
-pub fn eval_src(src: &str, context: &EvalContext) -> Result<(), String> {
+pub fn exec_src(src: &str, context: &EvalContext) -> Result<(), String> {
     use crate::lexer::tokenize;
     use crate::parser::{ParseError, Parser};
 
