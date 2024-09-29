@@ -38,8 +38,8 @@ pub fn load_builtin(env: &Rc<Env>) {
 
     // str
     env.define_native_proc("str?", str::is_str);
+    env.define_native_proc("str-append", str::append);
     env.define_native_proc("str-compare", str::compare);
-    env.define_native_proc("str-concat", str::concat);
     env.define_native_proc("str-length", str::length);
     env.define_native_proc("str-slice", str::slice);
 }
