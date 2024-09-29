@@ -1,7 +1,7 @@
 use crate::prelude::PreludeLoader;
-use crate::tokenize::tokenize;
 use rusche::{
     eval::Evaluator,
+    lexer::tokenize,
     parser::{ParseError, Parser},
 };
 

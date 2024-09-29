@@ -1,6 +1,7 @@
-use crate::{prelude::PreludeLoader, tokenize::tokenize};
+use crate::prelude::PreludeLoader;
 use rusche::{
     eval::Evaluator,
+    lexer::tokenize,
     parser::{ParseError, Parser},
 };
 use rustyline::{error::ReadlineError, DefaultEditor};

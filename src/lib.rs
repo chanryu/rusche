@@ -5,6 +5,7 @@ pub mod expr;
 pub mod lexer;
 pub mod list;
 pub mod parser;
+pub mod prelude;
 pub mod proc;
 pub mod span;
 pub mod token;
