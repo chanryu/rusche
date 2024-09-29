@@ -32,7 +32,7 @@ impl EvalContext {
         }
     }
 
-    pub fn push_call(&self, proc: &Proc) {
+    pub(crate) fn push_call(&self, proc: &Proc) {
         #[cfg(not(debug_assertions))]
         let _ = proc;
 
@@ -48,7 +48,7 @@ impl EvalContext {
         }
     }
 
-    pub fn pop_call(&self) {
+    pub(crate) fn pop_call(&self) {
         self.call_depth.set(self.call_depth.get() - 1);
 
         #[cfg(debug_assertions)]
@@ -64,7 +64,7 @@ impl EvalContext {
         }
     }
 
-    pub fn is_in_proc(&self) -> bool {
+    pub(crate) fn is_in_proc(&self) -> bool {
         self.call_depth.get() > 0
     }
 }
