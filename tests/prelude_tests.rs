@@ -1,26 +1,10 @@
-use rusche::{
-    eval::{eval, EvalContext, Evaluator},
-    lexer::tokenize,
-    parser::Parser,
-};
+mod common;
 
-fn eval_str(text: &str) -> String {
-    let evaluator = Evaluator::with_prelude();
-    eval_str_env(text, &evaluator.context())
-}
+use common::EvalToStr;
+use rusche::eval::Evaluator;
 
-fn eval_str_env(text: &str, context: &EvalContext) -> String {
-    let tokens = tokenize(text).expect(&format!("Failed to tokenize: {}", text));
-    let mut parser = Parser::with_tokens(tokens);
-    let Some(expr) = parser
-        .parse()
-        .expect(&format!("Failed to parse an expression: {}", text))
-    else {
-        panic!("No expression parsed from: {}", text);
-    };
-    eval(&expr, context)
-        .expect(&format!("Failed to evaluate: {}", expr))
-        .to_string()
+fn eval_str(src: &str) -> String {
+    Evaluator::with_prelude().eval_to_str(src)
 }
 
 #[test]
@@ -64,7 +48,7 @@ fn test_let() {
     let context = evaluator.context();
 
     assert_eq!(context.env.lookup("x"), None);
-    assert_eq!(eval_str_env("(let ((x 2)) (+ x 3))", context), "5");
+    assert_eq!(context.eval_to_str("(let ((x 2)) (+ x 3))"), "5");
     assert_eq!(context.env.lookup("x"), None);
 }
 
