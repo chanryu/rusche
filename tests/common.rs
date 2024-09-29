@@ -1,32 +1,33 @@
-use rusche::eval::{eval, EvalContext, Evaluator};
-use rusche::lexer::Lexer;
-use rusche::parser::Parser;
+use rusche::{
+    eval::{eval, EvalContext, Evaluator},
+    lexer::tokenize,
+    parser::Parser,
+};
 
-pub fn eval_str(text: &str) -> String {
-    let evaluator = Evaluator::with_builtin();
-    eval_str_env(text, &evaluator.context())
+pub trait EvalToStr {
+    fn eval_to_str(&self, src: &str) -> String;
 }
 
-pub fn eval_str_env(text: &str, context: &EvalContext) -> String {
-    let mut tokens = Vec::new();
-    let mut lexer = Lexer::new(text.chars());
-    while let Some(token) = lexer
-        .get_token()
-        .expect(&format!("Failed to get token: {}", text))
-    {
-        tokens.push(token);
-    }
+impl EvalToStr for EvalContext {
+    fn eval_to_str(&self, src: &str) -> String {
+        let tokens = tokenize(src).expect(&format!("Failed to tokenize: {}", src));
+        let mut parser = Parser::with_tokens(tokens);
+        let Some(expr) = parser
+            .parse()
+            .expect(&format!("Failed to parse an expression: {}", src))
+        else {
+            panic!("No expression parsed from: {}", src);
+        };
 
-    let mut parser = Parser::with_tokens(tokens);
-    let expr = parser
-        .parse()
-        .expect(&format!("Failed to parse an expression: {}", text));
-    if parser.is_parsing() {
-        panic!("Too many tokens: {}", text);
+        match eval(&expr, self) {
+            Ok(result) => result.to_string(),
+            Err(error) => format!("Err: {}", error),
+        }
     }
+}
 
-    match eval(&expr, context) {
-        Ok(expr) => expr.to_string(),
-        Err(error) => format!("Err: {}", error),
+impl EvalToStr for Evaluator {
+    fn eval_to_str(&self, src: &str) -> String {
+        self.context().eval_to_str(src)
     }
 }

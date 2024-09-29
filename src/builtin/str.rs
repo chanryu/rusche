@@ -12,23 +12,7 @@ pub fn is_str(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     }
 }
 
-pub fn compare(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let (arg1, arg2) = get_exact_2_args(proc_name, args)?;
-
-    let result = match (eval(arg1, context)?, eval(arg2, context)?) {
-        (Expr::Str(lhs, _), Expr::Str(rhs, _)) => lhs.cmp(&rhs),
-        _ => {
-            return Err(format!(
-                "{}: both arguments must evaluate to strings.",
-                proc_name
-            ))
-        }
-    };
-
-    Ok(Expr::from(result as i32))
-}
-
-pub fn concat(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+pub fn append(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let mut args = args.iter();
     let mut result = String::from("");
     while let Some(expr) = args.next() {
@@ -43,6 +27,22 @@ pub fn concat(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
         }
     }
     Ok(Expr::Str(result, None))
+}
+
+pub fn compare(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let (arg1, arg2) = get_exact_2_args(proc_name, args)?;
+
+    let result = match (eval(arg1, context)?, eval(arg2, context)?) {
+        (Expr::Str(lhs, _), Expr::Str(rhs, _)) => lhs.cmp(&rhs),
+        _ => {
+            return Err(format!(
+                "{}: both arguments must evaluate to strings.",
+                proc_name
+            ))
+        }
+    };
+
+    Ok(Expr::from(result as i32))
 }
 
 pub fn length(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -158,23 +158,23 @@ mod tests {
         let evaluator = Evaluator::new();
         let context = evaluator.context();
 
-        // (str-concat "abc" "def") => "abcdef"
+        // (str-append "abc" "def") => "abcdef"
         assert_eq!(
-            concat("", &list!("abc", "def"), context),
+            append("", &list!("abc", "def"), context),
             Ok(Expr::from("abcdef"))
         );
 
-        // (str-concat "abc" "-" "def" "-" "123") => "abc-def-123"
+        // (str-append "abc" "-" "def" "-" "123") => "abc-def-123"
         assert_eq!(
-            concat("", &list!("abc", "-", "def", "-", "123"), context),
+            append("", &list!("abc", "-", "def", "-", "123"), context),
             Ok(Expr::from("abc-def-123"))
         );
 
         // edge case: (str-conca) => ""
-        assert_eq!(concat("", &list!(), context), Ok(Expr::from("")));
+        assert_eq!(append("", &list!(), context), Ok(Expr::from("")));
 
-        // edge case: (str-concat "abc") => "abc"
-        assert_eq!(concat("", &list!("abc"), context), Ok(Expr::from("abc")));
+        // edge case: (str-append "abc") => "abc"
+        assert_eq!(append("", &list!("abc"), context), Ok(Expr::from("abc")));
     }
 
     #[test]

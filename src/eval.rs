@@ -1,10 +1,11 @@
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
-use crate::builtin::{self, load_builtin};
+use crate::builtin::load_builtin;
 use crate::env::Env;
 use crate::expr::Expr;
 use crate::list::{Cons, List};
+use crate::prelude::load_prelude;
 use crate::proc::Proc;
 
 pub type EvalError = String;
@@ -32,7 +33,7 @@ impl EvalContext {
         }
     }
 
-    pub fn push_call(&self, proc: &Proc) {
+    pub(crate) fn push_call(&self, proc: &Proc) {
         #[cfg(not(debug_assertions))]
         let _ = proc;
 
@@ -48,7 +49,7 @@ impl EvalContext {
         }
     }
 
-    pub fn pop_call(&self) {
+    pub(crate) fn pop_call(&self) {
         self.call_depth.set(self.call_depth.get() - 1);
 
         #[cfg(debug_assertions)]
@@ -64,7 +65,7 @@ impl EvalContext {
         }
     }
 
-    pub fn is_in_proc(&self) -> bool {
+    pub(crate) fn is_in_proc(&self) -> bool {
         self.call_depth.get() > 0
     }
 }
@@ -84,7 +85,7 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
         Expr::List(List::Cons(cons), _) => {
-            use builtin::quote::{quasiquote, quote};
+            use crate::builtin::quote::{quasiquote, quote};
             match cons.car.as_ref() {
                 Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, context),
                 Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, context),
@@ -148,6 +149,12 @@ impl Evaluator {
     pub fn with_builtin() -> Self {
         let evaluator = Self::new();
         load_builtin(&evaluator.root_env());
+        evaluator
+    }
+
+    pub fn with_prelude() -> Self {
+        let evaluator = Self::with_builtin();
+        load_prelude(&evaluator.context());
         evaluator
     }
 
