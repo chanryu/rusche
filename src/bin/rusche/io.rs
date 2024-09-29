@@ -1,12 +1,15 @@
-mod native;
-
-use rusche::eval::{eval, EvalContext};
-use rusche::lexer::tokenize;
-use rusche::parser::{ParseError, Parser};
+use rusche::{
+    eval::{eval, EvalContext, EvalResult},
+    expr::{Expr, NIL},
+    lexer::tokenize,
+    list::List,
+    parser::{ParseError, Parser},
+};
+use std::io::Write;
 
 pub fn load_io_procs(context: &EvalContext) {
-    context.env.define_native_proc("print", native::print);
-    context.env.define_native_proc("read", native::read);
+    context.env.define_native_proc("print", print);
+    context.env.define_native_proc("read", read);
 
     eval_prelude_str(
         r#"
@@ -15,6 +18,25 @@ pub fn load_io_procs(context: &EvalContext) {
             "#,
         context,
     );
+}
+
+fn print(_: &str, args: &List, context: &EvalContext) -> EvalResult {
+    for expr in args.iter() {
+        match eval(expr, context)? {
+            Expr::Str(text, _) => print!("{}", text), // w/o double quotes
+            expr => print!("{}", expr),
+        }
+    }
+    let _ = std::io::stdout().flush();
+    Ok(NIL)
+}
+
+fn read(_: &str, _: &List, _: &EvalContext) -> EvalResult {
+    let mut input = String::new();
+    if let Err(error) = std::io::stdin().read_line(&mut input) {
+        return Err(format!("Error reading input: {}", error));
+    }
+    Ok(Expr::from(input.trim()))
 }
 
 fn eval_prelude_str(text: &str, context: &EvalContext) {
