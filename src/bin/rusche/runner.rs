@@ -1,9 +1,11 @@
-use crate::prelude::PreludeLoader;
 use rusche::{
     eval::Evaluator,
     lexer::tokenize,
     parser::{ParseError, Parser},
+    prelude::PreludeLoader,
 };
+
+use crate::io::load_io_procs;
 
 pub fn run_file(path: &str) {
     match std::fs::read_to_string(path) {
@@ -25,6 +27,8 @@ fn run_file_content(text: &str) -> Result<(), String> {
         Parser::with_tokens(tokenize(text).map_err(|e| format!("Tokenization error: {}", e))?);
 
     let evaluator = Evaluator::with_prelude();
+
+    load_io_procs(evaluator.context());
 
     loop {
         match parser.parse() {

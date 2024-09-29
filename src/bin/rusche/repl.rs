@@ -1,16 +1,20 @@
-use crate::prelude::PreludeLoader;
 use rusche::{
     eval::Evaluator,
     lexer::tokenize,
     parser::{ParseError, Parser},
+    prelude::PreludeLoader,
 };
 use rustyline::{error::ReadlineError, DefaultEditor};
+
+use crate::io::load_io_procs;
 
 pub fn run_repl() {
     let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");
     let mut parser = Parser::new();
 
     let evaluator = Evaluator::with_prelude();
+
+    load_io_procs(evaluator.context());
 
     loop {
         let prompt = if parser.is_parsing() {

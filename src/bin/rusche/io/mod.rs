@@ -1,31 +1,20 @@
 mod native;
 
-use rusche::eval::{eval, EvalContext, Evaluator};
+use rusche::eval::{eval, EvalContext};
 use rusche::lexer::tokenize;
 use rusche::parser::{ParseError, Parser};
 
-pub trait PreludeLoader {
-    fn with_prelude() -> Self;
-}
+pub fn load_io_procs(context: &EvalContext) {
+    context.env.define_native_proc("print", native::print);
+    context.env.define_native_proc("read", native::read);
 
-impl PreludeLoader for Evaluator {
-    fn with_prelude() -> Self {
-        let evaulator = Self::with_builtin();
-        let context = evaulator.context();
-
-        context.env.define_native_proc("print", native::print);
-        context.env.define_native_proc("read", native::read);
-
-        eval_prelude_str(
-            r#"
+    eval_prelude_str(
+        r#"
             (define (read-num) (num-parse (read)))
             (define (println *args) (print *args "\n"))
             "#,
-            context,
-        );
-
-        evaulator
-    }
+        context,
+    );
 }
 
 fn eval_prelude_str(text: &str, context: &EvalContext) {
