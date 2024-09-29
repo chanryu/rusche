@@ -33,7 +33,6 @@ pub fn load_builtin(env: &Rc<Env>) {
     env.define_native_proc("num-modulo", num::modulo);
     env.define_native_proc("num-less", num::less);
     env.define_native_proc("num-greater", num::greater);
-    env.define_native_proc("num-parse", num::parse);
 
     // str
     env.define_native_proc("str?", str::is_str);
