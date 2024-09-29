@@ -1,6 +1,4 @@
-use crate::eval::{eval, EvalContext, Evaluator};
-use crate::lexer::tokenize;
-use crate::parser::{ParseError, Parser};
+use crate::eval::{eval_src, EvalContext, Evaluator};
 
 const PRELUDE_SYMBOLS: [&str; 4] = [
     // #t
@@ -147,41 +145,23 @@ impl PreludeLoader for Evaluator {
         let context = evaulator.context();
 
         for exprs in PRELUDE_SYMBOLS {
-            eval_prelude_str(exprs, context);
+            eval_prelude_src(exprs, context);
         }
         for exprs in PRELUDE_MACROS {
-            eval_prelude_str(exprs, context);
+            eval_prelude_src(exprs, context);
         }
         for exprs in PRELUDE_FUNCS {
-            eval_prelude_str(exprs, context);
+            eval_prelude_src(exprs, context);
         }
 
         evaulator
     }
 }
 
-fn eval_prelude_str(text: &str, context: &EvalContext) {
-    let tokens = tokenize(text).expect(format!("Failed to tokenize prelude: {text}").as_str());
-
-    let mut parser = Parser::with_tokens(tokens);
-
-    loop {
-        match parser.parse() {
-            Ok(None) => {
-                break; // we're done!
-            }
-            Ok(Some(expr)) => {
-                let _ = eval(&expr, context)
-                    .expect(format!("Failed to evaluate prelude: {text}").as_str());
-            }
-            Err(ParseError::NeedMoreToken) => {
-                assert!(parser.is_parsing());
-                panic!("Failed to parse prelude - incomplete expression: {text}");
-            }
-            Err(ParseError::UnexpectedToken(token)) => {
-                panic!("Failed to parse prelude - unexpected token {token} in {text}");
-            }
-        }
+fn eval_prelude_src(text: &str, context: &EvalContext) {
+    match eval_src(text, context) {
+        Ok(_) => {}
+        Err(e) => panic!("Prelude eval failure: {}", e),
     }
 }
 
@@ -190,7 +170,11 @@ mod tests {
     use core::panic;
 
     use super::*;
-    use crate::eval::Evaluator;
+    use crate::{
+        eval::{eval, Evaluator},
+        lexer::tokenize,
+        parser::Parser,
+    };
 
     fn eval_str(text: &str) -> String {
         let evaluator = Evaluator::with_prelude();
