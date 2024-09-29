@@ -3,7 +3,13 @@ name = "rusche"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+
+[dev-dependencies]
 rustyline = "14.0.0"
+
+[lib]
+name = "rusche"
+
+[[example]]
+name = "rusche-cli"

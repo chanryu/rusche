@@ -1,5 +1,5 @@
 use rusche::{
-    eval::{eval, EvalContext, EvalResult},
+    eval::{eval, EvalContext, EvalError, EvalResult},
     expr::{Expr, NIL},
     list::List,
 };
@@ -12,44 +12,42 @@ pub fn load_io_procs(context: &EvalContext) {
     context.env.define_native_proc("read-num", read_num);
 }
 
-fn print(_: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn print_args(args: &List, context: &EvalContext) -> Result<(), EvalError> {
     for expr in args.iter() {
         match eval(expr, context)? {
             Expr::Str(text, _) => print!("{}", text), // w/o double quotes
             expr => print!("{}", expr),
         }
     }
+    Ok(())
+}
+
+fn print(_: &str, args: &List, context: &EvalContext) -> EvalResult {
+    print_args(args, context)?;
     let _ = std::io::stdout().flush();
     Ok(NIL)
 }
 
 fn println(_: &str, args: &List, context: &EvalContext) -> EvalResult {
-    for expr in args.iter() {
-        match eval(expr, context)? {
-            Expr::Str(text, _) => print!("{}", text), // w/o double quotes
-            expr => print!("{}", expr),
-        }
-    }
+    print_args(args, context)?;
     println!();
     Ok(NIL)
 }
 
-fn read(_: &str, _: &List, _: &EvalContext) -> EvalResult {
+fn read_text() -> Result<String, EvalError> {
     let mut input = String::new();
     if let Err(error) = std::io::stdin().read_line(&mut input) {
         return Err(format!("Error reading input: {}", error));
     }
-    Ok(Expr::from(input.trim()))
+    Ok(input.trim().to_string())
+}
+
+fn read(_: &str, _: &List, _: &EvalContext) -> EvalResult {
+    Ok(read_text()?.into())
 }
 
 fn read_num(proc_name: &str, _: &List, _: &EvalContext) -> EvalResult {
-    let mut input = String::new();
-    if let Err(error) = std::io::stdin().read_line(&mut input) {
-        return Err(format!("Error reading input: {}", error));
-    }
-
-    let text = input.trim();
-    match text.parse::<f64>() {
+    match read_text()?.parse::<f64>() {
         Ok(num) => Ok(Expr::from(num)),
         Err(err) => Err(format!("{}: {}", proc_name, err)),
     }

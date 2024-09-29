@@ -17,9 +17,9 @@ pub fn run_repl() {
 
     loop {
         let prompt = if parser.is_parsing() {
-            "...... > "
+            "...... ❯ "
         } else {
-            "rusche > "
+            "rusche ❯ "
         };
 
         match rl.readline(prompt) {

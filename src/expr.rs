@@ -93,6 +93,12 @@ impl<'a> From<ListIter<'a>> for Expr {
     }
 }
 
+impl From<String> for Expr {
+    fn from(value: String) -> Self {
+        Expr::Str(value, None)
+    }
+}
+
 impl From<&str> for Expr {
     fn from(value: &str) -> Self {
         Expr::Str(value.to_string(), None)
