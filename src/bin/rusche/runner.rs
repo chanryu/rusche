@@ -22,8 +22,8 @@ pub fn run_file(path: &str) {
 }
 
 fn run_file_content(text: &str) -> Result<(), String> {
-    let mut parser =
-        Parser::with_tokens(tokenize(text).map_err(|e| format!("Tokenization error: {}", e))?);
+    let tokens = tokenize(text).map_err(|e| format!("Tokenization error: {}", e))?;
+    let mut parser = Parser::with_tokens(tokens);
 
     let evaluator = Evaluator::with_prelude();
 
@@ -40,7 +40,6 @@ fn run_file_content(text: &str) -> Result<(), String> {
                     .map_err(|e| format!("Evaluation error: {}", e))?;
             }
             Err(ParseError::NeedMoreToken) => {
-                assert!(parser.is_parsing());
                 return Err("Failed to parse - incomplete expression".to_string());
             }
             Err(e) => return Err(format!("Parsing error: {}", e)),

@@ -24,10 +24,6 @@ pub fn load_builtin(env: &Rc<Env>) {
     env.define_native_proc("lambda", primitive::lambda);
     env.define_native_proc("set!", primitive::set);
 
-    // quote
-    env.define_native_proc("quote", quote::quote);
-    env.define_native_proc("quasiquote", quote::quasiquote);
-
     // num
     env.define_native_proc("num?", num::is_num);
     env.define_native_proc("num-add", num::add);

@@ -84,7 +84,14 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
             Some(expr) => Ok(expr.clone()),
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
-        Expr::List(List::Cons(cons), _) => eval_s_expr(cons, context, is_tail),
+        Expr::List(List::Cons(cons), _) => {
+            use crate::builtin::quote::{quasiquote, quote};
+            match cons.car.as_ref() {
+                Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, context),
+                Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, context),
+                _ => eval_s_expr(cons, context, is_tail),
+            }
+        }
         _ => Ok(expr.clone()),
     }
 }
@@ -229,33 +236,4 @@ impl Drop for Evaluator {
                 .count()
         );
     }
-}
-
-pub fn exec_src(src: &str, context: &EvalContext) -> Result<(), String> {
-    use crate::lexer::tokenize;
-    use crate::parser::{ParseError, Parser};
-
-    let tokens = tokenize(src).map_err(|e| e.to_string())?;
-
-    let mut parser = Parser::with_tokens(tokens);
-
-    loop {
-        match parser.parse() {
-            Ok(None) => {
-                break; // we're done!
-            }
-            Ok(Some(expr)) => {
-                let _ = eval(&expr, context).map_err(|e| e.to_string())?;
-            }
-            Err(ParseError::NeedMoreToken) => {
-                assert!(parser.is_parsing());
-                return Err(format!("Failed to parse source - incomplete expression"));
-            }
-            Err(ParseError::UnexpectedToken(token)) => {
-                return Err(format!("Failed to parse source - unexpected token {token}"));
-            }
-        }
-    }
-
-    Ok(())
 }

@@ -135,9 +135,6 @@ mod tests {
         let evaluator = Evaluator::new();
         let context = evaluator.context();
 
-        context.env.define_native_proc("quote", quote);
-        context.env.define_native_proc("quasiquote", quasiquote);
-
         // (quasiquote (0 (unquote-splicing (quote (1 2 3))) 4)) => (0 1 2 3 4)
         let result = quasiquote(
             "",

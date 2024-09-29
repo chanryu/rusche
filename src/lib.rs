@@ -3,6 +3,7 @@ mod prelude;
 
 pub mod env;
 pub mod eval;
+pub mod exec;
 pub mod expr;
 pub mod lexer;
 pub mod list;

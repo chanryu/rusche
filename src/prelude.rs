@@ -1,4 +1,5 @@
-use crate::eval::{exec_src, EvalContext};
+use crate::eval::EvalContext;
+use crate::exec::exec_src;
 
 const PRELUDE_SYMBOLS: [&str; 4] = [
     // #t
@@ -150,6 +151,6 @@ pub fn load_prelude(context: &EvalContext) {
 fn eval_prelude_src(text: &str, context: &EvalContext) {
     match exec_src(text, context) {
         Ok(_) => {}
-        Err(e) => panic!("Prelude eval failure: {}", e),
+        Err(e) => panic!("Prelude failure: {}", e),
     }
 }

@@ -1,5 +1,6 @@
 use rusche::{
-    eval::{eval, exec_src, EvalContext, EvalResult},
+    eval::{eval, EvalContext, EvalResult},
+    exec::exec_src,
     expr::{Expr, NIL},
     list::List,
 };
@@ -11,9 +12,10 @@ pub fn load_io_procs(context: &EvalContext) {
 
     exec_src(
         r#"
-            (define (read-num) (num-parse (read)))
-            (define (println *args) (print *args "\n"))
-            "#,
+        (define (read-num) (num-parse (read)))
+        (defmacro (println *args)
+            `(print ,@args "\n"))
+        "#,
         context,
     )
     .expect("Failed to load io procedures");
