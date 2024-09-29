@@ -83,14 +83,7 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
             Some(expr) => Ok(expr.clone()),
             None => Err(format!("Undefined symbol: {:?}", name)),
         },
-        Expr::List(List::Cons(cons), _) => {
-            use builtin::quote::{quasiquote, quote};
-            match cons.car.as_ref() {
-                Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, context),
-                Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, context),
-                _ => eval_s_expr(cons, context, is_tail),
-            }
-        }
+        Expr::List(List::Cons(cons), _) => eval_s_expr(cons, context, is_tail),
         _ => Ok(expr.clone()),
     }
 }

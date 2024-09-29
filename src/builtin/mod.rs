@@ -7,9 +7,8 @@ mod str;
 
 use std::rc::Rc;
 
-use utils::{get_exact_1_arg, make_syntax_error};
-
 use crate::env::Env;
+use utils::{get_exact_1_arg, make_syntax_error};
 
 pub fn load_builtin(env: &Rc<Env>) {
     // lisp primitives
@@ -24,6 +23,10 @@ pub fn load_builtin(env: &Rc<Env>) {
     env.define_native_proc("if", primitive::if_);
     env.define_native_proc("lambda", primitive::lambda);
     env.define_native_proc("set!", primitive::set);
+
+    // quote
+    env.define_native_proc("quote", quote::quote);
+    env.define_native_proc("quasiquote", quote::quasiquote);
 
     // num
     env.define_native_proc("num?", num::is_num);
