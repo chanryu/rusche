@@ -4,7 +4,7 @@ use common::EvalToStr;
 use rusche::eval::{EvalContext, Evaluator};
 
 fn eval_str(src: &str) -> String {
-    Evaluator::with_prelude().eval_to_str(src)
+    Evaluator::with_builtin().eval_to_str(src)
 }
 
 #[test]
