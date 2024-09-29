@@ -17,7 +17,9 @@ fn main() {
 }
 
 fn print_logo() {
-    println!("           ┬─┐┬ ┬┌─┐┌─┐");
-    println!("Welcome to ├┬┘│ │└─┐├─┘");
-    println!("           ┴└─└─┘└─┘┴  !");
+    println!(r"              ____                  __         ");
+    println!(r"             / __ \__  ____________/ /_  ___   ");
+    println!(r"            / /_/ / / / / ___/ ___/ __ \/ _ \  ");
+    println!(r"Welcome to / _, _/ /_/ (__  ) /__/ / / /  __/ !");
+    println!(r"          /_/ |_|\__,_/____/\___/_/ /_/\___/   ");
 }
