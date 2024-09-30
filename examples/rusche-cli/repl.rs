@@ -5,7 +5,7 @@ use rusche::{
 };
 use rustyline::{error::ReadlineError, DefaultEditor};
 
-use crate::io::load_io_procs;
+use crate::builtin::{load_io_procs, load_vec_procs};
 
 pub fn run_repl() {
     let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");
@@ -14,6 +14,7 @@ pub fn run_repl() {
     let evaluator = Evaluator::with_prelude();
 
     load_io_procs(evaluator.context());
+    load_vec_procs(evaluator.context());
 
     loop {
         let prompt = if parser.is_parsing() {

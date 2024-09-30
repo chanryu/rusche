@@ -1,3 +1,6 @@
+use std::any::Any;
+use std::rc::Rc;
+
 use crate::eval::{eval, EvalContext, EvalError};
 use crate::expr::{intern, Expr};
 use crate::list::{cons, List};
@@ -94,7 +97,7 @@ pub fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
     Ok(formal_args)
 }
 
-pub fn eval_to_str(
+pub fn eval_into_str(
     proc_name: &str,
     expr: &Expr,
     context: &EvalContext,
@@ -107,11 +110,46 @@ pub fn eval_to_str(
     }
 }
 
-pub fn eval_to_num(proc_name: &str, expr: &Expr, context: &EvalContext) -> Result<f64, EvalError> {
+pub fn eval_into_num(
+    proc_name: &str,
+    expr: &Expr,
+    context: &EvalContext,
+) -> Result<f64, EvalError> {
     match eval(expr, context)? {
         Expr::Num(value, _) => Ok(value),
         _ => Err(format!(
             "{proc_name}: {expr} does not evaluate to a number."
+        )),
+    }
+}
+
+pub fn eval_into_int(
+    proc_name: &str,
+    arg_name: &str,
+    expr: &Expr,
+    context: &EvalContext,
+) -> Result<i32, EvalError> {
+    let num = eval_into_num(proc_name, expr, context)?;
+
+    if num.fract() == 0.0 {
+        Ok(num as i32)
+    } else {
+        Err(format!(
+            "{}: {} must be an integer, but got {}.",
+            proc_name, arg_name, num
+        ))
+    }
+}
+
+pub fn eval_into_foreign(
+    proc_name: &str,
+    expr: &Expr,
+    context: &EvalContext,
+) -> Result<Rc<dyn Any>, EvalError> {
+    match eval(expr, context)? {
+        Expr::Foreign(object) => Ok(object),
+        _ => Err(format!(
+            "{proc_name}: {expr} does not evaluate to a foreign object."
         )),
     }
 }
