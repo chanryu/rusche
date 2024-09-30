@@ -12,6 +12,33 @@ pub fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
     )
 }
 
+/// Get exactly one argument.
+///
+/// Check if `args` contains extactly one argument. If so, return a reference
+/// to the argument. Otherwise, return an error message.
+///
+/// # Arguments
+///
+/// * `proc_name` - Name of the procedure who is calling this function.
+/// * `args` - List of arguments.
+///
+/// # Example
+///
+/// ```
+/// use rusche::{
+///     expr::Expr,
+///     utils::get_exact_1_arg,
+///     list
+/// };
+///
+/// let args = list!(1);
+/// let result = get_exact_1_arg("add", &args);
+/// assert_eq!(result, Ok(&Expr::from(1)));
+///
+/// let args = list!(1, 2);
+/// let result = get_exact_1_arg("add", &args);
+/// assert!(result.is_err());
+/// ```
 pub fn get_exact_1_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, EvalError> {
     let mut iter = args.iter();
     let Some(arg) = iter.next() else {
@@ -24,6 +51,33 @@ pub fn get_exact_1_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, 
     }
 }
 
+/// Get exactly two arguments.
+///
+/// Check if `args` contains extactly two arguments. If so, return a tuple that contains
+/// references to the two arguments. Otherwise, return an error message.
+///
+/// # Arguments
+///
+/// * `proc_name` - Name of the procedure who is calling this function.
+/// * `args` - List of arguments.
+///
+/// # Example
+///
+/// ```
+/// use rusche::{
+///     expr::Expr,
+///     utils::get_exact_3_args,
+///     list
+/// };
+///
+/// let args = list!(1, 2);
+/// let result = get_exact_2_args("add", &args);
+/// assert_eq!(result, Ok((&Expr::from(1), &Expr::from(2))));
+///
+/// let args = list!(1);
+/// let result = get_exact_2_args("add", &args);
+/// assert!(result.is_err());
+/// ```
 pub fn get_exact_2_args<'a>(
     proc_name: &str,
     args: &'a List,
@@ -42,6 +96,33 @@ pub fn get_exact_2_args<'a>(
     }
 }
 
+/// Get exactly three arguments.
+///
+/// Check if `args` contains extactly three arguments. If so, return a tuple that contains
+/// references to the three arguments. Otherwise, return an error message.
+///
+/// # Arguments
+///
+/// * `proc_name` - Name of the procedure who is calling this function.
+/// * `args` - List of arguments.
+///
+/// # Example
+///
+/// ```
+/// use rusche::{
+///     expr::Expr,
+///     utils::get_exact_3_args,
+///     list
+/// };
+///
+/// let args = list!(1, 2, 3);
+/// let result = get_exact_3_args("add", &args);
+/// assert_eq!(result, Ok((&Expr::from(1), &Expr::from(2), &Expr::from(3))));
+///
+/// let args = list!(1, 2, 3, 4);
+/// let result = get_exact_3_args("add", &args);
+/// assert!(result.is_err());
+/// ```
 pub fn get_exact_3_args<'a>(
     proc_name: &str,
     args: &'a List,
