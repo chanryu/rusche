@@ -11,6 +11,8 @@ use crate::{
     span::Span,
 };
 
+pub type Foreign = Rc<dyn Any>;
+
 #[derive(Clone, Debug)]
 pub enum Expr {
     Num(f64, Option<Span>),
@@ -19,7 +21,7 @@ pub enum Expr {
     Proc(Proc, Option<Span>),
     List(List, Option<Span>),
 
-    Foreign(Rc<dyn Any>),
+    Foreign(Foreign),
 
     /// A special case for tail-call optimization.
     TailCall {

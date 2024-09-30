@@ -2,7 +2,7 @@ use crate::{
     eval::{eval, EvalContext, EvalResult},
     expr::Expr,
     list::List,
-    utils::{eval_to_int, eval_to_str, get_2_or_3_args, get_exact_1_arg, get_exact_2_args},
+    utils::{eval_into_int, eval_into_str, get_2_or_3_args, get_exact_1_arg, get_exact_2_args},
 };
 
 pub fn is_str(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -61,12 +61,12 @@ pub fn length(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
 pub fn slice(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (arg1, arg2, opt_arg3) = get_2_or_3_args(proc_name, args)?;
 
-    let text = eval_to_str(proc_name, arg1, context)?;
+    let text = eval_into_str(proc_name, arg1, context)?;
     let text_len = text.chars().count() as i32;
 
-    let beg = eval_to_int(proc_name, "start index", arg2, context)?;
+    let beg = eval_into_int(proc_name, "start index", arg2, context)?;
     let end = if let Some(arg3) = opt_arg3 {
-        eval_to_int(proc_name, "end index", arg3, context)?
+        eval_into_int(proc_name, "end index", arg3, context)?
     } else {
         text_len as i32
     };

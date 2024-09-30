@@ -2,7 +2,7 @@ use rusche::{
     eval::{eval, EvalContext, EvalError, EvalResult},
     expr::{Expr, NIL},
     list::List,
-    utils::{eval_to_foreign, eval_to_int, get_exact_1_arg, get_exact_2_args},
+    utils::{eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args},
 };
 use std::{cell::RefCell, rc::Rc};
 
@@ -16,12 +16,12 @@ pub fn load_vec_procs(context: &EvalContext) {
 
 type ExprVecRefCell = RefCell<Vec<Expr>>;
 
-fn eval_to_vec(
+fn eval_into_vec(
     proc_name: &str,
     expr: &Expr,
     context: &EvalContext,
 ) -> Result<Rc<ExprVecRefCell>, EvalError> {
-    eval_to_foreign(proc_name, expr, context)?
+    eval_into_foreign(proc_name, expr, context)?
         .downcast::<ExprVecRefCell>()
         .or_else(|_| {
             Err(format!(
@@ -32,7 +32,7 @@ fn eval_to_vec(
 
 fn is_vec(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let arg = get_exact_1_arg(proc_name, args)?;
-    Ok(eval_to_vec(proc_name, arg, context).is_ok().into())
+    Ok(eval_into_vec(proc_name, arg, context).is_ok().into())
 }
 
 fn make(_: &str, _: &List, _: &EvalContext) -> EvalResult {
@@ -41,14 +41,14 @@ fn make(_: &str, _: &List, _: &EvalContext) -> EvalResult {
 
 fn push(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (arg1, arg2) = get_exact_2_args(proc_name, args)?;
-    let vec = eval_to_vec(proc_name, arg1, context)?;
+    let vec = eval_into_vec(proc_name, arg1, context)?;
     let item = eval(arg2, context)?;
     vec.borrow_mut().push(item);
     Ok(NIL)
 }
 
 fn pop(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let vec = eval_to_vec(proc_name, get_exact_1_arg(proc_name, args)?, context)?;
+    let vec = eval_into_vec(proc_name, get_exact_1_arg(proc_name, args)?, context)?;
     let item = vec.borrow_mut().pop();
 
     if let Some(item) = item {
@@ -60,8 +60,8 @@ fn pop(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
 fn get(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (arg1, arg2) = get_exact_2_args(proc_name, args)?;
-    let vec = eval_to_vec(proc_name, arg1, context)?;
-    let index = eval_to_int(proc_name, "index", arg2, context)?;
+    let vec = eval_into_vec(proc_name, arg1, context)?;
+    let index = eval_into_int(proc_name, "index", arg2, context)?;
 
     if index < 0 {
         return Err(format!("{proc_name}: index must be non-negative."));

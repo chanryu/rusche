@@ -2,7 +2,7 @@ use crate::{
     eval::{eval, EvalContext, EvalResult},
     expr::Expr,
     list::List,
-    utils::{eval_to_num, get_exact_1_arg, get_exact_2_args},
+    utils::{eval_into_num, get_exact_1_arg, get_exact_2_args},
 };
 
 pub fn is_num(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -24,7 +24,7 @@ fn binary_operation(
     let mut result = identity;
 
     for (index, arg) in args.iter().enumerate() {
-        let value = eval_to_num(proc_name, arg, context)?;
+        let value = eval_into_num(proc_name, arg, context)?;
         if index == 0 && args.len() > 1 && !is_associative {
             result = value;
         } else {
@@ -53,8 +53,8 @@ pub fn divide(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
 
 pub fn modulo(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (lhs, rhs) = get_exact_2_args(proc_name, args)?;
-    let lhs = eval_to_num(proc_name, lhs, context)?;
-    let rhs = eval_to_num(proc_name, rhs, context)?;
+    let lhs = eval_into_num(proc_name, lhs, context)?;
+    let rhs = eval_into_num(proc_name, rhs, context)?;
 
     Ok(Expr::Num(lhs % rhs, None))
 }
@@ -67,8 +67,8 @@ fn logical_operation(
 ) -> EvalResult {
     let (lhs, rhs) = get_exact_2_args(proc_name, args)?;
     Ok(Expr::from(func(
-        eval_to_num(proc_name, lhs, context)?,
-        eval_to_num(proc_name, rhs, context)?,
+        eval_into_num(proc_name, lhs, context)?,
+        eval_into_num(proc_name, rhs, context)?,
     )))
 }
 

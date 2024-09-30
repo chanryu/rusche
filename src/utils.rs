@@ -97,7 +97,7 @@ pub fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
     Ok(formal_args)
 }
 
-pub fn eval_to_str(
+pub fn eval_into_str(
     proc_name: &str,
     expr: &Expr,
     context: &EvalContext,
@@ -110,7 +110,11 @@ pub fn eval_to_str(
     }
 }
 
-pub fn eval_to_num(proc_name: &str, expr: &Expr, context: &EvalContext) -> Result<f64, EvalError> {
+pub fn eval_into_num(
+    proc_name: &str,
+    expr: &Expr,
+    context: &EvalContext,
+) -> Result<f64, EvalError> {
     match eval(expr, context)? {
         Expr::Num(value, _) => Ok(value),
         _ => Err(format!(
@@ -119,13 +123,13 @@ pub fn eval_to_num(proc_name: &str, expr: &Expr, context: &EvalContext) -> Resul
     }
 }
 
-pub fn eval_to_int(
+pub fn eval_into_int(
     proc_name: &str,
     arg_name: &str,
     expr: &Expr,
     context: &EvalContext,
 ) -> Result<i32, EvalError> {
-    let num = eval_to_num(proc_name, expr, context)?;
+    let num = eval_into_num(proc_name, expr, context)?;
 
     if num.fract() == 0.0 {
         Ok(num as i32)
@@ -137,7 +141,7 @@ pub fn eval_to_int(
     }
 }
 
-pub fn eval_to_foreign(
+pub fn eval_into_foreign(
     proc_name: &str,
     expr: &Expr,
     context: &EvalContext,
