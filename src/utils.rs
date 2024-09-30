@@ -5,6 +5,7 @@ use crate::eval::{eval, EvalContext, EvalError};
 use crate::expr::{intern, Expr};
 use crate::list::{cons, List};
 
+/// Make a generic syntax error message with the given procedure name and arguments.
 pub fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
     format!(
         "Ill-formed syntax: {}",
@@ -12,7 +13,7 @@ pub fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
     )
 }
 
-/// Get exactly one argument.
+/// Get exactly one argument from a list.
 ///
 /// Check if `args` contains extactly one argument. If so, return a reference
 /// to the argument. Otherwise, return an error message.
@@ -51,7 +52,7 @@ pub fn get_exact_1_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, 
     }
 }
 
-/// Get exactly two arguments.
+/// Get exactly two arguments from a list.
 ///
 /// Check if `args` contains extactly two arguments. If so, return a tuple that contains
 /// references to the two arguments. Otherwise, return an error message.
@@ -96,7 +97,7 @@ pub fn get_exact_2_args<'a>(
     }
 }
 
-/// Get exactly three arguments.
+/// Get exactly three arguments from a list.
 ///
 /// Check if `args` contains extactly three arguments. If so, return a tuple that contains
 /// references to the three arguments. Otherwise, return an error message.
@@ -144,6 +145,33 @@ pub fn get_exact_3_args<'a>(
     }
 }
 
+/// Get two or three arguments from a list.
+///
+/// Check if `args` contains two or three arguments. If so, return a tuple that contains
+/// references to the two arguments and optional 3rd argument. Otherwise, return an error message.
+///
+/// # Arguments
+///
+/// * `proc_name` - Name of the procedure who is calling this function.
+/// * `args` - List of arguments.
+///
+/// # Example
+///
+/// ```
+/// use rusche::{
+///     expr::Expr,
+///     utils::get_2_or_3_args,
+///     list
+/// };
+///
+/// let args = list!(1, 2);
+/// let result = get_2_or_3_args("add", &args);
+/// assert_eq!(result, Ok((&Expr::from(1), &Expr::from(2), None)));
+///
+/// let args = list!(1, 2, 3);
+/// let result = get_2_or_3_args("add", &args);
+/// assert_eq!(result, Ok((&Expr::from(1), &Expr::from(2), Some(&Expr::from(3)))));
+/// ```
 pub fn get_2_or_3_args<'a>(
     proc_name: &str,
     args: &'a List,
@@ -165,6 +193,12 @@ pub fn get_2_or_3_args<'a>(
     }
 }
 
+/// Make a vector of symbol names from a list of arguments.
+///
+/// Check if `list` contains only symbols. If so, return a vector of the symbols.
+/// Otherwise, return an error message. This function can be used to extract formal
+/// arguments when implementing a function-like special form such as lambda or macro.
+/// ```
 pub fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
     let mut formal_args = Vec::new();
     for item in list.iter() {
