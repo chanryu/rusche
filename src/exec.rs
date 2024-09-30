@@ -15,7 +15,7 @@ pub fn exec_src(src: &str, context: &EvalContext) -> Result<(), String> {
                 break; // we're done!
             }
             Ok(Some(expr)) => {
-                let _ = eval(&expr, context).map_err(|e| e.to_string())?;
+                let _ = eval(&expr, context)?;
             }
             Err(ParseError::NeedMoreToken) => {
                 return Err(format!("Failed to parse source - incomplete expression"));
