@@ -1,5 +1,4 @@
 pub mod quote;
-pub mod utils;
 
 mod num;
 mod primitive;
@@ -7,8 +6,10 @@ mod str;
 
 use std::rc::Rc;
 
-use crate::env::Env;
-use utils::{get_exact_1_arg, make_syntax_error};
+use crate::{
+    env::Env,
+    utils::{get_exact_1_arg, make_syntax_error},
+};
 
 pub fn load_builtin(env: &Rc<Env>) {
     // lisp primitives

@@ -4,7 +4,7 @@ use rusche::{
     parser::{ParseError, Parser},
 };
 
-use crate::io::load_io_procs;
+use crate::{io::load_io_procs, vec::load_vec_procs};
 
 pub fn run_file(path: &str) {
     match std::fs::read_to_string(path) {
@@ -28,6 +28,7 @@ fn run_file_content(text: &str) -> Result<(), String> {
     let evaluator = Evaluator::with_prelude();
 
     load_io_procs(evaluator.context());
+    load_vec_procs(evaluator.context());
 
     loop {
         match parser.parse() {

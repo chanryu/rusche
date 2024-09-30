@@ -1,8 +1,9 @@
-use crate::eval::{eval, EvalContext, EvalResult};
-use crate::expr::Expr;
-use crate::list::List;
-
-use super::utils::{eval_to_num, get_exact_1_arg, get_exact_2_args};
+use crate::{
+    eval::{eval, EvalContext, EvalResult},
+    expr::Expr,
+    list::List,
+    utils::{eval_to_num, get_exact_1_arg, get_exact_2_args},
+};
 
 pub fn is_num(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     if let Expr::Num(_, _) = eval(get_exact_1_arg(proc_name, args)?, context)? {

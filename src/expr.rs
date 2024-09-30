@@ -1,9 +1,15 @@
-use crate::eval::EvalContext;
-use crate::list::{cons, List, ListIter};
-use crate::proc::Proc;
-use crate::span::Span;
-use core::panic;
-use std::fmt;
+use std::{
+    any::Any,
+    fmt::{self},
+    rc::Rc,
+};
+
+use crate::{
+    eval::EvalContext,
+    list::{cons, List, ListIter},
+    proc::Proc,
+    span::Span,
+};
 
 #[derive(Clone, Debug)]
 pub enum Expr {
@@ -12,6 +18,8 @@ pub enum Expr {
     Sym(String, Option<Span>),
     Proc(Proc, Option<Span>),
     List(List, Option<Span>),
+
+    Foreign(Rc<dyn Any>),
 
     /// A special case for tail-call optimization.
     TailCall {
@@ -64,6 +72,7 @@ impl fmt::Display for Expr {
             Expr::Sym(name, _) => write!(f, "{}", name),
             Expr::Proc(proc, _) => write!(f, "<{}>", proc.fingerprint()),
             Expr::List(list, _) => write!(f, "{}", list),
+            Expr::Foreign(object) => write!(f, "<foreign: {:p}>", object),
 
             // TailCall is a special case and should not be displayed.
             Expr::TailCall { proc, .. } => panic!("Unexpected TailCall: {:?}", proc),

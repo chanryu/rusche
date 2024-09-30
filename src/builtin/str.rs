@@ -1,8 +1,9 @@
-use crate::eval::{eval, EvalContext, EvalResult};
-use crate::expr::Expr;
-use crate::list::List;
-
-use super::utils::{eval_to_num, eval_to_str, get_2_or_3_args, get_exact_1_arg, get_exact_2_args};
+use crate::{
+    eval::{eval, EvalContext, EvalResult},
+    expr::Expr,
+    list::List,
+    utils::{eval_to_int, eval_to_str, get_2_or_3_args, get_exact_1_arg, get_exact_2_args},
+};
 
 pub fn is_str(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     if let Expr::Str(_, _) = eval(get_exact_1_arg(proc_name, args)?, context)? {
@@ -63,29 +64,15 @@ pub fn slice(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult 
     let text = eval_to_str(proc_name, arg1, context)?;
     let text_len = text.chars().count() as i32;
 
-    let beg = eval_to_num(proc_name, arg2, context)?;
+    let beg = eval_to_int(proc_name, "start index", arg2, context)?;
     let end = if let Some(arg3) = opt_arg3 {
-        eval_to_num(proc_name, arg3, context)?
+        eval_to_int(proc_name, "end index", arg3, context)?
     } else {
-        text_len as f64
+        text_len as i32
     };
 
-    if beg.fract() != 0.0 {
-        return Err(format!(
-            "{}: start index must be an integer, but got {}.",
-            proc_name, beg
-        ));
-    }
-
-    if end.fract() != 0.0 {
-        return Err(format!(
-            "{}: end index must be an integer, but got {}.",
-            proc_name, end
-        ));
-    }
-
-    let to_index = |pos: f64| -> usize {
-        let pos = (pos as i32).clamp(-text_len, text_len);
+    let to_index = |pos: i32| -> usize {
+        let pos = pos.clamp(-text_len, text_len);
         if pos < 0 {
             (text_len + pos) as usize
         } else {

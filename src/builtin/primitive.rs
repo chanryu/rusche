@@ -3,10 +3,9 @@ use crate::{
     expr::{Expr, NIL},
     list::List,
     proc::Proc,
-};
-
-use super::utils::{
-    get_2_or_3_args, get_exact_1_arg, get_exact_2_args, make_formal_args, make_syntax_error,
+    utils::{
+        get_2_or_3_args, get_exact_1_arg, get_exact_2_args, make_formal_args, make_syntax_error,
+    },
 };
 
 pub fn atom(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
