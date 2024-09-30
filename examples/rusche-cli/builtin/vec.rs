@@ -14,13 +14,15 @@ pub fn load_vec_procs(context: &EvalContext) {
     context.env.define_native_proc("vec-get", get);
 }
 
+type ExprVecRefCell = RefCell<Vec<Expr>>;
+
 fn eval_to_vec(
     proc_name: &str,
     expr: &Expr,
     context: &EvalContext,
-) -> Result<Rc<RefCell<Vec<Expr>>>, EvalError> {
+) -> Result<Rc<ExprVecRefCell>, EvalError> {
     eval_to_foreign(proc_name, expr, context)?
-        .downcast::<RefCell<Vec<Expr>>>()
+        .downcast::<ExprVecRefCell>()
         .or_else(|_| {
             Err(format!(
                 "{proc_name}: {expr} does not evaluate to a vector."
