@@ -4,7 +4,7 @@ use rusche::{
     parser::{ParseError, Parser},
 };
 
-use crate::{io::load_io_procs, vec::load_vec_procs};
+use crate::builtin::{load_io_procs, load_vec_procs};
 
 pub fn run_file(path: &str) {
     match std::fs::read_to_string(path) {

@@ -1,7 +1,6 @@
-mod io;
+mod builtin;
 mod repl;
 mod runner;
-mod vec;
 
 use repl::run_repl;
 use runner::run_file;
