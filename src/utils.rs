@@ -66,7 +66,7 @@ pub fn get_exact_1_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, 
 /// ```
 /// use rusche::{
 ///     expr::Expr,
-///     utils::get_exact_3_args,
+///     utils::get_exact_2_args,
 ///     list
 /// };
 ///
