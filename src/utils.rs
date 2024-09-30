@@ -42,7 +42,6 @@ pub fn get_exact_2_args<'a>(
     }
 }
 
-#[allow(dead_code)]
 pub fn get_exact_3_args<'a>(
     proc_name: &str,
     args: &'a List,
