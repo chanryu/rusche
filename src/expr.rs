@@ -51,6 +51,18 @@ impl Expr {
     pub fn is_truthy(&self) -> bool {
         !self.is_nil()
     }
+
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            Expr::Num(_, span)
+            | Expr::Str(_, span)
+            | Expr::Sym(_, span)
+            | Expr::Proc(_, span)
+            | Expr::List(_, span) => span.clone(),
+            Expr::Foreign(_) => None,
+            Expr::TailCall { .. } => None,
+        }
+    }
 }
 
 impl PartialEq for Expr {

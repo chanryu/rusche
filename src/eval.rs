@@ -7,8 +7,28 @@ use crate::expr::Expr;
 use crate::list::{Cons, List};
 use crate::prelude::load_prelude;
 use crate::proc::Proc;
+use crate::span::Span;
 
-pub type EvalError = String;
+pub struct EvalError {
+    pub message: String,
+    pub expr_span: Option<Span>,
+}
+
+impl EvalError {
+    pub fn new(message: String, expr_span: Option<Span>) -> Self {
+        Self { message, expr_span }
+    }
+}
+
+impl From<String> for EvalError {
+    fn from(message: String) -> Self {
+        Self {
+            message,
+            expr_span: None,
+        }
+    }
+}
+
 pub type EvalResult = Result<Expr, EvalError>;
 
 #[cfg(debug_assertions)]

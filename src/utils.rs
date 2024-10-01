@@ -7,10 +7,13 @@ use crate::list::{cons, List};
 
 /// Make a generic syntax error message with the given procedure name and arguments.
 pub fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
-    format!(
-        "Ill-formed syntax: {}",
-        cons(intern(proc_name), args.clone())
-    )
+    EvalError {
+        message: format!(
+            "Ill-formed syntax: {}",
+            cons(intern(proc_name), args.clone())
+        ),
+        expr_span: None,
+    }
 }
 
 /// Get exactly one argument from a list.
@@ -43,12 +46,12 @@ pub fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
 pub fn get_exact_1_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, EvalError> {
     let mut iter = args.iter();
     let Some(arg) = iter.next() else {
-        return Err(format!("{proc_name} needs an argument."));
+        return Err(format!("{proc_name} needs an argument.").into());
     };
     if iter.next().is_none() {
         Ok(arg)
     } else {
-        Err(format!("{proc_name} expects only 1 argument."))
+        Err(format!("{proc_name} expects only 1 argument.").into())
     }
 }
 
@@ -85,15 +88,15 @@ pub fn get_exact_2_args<'a>(
 ) -> Result<(&'a Expr, &'a Expr), EvalError> {
     let mut iter = args.iter();
     let Some(arg1) = iter.next() else {
-        return Err(format!("{}: requres two arguments", proc_name));
+        return Err(format!("{}: requres two arguments", proc_name).into());
     };
     let Some(arg2) = iter.next() else {
-        return Err(format!("{}: requres two arguments", proc_name));
+        return Err(format!("{}: requres two arguments", proc_name).into());
     };
     if iter.next().is_none() {
         Ok((arg1, arg2))
     } else {
-        Err(format!("{}: takes only two arguments", proc_name))
+        Err(format!("{}: takes only two arguments", proc_name).into())
     }
 }
 
@@ -130,18 +133,18 @@ pub fn get_exact_3_args<'a>(
 ) -> Result<(&'a Expr, &'a Expr, &'a Expr), EvalError> {
     let mut iter = args.iter();
     let Some(arg1) = iter.next() else {
-        return Err(format!("{}: requres 3 arguments", proc_name));
+        return Err(format!("{}: requres 3 arguments", proc_name).into());
     };
     let Some(arg2) = iter.next() else {
-        return Err(format!("{}: requres 3 arguments", proc_name));
+        return Err(format!("{}: requres 3 arguments", proc_name).into());
     };
     let Some(arg3) = iter.next() else {
-        return Err(format!("{}: requres 3 arguments", proc_name));
+        return Err(format!("{}: requres 3 arguments", proc_name).into());
     };
     if iter.next().is_none() {
         Ok((arg1, arg2, arg3))
     } else {
-        Err(format!("{}: takes only 3 arguments", proc_name))
+        Err(format!("{}: takes only 3 arguments", proc_name).into())
     }
 }
 
@@ -178,10 +181,10 @@ pub fn get_2_or_3_args<'a>(
 ) -> Result<(&'a Expr, &'a Expr, Option<&'a Expr>), EvalError> {
     let mut iter = args.iter();
     let Some(arg1) = iter.next() else {
-        return Err(format!("{}: requres at least 2 arguments", proc_name));
+        return Err(format!("{}: requres at least 2 arguments", proc_name).into());
     };
     let Some(arg2) = iter.next() else {
-        return Err(format!("{}: requres at least 2 arguments", proc_name));
+        return Err(format!("{}: requres at least 2 arguments", proc_name).into());
     };
     let Some(arg3) = iter.next() else {
         return Ok((arg1, arg2, None));
@@ -189,7 +192,7 @@ pub fn get_2_or_3_args<'a>(
     if iter.next().is_none() {
         Ok((arg1, arg2, Some(arg3)))
     } else {
-        Err(format!("{}: takes up to 3 arguments", proc_name))
+        Err(format!("{}: takes up to 3 arguments", proc_name).into())
     }
 }
 
@@ -203,7 +206,10 @@ pub fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
     let mut formal_args = Vec::new();
     for item in list.iter() {
         let Expr::Sym(formal_arg, _) = item else {
-            return Err(format!("{item} is not a symbol."));
+            return Err(EvalError::new(
+                format!("{item} is not a symbol."),
+                item.span(),
+            ));
         };
         formal_args.push(formal_arg.clone());
     }
@@ -242,8 +248,9 @@ pub fn eval_into_str(
 ) -> Result<String, EvalError> {
     match eval(expr, context)? {
         Expr::Str(text, _) => Ok(text),
-        _ => Err(format!(
-            "{proc_name}: {expr} does not evaluate to a string."
+        _ => Err(EvalError::new(
+            format!("{proc_name}: {expr} does not evaluate to a string."),
+            expr.span(),
         )),
     }
 }
@@ -279,8 +286,9 @@ pub fn eval_into_num(
 ) -> Result<f64, EvalError> {
     match eval(expr, context)? {
         Expr::Num(value, _) => Ok(value),
-        _ => Err(format!(
-            "{proc_name}: {expr} does not evaluate to a number."
+        _ => Err(EvalError::new(
+            format!("{proc_name}: {expr} does not evaluate to a number."),
+            expr.span(),
         )),
     }
 }
@@ -331,9 +339,12 @@ pub fn eval_into_int(
     if num.fract() == 0.0 {
         Ok(num as i32)
     } else {
-        Err(format!(
-            "{}: {} must be an integer, but got {}.",
-            proc_name, arg_name, num
+        Err(EvalError::new(
+            format!(
+                "{}: {} must be an integer, but got {}.",
+                proc_name, arg_name, num
+            ),
+            expr.span(),
         ))
     }
 }
@@ -373,8 +384,9 @@ pub fn eval_into_foreign(
 ) -> Result<Rc<dyn Any>, EvalError> {
     match eval(expr, context)? {
         Expr::Foreign(object) => Ok(object),
-        _ => Err(format!(
-            "{proc_name}: {expr} does not evaluate to a foreign object."
+        _ => Err(EvalError::new(
+            format!("{proc_name}: {expr} does not evaluate to a foreign object."),
+            expr.span(),
         )),
     }
 }
