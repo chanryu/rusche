@@ -211,6 +211,30 @@ pub fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
     Ok(formal_args)
 }
 
+/// Evaluate an expression into a string.
+///
+/// Check if `expr` evaluates to a string. If so, return the string. Otherwise, return an error message.
+///
+/// # Arguments
+///
+/// * `proc_name` - Name of the procedure who is calling this function.
+/// * `expr` - Expression to evaluate.
+/// * `context` - Evaluation context.
+///
+/// # Example
+///
+/// ```
+/// use rusche::{
+///     eval::Evaluator,
+///     expr::Expr,
+///     utils::eval_into_str,
+/// };
+///
+/// let evaluator = Evaluator::new();
+/// let expr = Expr::from("hello");
+/// let result = eval_into_str("test", &expr, evaluator.context());
+/// assert_eq!(result, Ok("hello".to_string()));
+/// ```
 pub fn eval_into_str(
     proc_name: &str,
     expr: &Expr,
@@ -224,6 +248,30 @@ pub fn eval_into_str(
     }
 }
 
+/// Evaluate an expression into a number (`f64``).
+///
+/// Check if `expr` evaluates to a number. If so, return the number. Otherwise, return an error message.
+///
+/// # Arguments
+///
+/// * `proc_name` - Name of the procedure who is calling this function.
+/// * `expr` - Expression to evaluate.
+/// * `context` - Evaluation context.
+///
+/// # Example
+///
+/// ```
+/// use rusche::{
+///     eval::Evaluator,
+///     expr::Expr,
+///     utils::eval_into_num,
+/// };
+///
+/// let evaluator = Evaluator::new();
+/// let expr = Expr::from(12e-3);
+/// let result = eval_into_num("test", &expr, evaluator.context());
+/// assert_eq!(result, Ok(12e-3));
+/// ```
 pub fn eval_into_num(
     proc_name: &str,
     expr: &Expr,
@@ -237,6 +285,41 @@ pub fn eval_into_num(
     }
 }
 
+/// Evaluate an expression into an integer (`i32`).
+///
+/// Check if `expr` evaluates to `f64`` with `fract() == 0``. If so, return the number
+/// as i32. Otherwise, return an error message.
+///
+/// # Arguments
+///
+/// * `proc_name` - Name of the procedure who is calling this function.
+/// * `arg_name` - Name of the argument that we want to evaluate to an integer.
+/// * `expr` - Expression to evaluate.
+/// * `context` - Evaluation context.
+///
+/// # Example
+///
+/// ```
+/// use rusche::{
+///     eval::Evaluator,
+///     expr::Expr,
+///     utils::eval_into_int,
+/// };
+///
+/// let evaluator = Evaluator::new();
+///
+/// let expr = Expr::from(12);
+/// let result = eval_into_int("test", "index", &expr, evaluator.context());
+/// assert_eq!(result, Ok(12));
+///
+/// let expr = Expr::from(12.0);
+/// let result = eval_into_int("test", "index", &expr, evaluator.context());
+/// assert_eq!(result, Ok(12));
+///
+/// let expr = Expr::from(12.5);
+/// let result = eval_into_int("test", "index", &expr, evaluator.context());
+/// assert!(result.is_err());
+/// ```
 pub fn eval_into_int(
     proc_name: &str,
     arg_name: &str,
@@ -255,6 +338,34 @@ pub fn eval_into_int(
     }
 }
 
+/// Evaluate an expression into a foreign object.
+///
+/// Check if `expr` evaluates to a foreign object (`Expr::Foreign`). If so, return
+/// the object (`Rc<dyn Any>`). Otherwise, return an error message.
+/// The caller of this function can downcase the object to the expected type.
+///
+/// # Arguments
+///
+/// * `proc_name` - Name of the procedure who is calling this function.
+/// * `expr` - Expression to evaluate.
+/// * `context` - Evaluation context.
+///
+/// # Example
+///
+/// ```
+/// use std::{any::Any, rc::Rc};
+/// use rusche::{
+///     eval::Evaluator,
+///     expr::Expr,
+///     utils::eval_into_foreign,
+/// };
+///
+/// let evaluator = Evaluator::new();
+/// let context = evaluator.context();
+/// let expr = Expr::Foreign(Rc::new(Vec::<i32>::new()));
+/// let object = eval_into_foreign("test", &expr, context).unwrap();
+/// assert!(object.downcast::<Vec<i32>>().is_ok());
+/// ```
 pub fn eval_into_foreign(
     proc_name: &str,
     expr: &Expr,
