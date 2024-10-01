@@ -1,6 +1,4 @@
-# Rusche
-
-![Build Status](https://github.com/chanryu/rusche/actions/workflows/main.yml/badge.svg)
+# Rusche ![Build Status](https://github.com/chanryu/rusche/actions/workflows/main.yml/badge.svg)
 
 Teaching myself **Rus**t by writing a **Sche**me interpreter.
 
