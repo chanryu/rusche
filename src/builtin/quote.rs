@@ -58,10 +58,10 @@ fn quasiquote_expr(
                         exprs.extend(list.iter().map(|e| e.clone()));
                     }
                     _ => {
-                        return Err(format!(
+                        return Err(EvalError::from(format!(
                             "unquote-splicing: \"{}\" does not evaluate to a list",
                             cdar
-                        ));
+                        )));
                     }
                 }
             } else {

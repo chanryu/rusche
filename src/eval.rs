@@ -9,6 +9,7 @@ use crate::prelude::load_prelude;
 use crate::proc::Proc;
 use crate::span::Span;
 
+#[derive(Debug, PartialEq)]
 pub struct EvalError {
     pub message: String,
     pub expr_span: Option<Span>,
@@ -102,7 +103,7 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
     match expr {
         Expr::Sym(name, _) => match context.env.lookup(name) {
             Some(expr) => Ok(expr.clone()),
-            None => Err(format!("Undefined symbol: {:?}", name)),
+            None => Err(EvalError::from(format!("Undefined symbol: {:?}", name))),
         },
         Expr::List(List::Cons(cons), _) => {
             use crate::builtin::quote::{quasiquote, quote};
@@ -139,7 +140,10 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
             Ok(res)
         }
     } else {
-        Err(format!("{} does not evaluate to a callable.", s_expr.car))
+        Err(EvalError::from(format!(
+            "{} does not evaluate to a callable.",
+            s_expr.car
+        )))
     }
 }
 

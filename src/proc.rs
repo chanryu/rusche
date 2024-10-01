@@ -1,7 +1,7 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::rc::Rc;
 
-use crate::eval::{eval, eval_tail, EvalContext, EvalResult};
+use crate::eval::{eval, eval_tail, EvalContext, EvalError, EvalResult};
 use crate::expr::NIL;
 use crate::list::List;
 
@@ -152,7 +152,7 @@ fn eval_closure(
             if actual_args.next().is_none() {
                 break;
             }
-            return Err(format!("{}: too many args", closure_name));
+            return Err(EvalError::from(format!("{}: too many args", closure_name)));
         }
     }
 
@@ -195,7 +195,7 @@ fn eval_macro(
             if actual_args.next().is_none() {
                 break;
             }
-            return Err(format!("{}: too many args", macro_name));
+            return Err(EvalError::from(format!("{}: too many args", macro_name)));
         }
     }
 

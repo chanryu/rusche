@@ -1,5 +1,5 @@
 use crate::{
-    eval::{eval, EvalContext, EvalResult},
+    eval::{eval, EvalContext, EvalError, EvalResult},
     expr::Expr,
     list::List,
     utils::{eval_into_int, eval_into_str, get_2_or_3_args, get_exact_1_arg, get_exact_2_args},
@@ -20,10 +20,10 @@ pub fn append(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
         match eval(expr, context)? {
             Expr::Str(text, _) => result += &text,
             _ => {
-                return Err(format!(
+                return Err(EvalError::from(format!(
                     "{}: `{}` does not evaluate to a string.",
                     proc_name, expr
-                ))
+                )))
             }
         }
     }
@@ -36,10 +36,10 @@ pub fn compare(proc_name: &str, args: &List, context: &EvalContext) -> EvalResul
     let result = match (eval(arg1, context)?, eval(arg2, context)?) {
         (Expr::Str(lhs, _), Expr::Str(rhs, _)) => lhs.cmp(&rhs),
         _ => {
-            return Err(format!(
+            return Err(EvalError::from(format!(
                 "{}: both arguments must evaluate to strings.",
                 proc_name
-            ))
+            )))
         }
     };
 
@@ -51,10 +51,10 @@ pub fn length(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     if let Expr::Str(text, _) = eval(expr, context)? {
         Ok(Expr::from(text.chars().count() as i32))
     } else {
-        Err(format!(
+        Err(EvalError::from(format!(
             "{}: `{}` does not evaluate to a string.",
             proc_name, expr
-        ))
+        )))
     }
 }
 
