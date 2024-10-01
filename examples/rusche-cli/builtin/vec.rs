@@ -24,9 +24,9 @@ fn eval_into_vec(
     eval_into_foreign(proc_name, expr, context)?
         .downcast::<ExprVecRefCell>()
         .or_else(|_| {
-            Err(format!(
+            Err(EvalError::from(format!(
                 "{proc_name}: {expr} does not evaluate to a vector."
-            ))
+            )))
         })
 }
 
@@ -54,7 +54,7 @@ fn pop(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     if let Some(item) = item {
         Ok(item)
     } else {
-        Err(format!("{proc_name}: vector is empty."))
+        Err(EvalError::from(format!("{proc_name}: vector is empty.")))
     }
 }
 
@@ -64,13 +64,17 @@ fn get(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let index = eval_into_int(proc_name, "index", arg2, context)?;
 
     if index < 0 {
-        return Err(format!("{proc_name}: index must be non-negative."));
+        return Err(EvalError::from(format!(
+            "{proc_name}: index must be non-negative."
+        )));
     }
 
     let item = vec.borrow().get(index as usize).cloned();
     if let Some(item) = item {
         Ok(item)
     } else {
-        Err(format!("{proc_name}: invalid index {index}."))
+        Err(EvalError::from(format!(
+            "{proc_name}: invalid index {index}."
+        )))
     }
 }

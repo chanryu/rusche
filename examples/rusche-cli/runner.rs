@@ -38,7 +38,7 @@ fn run_file_content(text: &str) -> Result<(), String> {
             Ok(Some(expr)) => {
                 let _ = evaluator
                     .eval(&expr)
-                    .map_err(|e| format!("Evaluation error: {}", e))?;
+                    .map_err(|e| format!("Evaluation error: {:?}", e))?;
             }
             Err(ParseError::NeedMoreToken) => {
                 return Err("Failed to parse - incomplete expression".to_string());

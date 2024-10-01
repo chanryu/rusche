@@ -45,7 +45,7 @@ pub fn run_repl() {
                                 println!("; {}", result);
                             }
                             Err(error) => {
-                                println!("; Error: {}", error);
+                                println!("; Error: {:?}", error);
                             }
                         },
                         Err(ParseError::NeedMoreToken) => break,
