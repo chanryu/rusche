@@ -21,7 +21,7 @@ impl EvalToStr for EvalContext {
 
         match eval(&expr, self) {
             Ok(result) => result.to_string(),
-            Err(error) => format!("Err: {:?}", error),
+            Err(error) => format!("Err: {error}"),
         }
     }
 }

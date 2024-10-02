@@ -1,4 +1,5 @@
 use std::cell::{Cell, RefCell};
+use std::fmt;
 use std::rc::{Rc, Weak};
 
 use crate::builtin::load_builtin;
@@ -12,12 +13,22 @@ use crate::span::Span;
 #[derive(Debug, PartialEq)]
 pub struct EvalError {
     pub message: String,
-    pub expr_span: Option<Span>,
+    pub span: Option<Span>,
 }
 
 impl EvalError {
-    pub fn new(message: String, expr_span: Option<Span>) -> Self {
-        Self { message, expr_span }
+    pub fn new(message: String, span: Option<Span>) -> Self {
+        Self { message, span }
+    }
+}
+
+impl fmt::Display for EvalError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(span) = &self.span {
+            write!(f, "{}:{}: {}", span.loc.line, span.loc.column, self.message)
+        } else {
+            write!(f, "{}", self.message)
+        }
     }
 }
 
@@ -25,7 +36,7 @@ impl From<String> for EvalError {
     fn from(message: String) -> Self {
         Self {
             message,
-            expr_span: None,
+            span: None,
         }
     }
 }
@@ -103,7 +114,7 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
     match expr {
         Expr::Sym(name, _) => match context.env.lookup(name) {
             Some(expr) => Ok(expr.clone()),
-            None => Err(EvalError::from(format!("Undefined symbol: {:?}", name))),
+            None => Err(EvalError::from(format!("Undefined symbol: {}", name))),
         },
         Expr::List(List::Cons(cons), _) => {
             use crate::builtin::quote::{quasiquote, quote};

@@ -50,11 +50,12 @@ pub fn cons(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let mut iter = args.iter();
     match iter.next() {
-        Some(Expr::Sym(name, _)) => {
+        Some(Expr::Sym(name, span)) => {
             let Some(expr) = iter.next() else {
-                return Err(EvalError::from(format!(
-                    "{proc_name}: define expects a expression after symbol"
-                )));
+                return Err(EvalError {
+                    message: format!("{proc_name}: define expects a expression after symbol"),
+                    span: *span,
+                });
             };
 
             context.env.define(name, eval(expr, context)?);

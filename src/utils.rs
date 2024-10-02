@@ -7,13 +7,10 @@ use crate::list::{cons, List};
 
 /// Make a generic syntax error message with the given procedure name and arguments.
 pub fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
-    EvalError {
-        message: format!(
-            "Ill-formed syntax: {}",
-            cons(intern(proc_name), args.clone())
-        ),
-        expr_span: None,
-    }
+    EvalError::from(format!(
+        "Ill-formed syntax: {}",
+        cons(intern(proc_name), args.clone())
+    ))
 }
 
 /// Get exactly one argument from a list.
