@@ -138,7 +138,7 @@ fn eval_closure(
 
     loop {
         if let Some(formal_arg) = formal_args.next() {
-            if let Some(name) = parse_name_if_variadic_args(formal_arg) {
+            if let Some(name) = get_variadic_args_name(formal_arg) {
                 closure_context.env.define(name, actual_args);
                 break;
             }
@@ -181,7 +181,7 @@ fn eval_macro(
 
     loop {
         if let Some(formal_arg) = formal_args.next() {
-            if let Some(name) = parse_name_if_variadic_args(formal_arg) {
+            if let Some(name) = get_variadic_args_name(formal_arg) {
                 macro_context.env.define(name, actual_args);
                 break;
             }
@@ -211,10 +211,28 @@ fn eval_macro(
     Ok(NIL)
 }
 
-fn parse_name_if_variadic_args(name: &str) -> Option<&str> {
+/// Extracts the name of variadic arguments from the given name.
+///
+/// If the name starts with `*` and has more than one character,
+/// returns the rest of the name. Otherwise, returns `None`.
+///
+fn get_variadic_args_name(name: &str) -> Option<&str> {
     if name.starts_with("*") && name.len() > 1 {
         Some(&name[1..])
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_variadic_args_name() {
+        assert_eq!(get_variadic_args_name("args"), None);
+        assert_eq!(get_variadic_args_name("*args"), Some("args"));
+        assert_eq!(get_variadic_args_name("*a"), Some("a"));
+        assert_eq!(get_variadic_args_name("*"), None);
     }
 }
