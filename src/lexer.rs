@@ -26,7 +26,7 @@ pub struct Lexer<Iter>
 where
     Iter: Iterator<Item = char>,
 {
-    __iter: Peekable<Iter>,
+    iter: Peekable<Iter>,
     loc: Loc,
 }
 
@@ -36,7 +36,7 @@ where
 {
     pub fn new(iter: Iter) -> Self {
         Self {
-            __iter: iter.peekable(),
+            iter: iter.peekable(),
             loc: Loc::new(1, 1),
         }
     }
@@ -92,8 +92,8 @@ where
     }
 
     fn skip_comment(&mut self) -> bool {
-        if self.__iter.next_if_eq(&';').is_some() {
-            let _ = self.__iter.find(|&ch| ch == '\n');
+        if self.iter.next_if_eq(&';').is_some() {
+            let _ = self.iter.find(|&ch| ch == '\n');
             self.advance_loc(&Some('\n'));
             true
         } else {
@@ -167,13 +167,13 @@ where
     Iter: Iterator<Item = char>,
 {
     fn next_char(&mut self) -> Option<char> {
-        let ch = self.__iter.next();
+        let ch = self.iter.next();
         self.advance_loc(&ch);
         ch
     }
 
     fn next_char_if(&mut self, func: impl FnOnce(&char) -> bool) -> Option<char> {
-        let ch = self.__iter.next_if(func);
+        let ch = self.iter.next_if(func);
         self.advance_loc(&ch);
         ch
     }
