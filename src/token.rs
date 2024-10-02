@@ -52,9 +52,9 @@ impl PartialEq for Token {
             (Token::Quasiquote(_), Token::Quasiquote(_)) => true,
             (Token::Unquote(_), Token::Unquote(_)) => true,
             (Token::UnquoteSplicing(_), Token::UnquoteSplicing(_)) => true,
-            (Token::Num(_, a), Token::Num(_, b)) => a == b,
-            (Token::Str(_, a), Token::Str(_, b)) => a == b,
-            (Token::Sym(_, a), Token::Sym(_, b)) => a == b,
+            (Token::Num(a, _), Token::Num(b, _)) => a == b,
+            (Token::Str(a, _), Token::Str(b, _)) => a == b,
+            (Token::Sym(a, _), Token::Sym(b, _)) => a == b,
             _ => false,
         }
     }
