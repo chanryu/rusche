@@ -15,7 +15,7 @@ impl fmt::Display for ParseError {
         match self {
             ParseError::NeedMoreToken => write!(f, "Ran out of tokens"),
             ParseError::UnexpectedToken(token) => {
-                write!(f, "{}: Unexpected token: {}", token.loc(), token)
+                write!(f, "{}: Unexpected token: {}", token.span(), token)
             }
         }
     }

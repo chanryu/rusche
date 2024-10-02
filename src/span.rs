@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter, Result};
+use std::fmt;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Loc {
@@ -19,8 +19,8 @@ impl Loc {
     }
 }
 
-impl Display for Loc {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+impl fmt::Display for Loc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.line, self.column)
     }
 }
@@ -38,5 +38,15 @@ impl Span {
 
     pub fn len(&self) -> usize {
         self.end.column - self.loc.column
+    }
+}
+
+impl fmt::Display for Span {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.loc.line == self.end.line {
+            write!(f, "{}-{}", self.loc, self.end.column)
+        } else {
+            write!(f, "{}-{}", self.loc, self.end)
+        }
     }
 }

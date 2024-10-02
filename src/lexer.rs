@@ -262,29 +262,30 @@ mod tests {
     #[test]
     fn test_scanner_parans() {
         let mut lexer = Lexer::new("()(())(()())".chars());
-        macro_rules! match_next_paran {
+        macro_rules! match_next_paren {
             (None) => {
                 assert_eq!(lexer.get_token().unwrap(), None);
             };
-            (Some($token_case:ident)) => {
+            ($token_case:ident) => {
                 let token = lexer.get_token().unwrap().unwrap();
-                assert_eq!(token, Token::$token_case(token.loc()));
+                let loc = Loc::new(1, 1); // don't care about the location
+                assert_eq!(token, Token::$token_case(loc));
             };
         }
 
-        match_next_paran!(Some(OpenParen));
-        match_next_paran!(Some(CloseParen));
-        match_next_paran!(Some(OpenParen));
-        match_next_paran!(Some(OpenParen));
-        match_next_paran!(Some(CloseParen));
-        match_next_paran!(Some(CloseParen));
-        match_next_paran!(Some(OpenParen));
-        match_next_paran!(Some(OpenParen));
-        match_next_paran!(Some(CloseParen));
-        match_next_paran!(Some(OpenParen));
-        match_next_paran!(Some(CloseParen));
-        match_next_paran!(Some(CloseParen));
-        match_next_paran!(None);
+        match_next_paren!(OpenParen);
+        match_next_paren!(CloseParen);
+        match_next_paren!(OpenParen);
+        match_next_paren!(OpenParen);
+        match_next_paren!(CloseParen);
+        match_next_paren!(CloseParen);
+        match_next_paren!(OpenParen);
+        match_next_paren!(OpenParen);
+        match_next_paren!(CloseParen);
+        match_next_paren!(OpenParen);
+        match_next_paren!(CloseParen);
+        match_next_paren!(CloseParen);
+        match_next_paren!(None);
     }
 
     #[test]
@@ -302,7 +303,8 @@ mod tests {
             };
             (Some($token_case:ident)) => {
                 let token = lexer.get_token().unwrap().unwrap();
-                assert_eq!(token, Token::$token_case(token.loc()));
+                let loc = Loc::new(1, 1); // don't care about the location
+                assert_eq!(token, Token::$token_case(loc));
             };
             (Some($token_case:ident($value:expr))) => {
                 let token = lexer.get_token().unwrap().unwrap();

@@ -25,11 +25,7 @@ impl EvalError {
 impl fmt::Display for EvalError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(span) = &self.span {
-            if span.loc.line == span.end.line {
-                write!(f, "{}-{}: {}", span.loc, span.end.column, self.message)
-            } else {
-                write!(f, "{}-{}: {}", span.loc, span.end, self.message)
-            }
+            write!(f, "{}: {}", span, self.message)
         } else {
             write!(f, "{}", self.message)
         }
