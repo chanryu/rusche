@@ -20,6 +20,13 @@ impl EvalError {
     pub fn new(message: String, span: Option<Span>) -> Self {
         Self { message, span }
     }
+
+    pub fn from(message: String) -> Self {
+        Self {
+            message,
+            span: None,
+        }
+    }
 }
 
 impl fmt::Display for EvalError {
@@ -28,15 +35,6 @@ impl fmt::Display for EvalError {
             write!(f, "{}: {}", span, self.message)
         } else {
             write!(f, "{}", self.message)
-        }
-    }
-}
-
-impl From<String> for EvalError {
-    fn from(message: String) -> Self {
-        Self {
-            message,
-            span: None,
         }
     }
 }

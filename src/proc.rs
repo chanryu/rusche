@@ -145,7 +145,7 @@ fn eval_closure(
 
             let expr = actual_args
                 .next()
-                .ok_or(format!("{}: too few args", closure_name))?;
+                .ok_or(EvalError::from(format!("{}: too few args", closure_name)))?;
 
             closure_context.env.define(formal_arg, eval(expr, context)?);
         } else {
@@ -188,7 +188,7 @@ fn eval_macro(
 
             let expr = actual_args
                 .next()
-                .ok_or(format!("{}: too few args", macro_name))?;
+                .ok_or(EvalError::from(format!("{}: too few args", macro_name)))?;
 
             macro_context.env.define(formal_arg, expr.clone());
         } else {
