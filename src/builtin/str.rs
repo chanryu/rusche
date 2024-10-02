@@ -51,10 +51,10 @@ pub fn length(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     if let Expr::Str(text, _) = eval(expr, context)? {
         Ok(Expr::from(text.chars().count() as i32))
     } else {
-        Err(EvalError::from(format!(
-            "{}: `{}` does not evaluate to a string.",
-            proc_name, expr
-        )))
+        Err(EvalError {
+            message: format!("{}: `{}` does not evaluate to a string.", proc_name, expr),
+            span: expr.span(),
+        })
     }
 }
 
