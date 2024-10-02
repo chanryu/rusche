@@ -112,9 +112,12 @@ pub fn eval_tail(expr: &Expr, context: &EvalContext) -> EvalResult {
 
 fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResult {
     match expr {
-        Expr::Sym(name, _) => match context.env.lookup(name) {
+        Expr::Sym(name, span) => match context.env.lookup(name) {
             Some(expr) => Ok(expr.clone()),
-            None => Err(EvalError::from(format!("Undefined symbol: {}", name))),
+            None => Err(EvalError {
+                message: format!("Undefined symbol: `{}`", name),
+                span: *span,
+            }),
         },
         Expr::List(List::Cons(cons), _) => {
             use crate::builtin::quote::{quasiquote, quote};
