@@ -125,7 +125,6 @@ where
     }
 
     fn read_number(&mut self, first_char: char, begin_loc: Loc) -> LexResult {
-        let sign = if first_char == '-' { -1 } else { 1 };
         let mut has_decimal_point = false;
         let mut digits = String::new();
 
@@ -142,14 +141,12 @@ where
             }
         }
 
+        let sign = if first_char == '-' { -1.0 } else { 1.0 };
+        let span = Span::new(begin_loc, self.loc);
+
         digits
             .parse::<f64>()
-            .map(|value| {
-                Some(Token::Num(
-                    value * sign as f64,
-                    Span::new(begin_loc, self.loc),
-                ))
-            })
+            .map(|value| Some(Token::Num(value * sign, span)))
             .map_err(|_| LexError::InvalidNumber)
     }
 
@@ -342,5 +339,63 @@ mod tests {
         match_next_token!(Some(CloseParen));
         match_next_token!(Some(CloseParen));
         match_next_token!(None);
+    }
+
+    #[test]
+    fn test_span_factorial() {
+        let src = r#"
+            (define (factorial n)
+                (if (= n 0)
+                    1
+                    (* n (factorial (- n 1)))))
+        "#;
+
+        let mut lexer = Lexer::new(src.chars());
+
+        macro_rules! match_next_span {
+            ($span:expr) => {
+                let token = lexer.get_token().unwrap().unwrap();
+                assert_eq!($span, token.span());
+            };
+        }
+
+        match_next_span!(Span::new(Loc::new(2, 13), Loc::new(2, 14))); // (
+        match_next_span!(Span::new(Loc::new(2, 14), Loc::new(2, 20))); // define
+        match_next_span!(Span::new(Loc::new(2, 21), Loc::new(2, 22))); // (
+        match_next_span!(Span::new(Loc::new(2, 22), Loc::new(2, 31))); // factorial
+        match_next_span!(Span::new(Loc::new(2, 32), Loc::new(2, 33))); // n
+        match_next_span!(Span::new(Loc::new(2, 33), Loc::new(2, 34))); // )
+        match_next_span!(Span::new(Loc::new(3, 17), Loc::new(3, 18))); // (
+        match_next_span!(Span::new(Loc::new(3, 18), Loc::new(3, 20))); // if
+        match_next_span!(Span::new(Loc::new(3, 21), Loc::new(3, 22))); // (
+        match_next_span!(Span::new(Loc::new(3, 22), Loc::new(3, 23))); // =
+        match_next_span!(Span::new(Loc::new(3, 24), Loc::new(3, 25))); // n
+        match_next_span!(Span::new(Loc::new(3, 26), Loc::new(3, 27))); // 0
+        match_next_span!(Span::new(Loc::new(3, 27), Loc::new(3, 28))); // )
+        match_next_span!(Span::new(Loc::new(4, 21), Loc::new(4, 22))); // 1
+
+        // ...
+    }
+
+    #[test]
+    fn test_span_define_test() {
+        let mut lexer = Lexer::new(r#"(define test "test")"#.chars());
+
+        macro_rules! match_next_span {
+            (None) => {
+                assert_eq!(lexer.get_token().unwrap(), None);
+            };
+            ($span:expr) => {
+                let token = lexer.get_token().unwrap().unwrap();
+                assert_eq!($span, token.span());
+            };
+        }
+
+        match_next_span!(Span::new(Loc::new(1, 1), Loc::new(1, 2))); // (
+        match_next_span!(Span::new(Loc::new(1, 2), Loc::new(1, 8))); // define
+        match_next_span!(Span::new(Loc::new(1, 9), Loc::new(1, 13))); // test
+        match_next_span!(Span::new(Loc::new(1, 14), Loc::new(1, 20))); // "test"
+        match_next_span!(Span::new(Loc::new(1, 20), Loc::new(1, 21))); // )
+        match_next_span!(None);
     }
 }
