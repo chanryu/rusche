@@ -10,6 +10,13 @@ impl Loc {
     pub fn new(line: usize, column: usize) -> Self {
         Self { line, column }
     }
+
+    pub fn with_column_offset(&self, offset: usize) -> Loc {
+        Self {
+            line: self.line,
+            column: self.column + offset,
+        }
+    }
 }
 
 impl Display for Loc {

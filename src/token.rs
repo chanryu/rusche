@@ -22,8 +22,8 @@ impl Token {
             | Token::CloseParen(loc)
             | Token::Quote(loc)
             | Token::Quasiquote(loc)
-            | Token::Unquote(loc) => Span::new(*loc, Loc::new(loc.line, loc.column + 1)),
-            Token::UnquoteSplicing(loc) => Span::new(*loc, Loc::new(loc.line, loc.column + 2)),
+            | Token::Unquote(loc) => Span::new(*loc, loc.with_column_offset(1)),
+            Token::UnquoteSplicing(loc) => Span::new(*loc, loc.with_column_offset(2)),
             Token::Num(_, span) | Token::Str(_, span) | Token::Sym(_, span) => *span,
         }
     }
@@ -92,23 +92,15 @@ mod tests {
         assert_eq!(expected_loc, Token::UnquoteSplicing(loc).loc());
         assert_eq!(
             expected_loc,
-            Token::Num(0.0, Span::new(loc, Loc::new(loc.line, loc.column + 1))).loc()
+            Token::Num(0.0, Span::new(loc, loc.with_column_offset(1))).loc()
         );
         assert_eq!(
             expected_loc,
-            Token::Str(
-                "str".to_string(),
-                Span::new(loc, Loc::new(loc.line, loc.column + 5))
-            )
-            .loc()
+            Token::Str("str".to_string(), Span::new(loc, loc.with_column_offset(5))).loc()
         );
         assert_eq!(
             expected_loc,
-            Token::Sym(
-                "sym".to_string(),
-                Span::new(loc, Loc::new(loc.line, loc.column + 3))
-            )
-            .loc()
+            Token::Sym("sym".to_string(), Span::new(loc, loc.with_column_offset(3))).loc()
         );
     }
 
