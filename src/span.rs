@@ -21,11 +21,15 @@ impl Display for Loc {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Span {
     pub loc: Loc,
-    pub len: usize,
+    pub end: Loc,
 }
 
 impl Span {
-    pub fn new(loc: Loc, len: usize) -> Self {
-        Self { loc, len }
+    pub fn new(loc: Loc, end: Loc) -> Self {
+        Self { loc, end }
+    }
+
+    pub fn len(&self) -> usize {
+        self.end.column - self.loc.column
     }
 }

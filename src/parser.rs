@@ -159,7 +159,7 @@ mod tests {
             Token::$token_case(Loc::new(1, 1))
         };
         ($token_case:ident($value:expr)) => {
-            Token::$token_case($value, Span::new(Loc::new(1, 1), 1))
+            Token::$token_case($value, Span::new(Loc::new(1, 1), Loc::new(1, 2)))
         };
     }
 

@@ -22,8 +22,8 @@ impl Token {
             | Token::CloseParen(loc)
             | Token::Quote(loc)
             | Token::Quasiquote(loc)
-            | Token::Unquote(loc) => Span::new(*loc, 1),
-            Token::UnquoteSplicing(loc) => Span::new(*loc, 2),
+            | Token::Unquote(loc) => Span::new(*loc, Loc::new(loc.line, loc.column + 1)),
+            Token::UnquoteSplicing(loc) => Span::new(*loc, Loc::new(loc.line, loc.column + 2)),
             Token::Num(_, span) | Token::Str(_, span) | Token::Sym(_, span) => *span,
         }
     }
@@ -90,14 +90,25 @@ mod tests {
         assert_eq!(expected_loc, Token::Quasiquote(loc).loc());
         assert_eq!(expected_loc, Token::Unquote(loc).loc());
         assert_eq!(expected_loc, Token::UnquoteSplicing(loc).loc());
-        assert_eq!(expected_loc, Token::Num(0.0, Span::new(loc, 1)).loc());
         assert_eq!(
             expected_loc,
-            Token::Str("str".to_string(), Span::new(loc, 5)).loc()
+            Token::Num(0.0, Span::new(loc, Loc::new(loc.line, loc.column + 1))).loc()
         );
         assert_eq!(
             expected_loc,
-            Token::Sym("sym".to_string(), Span::new(loc, 3)).loc()
+            Token::Str(
+                "str".to_string(),
+                Span::new(loc, Loc::new(loc.line, loc.column + 5))
+            )
+            .loc()
+        );
+        assert_eq!(
+            expected_loc,
+            Token::Sym(
+                "sym".to_string(),
+                Span::new(loc, Loc::new(loc.line, loc.column + 3))
+            )
+            .loc()
         );
     }
 
@@ -105,7 +116,7 @@ mod tests {
     fn test_span_len_1() {
         macro_rules! assert_token_span_length_eq {
             ($length:literal, $token_case:ident) => {
-                assert_eq!($length, Token::$token_case(Loc::new(0, 0)).span().len);
+                assert_eq!($length, Token::$token_case(Loc::new(0, 0)).span().len());
             };
         }
         assert_token_span_length_eq!(1, OpenParen);
@@ -129,7 +140,7 @@ mod tests {
                 assert_eq!(
                     format!(
                         "{}",
-                        Token::$token_case($value, Span::new(Loc::new(1, 1), 1))
+                        Token::$token_case($value, Span::new(Loc::new(1, 1), Loc::new(1, 2)))
                     ),
                     $formatted
                 );

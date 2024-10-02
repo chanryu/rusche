@@ -115,12 +115,7 @@ where
                         _ => text.push(ch),
                     }
                 }
-                ('"', false) => {
-                    return Ok(Some(Token::Str(
-                        text,
-                        Span::new(loc, self.loc.column - loc.column),
-                    )))
-                }
+                ('"', false) => return Ok(Some(Token::Str(text, Span::new(loc, self.loc)))),
                 ('\\', false) => escaped = true,
                 (ch, false) => text.push(ch),
             }
@@ -145,12 +140,7 @@ where
 
         digits
             .parse::<f64>()
-            .map(|value| {
-                Some(Token::Num(
-                    value * sign as f64,
-                    Span::new(loc, self.loc.column - loc.column),
-                ))
-            })
+            .map(|value| Some(Token::Num(value * sign as f64, Span::new(loc, self.loc))))
             .map_err(|_| LexError::InvalidNumber)
     }
 
@@ -163,10 +153,7 @@ where
             name.push(ch);
         }
 
-        Ok(Some(Token::Sym(
-            name,
-            Span::new(loc, self.loc.column - loc.column),
-        )))
+        Ok(Some(Token::Sym(name, Span::new(loc, self.loc))))
     }
 }
 
