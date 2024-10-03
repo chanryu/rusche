@@ -1,5 +1,5 @@
 use rusche::{
-    eval::{eval, EvalContext, EvalError, EvalResult},
+    eval::{eval, EvalContext, EvalError, EvalErrorCode, EvalResult},
     expr::{Expr, NIL},
     list::List,
     utils::{eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args},
@@ -25,6 +25,7 @@ fn eval_into_vec(
         .downcast::<ExprVecRefCell>()
         .or_else(|_| {
             Err(EvalError {
+                code: EvalErrorCode::TypeMismatch,
                 message: format!("{proc_name}: {expr} does not evaluate to a vector."),
                 span: expr.span(),
             })
@@ -57,6 +58,7 @@ fn pop(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
         Ok(item)
     } else {
         Err(EvalError {
+            code: EvalErrorCode::Undefined,
             message: format!("{proc_name}: vector is empty."),
             span: vec_expr.span(),
         })
@@ -70,6 +72,7 @@ fn get(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
     if index < 0 {
         return Err(EvalError {
+            code: EvalErrorCode::Undefined,
             message: format!("{proc_name}: index must be zero or positive integer."),
             span: index_expr.span(),
         });
@@ -80,6 +83,7 @@ fn get(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
         Ok(item)
     } else {
         Err(EvalError {
+            code: EvalErrorCode::Undefined,
             message: format!("{proc_name}: index out-of-bounds {index}."),
             span: index_expr.span(),
         })

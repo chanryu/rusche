@@ -1,5 +1,5 @@
 use rusche::{
-    eval::{eval, EvalContext, EvalError, EvalResult},
+    eval::{eval, EvalContext, EvalError, EvalErrorCode, EvalResult},
     expr::{Expr, NIL},
     list::List,
 };
@@ -38,6 +38,7 @@ fn read_line() -> Result<String, EvalError> {
     let mut input = String::new();
     if let Err(error) = std::io::stdin().read_line(&mut input) {
         return Err(EvalError {
+            code: EvalErrorCode::Undefined,
             message: format!("Error reading input: {}", error),
             span: None,
         });
@@ -53,6 +54,7 @@ fn read_num(proc_name: &str, _: &List, _: &EvalContext) -> EvalResult {
     match read_line()?.parse::<f64>() {
         Ok(num) => Ok(Expr::from(num)),
         Err(err) => Err(EvalError {
+            code: EvalErrorCode::Undefined,
             message: format!("{}: {}", proc_name, err),
             span: None,
         }),

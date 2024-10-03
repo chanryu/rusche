@@ -1,4 +1,4 @@
-use crate::eval::{eval, EvalContext, EvalError, EvalResult};
+use crate::eval::{eval, EvalContext, EvalError, EvalErrorCode, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::List;
 use crate::utils::{get_exact_1_arg, make_syntax_error};
@@ -59,6 +59,7 @@ fn quasiquote_expr(
                     }
                     _ => {
                         return Err(EvalError {
+                            code: EvalErrorCode::TypeMismatch,
                             message: format!(
                                 "unquote-splicing: \"{}\" does not evaluate to a list",
                                 cdar

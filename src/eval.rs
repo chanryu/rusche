@@ -1,5 +1,4 @@
 use std::cell::{Cell, RefCell};
-use std::fmt;
 use std::rc::{Rc, Weak};
 
 use crate::builtin::load_builtin;
@@ -8,30 +7,8 @@ use crate::expr::Expr;
 use crate::list::{Cons, List};
 use crate::prelude::load_prelude;
 use crate::proc::Proc;
-use crate::span::Span;
 
-#[derive(Debug, PartialEq)]
-pub struct EvalError {
-    pub message: String,
-    pub span: Option<Span>,
-}
-
-impl EvalError {
-    pub fn new(message: String, span: Option<Span>) -> Self {
-        Self { message, span }
-    }
-}
-
-impl fmt::Display for EvalError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(span) = &self.span {
-            write!(f, "{}: {}", span, self.message)
-        } else {
-            write!(f, "{}", self.message)
-        }
-    }
-}
-
+pub use crate::eval_error::{EvalError, EvalErrorCode};
 pub type EvalResult = Result<Expr, EvalError>;
 
 #[cfg(debug_assertions)]
@@ -106,6 +83,7 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
         Expr::Sym(name, span) => match context.env.lookup(name) {
             Some(expr) => Ok(expr.clone()),
             None => Err(EvalError {
+                code: EvalErrorCode::UndefinedSymbol,
                 message: format!("Undefined symbol: `{}`", name),
                 span: *span,
             }),
@@ -119,11 +97,13 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
                     let result = eval_s_expr(cons, context, is_tail);
                     match result {
                         Err(EvalError {
+                            code,
                             message,
                             span: None,
                         }) => {
-                            // if the error does not have a span, set it to the span of the expression
+                            // TODO: pass proper span for code
                             Err(EvalError {
+                                code,
                                 message,
                                 span: expr.span(),
                             })
@@ -161,6 +141,7 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
         }
     } else {
         Err(EvalError {
+            code: EvalErrorCode::NotCallable,
             message: format!("{} does not evaluate to a callable.", s_expr.car),
             span: s_expr.car.span(),
         })

@@ -1,5 +1,5 @@
 use crate::{
-    eval::{eval, eval_tail, EvalContext, EvalError, EvalResult},
+    eval::{eval, eval_tail, EvalContext, EvalError, EvalErrorCode, EvalResult},
     expr::{Expr, NIL},
     list::List,
     proc::Proc,
@@ -40,6 +40,7 @@ pub fn cons(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let car = eval(car, context)?;
     let Expr::List(cdr, _) = eval(cdr, context)? else {
         return Err(EvalError {
+            code: EvalErrorCode::TypeMismatch,
             message: format!("{proc_name}: {cdr} does not evaluate to a list."),
             span: cdr.span(),
         });
@@ -54,6 +55,7 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
         Some(Expr::Sym(name, span)) => {
             let Some(expr) = iter.next() else {
                 return Err(EvalError {
+                    code: EvalErrorCode::TypeMismatch,
                     message: format!("{proc_name}: define expects a expression after symbol"),
                     span: *span,
                 });
@@ -65,6 +67,7 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
         Some(Expr::List(List::Cons(cons), _)) => {
             let Expr::Sym(name, _) = cons.car.as_ref() else {
                 return Err(EvalError {
+                    code: EvalErrorCode::TypeMismatch,
                     message: format!("{proc_name}: expects a symbol for a procedure name"),
                     span: cons.car.span(),
                 });
@@ -173,6 +176,7 @@ pub fn set(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
     let Expr::Sym(name, _) = name_expr else {
         return Err(EvalError {
+            code: EvalErrorCode::TypeMismatch,
             message: format!("{proc_name}: expects a symbol as the first argument"),
             span: name_expr.span(),
         });
