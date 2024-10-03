@@ -1,5 +1,6 @@
 use crate::expr::{intern, Expr};
 use crate::list::{cons, list, List};
+use crate::span::Span;
 use crate::token::Token;
 use std::collections::VecDeque;
 use std::fmt;
@@ -131,11 +132,15 @@ impl Parser {
             if let Some(car) = context.car {
                 list = cons(car, list);
             }
-            if context.token.is_some() {
-                return Ok(list.into());
+            if let Some(begin_token) = context.token {
+                let expr_span = Span {
+                    begin: begin_token.span().begin,
+                    end: token.span().end,
+                };
+                return Ok(Expr::List(list, Some(expr_span)));
             }
         }
-        Err(ParseError::UnexpectedToken(token))
+        Err(ParseError::UnexpectedToken(token)) // dangling ')'
     }
 }
 

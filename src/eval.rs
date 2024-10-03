@@ -104,6 +104,7 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
                     span: None,
                 }) => {
                     // TODO: pass proper span for code
+                    // e.g. for arity mismatch span for args rather than the whole expr
                     Err(EvalError {
                         code,
                         message,
@@ -141,7 +142,7 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
         }
     } else {
         Err(EvalError {
-            code: EvalErrorCode::NotCallable,
+            code: EvalErrorCode::TypeMismatch,
             message: format!("`{}` does not evaluate to a callable.", s_expr.car),
             span: s_expr.car.span(),
         })

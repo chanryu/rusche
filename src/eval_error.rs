@@ -22,10 +22,9 @@ impl fmt::Display for EvalError {
 #[derive(Debug, PartialEq)]
 pub enum EvalErrorCode {
     UndefinedSymbol,
-    NotCallable, // not a function or macro
     ArityMismatch,
-    TypeMismatch,
+    TypeMismatch, // TODO: split into more specific types -- CallableExpected, SymbolExpected, etc.
     InvalidForm,
 
-    Undefined, // TODO: remove this
+    Undefined, // TODO: remove this and define something else for 3rd party errors
 }

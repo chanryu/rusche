@@ -32,8 +32,8 @@ pub struct Span {
 }
 
 impl Span {
-    pub fn new(loc: Loc, end: Loc) -> Self {
-        Self { begin: loc, end }
+    pub fn new(begin: Loc, end: Loc) -> Self {
+        Self { begin, end }
     }
 
     pub fn len(&self) -> usize {
