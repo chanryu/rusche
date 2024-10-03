@@ -143,16 +143,20 @@ fn eval_closure(
                 break;
             }
 
-            let expr = actual_args
-                .next()
-                .ok_or(EvalError::from(format!("{}: too few args", closure_name)))?;
+            let expr = actual_args.next().ok_or(EvalError {
+                message: format!("{}: too few args", closure_name),
+                span: None,
+            })?;
 
             closure_context.env.define(formal_arg, eval(expr, context)?);
         } else {
             if actual_args.next().is_none() {
                 break;
             }
-            return Err(EvalError::from(format!("{}: too many args", closure_name)));
+            return Err(EvalError {
+                message: format!("{}: too many args", closure_name),
+                span: None,
+            });
         }
     }
 
@@ -186,16 +190,20 @@ fn eval_macro(
                 break;
             }
 
-            let expr = actual_args
-                .next()
-                .ok_or(EvalError::from(format!("{}: too few args", macro_name)))?;
+            let expr = actual_args.next().ok_or(EvalError {
+                message: format!("{}: too few args", macro_name),
+                span: None,
+            })?;
 
             macro_context.env.define(formal_arg, expr.clone());
         } else {
             if actual_args.next().is_none() {
                 break;
             }
-            return Err(EvalError::from(format!("{}: too many args", macro_name)));
+            return Err(EvalError {
+                message: format!("{}: too many args", macro_name),
+                span: None,
+            });
         }
     }
 
