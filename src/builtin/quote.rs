@@ -1,7 +1,7 @@
 use crate::eval::{eval, EvalContext, EvalError, EvalErrorCode, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::List;
-use crate::utils::{get_exact_1_arg, make_syntax_error};
+use crate::utils::get_exact_1_arg;
 
 pub const QUOTE: &str = "quote";
 pub const QUASIQUOTE: &str = "quasiquote";
@@ -14,16 +14,15 @@ pub fn quote(proc_name: &str, args: &List, _context: &EvalContext) -> EvalResult
 
 pub fn quasiquote(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
-
-    match quasiquote_expr(proc_name, expr, context) {
-        Ok(mut exprs) => {
-            if exprs.len() == 1 {
-                Ok(exprs.remove(0))
-            } else {
-                Err(make_syntax_error(proc_name, args))
-            }
-        }
-        Err(err) => Err(err),
+    let mut exprs = quasiquote_expr(proc_name, expr, context)?;
+    if exprs.len() == 1 {
+        Ok(exprs.remove(0))
+    } else {
+        Err(EvalError {
+            code: EvalErrorCode::ArityMismatch,
+            message: format!("{proc_name}: expects only 1 argument"),
+            span: None,
+        })
     }
 }
 
@@ -52,7 +51,11 @@ fn quasiquote_expr(
             if let Some(cdar) = cons.cdar() {
                 exprs.push(eval(cdar, context)?);
             } else {
-                return Err(make_syntax_error(UNQUOTE, &List::Nil));
+                return Err(EvalError {
+                    code: EvalErrorCode::ArityMismatch,
+                    message: format!("{UNQUOTE}: missing argument"),
+                    span: expr.span(),
+                });
             }
         }
         Some(UNQUOTE_SPLICING) => {
@@ -66,14 +69,18 @@ fn quasiquote_expr(
                         return Err(EvalError {
                             code: EvalErrorCode::TypeMismatch,
                             message: format!(
-                                "{UNQUOTE_SPLICING}: \"{cdar}\" does not evaluate to a list"
+                                "{UNQUOTE_SPLICING}: `{cdar}` does not evaluate to a list"
                             ),
                             span: cdar.span(),
                         });
                     }
                 }
             } else {
-                return Err(make_syntax_error(UNQUOTE_SPLICING, &List::Nil));
+                return Err(EvalError {
+                    code: EvalErrorCode::ArityMismatch,
+                    message: format!("{UNQUOTE_SPLICING}: argument missing"),
+                    span: expr.span(),
+                });
             }
         }
         _ => {
