@@ -20,14 +20,6 @@ impl EvalError {
     pub fn new(message: String, span: Option<Span>) -> Self {
         Self { message, span }
     }
-
-    // TODO: Remove this method
-    pub fn from(message: String) -> Self {
-        Self {
-            message,
-            span: None,
-        }
-    }
 }
 
 impl fmt::Display for EvalError {

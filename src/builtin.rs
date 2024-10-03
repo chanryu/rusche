@@ -6,10 +6,7 @@ mod str;
 
 use std::rc::Rc;
 
-use crate::{
-    env::Env,
-    utils::{get_exact_1_arg, make_syntax_error},
-};
+use crate::env::Env;
 
 pub fn load_builtin(env: &Rc<Env>) {
     // lisp primitives
