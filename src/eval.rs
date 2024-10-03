@@ -20,14 +20,6 @@ impl EvalError {
     pub fn new(message: String, span: Option<Span>) -> Self {
         Self { message, span }
     }
-
-    // TODO: Remove this method
-    pub fn from(message: String) -> Self {
-        Self {
-            message,
-            span: None,
-        }
-    }
 }
 
 impl fmt::Display for EvalError {
@@ -123,7 +115,22 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
             match cons.car.as_ref() {
                 Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, context),
                 Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, context),
-                _ => eval_s_expr(cons, context, is_tail),
+                _ => {
+                    let result = eval_s_expr(cons, context, is_tail);
+                    match result {
+                        Err(EvalError {
+                            message,
+                            span: None,
+                        }) => {
+                            // if the error does not have a span, set it to the span of the expression
+                            Err(EvalError {
+                                message,
+                                span: expr.span(),
+                            })
+                        }
+                        _ => result,
+                    }
+                }
             }
         }
         _ => Ok(expr.clone()),
@@ -153,10 +160,10 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
             Ok(res)
         }
     } else {
-        Err(EvalError::from(format!(
-            "{} does not evaluate to a callable.",
-            s_expr.car
-        )))
+        Err(EvalError {
+            message: format!("{} does not evaluate to a callable.", s_expr.car),
+            span: s_expr.car.span(),
+        })
     }
 }
 

@@ -1,7 +1,7 @@
-use super::{get_exact_1_arg, make_syntax_error};
 use crate::eval::{eval, EvalContext, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::List;
+use crate::utils::{get_exact_1_arg, make_syntax_error};
 
 pub fn quote(proc_name: &str, args: &List, _context: &EvalContext) -> EvalResult {
     Ok(get_exact_1_arg(proc_name, args)?.clone())
