@@ -20,7 +20,11 @@ pub fn car(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     if let Expr::List(List::Cons(cons), _) = eval(expr, context)? {
         Ok(cons.car.as_ref().clone())
     } else {
-        Err(make_syntax_error(proc_name, args))
+        Err(EvalError {
+            code: EvalErrorCode::TypeMismatch,
+            message: format!("{proc_name}: `{expr}` does not evaluate to a list."),
+            span: expr.span(),
+        })
     }
 }
 
@@ -41,7 +45,7 @@ pub fn cons(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let Expr::List(cdr, _) = eval(cdr, context)? else {
         return Err(EvalError {
             code: EvalErrorCode::TypeMismatch,
-            message: format!("{proc_name}: {cdr} does not evaluate to a list."),
+            message: format!("{proc_name}: `{cdr}` does not evaluate to a list."),
             span: cdr.span(),
         });
     };

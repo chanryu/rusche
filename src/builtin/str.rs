@@ -22,7 +22,7 @@ pub fn append(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
             _ => {
                 return Err(EvalError {
                     code: EvalErrorCode::TypeMismatch,
-                    message: format!("{}: `{}` does not evaluate to a string.", proc_name, expr),
+                    message: format!("{proc_name}: `{expr}` does not evaluate to a string."),
                     span: expr.span(),
                 })
             }
@@ -47,7 +47,7 @@ pub fn length(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     } else {
         Err(EvalError {
             code: EvalErrorCode::TypeMismatch,
-            message: format!("{}: `{}` does not evaluate to a string.", proc_name, expr),
+            message: format!("{proc_name}: `{expr}` does not evaluate to a string."),
             span: expr.span(),
         })
     }

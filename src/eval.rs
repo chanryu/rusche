@@ -142,7 +142,7 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
     } else {
         Err(EvalError {
             code: EvalErrorCode::NotCallable,
-            message: format!("{} does not evaluate to a callable.", s_expr.car),
+            message: format!("`{}` does not evaluate to a callable.", s_expr.car),
             span: s_expr.car.span(),
         })
     }

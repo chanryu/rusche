@@ -26,7 +26,7 @@ fn eval_into_vec(
         .or_else(|_| {
             Err(EvalError {
                 code: EvalErrorCode::TypeMismatch,
-                message: format!("{proc_name}: {expr} does not evaluate to a vector."),
+                message: format!("{proc_name}: `{expr}` does not evaluate to a vector."),
                 span: expr.span(),
             })
         })

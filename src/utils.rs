@@ -300,7 +300,7 @@ pub fn eval_into_str(
         Expr::Str(text, _) => Ok(text),
         _ => Err(EvalError {
             code: EvalErrorCode::TypeMismatch,
-            message: format!("{proc_name}: {expr} does not evaluate to a string."),
+            message: format!("{proc_name}: `{expr}` does not evaluate to a string."),
             span: expr.span(),
         }),
     }
@@ -339,7 +339,7 @@ pub fn eval_into_num(
         Expr::Num(value, _) => Ok(value),
         _ => Err(EvalError {
             code: EvalErrorCode::TypeMismatch,
-            message: format!("{proc_name}: {expr} does not evaluate to a number."),
+            message: format!("{proc_name}: `{expr}` does not evaluate to a number."),
             span: expr.span(),
         }),
     }
@@ -439,7 +439,7 @@ pub fn eval_into_foreign(
         Expr::Foreign(object) => Ok(object),
         _ => Err(EvalError {
             code: EvalErrorCode::TypeMismatch,
-            message: format!("{proc_name}: {expr} does not evaluate to a foreign object."),
+            message: format!("{proc_name}: `{expr}` does not evaluate to a foreign object."),
             span: expr.span(),
         }),
     }
