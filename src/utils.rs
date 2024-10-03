@@ -2,20 +2,8 @@ use std::any::Any;
 use std::rc::Rc;
 
 use crate::eval::{eval, EvalContext, EvalError, EvalErrorCode};
-use crate::expr::{intern, Expr};
-use crate::list::{cons, List};
-
-/// Make a generic syntax error message with the given procedure name and arguments.
-pub fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
-    EvalError {
-        code: EvalErrorCode::Undefined,
-        message: format!(
-            "Ill-formed syntax: {}",
-            cons(intern(proc_name), args.clone())
-        ),
-        span: None,
-    }
-}
+use crate::expr::Expr;
+use crate::list::List;
 
 /// Get exactly one argument from a list.
 ///

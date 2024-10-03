@@ -25,6 +25,7 @@ pub enum EvalErrorCode {
     NotCallable, // not a function or macro
     ArityMismatch,
     TypeMismatch,
+    InvalidForm,
 
     Undefined, // TODO: remove this
 }
