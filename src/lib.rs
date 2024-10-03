@@ -1,5 +1,4 @@
 mod builtin;
-mod eval_error;
 mod prelude;
 
 pub mod env;
