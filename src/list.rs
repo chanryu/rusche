@@ -1,4 +1,4 @@
-use crate::{expr::Expr, span::Span};
+use crate::expr::Expr;
 use std::fmt;
 use std::iter::Iterator;
 
