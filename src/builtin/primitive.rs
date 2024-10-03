@@ -39,9 +39,10 @@ pub fn cons(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
     let car = eval(car, context)?;
     let Expr::List(cdr, _) = eval(cdr, context)? else {
-        return Err(EvalError::from(format!(
-            "{proc_name}: {cdr} does not evaluate to a list."
-        )));
+        return Err(EvalError {
+            message: format!("{proc_name}: {cdr} does not evaluate to a list."),
+            span: cdr.span(),
+        });
     };
 
     Ok(crate::list::cons(car, cdr).into())
@@ -63,9 +64,10 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
         }
         Some(Expr::List(List::Cons(cons), _)) => {
             let Expr::Sym(name, _) = cons.car.as_ref() else {
-                return Err(EvalError::from(format!(
-                    "{proc_name}: expects a list of symbols"
-                )));
+                return Err(EvalError {
+                    message: format!("{proc_name}: expects a symbol for a procedure name"),
+                    span: cons.car.span(),
+                });
             };
 
             context.env.define(
@@ -170,10 +172,10 @@ pub fn set(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (name_expr, value_expr) = get_exact_2_args(proc_name, args)?;
 
     let Expr::Sym(name, _) = name_expr else {
-        return Err(EvalError::from(format!(
-            "{}: expects a symbol as first argument",
-            proc_name
-        )));
+        return Err(EvalError {
+            message: format!("{proc_name}: expects a symbol as the first argument"),
+            span: name_expr.span(),
+        });
     };
 
     context.env.update(name, eval(value_expr, context)?);
