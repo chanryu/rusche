@@ -21,6 +21,7 @@ impl EvalError {
         Self { message, span }
     }
 
+    // TODO: Remove this method
     pub fn from(message: String) -> Self {
         Self {
             message,
