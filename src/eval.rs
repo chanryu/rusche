@@ -123,7 +123,22 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
             match cons.car.as_ref() {
                 Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, context),
                 Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, context),
-                _ => eval_s_expr(cons, context, is_tail),
+                _ => {
+                    let result = eval_s_expr(cons, context, is_tail);
+                    match result {
+                        Err(EvalError {
+                            message,
+                            span: None,
+                        }) => {
+                            // if the error does not have a span, set it to the span of the expression
+                            Err(EvalError {
+                                message,
+                                span: expr.span(),
+                            })
+                        }
+                        _ => result,
+                    }
+                }
             }
         }
         _ => Ok(expr.clone()),
