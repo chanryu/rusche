@@ -7,10 +7,13 @@ use crate::list::{cons, List};
 
 /// Make a generic syntax error message with the given procedure name and arguments.
 pub fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
-    EvalError::from(format!(
-        "Ill-formed syntax: {}",
-        cons(intern(proc_name), args.clone())
-    ))
+    EvalError {
+        message: format!(
+            "Ill-formed syntax: {}",
+            cons(intern(proc_name), args.clone())
+        ),
+        span: None,
+    }
 }
 
 /// Get exactly one argument from a list.
@@ -43,14 +46,18 @@ pub fn make_syntax_error(proc_name: &str, args: &List) -> EvalError {
 pub fn get_exact_1_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, EvalError> {
     let mut iter = args.iter();
     let Some(arg) = iter.next() else {
-        return Err(EvalError::from(format!("{proc_name} needs an argument.")));
+        return Err(EvalError {
+            message: format!("{proc_name} needs an argument."),
+            span: None,
+        });
     };
     if iter.next().is_none() {
         Ok(arg)
     } else {
-        Err(EvalError::from(format!(
-            "{proc_name} expects only 1 argument."
-        )))
+        Err(EvalError {
+            message: format!("{proc_name} expects only 1 argument."),
+            span: None,
+        })
     }
 }
 
@@ -87,24 +94,24 @@ pub fn get_exact_2_args<'a>(
 ) -> Result<(&'a Expr, &'a Expr), EvalError> {
     let mut iter = args.iter();
     let Some(arg1) = iter.next() else {
-        return Err(EvalError::from(format!(
-            "{}: requres two arguments",
-            proc_name
-        )));
+        return Err(EvalError {
+            message: format!("{}: requres two arguments", proc_name),
+            span: None,
+        });
     };
     let Some(arg2) = iter.next() else {
-        return Err(EvalError::from(format!(
-            "{}: requres two arguments",
-            proc_name
-        )));
+        return Err(EvalError {
+            message: format!("{}: requres two arguments", proc_name),
+            span: None,
+        });
     };
     if iter.next().is_none() {
         Ok((arg1, arg2))
     } else {
-        Err(EvalError::from(format!(
-            "{}: takes only two arguments",
-            proc_name
-        )))
+        Err(EvalError {
+            message: format!("{}: takes only two arguments", proc_name),
+            span: None,
+        })
     }
 }
 
@@ -141,30 +148,30 @@ pub fn get_exact_3_args<'a>(
 ) -> Result<(&'a Expr, &'a Expr, &'a Expr), EvalError> {
     let mut iter = args.iter();
     let Some(arg1) = iter.next() else {
-        return Err(EvalError::from(format!(
-            "{}: requres 3 arguments",
-            proc_name
-        )));
+        return Err(EvalError {
+            message: format!("{}: requres 3 arguments", proc_name),
+            span: None,
+        });
     };
     let Some(arg2) = iter.next() else {
-        return Err(EvalError::from(format!(
-            "{}: requres 3 arguments",
-            proc_name
-        )));
+        return Err(EvalError {
+            message: format!("{}: requres 3 arguments", proc_name),
+            span: None,
+        });
     };
     let Some(arg3) = iter.next() else {
-        return Err(EvalError::from(format!(
-            "{}: requres 3 arguments",
-            proc_name
-        )));
+        return Err(EvalError {
+            message: format!("{}: requres 3 arguments", proc_name),
+            span: None,
+        });
     };
     if iter.next().is_none() {
         Ok((arg1, arg2, arg3))
     } else {
-        Err(EvalError::from(format!(
-            "{}: takes only 3 arguments",
-            proc_name
-        )))
+        Err(EvalError {
+            message: format!("{}: takes only 3 arguments", proc_name),
+            span: None,
+        })
     }
 }
 
@@ -201,16 +208,16 @@ pub fn get_2_or_3_args<'a>(
 ) -> Result<(&'a Expr, &'a Expr, Option<&'a Expr>), EvalError> {
     let mut iter = args.iter();
     let Some(arg1) = iter.next() else {
-        return Err(EvalError::from(format!(
-            "{}: requres at least 2 arguments",
-            proc_name
-        )));
+        return Err(EvalError {
+            message: format!("{}: requres at least 2 arguments", proc_name),
+            span: None,
+        });
     };
     let Some(arg2) = iter.next() else {
-        return Err(EvalError::from(format!(
-            "{}: requres at least 2 arguments",
-            proc_name
-        )));
+        return Err(EvalError {
+            message: format!("{}: requres at least 2 arguments", proc_name),
+            span: None,
+        });
     };
     let Some(arg3) = iter.next() else {
         return Ok((arg1, arg2, None));
@@ -218,10 +225,10 @@ pub fn get_2_or_3_args<'a>(
     if iter.next().is_none() {
         Ok((arg1, arg2, Some(arg3)))
     } else {
-        Err(EvalError::from(format!(
-            "{}: takes up to 3 arguments",
-            proc_name
-        )))
+        Err(EvalError {
+            message: format!("{}: takes up to 3 arguments", proc_name),
+            span: None,
+        })
     }
 }
 
