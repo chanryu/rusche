@@ -3,6 +3,11 @@ use crate::expr::{Expr, NIL};
 use crate::list::List;
 use crate::utils::{get_exact_1_arg, make_syntax_error};
 
+pub const QUOTE: &str = "quote";
+pub const QUASIQUOTE: &str = "quasiquote";
+pub const UNQUOTE: &str = "unquote";
+pub const UNQUOTE_SPLICING: &str = "unquote-splicing";
+
 pub fn quote(proc_name: &str, args: &List, _context: &EvalContext) -> EvalResult {
     Ok(get_exact_1_arg(proc_name, args)?.clone())
 }
@@ -43,14 +48,14 @@ fn quasiquote_expr(
 
     let mut exprs = Vec::new();
     match car_name {
-        Some("unquote") => {
+        Some(UNQUOTE) => {
             if let Some(cdar) = cons.cdar() {
                 exprs.push(eval(cdar, context)?);
             } else {
-                return Err(make_syntax_error("unquote", &List::Nil));
+                return Err(make_syntax_error(UNQUOTE, &List::Nil));
             }
         }
-        Some("unquote-splicing") => {
+        Some(UNQUOTE_SPLICING) => {
             if let Some(cdar) = cons.cdar() {
                 match eval(cdar, context)? {
                     Expr::List(list, _) => {
@@ -61,23 +66,22 @@ fn quasiquote_expr(
                         return Err(EvalError {
                             code: EvalErrorCode::TypeMismatch,
                             message: format!(
-                                "unquote-splicing: \"{}\" does not evaluate to a list",
-                                cdar
+                                "{UNQUOTE_SPLICING}: \"{cdar}\" does not evaluate to a list"
                             ),
                             span: cdar.span(),
                         });
                     }
                 }
             } else {
-                return Err(make_syntax_error("unquote-splicing", &List::Nil));
+                return Err(make_syntax_error(UNQUOTE_SPLICING, &List::Nil));
             }
         }
         _ => {
-            let mut v = Vec::new();
+            let mut v = Vec::with_capacity(list.len());
             for expr in list.iter() {
                 v.extend(quasiquote_expr(proc_name, expr, context)?);
             }
-            exprs.push(v.into());
+            exprs.push(Expr::from(v));
         }
     }
 
@@ -96,7 +100,7 @@ mod tests {
         let evaluator = Evaluator::new();
         let context = evaluator.context();
         // (quote (1 2)) => (1 2)
-        let result = quote("", &list!(list!(1, 2)), context);
+        let result = quote(QUOTE, &list!(list!(1, 2)), context);
         assert_eq!(result, Ok(list!(1, 2).into()));
     }
 
@@ -109,8 +113,8 @@ mod tests {
 
         // `(0 1 ,x 3) => (0 1 2 3)
         let result = quasiquote(
-            "",
-            &list!(list!(0, 1, list!(intern("unquote"), intern("x")), 3)),
+            QUASIQUOTE,
+            &list!(list!(0, 1, list!(intern(UNQUOTE), intern("x")), 3)),
             context,
         );
         assert_eq!(result, Ok(list!(0, 1, 2, 3).into()));
@@ -123,10 +127,10 @@ mod tests {
 
         // (quasiquote (0 (unquote (+ 1 2)) 4)) => (0 3 4)
         let result = quasiquote(
-            "",
+            QUASIQUOTE,
             &list!(list!(
                 0,
-                list!(intern("unquote"), list!(intern("num-add"), 1, 2)),
+                list!(intern(UNQUOTE), list!(intern("num-add"), 1, 2)),
                 4
             )),
             context,
@@ -141,12 +145,12 @@ mod tests {
 
         // (quasiquote (0 (unquote-splicing (quote (1 2 3))) 4)) => (0 1 2 3 4)
         let result = quasiquote(
-            "",
+            QUASIQUOTE,
             &list!(list!(
                 0,
                 list!(
-                    intern("unquote-splicing"),
-                    list!(intern("quote"), list!(1, 2, 3))
+                    intern(UNQUOTE_SPLICING),
+                    list!(intern(QUOTE), list!(1, 2, 3))
                 ),
                 4
             )),

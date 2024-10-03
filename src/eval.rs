@@ -89,28 +89,28 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
             }),
         },
         Expr::List(List::Cons(cons), _) => {
-            use crate::builtin::quote::{quasiquote, quote};
-            match cons.car.as_ref() {
-                Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, context),
-                Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, context),
-                _ => {
-                    let result = eval_s_expr(cons, context, is_tail);
-                    match result {
-                        Err(EvalError {
-                            code,
-                            message,
-                            span: None,
-                        }) => {
-                            // TODO: pass proper span for code
-                            Err(EvalError {
-                                code,
-                                message,
-                                span: expr.span(),
-                            })
-                        }
-                        _ => result,
-                    }
+            use crate::builtin::quote::{quasiquote, quote, QUASIQUOTE, QUOTE};
+
+            let result = match cons.car.as_ref() {
+                Expr::Sym(text, _) if text == QUOTE => quote(text, &cons.cdr, context),
+                Expr::Sym(text, _) if text == QUASIQUOTE => quasiquote(text, &cons.cdr, context),
+                _ => eval_s_expr(cons, context, is_tail),
+            };
+
+            match result {
+                Err(EvalError {
+                    code,
+                    message,
+                    span: None,
+                }) => {
+                    // TODO: pass proper span for code
+                    Err(EvalError {
+                        code,
+                        message,
+                        span: expr.span(),
+                    })
                 }
+                _ => result,
             }
         }
         _ => Ok(expr.clone()),

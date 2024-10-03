@@ -140,11 +140,12 @@ impl Parser {
 }
 
 fn get_quote_name(token: Option<&Token>) -> Option<&'static str> {
+    use crate::builtin::quote::{QUASIQUOTE, QUOTE, UNQUOTE, UNQUOTE_SPLICING};
     match token {
-        Some(Token::Quote(_)) => Some("quote"),
-        Some(Token::Quasiquote(_)) => Some("quasiquote"),
-        Some(Token::Unquote(_)) => Some("unquote"),
-        Some(Token::UnquoteSplicing(_)) => Some("unquote-splicing"),
+        Some(Token::Quote(_)) => Some(QUOTE),
+        Some(Token::Quasiquote(_)) => Some(QUASIQUOTE),
+        Some(Token::Unquote(_)) => Some(UNQUOTE),
+        Some(Token::UnquoteSplicing(_)) => Some(UNQUOTE_SPLICING),
         _ => None,
     }
 }
