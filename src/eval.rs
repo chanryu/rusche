@@ -1,4 +1,5 @@
 use std::cell::{Cell, RefCell};
+use std::fmt;
 use std::rc::{Rc, Weak};
 
 use crate::builtin::load_builtin;
@@ -7,8 +8,38 @@ use crate::expr::Expr;
 use crate::list::{Cons, List};
 use crate::prelude::load_prelude;
 use crate::proc::Proc;
+use crate::span::Span;
 
-pub type EvalError = String;
+#[derive(Debug, PartialEq)]
+pub struct EvalError {
+    pub message: String,
+    pub span: Option<Span>,
+}
+
+impl EvalError {
+    pub fn new(message: String, span: Option<Span>) -> Self {
+        Self { message, span }
+    }
+
+    // TODO: Remove this method
+    pub fn from(message: String) -> Self {
+        Self {
+            message,
+            span: None,
+        }
+    }
+}
+
+impl fmt::Display for EvalError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(span) = &self.span {
+            write!(f, "{}: {}", span, self.message)
+        } else {
+            write!(f, "{}", self.message)
+        }
+    }
+}
+
 pub type EvalResult = Result<Expr, EvalError>;
 
 #[cfg(debug_assertions)]
@@ -80,9 +111,12 @@ pub fn eval_tail(expr: &Expr, context: &EvalContext) -> EvalResult {
 
 fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResult {
     match expr {
-        Expr::Sym(name, _) => match context.env.lookup(name) {
+        Expr::Sym(name, span) => match context.env.lookup(name) {
             Some(expr) => Ok(expr.clone()),
-            None => Err(format!("Undefined symbol: {:?}", name)),
+            None => Err(EvalError {
+                message: format!("Undefined symbol: `{}`", name),
+                span: *span,
+            }),
         },
         Expr::List(List::Cons(cons), _) => {
             use crate::builtin::quote::{quasiquote, quote};
@@ -119,7 +153,10 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
             Ok(res)
         }
     } else {
-        Err(format!("{} does not evaluate to a callable.", s_expr.car))
+        Err(EvalError::from(format!(
+            "{} does not evaluate to a callable.",
+            s_expr.car
+        )))
     }
 }
 

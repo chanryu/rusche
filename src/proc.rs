@@ -1,7 +1,7 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::rc::Rc;
 
-use crate::eval::{eval, eval_tail, EvalContext, EvalResult};
+use crate::eval::{eval, eval_tail, EvalContext, EvalError, EvalResult};
 use crate::expr::NIL;
 use crate::list::List;
 
@@ -138,21 +138,21 @@ fn eval_closure(
 
     loop {
         if let Some(formal_arg) = formal_args.next() {
-            if let Some(name) = parse_name_if_variadic_args(formal_arg) {
+            if let Some(name) = get_variadic_args_name(formal_arg) {
                 closure_context.env.define(name, actual_args);
                 break;
             }
 
             let expr = actual_args
                 .next()
-                .ok_or(format!("{}: too few args", closure_name))?;
+                .ok_or(EvalError::from(format!("{}: too few args", closure_name)))?;
 
             closure_context.env.define(formal_arg, eval(expr, context)?);
         } else {
             if actual_args.next().is_none() {
                 break;
             }
-            return Err(format!("{}: too many args", closure_name));
+            return Err(EvalError::from(format!("{}: too many args", closure_name)));
         }
     }
 
@@ -181,21 +181,21 @@ fn eval_macro(
 
     loop {
         if let Some(formal_arg) = formal_args.next() {
-            if let Some(name) = parse_name_if_variadic_args(formal_arg) {
+            if let Some(name) = get_variadic_args_name(formal_arg) {
                 macro_context.env.define(name, actual_args);
                 break;
             }
 
             let expr = actual_args
                 .next()
-                .ok_or(format!("{}: too few args", macro_name))?;
+                .ok_or(EvalError::from(format!("{}: too few args", macro_name)))?;
 
             macro_context.env.define(formal_arg, expr.clone());
         } else {
             if actual_args.next().is_none() {
                 break;
             }
-            return Err(format!("{}: too many args", macro_name));
+            return Err(EvalError::from(format!("{}: too many args", macro_name)));
         }
     }
 
@@ -211,10 +211,28 @@ fn eval_macro(
     Ok(NIL)
 }
 
-fn parse_name_if_variadic_args(name: &str) -> Option<&str> {
+/// Extracts the name of variadic arguments from the given name.
+///
+/// If the name starts with `*` and has more than one character,
+/// returns the rest of the name. Otherwise, returns `None`.
+///
+fn get_variadic_args_name(name: &str) -> Option<&str> {
     if name.starts_with("*") && name.len() > 1 {
         Some(&name[1..])
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_variadic_args_name() {
+        assert_eq!(get_variadic_args_name("args"), None);
+        assert_eq!(get_variadic_args_name("*args"), Some("args"));
+        assert_eq!(get_variadic_args_name("*a"), Some("a"));
+        assert_eq!(get_variadic_args_name("*"), None);
     }
 }

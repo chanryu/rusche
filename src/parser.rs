@@ -15,7 +15,7 @@ impl fmt::Display for ParseError {
         match self {
             ParseError::NeedMoreToken => write!(f, "Ran out of tokens"),
             ParseError::UnexpectedToken(token) => {
-                write!(f, "{}: Unexpected token: {}", token.loc(), token)
+                write!(f, "{}: Unexpected token: {}", token.span(), token)
             }
         }
     }
@@ -159,7 +159,7 @@ mod tests {
             Token::$token_case(Loc::new(1, 1))
         };
         ($token_case:ident($value:expr)) => {
-            Token::$token_case($value, Span::new(Loc::new(1, 1), 1))
+            Token::$token_case($value, Span::new(Loc::new(1, 1), Loc::new(1, 2)))
         };
     }
 

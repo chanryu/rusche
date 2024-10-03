@@ -26,7 +26,7 @@ pub struct Lexer<Iter>
 where
     Iter: Iterator<Item = char>,
 {
-    __iter: Peekable<Iter>,
+    iter: Peekable<Iter>,
     loc: Loc,
 }
 
@@ -36,8 +36,8 @@ where
 {
     pub fn new(iter: Iter) -> Self {
         Self {
-            __iter: iter.peekable(),
-            loc: Loc::new(1, 0),
+            iter: iter.peekable(),
+            loc: Loc::new(1, 1),
         }
     }
 
@@ -49,37 +49,39 @@ where
             }
         }
 
-        match self.next_char() {
-            Some('(') => Ok(Some(Token::OpenParen(self.loc))),
-            Some(')') => Ok(Some(Token::CloseParen(self.loc))),
+        let begin_loc = self.loc;
 
-            Some('\'') => Ok(Some(Token::Quote(self.loc))),
-            Some('`') => Ok(Some(Token::Quasiquote(self.loc))),
+        match self.next_char() {
+            Some('(') => Ok(Some(Token::OpenParen(begin_loc))),
+            Some(')') => Ok(Some(Token::CloseParen(begin_loc))),
+
+            Some('\'') => Ok(Some(Token::Quote(begin_loc))),
+            Some('`') => Ok(Some(Token::Quasiquote(begin_loc))),
             Some(',') => {
                 if self.next_char_if(|ch| *ch == '@').is_some() {
-                    Ok(Some(Token::UnquoteSplicing(self.loc)))
+                    Ok(Some(Token::UnquoteSplicing(begin_loc)))
                 } else {
-                    Ok(Some(Token::Unquote(self.loc)))
+                    Ok(Some(Token::Unquote(begin_loc)))
                 }
             }
 
             // string
-            Some('"') => self.read_string(),
+            Some('"') => self.read_string(begin_loc),
 
             // number
-            Some(ch) if ch.is_ascii_digit() || ch == '.' => self.read_number(ch, 1),
+            Some(ch) if ch.is_ascii_digit() => self.read_number(ch, begin_loc),
 
             // number or symbol
-            Some('-') => {
+            Some(ch) if ch == '+' || ch == '-' => {
                 if let Some(ch) = self.next_char_if(|ch| ch.is_ascii_digit()) {
-                    self.read_number(ch, -1)
+                    self.read_number(ch, begin_loc)
                 } else {
-                    self.read_symbol('-')
+                    self.read_symbol(ch, begin_loc)
                 }
             }
 
             // we allow all other characters to be a symbol
-            Some(ch) => self.read_symbol(ch),
+            Some(ch) => self.read_symbol(ch, begin_loc),
 
             None => Ok(None),
         }
@@ -90,8 +92,8 @@ where
     }
 
     fn skip_comment(&mut self) -> bool {
-        if self.__iter.next_if_eq(&';').is_some() {
-            let _ = self.__iter.find(|&ch| ch == '\n');
+        if self.iter.next_if_eq(&';').is_some() {
+            let _ = self.iter.find(|&ch| ch == '\n');
             self.advance_loc(&Some('\n'));
             true
         } else {
@@ -99,8 +101,7 @@ where
         }
     }
 
-    fn read_string(&mut self) -> LexResult {
-        let loc = self.loc;
+    fn read_string(&mut self, begin_loc: Loc) -> LexResult {
         let mut text = String::new();
         let mut escaped = false;
         while let Some(ch) = self.next_char() {
@@ -115,12 +116,7 @@ where
                         _ => text.push(ch),
                     }
                 }
-                ('"', false) => {
-                    return Ok(Some(Token::Str(
-                        text,
-                        Span::new(loc, self.loc.column - loc.column),
-                    )))
-                }
+                ('"', false) => return Ok(Some(Token::Str(text, Span::new(begin_loc, self.loc)))),
                 ('\\', false) => escaped = true,
                 (ch, false) => text.push(ch),
             }
@@ -128,12 +124,14 @@ where
         Err(LexError::IncompleteString)
     }
 
-    fn read_number(&mut self, first_char: char, sign: i32) -> LexResult {
-        let loc = self.loc;
-        let mut has_decimal_point = first_char == '.';
+    fn read_number(&mut self, first_char: char, begin_loc: Loc) -> LexResult {
+        let mut has_decimal_point = false;
         let mut digits = String::new();
 
-        digits.push(first_char);
+        if first_char.is_ascii_digit() {
+            digits.push(first_char);
+        }
+
         while let Some(ch) =
             self.next_char_if(|&ch| ch.is_ascii_digit() || (!has_decimal_point && ch == '.'))
         {
@@ -143,19 +141,16 @@ where
             }
         }
 
+        let sign = if first_char == '-' { -1.0 } else { 1.0 };
+        let span = Span::new(begin_loc, self.loc);
+
         digits
             .parse::<f64>()
-            .map(|value| {
-                Some(Token::Num(
-                    value * sign as f64,
-                    Span::new(loc, self.loc.column - loc.column),
-                ))
-            })
+            .map(|value| Some(Token::Num(value * sign, span)))
             .map_err(|_| LexError::InvalidNumber)
     }
 
-    fn read_symbol(&mut self, first_char: char) -> LexResult {
-        let loc = self.loc;
+    fn read_symbol(&mut self, first_char: char, begin_loc: Loc) -> LexResult {
         let mut name = String::with_capacity(16);
         name.push(first_char);
 
@@ -163,10 +158,7 @@ where
             name.push(ch);
         }
 
-        Ok(Some(Token::Sym(
-            name,
-            Span::new(loc, self.loc.column - loc.column),
-        )))
+        Ok(Some(Token::Sym(name, Span::new(begin_loc, self.loc))))
     }
 }
 
@@ -175,13 +167,13 @@ where
     Iter: Iterator<Item = char>,
 {
     fn next_char(&mut self) -> Option<char> {
-        let ch = self.__iter.next();
+        let ch = self.iter.next();
         self.advance_loc(&ch);
         ch
     }
 
     fn next_char_if(&mut self, func: impl FnOnce(&char) -> bool) -> Option<char> {
-        let ch = self.__iter.next_if(func);
+        let ch = self.iter.next_if(func);
         self.advance_loc(&ch);
         ch
     }
@@ -215,17 +207,21 @@ mod tests {
 
     #[test]
     fn test_read_string() {
+        let begin_loc = Loc::new(1, 1);
         macro_rules! assert_parse_string {
             ($source:literal, $expected:literal) => {
                 let mut chars = $source.chars();
                 assert_eq!(chars.next().unwrap(), '"');
-                let token = Lexer::new(chars).read_string().unwrap().unwrap();
+                let token = Lexer::new(chars).read_string(begin_loc).unwrap().unwrap();
                 assert_eq!(token, Token::Str(String::from($expected), token.span()));
             };
             ($source:literal, $expected:ident) => {
                 let mut chars = $source.chars();
                 assert_eq!(chars.next().unwrap(), '"');
-                assert_eq!(Lexer::new(chars).read_string(), Err(LexError::$expected));
+                assert_eq!(
+                    Lexer::new(chars).read_string(begin_loc),
+                    Err(LexError::$expected)
+                );
             };
         }
 
@@ -236,13 +232,14 @@ mod tests {
 
     #[test]
     fn test_read_number() {
+        let begin_loc = Loc::new(1, 1);
         macro_rules! assert_parsed_number {
             ($source:literal, $expected:literal) => {
                 assert!(!$source.is_empty());
                 let mut chars = $source.chars();
                 let first_char = chars.next().unwrap();
                 let token = Lexer::new(chars)
-                    .read_number(first_char, 1)
+                    .read_number(first_char, begin_loc)
                     .unwrap()
                     .unwrap();
                 assert_eq!(token, Token::Num($expected.into(), token.span()));
@@ -275,29 +272,30 @@ mod tests {
     #[test]
     fn test_scanner_parans() {
         let mut lexer = Lexer::new("()(())(()())".chars());
-        macro_rules! match_next_paran {
+        macro_rules! match_next_paren {
             (None) => {
                 assert_eq!(lexer.get_token().unwrap(), None);
             };
-            (Some($token_case:ident)) => {
+            ($token_case:ident) => {
                 let token = lexer.get_token().unwrap().unwrap();
-                assert_eq!(token, Token::$token_case(token.loc()));
+                let loc = Loc::new(1, 1); // don't care about the location
+                assert_eq!(token, Token::$token_case(loc));
             };
         }
 
-        match_next_paran!(Some(OpenParen));
-        match_next_paran!(Some(CloseParen));
-        match_next_paran!(Some(OpenParen));
-        match_next_paran!(Some(OpenParen));
-        match_next_paran!(Some(CloseParen));
-        match_next_paran!(Some(CloseParen));
-        match_next_paran!(Some(OpenParen));
-        match_next_paran!(Some(OpenParen));
-        match_next_paran!(Some(CloseParen));
-        match_next_paran!(Some(OpenParen));
-        match_next_paran!(Some(CloseParen));
-        match_next_paran!(Some(CloseParen));
-        match_next_paran!(None);
+        match_next_paren!(OpenParen);
+        match_next_paren!(CloseParen);
+        match_next_paren!(OpenParen);
+        match_next_paren!(OpenParen);
+        match_next_paren!(CloseParen);
+        match_next_paren!(CloseParen);
+        match_next_paren!(OpenParen);
+        match_next_paren!(OpenParen);
+        match_next_paren!(CloseParen);
+        match_next_paren!(OpenParen);
+        match_next_paren!(CloseParen);
+        match_next_paren!(CloseParen);
+        match_next_paren!(None);
     }
 
     #[test]
@@ -315,7 +313,8 @@ mod tests {
             };
             (Some($token_case:ident)) => {
                 let token = lexer.get_token().unwrap().unwrap();
-                assert_eq!(token, Token::$token_case(token.loc()));
+                let loc = Loc::new(1, 1); // don't care about the location
+                assert_eq!(token, Token::$token_case(loc));
             };
             (Some($token_case:ident($value:expr))) => {
                 let token = lexer.get_token().unwrap().unwrap();
@@ -340,5 +339,63 @@ mod tests {
         match_next_token!(Some(CloseParen));
         match_next_token!(Some(CloseParen));
         match_next_token!(None);
+    }
+
+    #[test]
+    fn test_span_factorial() {
+        let src = r#"
+            (define (factorial n)
+                (if (= n 0)
+                    1
+                    (* n (factorial (- n 1)))))
+        "#;
+
+        let mut lexer = Lexer::new(src.chars());
+
+        macro_rules! match_next_span {
+            ($span:expr) => {
+                let token = lexer.get_token().unwrap().unwrap();
+                assert_eq!($span, token.span());
+            };
+        }
+
+        match_next_span!(Span::new(Loc::new(2, 13), Loc::new(2, 14))); // (
+        match_next_span!(Span::new(Loc::new(2, 14), Loc::new(2, 20))); // define
+        match_next_span!(Span::new(Loc::new(2, 21), Loc::new(2, 22))); // (
+        match_next_span!(Span::new(Loc::new(2, 22), Loc::new(2, 31))); // factorial
+        match_next_span!(Span::new(Loc::new(2, 32), Loc::new(2, 33))); // n
+        match_next_span!(Span::new(Loc::new(2, 33), Loc::new(2, 34))); // )
+        match_next_span!(Span::new(Loc::new(3, 17), Loc::new(3, 18))); // (
+        match_next_span!(Span::new(Loc::new(3, 18), Loc::new(3, 20))); // if
+        match_next_span!(Span::new(Loc::new(3, 21), Loc::new(3, 22))); // (
+        match_next_span!(Span::new(Loc::new(3, 22), Loc::new(3, 23))); // =
+        match_next_span!(Span::new(Loc::new(3, 24), Loc::new(3, 25))); // n
+        match_next_span!(Span::new(Loc::new(3, 26), Loc::new(3, 27))); // 0
+        match_next_span!(Span::new(Loc::new(3, 27), Loc::new(3, 28))); // )
+        match_next_span!(Span::new(Loc::new(4, 21), Loc::new(4, 22))); // 1
+
+        // ...
+    }
+
+    #[test]
+    fn test_span_define_test() {
+        let mut lexer = Lexer::new(r#"(define test "test")"#.chars());
+
+        macro_rules! match_next_span {
+            (None) => {
+                assert_eq!(lexer.get_token().unwrap(), None);
+            };
+            ($span:expr) => {
+                let token = lexer.get_token().unwrap().unwrap();
+                assert_eq!($span, token.span());
+            };
+        }
+
+        match_next_span!(Span::new(Loc::new(1, 1), Loc::new(1, 2))); // (
+        match_next_span!(Span::new(Loc::new(1, 2), Loc::new(1, 8))); // define
+        match_next_span!(Span::new(Loc::new(1, 9), Loc::new(1, 13))); // test
+        match_next_span!(Span::new(Loc::new(1, 14), Loc::new(1, 20))); // "test"
+        match_next_span!(Span::new(Loc::new(1, 20), Loc::new(1, 21))); // )
+        match_next_span!(None);
     }
 }

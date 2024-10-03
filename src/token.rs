@@ -22,23 +22,9 @@ impl Token {
             | Token::CloseParen(loc)
             | Token::Quote(loc)
             | Token::Quasiquote(loc)
-            | Token::Unquote(loc) => Span::new(*loc, 1),
-            Token::UnquoteSplicing(loc) => Span::new(*loc, 2),
+            | Token::Unquote(loc) => Span::new(*loc, loc.with_column_offset(1)),
+            Token::UnquoteSplicing(loc) => Span::new(*loc, loc.with_column_offset(2)),
             Token::Num(_, span) | Token::Str(_, span) | Token::Sym(_, span) => *span,
-        }
-    }
-
-    pub fn loc(&self) -> Loc {
-        match self {
-            Token::OpenParen(loc)
-            | Token::CloseParen(loc)
-            | Token::Quote(loc)
-            | Token::Quasiquote(loc)
-            | Token::Unquote(loc)
-            | Token::UnquoteSplicing(loc)
-            | Token::Num(_, Span { loc, .. })
-            | Token::Str(_, Span { loc, .. })
-            | Token::Sym(_, Span { loc, .. }) => *loc,
         }
     }
 }
@@ -52,9 +38,9 @@ impl PartialEq for Token {
             (Token::Quasiquote(_), Token::Quasiquote(_)) => true,
             (Token::Unquote(_), Token::Unquote(_)) => true,
             (Token::UnquoteSplicing(_), Token::UnquoteSplicing(_)) => true,
-            (Token::Num(_, a), Token::Num(_, b)) => a == b,
-            (Token::Str(_, a), Token::Str(_, b)) => a == b,
-            (Token::Sym(_, a), Token::Sym(_, b)) => a == b,
+            (Token::Num(a, _), Token::Num(b, _)) => a == b,
+            (Token::Str(a, _), Token::Str(b, _)) => a == b,
+            (Token::Sym(a, _), Token::Sym(b, _)) => a == b,
             _ => false,
         }
     }
@@ -81,31 +67,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_loc() {
-        let loc = Loc::new(99, 999);
-        let expected_loc = loc;
-        assert_eq!(expected_loc, Token::OpenParen(loc).loc());
-        assert_eq!(expected_loc, Token::CloseParen(loc).loc());
-        assert_eq!(expected_loc, Token::Quote(loc).loc());
-        assert_eq!(expected_loc, Token::Quasiquote(loc).loc());
-        assert_eq!(expected_loc, Token::Unquote(loc).loc());
-        assert_eq!(expected_loc, Token::UnquoteSplicing(loc).loc());
-        assert_eq!(expected_loc, Token::Num(0.0, Span::new(loc, 1)).loc());
-        assert_eq!(
-            expected_loc,
-            Token::Str("str".to_string(), Span::new(loc, 5)).loc()
-        );
-        assert_eq!(
-            expected_loc,
-            Token::Sym("sym".to_string(), Span::new(loc, 3)).loc()
-        );
-    }
-
-    #[test]
-    fn test_span_len_1() {
+    fn test_span_fixed_len() {
         macro_rules! assert_token_span_length_eq {
             ($length:literal, $token_case:ident) => {
-                assert_eq!($length, Token::$token_case(Loc::new(0, 0)).span().len);
+                assert_eq!($length, Token::$token_case(Loc::new(0, 0)).span().len());
             };
         }
         assert_token_span_length_eq!(1, OpenParen);
@@ -129,7 +94,7 @@ mod tests {
                 assert_eq!(
                     format!(
                         "{}",
-                        Token::$token_case($value, Span::new(Loc::new(1, 1), 1))
+                        Token::$token_case($value, Span::new(Loc::new(1, 1), Loc::new(1, 2)))
                     ),
                     $formatted
                 );
