@@ -1,4 +1,4 @@
-use crate::eval::{eval, EvalContext, EvalError,  EvalResult};
+use crate::eval::{eval, EvalContext, EvalError, EvalResult};
 use crate::expr::{Expr, NIL};
 use crate::list::List;
 use crate::utils::get_exact_1_arg;
@@ -18,11 +18,9 @@ pub fn quasiquote(proc_name: &str, args: &List, context: &EvalContext) -> EvalRe
     if exprs.len() == 1 {
         Ok(exprs.remove(0))
     } else {
-        Err(EvalError {
-            
-            message: format!("{proc_name}: expects only 1 argument"),
-            span: None,
-        })
+        Err(EvalError::from(format!(
+            "{proc_name}: expects only 1 argument"
+        )))
     }
 }
 
@@ -52,7 +50,6 @@ fn quasiquote_expr(
                 exprs.push(eval(cdar, context)?);
             } else {
                 return Err(EvalError {
-                    
                     message: format!("{UNQUOTE}: missing argument"),
                     span: expr.span(),
                 });
@@ -67,7 +64,6 @@ fn quasiquote_expr(
                     }
                     _ => {
                         return Err(EvalError {
-                            
                             message: format!(
                                 "{UNQUOTE_SPLICING}: `{cdar}` does not evaluate to a list"
                             ),
@@ -77,7 +73,6 @@ fn quasiquote_expr(
                 }
             } else {
                 return Err(EvalError {
-                    
                     message: format!("{UNQUOTE_SPLICING}: argument missing"),
                     span: expr.span(),
                 });

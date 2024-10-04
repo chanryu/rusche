@@ -30,6 +30,15 @@ impl fmt::Display for EvalError {
     }
 }
 
+impl From<String> for EvalError {
+    fn from(message: String) -> Self {
+        Self {
+            message,
+            span: None,
+        }
+    }
+}
+
 pub type EvalResult = Result<Expr, EvalError>;
 
 #[cfg(debug_assertions)]
@@ -122,12 +131,15 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
                     message,
                     span: None,
                 }) => {
-                    // TODO: pass proper span for code
-                    // e.g. for arity mismatch span for args rather than the whole expr
-                    Err(EvalError {
-                        message,
-                        span: expr.span(),
-                    })
+                    // If the result is an error without a span, let's try to provide a span.
+                    // First, let's check if we can get a span from arguments list. If not, we'll
+                    // use the span of the expression itself.
+                    let span = if let Some(span) = cons.cdr.as_ref().span() {
+                        Some(span)
+                    } else {
+                        expr.span()
+                    };
+                    Err(EvalError { message, span })
                 }
                 _ => result,
             }

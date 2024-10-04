@@ -1,4 +1,5 @@
 use crate::expr::Expr;
+use crate::span::Span;
 use std::fmt;
 use std::iter::Iterator;
 
@@ -56,6 +57,21 @@ impl List {
             Some(&cons.cdr)
         } else {
             None
+        }
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        let mut iter = self.iter();
+
+        match (iter.next(), iter.last()) {
+            (Some(first), Some(last)) => match (first.span(), last.span()) {
+                (Some(first_span), Some(last_span)) => {
+                    Some(Span::new(first_span.begin, last_span.end))
+                }
+                _ => None,
+            },
+            (Some(first), None) => first.span(),
+            _ => None,
         }
     }
 }
@@ -144,11 +160,47 @@ mod tests {
     use super::*;
     use crate::expr::intern;
     use crate::expr::test_utils::num;
+    use crate::span::Loc;
 
     #[test]
     fn test_display() {
         let list = list!(1, 2, list!(3, "str", intern("sym")));
         assert_eq!(format!("{}", list), "(1 2 (3 \"str\" sym))");
+    }
+
+    #[test]
+    fn test_list_span() {
+        // (1 2 3)
+        let args = list!(
+            Expr::Num(1.0, Some(Span::new(Loc::new(1, 1), Loc::new(1, 2)))),
+            Expr::Num(2.0, Some(Span::new(Loc::new(1, 3), Loc::new(1, 4)))),
+            Expr::Num(3.0, Some(Span::new(Loc::new(1, 5), Loc::new(1, 6))))
+        );
+        assert_eq!(args.span(), Some(Span::new(Loc::new(1, 1), Loc::new(1, 6))));
+
+        // (1 2 3)
+        let args = list!(
+            Expr::Num(1.0, None),
+            Expr::Num(2.0, Some(Span::new(Loc::new(1, 3), Loc::new(1, 4)))),
+            Expr::Num(3.0, Some(Span::new(Loc::new(1, 5), Loc::new(1, 6))))
+        );
+        assert_eq!(args.span(), None);
+
+        // (1 2 3)
+        let args = list!(
+            Expr::Num(1.0, Some(Span::new(Loc::new(1, 1), Loc::new(1, 2)))),
+            Expr::Num(2.0, Some(Span::new(Loc::new(1, 3), Loc::new(1, 4)))),
+            Expr::Num(3.0, None)
+        );
+        assert_eq!(args.span(), None);
+
+        // (1 2 3)
+        let args = list!(
+            Expr::Num(1.0, Some(Span::new(Loc::new(1, 1), Loc::new(1, 2)))),
+            Expr::Num(2.0, None),
+            Expr::Num(3.0, Some(Span::new(Loc::new(1, 5), Loc::new(1, 6))))
+        );
+        assert_eq!(args.span(), Some(Span::new(Loc::new(1, 1), Loc::new(1, 6))));
     }
 
     #[test]

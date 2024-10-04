@@ -35,18 +35,14 @@ use crate::list::List;
 pub fn get_exact_1_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, EvalError> {
     let mut iter = args.iter();
     let Some(arg) = iter.next() else {
-        return Err(EvalError {
-            message: format!("{proc_name} needs an argument."),
-            span: None,
-        });
+        return Err(EvalError::from(format!("{proc_name} needs an argument.")));
     };
     if iter.next().is_none() {
         Ok(arg)
     } else {
-        Err(EvalError {
-            message: format!("{proc_name} expects only 1 argument."),
-            span: None,
-        })
+        Err(EvalError::from(format!(
+            "{proc_name} expects only 1 argument."
+        )))
     }
 }
 
@@ -82,25 +78,19 @@ pub fn get_exact_2_args<'a>(
     args: &'a List,
 ) -> Result<(&'a Expr, &'a Expr), EvalError> {
     let mut iter = args.iter();
-    let Some(arg1) = iter.next() else {
-        return Err(EvalError {
-            message: format!("{}: requres two arguments", proc_name),
-            span: None,
-        });
-    };
-    let Some(arg2) = iter.next() else {
-        return Err(EvalError {
-            message: format!("{}: requres two arguments", proc_name),
-            span: None,
-        });
-    };
-    if iter.next().is_none() {
-        Ok((arg1, arg2))
-    } else {
-        Err(EvalError {
-            message: format!("{}: takes only two arguments", proc_name),
-            span: None,
-        })
+
+    let arg1 = iter.next();
+    let arg2 = iter.next();
+    let arg3 = iter.next();
+
+    match (arg1, arg2, arg3) {
+        (Some(arg1), Some(arg2), None) => Ok((arg1, arg2)),
+        (Some(_), Some(_), Some(_)) => Err(EvalError::from(format!(
+            "{proc_name}: takes only two arguments"
+        ))),
+        _ => Err(EvalError::from(format!(
+            "{proc_name}: requres two arguments"
+        ))),
     }
 }
 
@@ -136,31 +126,20 @@ pub fn get_exact_3_args<'a>(
     args: &'a List,
 ) -> Result<(&'a Expr, &'a Expr, &'a Expr), EvalError> {
     let mut iter = args.iter();
-    let Some(arg1) = iter.next() else {
-        return Err(EvalError {
-            message: format!("{}: requres 3 arguments", proc_name),
-            span: None,
-        });
-    };
-    let Some(arg2) = iter.next() else {
-        return Err(EvalError {
-            message: format!("{}: requres 3 arguments", proc_name),
-            span: None,
-        });
-    };
-    let Some(arg3) = iter.next() else {
-        return Err(EvalError {
-            message: format!("{}: requres 3 arguments", proc_name),
-            span: None,
-        });
-    };
-    if iter.next().is_none() {
-        Ok((arg1, arg2, arg3))
-    } else {
-        Err(EvalError {
-            message: format!("{}: takes only 3 arguments", proc_name),
-            span: None,
-        })
+
+    let arg1 = iter.next();
+    let arg2 = iter.next();
+    let arg3 = iter.next();
+    let arg4 = iter.next();
+
+    match (arg1, arg2, arg3, arg4) {
+        (Some(arg1), Some(arg2), Some(arg3), None) => Ok((arg1, arg2, arg3)),
+        (Some(_), Some(_), Some(_), Some(_)) => Err(EvalError::from(format!(
+            "{proc_name}: takes only two arguments"
+        ))),
+        _ => Err(EvalError::from(format!(
+            "{proc_name}: requres two arguments"
+        ))),
     }
 }
 
@@ -196,28 +175,20 @@ pub fn get_2_or_3_args<'a>(
     args: &'a List,
 ) -> Result<(&'a Expr, &'a Expr, Option<&'a Expr>), EvalError> {
     let mut iter = args.iter();
-    let Some(arg1) = iter.next() else {
-        return Err(EvalError {
-            message: format!("{}: requres at least 2 arguments", proc_name),
-            span: None,
-        });
-    };
-    let Some(arg2) = iter.next() else {
-        return Err(EvalError {
-            message: format!("{}: requres at least 2 arguments", proc_name),
-            span: None,
-        });
-    };
-    let Some(arg3) = iter.next() else {
-        return Ok((arg1, arg2, None));
-    };
-    if iter.next().is_none() {
-        Ok((arg1, arg2, Some(arg3)))
-    } else {
-        Err(EvalError {
-            message: format!("{}: takes up to 3 arguments", proc_name),
-            span: None,
-        })
+
+    let arg1 = iter.next();
+    let arg2 = iter.next();
+    let arg3 = iter.next();
+    let arg4 = iter.next();
+
+    match (arg1, arg2, arg3, arg4) {
+        (Some(arg1), Some(arg2), arg3, None) => Ok((arg1, arg2, arg3)),
+        (Some(_), Some(_), Some(_), Some(_)) => Err(EvalError::from(format!(
+            "{proc_name}: takes only up to 3 arguments"
+        ))),
+        _ => Err(EvalError::from(format!(
+            "{proc_name}: requres at least 2 arguments"
+        ))),
     }
 }
 
