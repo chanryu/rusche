@@ -3,9 +3,7 @@ use crate::{
     expr::{Expr, NIL},
     list::List,
     proc::Proc,
-    utils::{
-        get_2_or_3_args, get_exact_1_arg, get_exact_2_args, make_formal_args, make_syntax_error,
-    },
+    utils::{get_2_or_3_args, get_exact_1_arg, get_exact_2_args, make_formal_args},
 };
 
 pub fn atom(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -20,7 +18,10 @@ pub fn car(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     if let Expr::List(List::Cons(cons), _) = eval(expr, context)? {
         Ok(cons.car.as_ref().clone())
     } else {
-        Err(make_syntax_error(proc_name, args))
+        Err(EvalError {
+            message: format!("{proc_name}: `{expr}` does not evaluate to a list."),
+            span: expr.span(),
+        })
     }
 }
 
@@ -30,7 +31,10 @@ pub fn cdr(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     if let Expr::List(List::Cons(cons), _) = eval(expr, context)? {
         Ok(cons.cdr.as_ref().clone().into())
     } else {
-        Err(make_syntax_error(proc_name, args))
+        Err(EvalError {
+            message: format!("{proc_name}: `{expr}` does not evaluate to a list."),
+            span: expr.span(),
+        })
     }
 }
 
@@ -40,7 +44,7 @@ pub fn cons(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let car = eval(car, context)?;
     let Expr::List(cdr, _) = eval(cdr, context)? else {
         return Err(EvalError {
-            message: format!("{proc_name}: {cdr} does not evaluate to a list."),
+            message: format!("{proc_name}: `{cdr}` does not evaluate to a list."),
             span: cdr.span(),
         });
     };
@@ -84,18 +88,26 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
             );
             Ok(NIL)
         }
-        _ => Err(make_syntax_error(proc_name, args)),
+        _ => Err(EvalError::from(format!(
+            "{proc_name}: invalid definition form -- expected a symbol or a list."
+        ))),
     }
 }
 
 pub fn defmacro(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let mut iter = args.iter();
-
-    let (macro_name, formal_args) = match iter.next() {
+    let expr = iter.next();
+    let (macro_name, formal_args) = match expr {
         // (defmacro name (args) body)
         Some(Expr::Sym(macro_name, _)) => {
-            let Some(Expr::List(list, _)) = iter.next() else {
-                return Err(make_syntax_error(proc_name, args));
+            let expr = iter.next();
+            let Some(Expr::List(list, _)) = expr else {
+                return Err(EvalError {
+                    message: format!(
+                        "{proc_name}: expected a list of formal arguments after a macro name."
+                    ),
+                    span: expr.map(|e| e.span()).unwrap_or(None),
+                });
             };
 
             (macro_name, make_formal_args(list)?)
@@ -103,12 +115,22 @@ pub fn defmacro(proc_name: &str, args: &List, context: &EvalContext) -> EvalResu
         // (defmacro (name args) body)
         Some(Expr::List(List::Cons(cons), _)) => {
             let Expr::Sym(macro_name, _) = cons.car.as_ref() else {
-                return Err(make_syntax_error(proc_name, args));
+                return Err(EvalError {
+                    message: format!(
+                        "{proc_name}: a macro name expected as the first element of the list."
+                    ),
+                    span: cons.car.span(),
+                });
             };
 
             (macro_name, make_formal_args(&cons.cdr)?)
         }
-        _ => return Err(make_syntax_error(proc_name, args)),
+        _ => {
+            return Err(EvalError {
+                message: format!("{proc_name}: invalid macro form -- expected a symbol or a list."),
+                span: expr.map(|e| e.span()).unwrap_or(None),
+            });
+        }
     };
 
     context.env.define(
@@ -153,8 +175,12 @@ pub fn if_(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 pub fn lambda(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let mut iter = args.iter();
 
-    let Some(Expr::List(list, _)) = iter.next() else {
-        return Err(make_syntax_error(proc_name, args));
+    let expr = iter.next();
+    let Some(Expr::List(list, _)) = expr else {
+        return Err(EvalError {
+            message: format!("{proc_name}: expected a list of formal arguments."),
+            span: expr.map(|e| e.span()).unwrap_or(None),
+        });
     };
 
     Ok(Expr::Proc(

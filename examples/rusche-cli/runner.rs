@@ -8,21 +8,19 @@ use crate::builtin::{load_io_procs, load_vec_procs};
 
 pub fn run_file(path: &str) {
     match std::fs::read_to_string(path) {
-        Ok(text) => {
-            if let Err(e) = run_file_content(&text) {
-                eprintln!("{}", e);
-                std::process::exit(1);
-            }
-        }
-        Err(e) => {
-            eprintln!("Failed to read file at \"{path}\": {e}");
-            std::process::exit(1);
-        }
+        Ok(text) => run_file_content(&text),
+        Err(e) => eprintln!("Failed to read file at \"{path}\": {e}"),
     }
 }
 
-fn run_file_content(text: &str) -> Result<(), String> {
-    let tokens = tokenize(text).map_err(|e| format!("Tokenization error: {}", e))?;
+fn run_file_content(text: &str) {
+    let tokens = match tokenize(text) {
+        Ok(tokens) => tokens,
+        Err(e) => {
+            eprintln!("Tokenization error: {}", e);
+            return;
+        }
+    };
     let mut parser = Parser::with_tokens(tokens);
 
     let evaluator = Evaluator::with_prelude();
@@ -35,17 +33,21 @@ fn run_file_content(text: &str) -> Result<(), String> {
             Ok(None) => {
                 break;
             }
-            Ok(Some(expr)) => {
-                let _ = evaluator
-                    .eval(&expr)
-                    .map_err(|e| format!("Evaluation error: {e}"))?;
-            }
+            Ok(Some(expr)) => match evaluator.eval(&expr) {
+                Ok(_) => {}
+                Err(e) => match e.span {
+                    Some(span) => eprintln!("Error: {}:{}", span, e.message),
+                    None => eprintln!("Error: {}", e.message),
+                },
+            },
             Err(ParseError::NeedMoreToken) => {
-                return Err("Failed to parse - incomplete expression".to_string());
+                eprintln!("Failed to parse - incomplete expression");
+                break;
             }
-            Err(e) => return Err(format!("Parsing error: {e}")),
+            Err(e) => {
+                eprintln!("Error: {e}");
+                break;
+            }
         }
     }
-
-    Ok(())
 }

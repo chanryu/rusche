@@ -21,7 +21,7 @@ pub fn append(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
             Expr::Str(text, _) => result += &text,
             _ => {
                 return Err(EvalError {
-                    message: format!("{}: `{}` does not evaluate to a string.", proc_name, expr),
+                    message: format!("{proc_name}: `{expr}` does not evaluate to a string."),
                     span: expr.span(),
                 })
             }
@@ -45,7 +45,7 @@ pub fn length(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
         Ok(Expr::from(text.chars().count() as i32))
     } else {
         Err(EvalError {
-            message: format!("{}: `{}` does not evaluate to a string.", proc_name, expr),
+            message: format!("{proc_name}: `{expr}` does not evaluate to a string."),
             span: expr.span(),
         })
     }

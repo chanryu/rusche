@@ -1,25 +1,23 @@
-use std::cell::{Cell, RefCell};
-use std::fmt;
-use std::rc::{Rc, Weak};
+use std::{
+    cell::{Cell, RefCell},
+    fmt,
+    rc::{Rc, Weak},
+};
 
-use crate::builtin::load_builtin;
-use crate::env::Env;
-use crate::expr::Expr;
-use crate::list::{Cons, List};
-use crate::prelude::load_prelude;
-use crate::proc::Proc;
-use crate::span::Span;
+use crate::{
+    builtin::load_builtin,
+    env::Env,
+    expr::Expr,
+    list::{Cons, List},
+    prelude::load_prelude,
+    proc::Proc,
+    span::Span,
+};
 
 #[derive(Debug, PartialEq)]
 pub struct EvalError {
     pub message: String,
     pub span: Option<Span>,
-}
-
-impl EvalError {
-    pub fn new(message: String, span: Option<Span>) -> Self {
-        Self { message, span }
-    }
 }
 
 impl fmt::Display for EvalError {
@@ -28,6 +26,15 @@ impl fmt::Display for EvalError {
             write!(f, "{}: {}", span, self.message)
         } else {
             write!(f, "{}", self.message)
+        }
+    }
+}
+
+impl From<String> for EvalError {
+    fn from(message: String) -> Self {
+        Self {
+            message,
+            span: None,
         }
     }
 }
@@ -111,26 +118,30 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
             }),
         },
         Expr::List(List::Cons(cons), _) => {
-            use crate::builtin::quote::{quasiquote, quote};
-            match cons.car.as_ref() {
-                Expr::Sym(text, _) if text == "quote" => quote(text, &cons.cdr, context),
-                Expr::Sym(text, _) if text == "quasiquote" => quasiquote(text, &cons.cdr, context),
-                _ => {
-                    let result = eval_s_expr(cons, context, is_tail);
-                    match result {
-                        Err(EvalError {
-                            message,
-                            span: None,
-                        }) => {
-                            // if the error does not have a span, set it to the span of the expression
-                            Err(EvalError {
-                                message,
-                                span: expr.span(),
-                            })
-                        }
-                        _ => result,
-                    }
+            use crate::builtin::quote::{quasiquote, quote, QUASIQUOTE, QUOTE};
+
+            let result = match cons.car.as_ref() {
+                Expr::Sym(text, _) if text == QUOTE => quote(text, &cons.cdr, context),
+                Expr::Sym(text, _) if text == QUASIQUOTE => quasiquote(text, &cons.cdr, context),
+                _ => eval_s_expr(cons, context, is_tail),
+            };
+
+            match result {
+                Err(EvalError {
+                    message,
+                    span: None,
+                }) => {
+                    // If the result is an error without a span, let's try to provide a span.
+                    // First, let's check if we can get a span from arguments list. If not, we'll
+                    // use the span of the expression itself.
+                    let span = if let Some(span) = cons.cdr.as_ref().span() {
+                        Some(span)
+                    } else {
+                        expr.span()
+                    };
+                    Err(EvalError { message, span })
                 }
+                _ => result,
             }
         }
         _ => Ok(expr.clone()),
@@ -161,7 +172,7 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
         }
     } else {
         Err(EvalError {
-            message: format!("{} does not evaluate to a callable.", s_expr.car),
+            message: format!("`{}` does not evaluate to a callable.", s_expr.car),
             span: s_expr.car.span(),
         })
     }

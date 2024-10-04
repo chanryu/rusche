@@ -1,5 +1,6 @@
 use crate::expr::{intern, Expr};
 use crate::list::{cons, list, List};
+use crate::span::Span;
 use crate::token::Token;
 use std::collections::VecDeque;
 use std::fmt;
@@ -131,20 +132,25 @@ impl Parser {
             if let Some(car) = context.car {
                 list = cons(car, list);
             }
-            if context.token.is_some() {
-                return Ok(list.into());
+            if let Some(begin_token) = context.token {
+                let expr_span = Span {
+                    begin: begin_token.span().begin,
+                    end: token.span().end,
+                };
+                return Ok(Expr::List(list, Some(expr_span)));
             }
         }
-        Err(ParseError::UnexpectedToken(token))
+        Err(ParseError::UnexpectedToken(token)) // dangling ')'
     }
 }
 
 fn get_quote_name(token: Option<&Token>) -> Option<&'static str> {
+    use crate::builtin::quote::{QUASIQUOTE, QUOTE, UNQUOTE, UNQUOTE_SPLICING};
     match token {
-        Some(Token::Quote(_)) => Some("quote"),
-        Some(Token::Quasiquote(_)) => Some("quasiquote"),
-        Some(Token::Unquote(_)) => Some("unquote"),
-        Some(Token::UnquoteSplicing(_)) => Some("unquote-splicing"),
+        Some(Token::Quote(_)) => Some(QUOTE),
+        Some(Token::Quasiquote(_)) => Some(QUASIQUOTE),
+        Some(Token::Unquote(_)) => Some(UNQUOTE),
+        Some(Token::UnquoteSplicing(_)) => Some(UNQUOTE_SPLICING),
         _ => None,
     }
 }

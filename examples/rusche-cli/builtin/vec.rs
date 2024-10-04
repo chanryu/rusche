@@ -1,5 +1,5 @@
 use rusche::{
-    eval::{eval, EvalContext, EvalError, EvalResult},
+    eval::{eval, EvalContext, EvalError,  EvalResult},
     expr::{Expr, NIL},
     list::List,
     utils::{eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args},
@@ -25,7 +25,7 @@ fn eval_into_vec(
         .downcast::<ExprVecRefCell>()
         .or_else(|_| {
             Err(EvalError {
-                message: format!("{proc_name}: {expr} does not evaluate to a vector."),
+                message: format!("{proc_name}: `{expr}` does not evaluate to a vector."),
                 span: expr.span(),
             })
         })

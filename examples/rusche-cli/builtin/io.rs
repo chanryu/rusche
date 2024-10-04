@@ -37,10 +37,7 @@ fn println(_: &str, args: &List, context: &EvalContext) -> EvalResult {
 fn read_line() -> Result<String, EvalError> {
     let mut input = String::new();
     if let Err(error) = std::io::stdin().read_line(&mut input) {
-        return Err(EvalError {
-            message: format!("Error reading input: {}", error),
-            span: None,
-        });
+        return Err(EvalError::from(format!("Error reading input: {}", error)));
     }
     Ok(input.trim().to_string())
 }
@@ -52,9 +49,6 @@ fn read(_: &str, _: &List, _: &EvalContext) -> EvalResult {
 fn read_num(proc_name: &str, _: &List, _: &EvalContext) -> EvalResult {
     match read_line()?.parse::<f64>() {
         Ok(num) => Ok(Expr::from(num)),
-        Err(err) => Err(EvalError {
-            message: format!("{}: {}", proc_name, err),
-            span: None,
-        }),
+        Err(err) => Err(EvalError::from(format!("{}: {}", proc_name, err))),
     }
 }
