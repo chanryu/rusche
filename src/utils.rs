@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::rc::Rc;
 
-use crate::eval::{eval, EvalContext, EvalError, EvalErrorCode};
+use crate::eval::{eval, EvalContext, EvalError};
 use crate::expr::Expr;
 use crate::list::List;
 
@@ -36,7 +36,6 @@ pub fn get_exact_1_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, 
     let mut iter = args.iter();
     let Some(arg) = iter.next() else {
         return Err(EvalError {
-            code: EvalErrorCode::ArityMismatch,
             message: format!("{proc_name} needs an argument."),
             span: None,
         });
@@ -45,7 +44,6 @@ pub fn get_exact_1_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, 
         Ok(arg)
     } else {
         Err(EvalError {
-            code: EvalErrorCode::ArityMismatch,
             message: format!("{proc_name} expects only 1 argument."),
             span: None,
         })
@@ -86,14 +84,12 @@ pub fn get_exact_2_args<'a>(
     let mut iter = args.iter();
     let Some(arg1) = iter.next() else {
         return Err(EvalError {
-            code: EvalErrorCode::ArityMismatch,
             message: format!("{}: requres two arguments", proc_name),
             span: None,
         });
     };
     let Some(arg2) = iter.next() else {
         return Err(EvalError {
-            code: EvalErrorCode::ArityMismatch,
             message: format!("{}: requres two arguments", proc_name),
             span: None,
         });
@@ -102,7 +98,6 @@ pub fn get_exact_2_args<'a>(
         Ok((arg1, arg2))
     } else {
         Err(EvalError {
-            code: EvalErrorCode::ArityMismatch,
             message: format!("{}: takes only two arguments", proc_name),
             span: None,
         })
@@ -143,21 +138,18 @@ pub fn get_exact_3_args<'a>(
     let mut iter = args.iter();
     let Some(arg1) = iter.next() else {
         return Err(EvalError {
-            code: EvalErrorCode::ArityMismatch,
             message: format!("{}: requres 3 arguments", proc_name),
             span: None,
         });
     };
     let Some(arg2) = iter.next() else {
         return Err(EvalError {
-            code: EvalErrorCode::ArityMismatch,
             message: format!("{}: requres 3 arguments", proc_name),
             span: None,
         });
     };
     let Some(arg3) = iter.next() else {
         return Err(EvalError {
-            code: EvalErrorCode::ArityMismatch,
             message: format!("{}: requres 3 arguments", proc_name),
             span: None,
         });
@@ -166,7 +158,6 @@ pub fn get_exact_3_args<'a>(
         Ok((arg1, arg2, arg3))
     } else {
         Err(EvalError {
-            code: EvalErrorCode::ArityMismatch,
             message: format!("{}: takes only 3 arguments", proc_name),
             span: None,
         })
@@ -207,14 +198,12 @@ pub fn get_2_or_3_args<'a>(
     let mut iter = args.iter();
     let Some(arg1) = iter.next() else {
         return Err(EvalError {
-            code: EvalErrorCode::ArityMismatch,
             message: format!("{}: requres at least 2 arguments", proc_name),
             span: None,
         });
     };
     let Some(arg2) = iter.next() else {
         return Err(EvalError {
-            code: EvalErrorCode::ArityMismatch,
             message: format!("{}: requres at least 2 arguments", proc_name),
             span: None,
         });
@@ -226,7 +215,6 @@ pub fn get_2_or_3_args<'a>(
         Ok((arg1, arg2, Some(arg3)))
     } else {
         Err(EvalError {
-            code: EvalErrorCode::ArityMismatch,
             message: format!("{}: takes up to 3 arguments", proc_name),
             span: None,
         })
@@ -244,7 +232,6 @@ pub fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
     for item in list.iter() {
         let Expr::Sym(formal_arg, _) = item else {
             return Err(EvalError {
-                code: EvalErrorCode::TypeMismatch,
                 message: format!("{item} is not a symbol."),
                 span: item.span(),
             });
@@ -287,7 +274,6 @@ pub fn eval_into_str(
     match eval(expr, context)? {
         Expr::Str(text, _) => Ok(text),
         _ => Err(EvalError {
-            code: EvalErrorCode::TypeMismatch,
             message: format!("{proc_name}: `{expr}` does not evaluate to a string."),
             span: expr.span(),
         }),
@@ -326,7 +312,6 @@ pub fn eval_into_num(
     match eval(expr, context)? {
         Expr::Num(value, _) => Ok(value),
         _ => Err(EvalError {
-            code: EvalErrorCode::TypeMismatch,
             message: format!("{proc_name}: `{expr}` does not evaluate to a number."),
             span: expr.span(),
         }),
@@ -380,7 +365,6 @@ pub fn eval_into_int(
         Ok(num as i32)
     } else {
         Err(EvalError {
-            code: EvalErrorCode::TypeMismatch,
             message: format!(
                 "{}: {} must be an integer, but got {}.",
                 proc_name, arg_name, num
@@ -426,7 +410,6 @@ pub fn eval_into_foreign(
     match eval(expr, context)? {
         Expr::Foreign(object) => Ok(object),
         _ => Err(EvalError {
-            code: EvalErrorCode::TypeMismatch,
             message: format!("{proc_name}: `{expr}` does not evaluate to a foreign object."),
             span: expr.span(),
         }),

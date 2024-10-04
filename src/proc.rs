@@ -1,7 +1,7 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::rc::Rc;
 
-use crate::eval::{eval, eval_tail, EvalContext, EvalError, EvalErrorCode, EvalResult};
+use crate::eval::{eval, eval_tail, EvalContext, EvalError, EvalResult};
 use crate::expr::NIL;
 use crate::list::List;
 
@@ -144,7 +144,6 @@ fn eval_closure(
             }
 
             let expr = actual_args.next().ok_or(EvalError {
-                code: EvalErrorCode::ArityMismatch,
                 message: format!("{}: too few args", closure_name),
                 span: None,
             })?;
@@ -155,7 +154,6 @@ fn eval_closure(
                 break;
             }
             return Err(EvalError {
-                code: EvalErrorCode::ArityMismatch,
                 message: format!("{}: too many args", closure_name),
                 span: None,
             });
@@ -193,7 +191,6 @@ fn eval_macro(
             }
 
             let expr = actual_args.next().ok_or(EvalError {
-                code: EvalErrorCode::ArityMismatch,
                 message: format!("{}: too few args", macro_name),
                 span: None,
             })?;
@@ -204,7 +201,6 @@ fn eval_macro(
                 break;
             }
             return Err(EvalError {
-                code: EvalErrorCode::ArityMismatch,
                 message: format!("{}: too many args", macro_name),
                 span: None,
             });

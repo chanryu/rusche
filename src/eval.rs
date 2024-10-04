@@ -15,18 +15,7 @@ use crate::{
 };
 
 #[derive(Debug, PartialEq)]
-pub enum EvalErrorCode {
-    UndefinedSymbol,
-    ArityMismatch,
-    TypeMismatch, // TODO: split into more specific types -- CallableExpected, SymbolExpected, etc.
-    InvalidForm,
-
-    Undefined, // TODO: remove this and define something else for 3rd party errors
-}
-
-#[derive(Debug, PartialEq)]
 pub struct EvalError {
-    pub code: EvalErrorCode,
     pub message: String,
     pub span: Option<Span>,
 }
@@ -115,7 +104,6 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
         Expr::Sym(name, span) => match context.env.lookup(name) {
             Some(expr) => Ok(expr.clone()),
             None => Err(EvalError {
-                code: EvalErrorCode::UndefinedSymbol,
                 message: format!("Undefined symbol: `{}`", name),
                 span: *span,
             }),
@@ -131,14 +119,12 @@ fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResul
 
             match result {
                 Err(EvalError {
-                    code,
                     message,
                     span: None,
                 }) => {
                     // TODO: pass proper span for code
                     // e.g. for arity mismatch span for args rather than the whole expr
                     Err(EvalError {
-                        code,
                         message,
                         span: expr.span(),
                     })
@@ -174,7 +160,6 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
         }
     } else {
         Err(EvalError {
-            code: EvalErrorCode::TypeMismatch,
             message: format!("`{}` does not evaluate to a callable.", s_expr.car),
             span: s_expr.car.span(),
         })

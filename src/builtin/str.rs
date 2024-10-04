@@ -1,5 +1,5 @@
 use crate::{
-    eval::{eval, EvalContext, EvalError, EvalErrorCode, EvalResult},
+    eval::{eval, EvalContext, EvalError, EvalResult},
     expr::Expr,
     list::List,
     utils::{eval_into_int, eval_into_str, get_2_or_3_args, get_exact_1_arg, get_exact_2_args},
@@ -21,7 +21,6 @@ pub fn append(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
             Expr::Str(text, _) => result += &text,
             _ => {
                 return Err(EvalError {
-                    code: EvalErrorCode::TypeMismatch,
                     message: format!("{proc_name}: `{expr}` does not evaluate to a string."),
                     span: expr.span(),
                 })
@@ -46,7 +45,6 @@ pub fn length(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
         Ok(Expr::from(text.chars().count() as i32))
     } else {
         Err(EvalError {
-            code: EvalErrorCode::TypeMismatch,
             message: format!("{proc_name}: `{expr}` does not evaluate to a string."),
             span: expr.span(),
         })

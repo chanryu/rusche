@@ -1,5 +1,5 @@
 use crate::{
-    eval::{eval, eval_tail, EvalContext, EvalError, EvalErrorCode, EvalResult},
+    eval::{eval, eval_tail, EvalContext, EvalError,  EvalResult},
     expr::{Expr, NIL},
     list::List,
     proc::Proc,
@@ -19,7 +19,7 @@ pub fn car(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
         Ok(cons.car.as_ref().clone())
     } else {
         Err(EvalError {
-            code: EvalErrorCode::TypeMismatch,
+            
             message: format!("{proc_name}: `{expr}` does not evaluate to a list."),
             span: expr.span(),
         })
@@ -33,7 +33,7 @@ pub fn cdr(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
         Ok(cons.cdr.as_ref().clone().into())
     } else {
         Err(EvalError {
-            code: EvalErrorCode::TypeMismatch,
+            
             message: format!("{proc_name}: `{expr}` does not evaluate to a list."),
             span: expr.span(),
         })
@@ -46,7 +46,7 @@ pub fn cons(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let car = eval(car, context)?;
     let Expr::List(cdr, _) = eval(cdr, context)? else {
         return Err(EvalError {
-            code: EvalErrorCode::TypeMismatch,
+            
             message: format!("{proc_name}: `{cdr}` does not evaluate to a list."),
             span: cdr.span(),
         });
@@ -61,7 +61,7 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
         Some(Expr::Sym(name, span)) => {
             let Some(expr) = iter.next() else {
                 return Err(EvalError {
-                    code: EvalErrorCode::TypeMismatch,
+                    
                     message: format!("{proc_name}: define expects a expression after symbol"),
                     span: *span,
                 });
@@ -73,7 +73,7 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
         Some(Expr::List(List::Cons(cons), _)) => {
             let Expr::Sym(name, _) = cons.car.as_ref() else {
                 return Err(EvalError {
-                    code: EvalErrorCode::TypeMismatch,
+                    
                     message: format!("{proc_name}: expects a symbol for a procedure name"),
                     span: cons.car.span(),
                 });
@@ -94,7 +94,7 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
             Ok(NIL)
         }
         _ => Err(EvalError {
-            code: EvalErrorCode::InvalidForm,
+            
             message: format!(
                 "{proc_name}: invalid definition form -- expected a symbol or a list."
             ),
@@ -112,7 +112,7 @@ pub fn defmacro(proc_name: &str, args: &List, context: &EvalContext) -> EvalResu
             let expr = iter.next();
             let Some(Expr::List(list, _)) = expr else {
                 return Err(EvalError {
-                    code: EvalErrorCode::TypeMismatch,
+                    
                     message: format!(
                         "{proc_name}: expected a list of formal arguments after a macro name."
                     ),
@@ -126,7 +126,7 @@ pub fn defmacro(proc_name: &str, args: &List, context: &EvalContext) -> EvalResu
         Some(Expr::List(List::Cons(cons), _)) => {
             let Expr::Sym(macro_name, _) = cons.car.as_ref() else {
                 return Err(EvalError {
-                    code: EvalErrorCode::TypeMismatch,
+                    
                     message: format!(
                         "{proc_name}: a macro name expected as the first element of the list."
                     ),
@@ -138,7 +138,7 @@ pub fn defmacro(proc_name: &str, args: &List, context: &EvalContext) -> EvalResu
         }
         _ => {
             return Err(EvalError {
-                code: EvalErrorCode::InvalidForm,
+                
                 message: format!("{proc_name}: invalid macro form -- expected a symbol or a list."),
                 span: None,
             })
@@ -190,7 +190,7 @@ pub fn lambda(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     let expr = iter.next();
     let Some(Expr::List(list, _)) = expr else {
         return Err(EvalError {
-            code: EvalErrorCode::InvalidForm,
+            
             message: format!("{proc_name}: expected a list of formal arguments."),
             span: expr.map(|e| e.span()).unwrap_or(None),
         });
@@ -212,7 +212,7 @@ pub fn set(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
     let Expr::Sym(name, _) = name_expr else {
         return Err(EvalError {
-            code: EvalErrorCode::TypeMismatch,
+            
             message: format!("{proc_name}: expects a symbol as the first argument"),
             span: name_expr.span(),
         });
