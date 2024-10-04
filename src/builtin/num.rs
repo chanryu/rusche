@@ -85,7 +85,35 @@ mod tests {
     use super::*;
     use crate::eval::Evaluator;
     use crate::expr::test_utils::num;
+    use crate::expr::{intern, NIL};
     use crate::list::list;
+
+    #[test]
+    fn test_is_num() {
+        let evaluator = Evaluator::new();
+        let context = evaluator.context();
+        let is_num = |args| is_num("", &args, context);
+
+        // (is-num 1) => #t
+        let args = list!(1);
+        assert_eq!(is_num(args), Ok(num(1)));
+
+        // (is-num "str") => #f
+        let args = list!("str");
+        assert_eq!(is_num(args), Ok(NIL));
+
+        // (is-num 'sym) => #f
+        let args = list!(list!(intern("quote"), intern("sym")));
+        assert_eq!(is_num(args), Ok(NIL));
+
+        // (is-num '()) => #f
+        let args = list!(list!(intern("quote"), list!()));
+        assert_eq!(is_num(args), Ok(NIL));
+
+        // (is-num '(1 2 3)) => #f
+        let args = list!(list!(intern("quote"), list!(1, 2, 3)));
+        assert_eq!(is_num(args), Ok(NIL));
+    }
 
     #[test]
     fn test_add() {
