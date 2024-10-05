@@ -85,89 +85,160 @@ mod tests {
     use super::*;
     use crate::eval::Evaluator;
     use crate::expr::test_utils::num;
+    use crate::expr::{intern, NIL};
     use crate::list::list;
+
+    macro_rules! test_setup_for {
+        ($fn_name:ident) => {
+            let evaluator = Evaluator::new();
+            let context = evaluator.context();
+            let $fn_name = |args| $fn_name("", &args, context);
+        };
+    }
+
+    #[test]
+    fn test_is_num() {
+        test_setup_for!(is_num);
+
+        // (is-num 1) => #t
+        let args = list!(1);
+        assert_eq!(is_num(args), Ok(num(1)));
+
+        // (is-num "str") => #f
+        let args = list!("str");
+        assert_eq!(is_num(args), Ok(NIL));
+
+        // (is-num 'sym) => #f
+        let args = list!(list!(intern("quote"), intern("sym")));
+        assert_eq!(is_num(args), Ok(NIL));
+
+        // (is-num '()) => #f
+        let args = list!(list!(intern("quote"), list!()));
+        assert_eq!(is_num(args), Ok(NIL));
+
+        // (is-num '(1 2 3)) => #f
+        let args = list!(list!(intern("quote"), list!(1, 2, 3)));
+        assert_eq!(is_num(args), Ok(NIL));
+    }
 
     #[test]
     fn test_add() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
+        test_setup_for!(add);
 
         // (+ 1) => 1
         let args = list!(1);
-        assert_eq!(add("", &args, context), Ok(num(1)));
+        assert_eq!(add(args), Ok(num(1)));
 
         // (+ 2 1) => 3
         let args = list!(2, 1);
-        assert_eq!(add("", &args, context), Ok(num(3)));
+        assert_eq!(add(args), Ok(num(3)));
+
+        // (+ 3 2 1) => 6
+        let args = list!(3, 2, 1);
+        assert_eq!(add(args), Ok(num(6)));
     }
 
     #[test]
     fn test_minus() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
+        test_setup_for!(subtract);
 
         // (- 1) => -1
         let args = list!(1);
-        assert_eq!(subtract("", &args, context), Ok(num(-1)));
+        assert_eq!(subtract(args), Ok(num(-1)));
+
+        // (- -1) => 1
+        let args = list!(-1);
+        assert_eq!(subtract(args), Ok(num(1)));
 
         // (- 2 1) => 1
         let args = list!(2, 1);
-        assert_eq!(subtract("", &args, context), Ok(num(1)));
+        assert_eq!(subtract(args), Ok(num(1)));
+
+        // (- 1 2) => -1
+        let args = list!(1, 2);
+        assert_eq!(subtract(args), Ok(num(-1)));
     }
 
     #[test]
     fn test_multiply() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
+        test_setup_for!(multiply);
 
         // (* 1) => 1
         let args = list!(1);
-        assert_eq!(multiply("", &args, context), Ok(num(1)));
+        assert_eq!(multiply(args), Ok(num(1)));
 
         // (* 2 1) => 2
         let args = list!(2, 1);
-        assert_eq!(multiply("", &args, context), Ok(num(2)));
+        assert_eq!(multiply(args), Ok(num(2)));
 
         // (* 3 2 1) => 6
         let args = list!(3, 2, 1);
-        assert_eq!(multiply("", &args, context), Ok(num(6)));
+        assert_eq!(multiply(args), Ok(num(6)));
     }
 
     #[test]
     fn test_divide() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
+        test_setup_for!(divide);
 
         // (/ 2) => 0.5
         let args = list!(2);
-        assert_eq!(divide("", &args, context), Ok(num(0.5)));
+        assert_eq!(divide(args), Ok(num(0.5)));
 
         // (/ 4 2) => 2
         let args = list!(4, 2);
-        assert_eq!(divide("", &args, context), Ok(num(2)));
+        assert_eq!(divide(args), Ok(num(2)));
     }
 
     #[test]
     fn test_modulo() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
+        test_setup_for!(modulo);
 
         // (% 1 2) => 1
-        assert_eq!(modulo("", &list!(1, 2), context), Ok(Expr::from(1)));
+        assert_eq!(modulo(list!(1, 2)), Ok(Expr::from(1)));
 
         // (% 11 3) => 2
-        assert_eq!(modulo("", &list!(11, 3), context), Ok(num(2)));
+        assert_eq!(modulo(list!(11, 3)), Ok(num(2)));
 
         // (% 11 4) => 3
-        assert_eq!(modulo("", &list!(11, 4), context), Ok(num(3)));
+        assert_eq!(modulo(list!(11, 4)), Ok(num(3)));
 
         // (% 1) => error
-        assert!(modulo("", &list!(1), context).is_err());
+        assert!(modulo(list!(1)).is_err());
 
         // (% 1 1 1) => error
-        assert!(modulo("", &list!(1, 1, 1), context).is_err());
+        assert!(modulo(list!(1, 1, 1)).is_err());
 
         // (% "1" "2") => error
-        assert!(modulo("", &list!("1", "2"), context).is_err());
+        assert!(modulo(list!("1", "2")).is_err());
+    }
+
+    #[test]
+    fn test_less() {
+        let evaluator = Evaluator::new();
+        let context = evaluator.context();
+        let less = |args| less("", &args, context);
+
+        // (< 1 2) => #t
+        assert_eq!(less(list!(1, 2)), Ok(true.into()));
+
+        // (< 1 1) => #f
+        assert_eq!(less(list!(1, 1)), Ok(false.into()));
+
+        // (< 2 1) => #f
+        assert_eq!(less(list!(2, 1)), Ok(false.into()));
+    }
+
+    #[test]
+    fn test_greater() {
+        test_setup_for!(greater);
+
+        // (> 1 2) => #t
+        assert_eq!(greater(list!(1, 2)), Ok(false.into()));
+
+        // (> 1 1) => #f
+        assert_eq!(greater(list!(1, 1)), Ok(false.into()));
+
+        // (> 2 1) => #f
+        assert_eq!(greater(list!(2, 1)), Ok(true.into()));
     }
 }

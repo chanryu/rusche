@@ -72,9 +72,9 @@ impl EvalContext {
 
         #[cfg(debug_assertions)]
         {
-            self.call_stack.borrow_mut().push(proc.identity());
+            self.call_stack.borrow_mut().push(proc.badge());
             if TRACE_CALL_STACK {
-                println!("{:03}{} -> {}", depth, " ".repeat(depth), proc.identity());
+                println!("{:03}{} -> {}", depth, " ".repeat(depth), proc.badge());
             }
         }
     }
@@ -84,12 +84,12 @@ impl EvalContext {
 
         #[cfg(debug_assertions)]
         {
-            let identity = self.call_stack.borrow_mut().pop();
+            let badge = self.call_stack.borrow_mut().pop();
 
             if TRACE_CALL_STACK {
-                if let Some(identity) = identity {
+                if let Some(badge) = badge {
                     let depth = self.call_depth.get();
-                    println!("{:03}{} <- {}", depth, " ".repeat(depth), identity);
+                    println!("{:03}{} <- {}", depth, " ".repeat(depth), badge);
                 }
             }
         }
