@@ -131,7 +131,7 @@ fn eval_closure(
     actual_args: &List,
     context: &EvalContext,
 ) -> EvalResult {
-    let closure_name = closure_name.unwrap_or("closure");
+    let closure_name = closure_name.unwrap_or("unnamed-closure");
     let closure_context = EvalContext::derive_from(&outer_context);
     let mut formal_args = formal_args.iter();
     let mut actual_args = actual_args.iter();
@@ -174,7 +174,7 @@ fn eval_macro(
     actual_args: &List,
     context: &EvalContext,
 ) -> EvalResult {
-    let macro_name = macro_name.unwrap_or("macro");
+    let macro_name = macro_name.unwrap_or("unnamed-macro");
     let macro_context = EvalContext::derive_from(context);
     let mut formal_args = formal_args.iter();
     let mut actual_args = actual_args.iter();
@@ -226,6 +226,8 @@ fn get_variadic_args_name(name: &str) -> Option<&str> {
 
 #[cfg(test)]
 mod tests {
+    use crate::{eval::Evaluator, list::list};
+
     use super::*;
 
     #[test]
@@ -234,5 +236,58 @@ mod tests {
         assert_eq!(get_variadic_args_name("*args"), Some("args"));
         assert_eq!(get_variadic_args_name("*a"), Some("a"));
         assert_eq!(get_variadic_args_name("*"), None);
+    }
+
+    #[test]
+    fn test_proc_eq() {
+        let evaluator = Evaluator::new();
+        let context = evaluator.context();
+
+        let closure = Proc::Closure {
+            name: Some("closure".into()),
+            formal_args: vec!["a".into(), "b".into()],
+            body: Box::new(list!(1, 2, 3)),
+            outer_context: context.clone(),
+        };
+
+        let closure_same = Proc::Closure {
+            name: Some("closure".into()),
+            formal_args: vec!["a".into(), "b".into()],
+            body: Box::new(list!(1, 2, 3)),
+            outer_context: context.clone(),
+        };
+        assert_eq!(closure, closure_same);
+
+        let closure_name_diff = Proc::Closure {
+            name: None,
+            formal_args: vec!["a".into(), "b".into()],
+            body: Box::new(list!(1, 2, 3)),
+            outer_context: context.clone(),
+        };
+        assert_ne!(closure, closure_name_diff);
+
+        let closure_args_diff = Proc::Closure {
+            name: None,
+            formal_args: vec!["a".into(), "b".into(), "c".into()],
+            body: Box::new(list!(1, 2, 3)),
+            outer_context: context.clone(),
+        };
+        assert_ne!(closure, closure_args_diff);
+
+        let closure_body_diff = Proc::Closure {
+            name: None,
+            formal_args: vec!["a".into(), "b".into(), "c".into()],
+            body: Box::new(list!(1, 2, 3, 4)),
+            outer_context: context.clone(),
+        };
+        assert_ne!(closure, closure_body_diff);
+
+        let closure_context_diff = Proc::Closure {
+            name: None,
+            formal_args: vec!["a".into(), "b".into(), "c".into()],
+            body: Box::new(list!(1, 2, 3, 4)),
+            outer_context: EvalContext::derive_from(&context),
+        };
+        assert_ne!(closure, closure_context_diff);
     }
 }
