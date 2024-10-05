@@ -54,7 +54,7 @@ impl Proc {
         result
     }
 
-    pub fn identity(&self) -> String {
+    pub fn badge(&self) -> String {
         match self {
             Proc::Closure { name, .. } => {
                 format!("proc/closure:{}", name.as_deref().unwrap_or("unnamed"),)
@@ -92,7 +92,7 @@ impl Proc {
             }
         }
 
-        format!("{}:{:x}", self.identity(), hasher.finish())
+        format!("{}:{:x}", self.badge(), hasher.finish())
     }
 }
 
