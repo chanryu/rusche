@@ -386,3 +386,110 @@ pub fn eval_into_foreign(
         }),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::eval::Evaluator;
+    use crate::expr::intern;
+    use crate::expr::test_utils::num;
+    use crate::list::list;
+
+    #[test]
+    fn test_get_exact_1_arg() {
+        let args = list!(1);
+        let result = get_exact_1_arg("add", &args);
+        assert_eq!(result, Ok(&num(1)));
+
+        let args = list!();
+        let result = get_exact_1_arg("add", &args);
+        assert!(result.is_err());
+
+        let args = list!(1, 2);
+        let result = get_exact_1_arg("add", &args);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_get_exact_2_args() {
+        let args = list!(1, 2);
+        let result = get_exact_2_args("add", &args);
+        assert_eq!(result, Ok((&num(1), &num(2))));
+
+        let args = list!(1);
+        let result = get_exact_2_args("add", &args);
+        assert!(result.is_err());
+
+        let args = list!(1, 2, 3);
+        let result = get_exact_2_args("add", &args);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_get_exact_3_args() {
+        let args = list!(1, 2, 3);
+        let result = get_exact_3_args("add", &args);
+        assert_eq!(result, Ok((&num(1), &num(2), &num(3))));
+
+        let args = list!(1, 2);
+        let result = get_exact_3_args("add", &args);
+        assert!(result.is_err());
+
+        let args = list!(1, 2, 3, 4);
+        let result = get_exact_3_args("add", &args);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_eval_into_str() {
+        let evaluator = Evaluator::new();
+        let context = evaluator.context();
+
+        let result = eval_into_str("test", &Expr::from("hello"), context);
+        assert_eq!(result, Ok("hello".to_string()));
+
+        let result = eval_into_str("test", &Expr::from(1), context);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_eval_into_num() {
+        let evaluator = Evaluator::new();
+        let context = evaluator.context();
+
+        let result = eval_into_num("test", &Expr::from(1), context);
+        assert_eq!(result, Ok(1_f64));
+
+        let result = eval_into_num("test", &Expr::from("1"), context);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_eval_into_int() {
+        let evaluator = Evaluator::new();
+        let context = evaluator.context();
+
+        let result = eval_into_int("test", "index", &Expr::from(1), context);
+        assert_eq!(result, Ok(1));
+
+        let result = eval_into_int("test", "index", &Expr::from(1.1), context);
+        assert!(result.is_err());
+
+        let result = eval_into_int("test", "index", &Expr::from("1"), context);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_eval_into_foreign() {
+        let evaluator = Evaluator::new();
+        let context = evaluator.context();
+
+        let expr = Expr::Foreign(Rc::new(Vec::<i32>::new()));
+        let object = eval_into_foreign("test", &expr, context).unwrap();
+        assert!(object.downcast::<Vec<i32>>().is_ok());
+
+        assert!(eval_into_foreign("test", &Expr::from(1), context).is_err());
+        assert!(eval_into_foreign("test", &Expr::from("str"), context).is_err());
+        assert!(eval_into_foreign("test", &intern("sym"), context).is_err());
+    }
+}
