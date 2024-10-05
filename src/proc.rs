@@ -290,4 +290,57 @@ mod tests {
         };
         assert_ne!(closure, closure_context_diff);
     }
+
+    #[test]
+    fn test_fingerprint() {
+        let evaluator = Evaluator::new();
+        let context = evaluator.context();
+
+        let closure1 = Proc::Closure {
+            name: Some("closure".into()),
+            formal_args: vec!["a".into(), "b".into()],
+            body: Box::new(list!(1, 2, 3)),
+            outer_context: context.clone(),
+        };
+        let closure2 = Proc::Closure {
+            name: Some("closure".into()),
+            formal_args: vec!["a".into(), "b".into()],
+            body: Box::new(list!(1, 2, 3)),
+            outer_context: context.clone(),
+        };
+        let closure3 = Proc::Closure {
+            name: Some("closure".into()),
+            formal_args: vec!["a".into()],
+            body: Box::new(list!(1, 2)),
+            outer_context: context.clone(),
+        };
+        assert_eq!(closure1.fingerprint(), closure2.fingerprint());
+        assert_ne!(closure1.fingerprint(), closure3.fingerprint());
+
+        fn native_fn_1(_: &str, _: &List, _: &EvalContext) -> EvalResult {
+            Ok(NIL)
+        }
+        fn native_fn_2(_: &str, _: &List, _: &EvalContext) -> EvalResult {
+            Ok(NIL)
+        }
+
+        let native1 = Proc::Native {
+            name: "native".into(),
+            func: native_fn_1,
+        };
+        let native1_1 = Proc::Native {
+            name: "native".into(),
+            func: native_fn_1,
+        };
+        let native2 = Proc::Native {
+            name: "native".into(),
+            func: native_fn_2,
+        };
+        assert_eq!(native1.fingerprint(), native1_1.fingerprint());
+        assert_ne!(native1.fingerprint(), native2.fingerprint());
+
+        // code coverage workaround (#[coverage(off)] is unstable)
+        native_fn_1("", &list!(), &context).unwrap();
+        native_fn_2("", &list!(), &context).unwrap();
+    }
 }
