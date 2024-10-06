@@ -229,6 +229,25 @@ impl Evaluator {
         result
     }
 
+    pub fn count_unreachable_envs(&self) -> usize {
+        self.all_envs.borrow().iter().for_each(|env| {
+            if let Some(env) = env.upgrade() {
+                env.gc_prepare();
+            }
+        });
+
+        self.root_env().gc_mark();
+
+        self.all_envs.borrow().iter().fold(0, |acc, env| {
+            if let Some(env) = env.upgrade() {
+                if !env.is_reachable() {
+                    return acc + 1;
+                }
+            }
+            acc
+        })
+    }
+
     pub fn collect_garbage(&self) {
         #[cfg(debug_assertions)]
         println!("GC: begin garbage collection");
