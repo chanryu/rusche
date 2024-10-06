@@ -214,7 +214,50 @@ mod tests {
     use super::*;
     use crate::eval::Evaluator;
     use crate::expr::intern;
+    use crate::expr::test_utils::num;
     use crate::list::list;
+
+    macro_rules! setup_test_for {
+        ($fn_name:ident) => {
+            let evaluator = Evaluator::new();
+            let context = evaluator.context();
+            let $fn_name = |args| $fn_name("", &args, context);
+        };
+    }
+
+    #[test]
+    fn test_atom() {
+        setup_test_for!(atom);
+
+        // (atom 1) => #t
+        assert_eq!(atom(list!(1)), Ok(true.into()));
+
+        // (atom "str") => #t
+        assert_eq!(atom(list!("str")), Ok(true.into()));
+
+        // (atom '()) => #t
+        assert_eq!(atom(list!(list!(intern("quote"), NIL))), Ok(true.into()));
+
+        // (atom '(1 2 3)) => #f
+        assert_eq!(
+            atom(list!(list!(intern("quote"), list!(1, 2, 3)))),
+            Ok(false.into())
+        );
+    }
+
+    #[test]
+    fn test_car() {
+        setup_test_for!(car);
+
+        // (car '(1 2 3)) => 1
+        assert_eq!(
+            car(list!(list!(intern("quote"), list!(1, 2, 3)))),
+            Ok(num(1))
+        );
+
+        // (car 1) => err
+        assert!(car(list!(list!(intern("quote"), 1))).is_err());
+    }
 
     #[test]
     fn test_define() {
