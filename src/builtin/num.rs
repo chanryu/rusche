@@ -88,7 +88,7 @@ mod tests {
     use crate::expr::{intern, NIL};
     use crate::list::list;
 
-    macro_rules! test_setup_for {
+    macro_rules! setup_test_for {
         ($fn_name:ident) => {
             let evaluator = Evaluator::new();
             let context = evaluator.context();
@@ -98,7 +98,7 @@ mod tests {
 
     #[test]
     fn test_is_num() {
-        test_setup_for!(is_num);
+        setup_test_for!(is_num);
 
         // (is-num 1) => #t
         let args = list!(1);
@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_add() {
-        test_setup_for!(add);
+        setup_test_for!(add);
 
         // (+ 1) => 1
         let args = list!(1);
@@ -140,7 +140,7 @@ mod tests {
 
     #[test]
     fn test_minus() {
-        test_setup_for!(subtract);
+        setup_test_for!(subtract);
 
         // (- 1) => -1
         let args = list!(1);
@@ -161,7 +161,7 @@ mod tests {
 
     #[test]
     fn test_multiply() {
-        test_setup_for!(multiply);
+        setup_test_for!(multiply);
 
         // (* 1) => 1
         let args = list!(1);
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn test_divide() {
-        test_setup_for!(divide);
+        setup_test_for!(divide);
 
         // (/ 2) => 0.5
         let args = list!(2);
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_modulo() {
-        test_setup_for!(modulo);
+        setup_test_for!(modulo);
 
         // (% 1 2) => 1
         assert_eq!(modulo(list!(1, 2)), Ok(Expr::from(1)));
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_greater() {
-        test_setup_for!(greater);
+        setup_test_for!(greater);
 
         // (> 1 2) => #t
         assert_eq!(greater(list!(1, 2)), Ok(false.into()));
