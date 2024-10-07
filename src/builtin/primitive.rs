@@ -260,6 +260,37 @@ mod tests {
     }
 
     #[test]
+    fn test_cdr() {
+        setup_test_for!(cdr);
+
+        // (cdr '(1 2 3)) => (2 3)
+        assert_eq!(
+            cdr(list!(list!(intern("quote"), list!(1, 2, 3)))),
+            Ok(list!(2, 3).into())
+        );
+
+        // (car 1) => err
+        assert!(cdr(list!(list!(intern("quote"), 1))).is_err());
+    }
+
+    #[test]
+    fn test_cons() {
+        setup_test_for!(cons);
+
+        // (cons 1 '(2 3)) => (1 2 3)
+        assert_eq!(
+            cons(list!(1, list!(intern("quote"), list!(2, 3)))),
+            Ok(list!(1, 2, 3).into())
+        );
+
+        // (car 1 2) => err (cdr is not a list)
+        assert!(cons(list!(1, 2)).is_err());
+
+        // (car 1 2 3) => err (wrong number of arguments)
+        assert!(cons(list!(1, 2, 3)).is_err());
+    }
+
+    #[test]
     fn test_define() {
         let evaluator = Evaluator::new();
         let context = evaluator.context();
