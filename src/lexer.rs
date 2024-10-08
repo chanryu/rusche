@@ -1,23 +1,13 @@
 use crate::span::{Loc, Span};
 use crate::token::Token;
-use std::fmt;
 use std::iter::{Iterator, Peekable};
 
 const SYMBOL_DELIMITERS: &str = " \t\r\n()';\"";
 
 #[derive(Debug, PartialEq)]
 pub enum LexError {
-    IncompleteString,
+    IncompleteString(Span),
     InvalidNumber,
-}
-
-impl fmt::Display for LexError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            LexError::IncompleteString => write!(f, "Incomplete string"),
-            LexError::InvalidNumber => write!(f, "Invalid number"),
-        }
-    }
 }
 
 type LexResult = Result<Option<Token>, LexError>;
@@ -106,7 +96,7 @@ where
         let mut escaped = false;
         while let Some(ch) = self.next_char() {
             match (ch, escaped) {
-                ('\n', _) => return Err(LexError::IncompleteString),
+                ('\n', _) => return Err(LexError::IncompleteString(self.loc.span_from(begin_loc))),
                 (ch, true) => {
                     escaped = false;
                     match ch {
@@ -116,12 +106,12 @@ where
                         _ => text.push(ch),
                     }
                 }
-                ('"', false) => return Ok(Some(Token::Str(text, Span::new(begin_loc, self.loc)))),
+                ('"', false) => return Ok(Some(Token::Str(text, self.loc.span_from(begin_loc)))),
                 ('\\', false) => escaped = true,
                 (ch, false) => text.push(ch),
             }
         }
-        Err(LexError::IncompleteString)
+        Err(LexError::IncompleteString(self.loc.span_from(begin_loc)))
     }
 
     fn read_number(&mut self, first_char: char, begin_loc: Loc) -> LexResult {
@@ -207,27 +197,26 @@ mod tests {
 
     #[test]
     fn test_read_string() {
-        let begin_loc = Loc::new(1, 1);
         macro_rules! assert_parse_string {
             ($source:literal, $expected:literal) => {
-                let mut chars = $source.chars();
-                assert_eq!(chars.next().unwrap(), '"');
-                let token = Lexer::new(chars).read_string(begin_loc).unwrap().unwrap();
+                assert_eq!($source.chars().next(), Some('"'));
+                let chars = $source.chars();
+                let token = Lexer::new(chars).get_token().unwrap().unwrap();
                 assert_eq!(token, Token::Str(String::from($expected), token.span()));
             };
-            ($source:literal, $expected:ident) => {
-                let mut chars = $source.chars();
-                assert_eq!(chars.next().unwrap(), '"');
-                assert_eq!(
-                    Lexer::new(chars).read_string(begin_loc),
-                    Err(LexError::$expected)
-                );
+            ($source:literal, $expected:expr) => {
+                assert_eq!($source.chars().next(), Some('"'));
+                let chars = $source.chars();
+                assert_eq!(Lexer::new(chars).get_token(), Err($expected));
             };
         }
 
         assert_parse_string!(r#""valid string""#, "valid string");
         assert_parse_string!(r#""an escaped\" string""#, "an escaped\" string");
-        assert_parse_string!(r#""incomplete string"#, IncompleteString);
+        assert_parse_string!(
+            r#""incomplete string"#,
+            LexError::IncompleteString(Span::new(Loc::new(1, 1), Loc::new(1, 19)))
+        );
     }
 
     #[test]

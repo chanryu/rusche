@@ -1,6 +1,6 @@
 use rusche::{
     eval::Evaluator,
-    lexer::tokenize,
+    lexer::{tokenize, LexError},
     parser::{ParseError, Parser},
 };
 use rustyline::{error::ReadlineError, DefaultEditor};
@@ -29,8 +29,12 @@ pub fn run_repl() {
 
                 match tokenize(&line) {
                     Ok(tokens) => parser.add_tokens(tokens),
-                    Err(error) => {
-                        println!("Error: {}", error);
+                    Err(LexError::IncompleteString(span)) => {
+                        println!("Error:{span}: Incomplete string");
+                        continue;
+                    }
+                    Err(LexError::InvalidNumber) => {
+                        println!("Error: Invalid number");
                         continue;
                     }
                 }

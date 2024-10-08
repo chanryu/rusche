@@ -1,6 +1,6 @@
 use rusche::{
     eval::Evaluator,
-    lexer::tokenize,
+    lexer::{tokenize, LexError},
     parser::{ParseError, Parser},
 };
 
@@ -16,8 +16,12 @@ pub fn run_file(path: &str) {
 fn run_file_content(text: &str) {
     let tokens = match tokenize(text) {
         Ok(tokens) => tokens,
-        Err(e) => {
-            eprintln!("Tokenization error: {}", e);
+        Err(LexError::IncompleteString(span)) => {
+            eprintln!("Error:{span}: Incomplete string");
+            return;
+        }
+        Err(LexError::InvalidNumber) => {
+            eprintln!("Error: Invalid number");
             return;
         }
     };
