@@ -163,6 +163,26 @@ mod tests {
     use crate::span::Loc;
 
     #[test]
+    fn test_cons_cdar() {
+        // (1 nil).cdar => None
+        assert_eq!(Cons::new(Expr::from(1), List::Nil).cdar(), None);
+
+        // (1 '(1 2)).cdar => Some(1)
+        assert_eq!(
+            Cons::new(Expr::from(1), list!(1, 2)).cdar(),
+            Some(&Expr::from(1))
+        );
+    }
+
+    #[test]
+    fn test_list_is_nil() {
+        assert!(List::Nil.is_nil());
+        assert!(list!().is_nil());
+        assert!(!list!(1).is_nil());
+        assert!(!list!(1, 2).is_nil());
+    }
+
+    #[test]
     fn test_display() {
         let list = list!(1, 2, list!(3, "str", intern("sym")));
         assert_eq!(format!("{}", list), "(1 2 (3 \"str\" sym))");

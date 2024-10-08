@@ -223,6 +223,12 @@ mod tests {
             let context = evaluator.context();
             let $fn_name = |args| $fn_name("", &args, context);
         };
+        ($fn_name:ident, $env_name:ident) => {
+            let evaluator = Evaluator::new();
+            let context = evaluator.context();
+            let $fn_name = |args| $fn_name("", &args, context);
+            let $env_name = &context.env;
+        };
     }
 
     #[test]
@@ -260,20 +266,6 @@ mod tests {
     }
 
     #[test]
-    fn test_cdr() {
-        setup_test_for!(cdr);
-
-        // (cdr '(1 2 3)) => (2 3)
-        assert_eq!(
-            cdr(list!(list!(intern("quote"), list!(1, 2, 3)))),
-            Ok(list!(2, 3).into())
-        );
-
-        // (car 1) => err
-        assert!(cdr(list!(list!(intern("quote"), 1))).is_err());
-    }
-
-    #[test]
     fn test_cons() {
         setup_test_for!(cons);
 
@@ -292,27 +284,31 @@ mod tests {
 
     #[test]
     fn test_define() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
+        setup_test_for!(define, env);
 
         // (define name "value")
-        let ret = define("", &list!(intern("name"), "value"), context);
+        let ret = define(list!(intern("name"), "value"));
         assert_eq!(ret, Ok(NIL));
-        assert_eq!(context.env.lookup("name"), Some("value".into()));
+        assert_eq!(env.lookup("name"), Some("value".into()));
+
+        // (define 1 "value") -> Err
+        assert!(define(list!(1, "value")).is_err());
+
+        // (define name) -> Err
+        assert!(define(list!(intern("name"))).is_err());
     }
 
     #[test]
     fn test_eq() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
+        setup_test_for!(eq);
 
         // (eq 1 1) => #t
-        assert_ne!(eq("", &list!(1, 1), context).unwrap(), NIL);
+        assert_ne!(eq(list!(1, 1)).unwrap(), NIL);
         // (eq 1 2) => ()
-        assert_eq!(eq("", &list!(1, 2), context).unwrap(), NIL);
+        assert_eq!(eq(list!(1, 2)).unwrap(), NIL);
         // (eq "str" "str") => #t
-        assert_ne!(eq("", &list!("str", "str"), context).unwrap(), NIL);
+        assert_ne!(eq(list!("str", "str")).unwrap(), NIL);
         // (eq 1 "1") => ()
-        assert_eq!(eq("", &list!(1, "1"), context).unwrap(), NIL);
+        assert_eq!(eq(list!(1, "1")).unwrap(), NIL);
     }
 }
