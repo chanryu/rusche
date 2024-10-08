@@ -53,9 +53,9 @@ pub fn run_repl() {
                             }
                         },
                         Err(ParseError::NeedMoreToken) => break,
-                        Err(error) => {
+                        Err(ParseError::UnexpectedToken(token)) => {
                             parser.reset();
-                            println!("Error: {}", error);
+                            println!("Error: Unexpected token - {token}");
                         }
                     }
                 }

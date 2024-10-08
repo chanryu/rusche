@@ -44,8 +44,8 @@ fn run_file_content(text: &str) {
                 eprintln!("Failed to parse - incomplete expression");
                 break;
             }
-            Err(e) => {
-                eprintln!("Error: {e}");
+            Err(ParseError::UnexpectedToken(token)) => {
+                eprintln!("Error: Unexpected token - {token}");
                 break;
             }
         }
