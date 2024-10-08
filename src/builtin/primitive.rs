@@ -261,8 +261,34 @@ mod tests {
             Ok(num(1))
         );
 
+        // (car (1 2 3)) => err
+        assert!(car(list!(list!(1, 2, 3))).is_err());
+
         // (car 1) => err
-        assert!(car(list!(list!(intern("quote"), 1))).is_err());
+        assert!(car(list!(1)).is_err());
+
+        // (car 1 2) => err
+        assert!(car(list!(1, 2)).is_err());
+    }
+
+    #[test]
+    fn test_cdr() {
+        setup_test_for!(cdr);
+
+        // (cdr '(1 2 3)) => (2 3)
+        assert_eq!(
+            cdr(list!(list!(intern("quote"), list!(1, 2, 3)))),
+            Ok(list!(2, 3).into())
+        );
+
+        // (cdr (1 2 3)) => err
+        assert!(cdr(list!(list!(1, 2, 3))).is_err());
+
+        // (cdr 1) => err
+        assert!(cdr(list!(1)).is_err());
+
+        // (cdr '(1 2 3) 4) => err
+        assert!(cdr(list!(list!(intern("quote"), list!(1, 2, 3)), 4)).is_err());
     }
 
     #[test]
@@ -296,6 +322,12 @@ mod tests {
 
         // (define name) -> Err
         assert!(define(list!(intern("name"))).is_err());
+
+        // (define (1 a b) '()) -> Err
+        assert!(define(list!(list!(1, intern("a"), intern("b")), NIL)).is_err());
+
+        // (define (name 1 b) '()) -> Err
+        assert!(define(list!(list!(intern("name"), 1, intern("b")), NIL)).is_err());
     }
 
     #[test]
@@ -310,5 +342,19 @@ mod tests {
         assert_ne!(eq(list!("str", "str")).unwrap(), NIL);
         // (eq 1 "1") => ()
         assert_eq!(eq(list!(1, "1")).unwrap(), NIL);
+    }
+
+    #[test]
+    fn test_set() {
+        setup_test_for!(set, env);
+
+        env.define("name", "old-value");
+
+        // (set! name "value")
+        assert!(set(list!(intern("name"), "new-value")).is_ok());
+        assert_eq!(env.lookup("name"), Some(Expr::from("new-value")));
+
+        // (set! 1 "value") -> Err
+        assert!(set(list!(1, "value")).is_err());
     }
 }
