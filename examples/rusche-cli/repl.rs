@@ -33,8 +33,8 @@ pub fn run_repl() {
                         println!("Error:{span}: Incomplete string");
                         continue;
                     }
-                    Err(LexError::InvalidNumber) => {
-                        println!("Error: Invalid number");
+                    Err(LexError::InvalidNumber(span)) => {
+                        println!("Error:{span}: Invalid number");
                         continue;
                     }
                 }

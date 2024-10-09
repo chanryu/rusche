@@ -83,7 +83,7 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
                         body: Box::new(iter.into()),
                         outer_context: context.clone(),
                     },
-                    None,
+                    args.span(),
                 ),
             );
             Ok(NIL)

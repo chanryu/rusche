@@ -20,8 +20,8 @@ fn run_file_content(text: &str) {
             eprintln!("Error:{span}: Incomplete string");
             return;
         }
-        Err(LexError::InvalidNumber) => {
-            eprintln!("Error: Invalid number");
+        Err(LexError::InvalidNumber(span)) => {
+            eprintln!("Error:{span}: Invalid number");
             return;
         }
     };

@@ -18,8 +18,8 @@ impl Loc {
         }
     }
 
-    pub fn span_from(&self, begin: Self) -> Span {
-        Span::new(begin, *self)
+    pub fn span_to(&self, end: Self) -> Span {
+        Span::new(*self, end)
     }
 }
 

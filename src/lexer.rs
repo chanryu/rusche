@@ -7,7 +7,7 @@ const SYMBOL_DELIMITERS: &str = " \t\r\n()';\"";
 #[derive(Debug, PartialEq)]
 pub enum LexError {
     IncompleteString(Span),
-    InvalidNumber,
+    InvalidNumber(Span),
 }
 
 type LexResult = Result<Option<Token>, LexError>;
@@ -96,7 +96,7 @@ where
         let mut escaped = false;
         while let Some(ch) = self.next_char() {
             match (ch, escaped) {
-                ('\n', _) => return Err(LexError::IncompleteString(self.loc.span_from(begin_loc))),
+                ('\n', _) => return Err(LexError::IncompleteString(begin_loc.span_to(self.loc))),
                 (ch, true) => {
                     escaped = false;
                     match ch {
@@ -106,12 +106,12 @@ where
                         _ => text.push(ch),
                     }
                 }
-                ('"', false) => return Ok(Some(Token::Str(text, self.loc.span_from(begin_loc)))),
+                ('"', false) => return Ok(Some(Token::Str(text, begin_loc.span_to(self.loc)))),
                 ('\\', false) => escaped = true,
                 (ch, false) => text.push(ch),
             }
         }
-        Err(LexError::IncompleteString(self.loc.span_from(begin_loc)))
+        Err(LexError::IncompleteString(begin_loc.span_to(self.loc)))
     }
 
     fn read_number(&mut self, first_char: char, begin_loc: Loc) -> LexResult {
@@ -132,12 +132,12 @@ where
         }
 
         let sign = if first_char == '-' { -1.0 } else { 1.0 };
-        let span = Span::new(begin_loc, self.loc);
+        let span = begin_loc.span_to(self.loc);
 
         digits
             .parse::<f64>()
             .map(|value| Some(Token::Num(value * sign, span)))
-            .map_err(|_| LexError::InvalidNumber)
+            .map_err(|_| LexError::InvalidNumber(span))
     }
 
     fn read_symbol(&mut self, first_char: char, begin_loc: Loc) -> LexResult {
