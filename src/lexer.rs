@@ -62,13 +62,10 @@ where
             Some(ch) if ch.is_ascii_digit() => self.read_number(ch, begin_loc),
 
             // number or symbol
-            Some(ch) if ch == '+' || ch == '-' => {
-                if let Some(ch) = self.next_char_if(|ch| ch.is_ascii_digit()) {
-                    self.read_number(ch, begin_loc)
-                } else {
-                    self.read_symbol(ch, begin_loc)
-                }
-            }
+            Some(ch) if ch == '+' || ch == '-' => match self.iter.peek() {
+                Some(&next_ch) if next_ch.is_ascii_digit() => self.read_number(ch, begin_loc),
+                _ => self.read_symbol(ch, begin_loc),
+            },
 
             // we allow all other characters to be a symbol
             Some(ch) => self.read_symbol(ch, begin_loc),
@@ -221,16 +218,11 @@ mod tests {
 
     #[test]
     fn test_read_number() {
-        let begin_loc = Loc::new(1, 1);
         macro_rules! assert_parsed_number {
             ($source:literal, $expected:literal) => {
                 assert!(!$source.is_empty());
-                let mut chars = $source.chars();
-                let first_char = chars.next().unwrap();
-                let token = Lexer::new(chars)
-                    .read_number(first_char, begin_loc)
-                    .unwrap()
-                    .unwrap();
+                let chars = $source.chars();
+                let token = Lexer::new(chars).get_token().unwrap().unwrap();
                 assert_eq!(token, Token::Num($expected.into(), token.span()));
             };
         }
