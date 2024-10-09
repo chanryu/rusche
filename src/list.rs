@@ -52,14 +52,6 @@ impl List {
         }
     }
 
-    pub fn cdr(&self) -> Option<&List> {
-        if let List::Cons(cons) = &self {
-            Some(&cons.cdr)
-        } else {
-            None
-        }
-    }
-
     pub fn span(&self) -> Option<Span> {
         let mut iter = self.iter();
 
@@ -131,11 +123,12 @@ impl<'a> Iterator for ListIter<'a> {
     }
 }
 
-pub fn cons<T>(car: T, cdr: List) -> List
+pub fn cons<T, U>(car: T, cdr: U) -> List
 where
     T: Into<Expr>,
+    U: Into<List>,
 {
-    List::Cons(Cons::new(car, cdr))
+    List::Cons(Cons::new(car, cdr.into()))
 }
 
 #[cfg(test)]

@@ -37,10 +37,9 @@ fn quasiquote_expr(
         return Ok(vec![NIL]);
     };
 
-    let car_name = if let Expr::Sym(name, _) = cons.car.as_ref() {
-        Some(name.as_str())
-    } else {
-        None
+    let car_name = match cons.car.as_ref() {
+        Expr::Sym(name, _) => Some(name.as_str()),
+        _ => None,
     };
 
     let mut exprs = Vec::new();
