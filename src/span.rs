@@ -17,6 +17,10 @@ impl Loc {
             column: self.column + offset,
         }
     }
+
+    pub fn span_to(&self, end: Self) -> Span {
+        Span::new(*self, end)
+    }
 }
 
 impl fmt::Display for Loc {

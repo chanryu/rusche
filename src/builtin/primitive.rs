@@ -83,7 +83,7 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
                         body: Box::new(iter.into()),
                         outer_context: context.clone(),
                     },
-                    None,
+                    args.span(),
                 ),
             );
             Ok(NIL)
@@ -223,6 +223,12 @@ mod tests {
             let context = evaluator.context();
             let $fn_name = |args| $fn_name("", &args, context);
         };
+        ($fn_name:ident, $env_name:ident) => {
+            let evaluator = Evaluator::new();
+            let context = evaluator.context();
+            let $fn_name = |args| $fn_name("", &args, context);
+            let $env_name = &context.env;
+        };
     }
 
     #[test]
@@ -255,8 +261,14 @@ mod tests {
             Ok(num(1))
         );
 
+        // (car (1 2 3)) => err
+        assert!(car(list!(list!(1, 2, 3))).is_err());
+
         // (car 1) => err
-        assert!(car(list!(list!(intern("quote"), 1))).is_err());
+        assert!(car(list!(1)).is_err());
+
+        // (car 1 2) => err
+        assert!(car(list!(1, 2)).is_err());
     }
 
     #[test]
@@ -269,8 +281,14 @@ mod tests {
             Ok(list!(2, 3).into())
         );
 
-        // (car 1) => err
-        assert!(cdr(list!(list!(intern("quote"), 1))).is_err());
+        // (cdr (1 2 3)) => err
+        assert!(cdr(list!(list!(1, 2, 3))).is_err());
+
+        // (cdr 1) => err
+        assert!(cdr(list!(1)).is_err());
+
+        // (cdr '(1 2 3) 4) => err
+        assert!(cdr(list!(list!(intern("quote"), list!(1, 2, 3)), 4)).is_err());
     }
 
     #[test]
@@ -292,27 +310,51 @@ mod tests {
 
     #[test]
     fn test_define() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
+        setup_test_for!(define, env);
 
         // (define name "value")
-        let ret = define("", &list!(intern("name"), "value"), context);
+        let ret = define(list!(intern("name"), "value"));
         assert_eq!(ret, Ok(NIL));
-        assert_eq!(context.env.lookup("name"), Some("value".into()));
+        assert_eq!(env.lookup("name"), Some("value".into()));
+
+        // (define 1 "value") -> Err
+        assert!(define(list!(1, "value")).is_err());
+
+        // (define name) -> Err
+        assert!(define(list!(intern("name"))).is_err());
+
+        // (define (1 a b) '()) -> Err
+        assert!(define(list!(list!(1, intern("a"), intern("b")), NIL)).is_err());
+
+        // (define (name 1 b) '()) -> Err
+        assert!(define(list!(list!(intern("name"), 1, intern("b")), NIL)).is_err());
     }
 
     #[test]
     fn test_eq() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
+        setup_test_for!(eq);
 
         // (eq 1 1) => #t
-        assert_ne!(eq("", &list!(1, 1), context).unwrap(), NIL);
+        assert_ne!(eq(list!(1, 1)).unwrap(), NIL);
         // (eq 1 2) => ()
-        assert_eq!(eq("", &list!(1, 2), context).unwrap(), NIL);
+        assert_eq!(eq(list!(1, 2)).unwrap(), NIL);
         // (eq "str" "str") => #t
-        assert_ne!(eq("", &list!("str", "str"), context).unwrap(), NIL);
+        assert_ne!(eq(list!("str", "str")).unwrap(), NIL);
         // (eq 1 "1") => ()
-        assert_eq!(eq("", &list!(1, "1"), context).unwrap(), NIL);
+        assert_eq!(eq(list!(1, "1")).unwrap(), NIL);
+    }
+
+    #[test]
+    fn test_set() {
+        setup_test_for!(set, env);
+
+        env.define("name", "old-value");
+
+        // (set! name "value")
+        assert!(set(list!(intern("name"), "new-value")).is_ok());
+        assert_eq!(env.lookup("name"), Some(Expr::from("new-value")));
+
+        // (set! 1 "value") -> Err
+        assert!(set(list!(1, "value")).is_err());
     }
 }

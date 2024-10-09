@@ -124,7 +124,7 @@ impl From<String> for Expr {
 
 impl From<&str> for Expr {
     fn from(value: &str) -> Self {
-        Expr::Str(value.to_string(), None)
+        Expr::from(value.to_string())
     }
 }
 

@@ -88,73 +88,89 @@ mod tests {
     use super::*;
     use crate::{eval::Evaluator, list::list};
 
+    macro_rules! setup_test_for {
+        ($fn_name:ident) => {
+            let evaluator = Evaluator::new();
+            let context = evaluator.context();
+            let $fn_name = |args| $fn_name("", &args, context);
+        };
+    }
+
     #[test]
     fn test_is_str() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
+        setup_test_for!(is_str);
 
         // (str? "abc") => 1
-        assert_eq!(is_str("", &list!("abc"), context), Ok(Expr::from(true)));
+        assert_eq!(is_str(list!("abc")), Ok(Expr::from(true)));
 
         // (str? 1) => '()
-        assert_eq!(is_str("", &list!(1), context), Ok(Expr::from(false)));
+        assert_eq!(is_str(list!(1)), Ok(Expr::from(false)));
 
         // (str? "abc" "def") => error
-        assert!(is_str("", &list!("abc", "def"), context).is_err());
+        assert!(is_str(list!("abc", "def")).is_err());
     }
 
     #[test]
-    fn test_compare() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
-
-        // (str-compare "abc" "def") => 1
-        assert_eq!(
-            compare("", &list!("abc", "def"), context),
-            Ok(Expr::from(-1))
-        );
-
-        // (str-compare "abc" "abc") => 1
-        assert_eq!(
-            compare("", &list!("def", "def"), context),
-            Ok(Expr::from(0))
-        );
-
-        // (str-compare "def" "abc") => 1
-        assert_eq!(
-            compare("", &list!("def", "abc"), context),
-            Ok(Expr::from(1))
-        );
-
-        // (str? "abc") => error
-        assert!(compare("", &list!("abc"), context).is_err());
-
-        // (str? "abc" "abc" "abc") => error
-        assert!(compare("", &list!("abc", "abc", "abc"), context).is_err());
-    }
-
-    #[test]
-    fn test_concat() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
+    fn test_append() {
+        setup_test_for!(append);
 
         // (str-append "abc" "def") => "abcdef"
-        assert_eq!(
-            append("", &list!("abc", "def"), context),
-            Ok(Expr::from("abcdef"))
-        );
+        assert_eq!(append(list!("abc", "def")), Ok(Expr::from("abcdef")));
 
         // (str-append "abc" "-" "def" "-" "123") => "abc-def-123"
         assert_eq!(
-            append("", &list!("abc", "-", "def", "-", "123"), context),
+            append(list!("abc", "-", "def", "-", "123")),
             Ok(Expr::from("abc-def-123"))
         );
 
         // edge case: (str-conca) => ""
-        assert_eq!(append("", &list!(), context), Ok(Expr::from("")));
+        assert_eq!(append(list!()), Ok(Expr::from("")));
 
         // edge case: (str-append "abc") => "abc"
-        assert_eq!(append("", &list!("abc"), context), Ok(Expr::from("abc")));
+        assert_eq!(append(list!("abc")), Ok(Expr::from("abc")));
+
+        // (str-append 1) => error
+        assert!(append(list!(1)).is_err());
+    }
+
+    #[test]
+    fn test_compare() {
+        setup_test_for!(compare);
+
+        // (str-compare "abc" "def") => 1
+        assert_eq!(compare(list!("abc", "def")), Ok(Expr::from(-1)));
+
+        // (str-compare "abc" "abc") => 1
+        assert_eq!(compare(list!("def", "def")), Ok(Expr::from(0)));
+
+        // (str-compare "def" "abc") => 1
+        assert_eq!(compare(list!("def", "abc")), Ok(Expr::from(1)));
+
+        // (str? "abc") => error
+        assert!(compare(list!("abc")).is_err());
+
+        // (str? "abc" "abc" "abc") => error
+        assert!(compare(list!("abc", "abc", "abc")).is_err());
+    }
+
+    #[test]
+    fn test_length() {
+        setup_test_for!(length);
+
+        // (str-length "") => 0
+        assert_eq!(length(list!("")), Ok(Expr::from(0)));
+
+        // (str-length "abcdef") => 6
+        assert_eq!(length(list!("abcdef")), Ok(Expr::from(6)));
+
+        // (str-length) => error
+        assert!(length(list!()).is_err());
+
+        // (str-length 1) => error
+        assert!(length(list!(1)).is_err());
+
+        // (str-length "abc" "xyz") => error
+        assert!(length(list!("abc", "xyz")).is_err());
     }
 
     #[test]

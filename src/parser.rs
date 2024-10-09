@@ -3,23 +3,11 @@ use crate::list::{cons, list, List};
 use crate::span::Span;
 use crate::token::Token;
 use std::collections::VecDeque;
-use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
     NeedMoreToken,
     UnexpectedToken(Token),
-}
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ParseError::NeedMoreToken => write!(f, "Ran out of tokens"),
-            ParseError::UnexpectedToken(token) => {
-                write!(f, "{}: Unexpected token: {}", token.span(), token)
-            }
-        }
-    }
 }
 
 type ParseResult = Result<Option<Expr>, ParseError>;
@@ -183,6 +171,26 @@ mod tests {
         let parsed_expr = parser.parse().unwrap().unwrap();
         let expected_expr = list!(intern("add"), 1, 2).into();
         assert_eq!(parsed_expr, expected_expr);
+    }
+
+    #[test]
+    fn test_parser_reset() {
+        let mut parser = Parser::new();
+
+        // add "(1" -- incomplete expression
+        parser.add_tokens(vec![tok!(OpenParen), tok!(Num(1_f64))]);
+
+        // error on incomplete expression
+        assert_eq!(parser.parse(), Err(ParseError::NeedMoreToken));
+
+        // cannot recover from previous error
+        assert_eq!(parser.parse(), Err(ParseError::NeedMoreToken));
+
+        // reset tokens and contexts
+        parser.reset();
+
+        // verify that parser is reset
+        assert_eq!(parser.parse(), Ok(None));
     }
 
     #[test]
