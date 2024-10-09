@@ -130,11 +130,7 @@ mod tests {
         // (quasiquote (0 (unquote (+ 1 2)) 4)) => (0 3 4)
         let result = quasiquote(
             QUASIQUOTE,
-            &list!(list!(
-                0,
-                list!(intern(UNQUOTE), list!(intern("num-add"), 1, 2)),
-                4
-            )),
+            &list!(list!(0, list!(unquote, list!(intern("num-add"), 1, 2)), 4)),
             context,
         );
         assert_eq!(result, Ok(list!(0, 3, 4).into()));

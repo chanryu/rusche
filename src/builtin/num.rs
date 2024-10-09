@@ -109,15 +109,15 @@ mod tests {
         assert_eq!(is_num(args), Ok(NIL));
 
         // (is-num 'sym) => #f
-        let args = list!(list!(intern("quote"), intern("sym")));
+        let args = list!(list!(quote, intern("sym")));
         assert_eq!(is_num(args), Ok(NIL));
 
         // (is-num '()) => #f
-        let args = list!(list!(intern("quote"), list!()));
+        let args = list!(list!(quote, list!()));
         assert_eq!(is_num(args), Ok(NIL));
 
         // (is-num '(1 2 3)) => #f
-        let args = list!(list!(intern("quote"), list!(1, 2, 3)));
+        let args = list!(list!(quote, list!(1, 2, 3)));
         assert_eq!(is_num(args), Ok(NIL));
     }
 
