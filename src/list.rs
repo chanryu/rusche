@@ -138,28 +138,12 @@ where
     List::Cons(Cons::new(car, cdr))
 }
 
-#[macro_export]
-macro_rules! list {
-    () => {
-        $crate::list::List::Nil
-    };
-
-    ($car:literal $(, $cdr:expr)*) => {
-        $crate::list::cons($crate::expr::Expr::from($car), list!($($cdr),*))
-    };
-
-    ($car:expr $(, $cdr:expr)*) => {
-        $crate::list::cons($car, list!($($cdr),*))
-    };
-}
-
-pub(crate) use list;
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::expr::intern;
     use crate::expr::test_utils::num;
+    use crate::macros::list;
     use crate::span::Loc;
 
     #[test]

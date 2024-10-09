@@ -95,7 +95,7 @@ mod tests {
     use super::*;
     use crate::eval::Evaluator;
     use crate::expr::intern;
-    use crate::list::list;
+    use crate::macros::list;
 
     #[test]
     fn test_quote() {

@@ -86,7 +86,7 @@ mod tests {
     use crate::eval::Evaluator;
     use crate::expr::test_utils::num;
     use crate::expr::{intern, NIL};
-    use crate::list::list;
+    use crate::macros::list;
 
     macro_rules! setup_test_for {
         ($fn_name:ident) => {
