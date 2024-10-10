@@ -393,7 +393,7 @@ mod tests {
     use crate::eval::Evaluator;
     use crate::expr::intern;
     use crate::expr::test_utils::num;
-    use crate::list::list;
+    use crate::macros::list;
 
     #[test]
     fn test_get_exact_1_arg() {

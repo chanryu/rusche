@@ -47,10 +47,6 @@ pub fn run_repl() {
                         Ok(Some(expr)) => match evaluator.eval(&expr) {
                             Ok(result) => {
                                 println!("; {}", result);
-                                println!(
-                                    "unreachable envs: {}",
-                                    evaluator.count_unreachable_envs()
-                                );
                             }
                             Err(error) => {
                                 println!("Error: {}", error);

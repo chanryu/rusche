@@ -37,10 +37,9 @@ fn quasiquote_expr(
         return Ok(vec![NIL]);
     };
 
-    let car_name = if let Expr::Sym(name, _) = cons.car.as_ref() {
-        Some(name.as_str())
-    } else {
-        None
+    let car_name = match cons.car.as_ref() {
+        Expr::Sym(name, _) => Some(name.as_str()),
+        _ => None,
     };
 
     let mut exprs = Vec::new();
@@ -95,7 +94,7 @@ mod tests {
     use super::*;
     use crate::eval::Evaluator;
     use crate::expr::intern;
-    use crate::list::list;
+    use crate::macros::list;
 
     #[test]
     fn test_quote() {
@@ -130,11 +129,7 @@ mod tests {
         // (quasiquote (0 (unquote (+ 1 2)) 4)) => (0 3 4)
         let result = quasiquote(
             QUASIQUOTE,
-            &list!(list!(
-                0,
-                list!(intern(UNQUOTE), list!(intern("num-add"), 1, 2)),
-                4
-            )),
+            &list!(list!(0, list!(unquote, list!(intern("num-add"), 1, 2)), 4)),
             context,
         );
         assert_eq!(result, Ok(list!(0, 3, 4).into()));

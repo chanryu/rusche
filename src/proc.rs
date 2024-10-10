@@ -226,9 +226,8 @@ fn get_variadic_args_name(name: &str) -> Option<&str> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{eval::Evaluator, list::list};
-
     use super::*;
+    use crate::{eval::Evaluator, macros::list};
 
     #[test]
     fn test_get_variadic_args_name() {

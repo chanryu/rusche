@@ -86,7 +86,8 @@ pub fn slice(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{eval::Evaluator, list::list};
+    use crate::eval::Evaluator;
+    use crate::macros::list;
 
     macro_rules! setup_test_for {
         ($fn_name:ident) => {

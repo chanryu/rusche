@@ -180,7 +180,7 @@ pub mod test_utils {
 mod tests {
     use super::test_utils::num;
     use super::*;
-    use crate::list::list;
+    use crate::macros::list;
 
     #[test]
     fn test_display_nil() {
