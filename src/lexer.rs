@@ -2,7 +2,7 @@ use crate::span::{Loc, Span};
 use crate::token::Token;
 use std::iter::{Iterator, Peekable};
 
-const SYMBOL_DELIMITERS: &str = " \t\r\n()';\"";
+const TOKEN_DELIMITERS: &str = " \t\r\n()';\"";
 
 #[derive(Debug, PartialEq)]
 pub enum LexError {
@@ -112,20 +112,14 @@ where
     }
 
     fn read_number(&mut self, first_char: char, begin_loc: Loc) -> LexResult {
-        let mut has_decimal_point = false;
         let mut digits = String::new();
 
         if first_char.is_ascii_digit() {
             digits.push(first_char);
         }
 
-        while let Some(ch) =
-            self.next_char_if(|&ch| ch.is_ascii_digit() || (!has_decimal_point && ch == '.'))
-        {
+        while let Some(ch) = self.next_char_if(|ch| !TOKEN_DELIMITERS.contains(*ch)) {
             digits.push(ch);
-            if ch == '.' {
-                has_decimal_point = true;
-            }
         }
 
         let sign = if first_char == '-' { -1.0 } else { 1.0 };
@@ -141,7 +135,7 @@ where
         let mut name = String::with_capacity(16);
         name.push(first_char);
 
-        while let Some(ch) = self.next_char_if(|ch| !SYMBOL_DELIMITERS.contains(*ch)) {
+        while let Some(ch) = self.next_char_if(|ch| !TOKEN_DELIMITERS.contains(*ch)) {
             name.push(ch);
         }
 
@@ -231,6 +225,8 @@ mod tests {
         assert_parsed_number!("1", 1);
         assert_parsed_number!("1.1", 1.1);
         assert_parsed_number!("-1", -1);
+
+        assert!(Lexer::new("123xya".chars()).get_token().is_err());
     }
 
     #[test]
