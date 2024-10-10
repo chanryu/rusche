@@ -1,5 +1,7 @@
 # Rusche
 
+![Build](https://github.com/chanryu/rusche/actions/workflows/rust.yml/badge.svg)
+
 Teaching myself **Rus**t by writing a **Sche**me interpreter.
 
 ## Background
