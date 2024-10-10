@@ -21,7 +21,7 @@ pub(crate) use list;
 
 #[cfg(test)]
 mod tests {
-    macro_rules! assert_list {
+    macro_rules! format_eq {
         ($list:expr, $result:literal) => {
             assert_eq!(format!("{}", $list), $result);
         };
@@ -29,29 +29,28 @@ mod tests {
 
     #[test]
     fn test_list_nil() {
-        assert_list!(list!(), "()");
+        format_eq!(list!(), "()");
     }
 
     #[test]
     fn test_list_num() {
-        assert_list!(list!(1), "(1)");
-        assert_list!(list!(1, 2), "(1 2)");
-        assert_list!(list!(1, 2, list!(3, 4)), "(1 2 (3 4))");
-        // assert_list!(list!("str", sym, 1), "(sym \"str\" 1)");
+        format_eq!(list!(1), "(1)");
+        format_eq!(list!(1, 2), "(1 2)");
+        format_eq!(list!(1, 2, list!(3, 4)), "(1 2 (3 4))");
     }
 
     #[test]
     fn test_list_str() {
-        assert_list!(list!("str"), "(\"str\")");
-        assert_list!(list!("str", "str"), "(\"str\" \"str\")");
+        format_eq!(list!("str"), "(\"str\")");
+        format_eq!(list!("str", "str"), "(\"str\" \"str\")");
     }
 
     #[test]
     fn test_list_sym() {
-        assert_list!(list!(sym), "(sym)");
-        assert_list!(list!(sym, "str", 1), "(sym \"str\" 1)");
+        format_eq!(list!(sym), "(sym)");
+        format_eq!(list!(sym, "str", 1), "(sym \"str\" 1)");
 
         // For now, symbol can only be place as the first element
-        // assert_list!(list!(sym, sym), "(sym sym)");
+        // format_eq!(list!(sym, sym), "(sym sym)");
     }
 }
