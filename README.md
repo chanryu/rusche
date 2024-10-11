@@ -1,6 +1,6 @@
 # Rusche
 
-![Build and Test](https://github.com/chanryu/rusche/actions/workflows/rust.yml/badge.svg)(https://github.com/chanryu/rusche/actions)
+[![Build and Test](https://github.com/chanryu/rusche/actions/workflows/rust.yml/badge.svg)](https://github.com/chanryu/rusche/actions)
 
 ## Overview
 
