@@ -22,26 +22,23 @@ To be completed after publishing crate to crate.io.
 
 ```rust
 
-use rusche::{
-    eval::Evaluator,
-    lexer::{tokenize, LexError},
-    parser::{ParseError, Parser},
-};
+use rusche::eval::Evaluator;
+use rusche::lexer::tokenize;
+use rusche::parser::Parser;
 
 let evaluator = Evaluator::with_prelude();
+let tokens = tokenize("(+ 1 (% 9 2))")?;
+let mut parser = Parser::with_tokens();
 
-let mut parser = Parser::with_tokens(tokenize("(+ 1 (% 9 2))")?);
-
-match parser.parse() {
-    Ok(Some(expr)) => match evaluator.eval(&expr) {
+if let Some(expr) = parser.parse()? {
+    match evaluator.eval(&expr) {
         Ok(result) => {
             println!("{}", result);
         }
         Err(error) => {
             println!("Error: {}", error);
         }
-    },
-    _ => {}
+    }
 }
 
 ```
