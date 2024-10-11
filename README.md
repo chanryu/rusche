@@ -16,7 +16,7 @@ Rusche is a library for writing an interpreter for a Scheme-like language in Rus
 
 ## Installation
 
-To be completed after publishing crate to crate.io.
+_To be filled after publishing Rusche to crate.io._
 
 ## Usage
 
