@@ -20,6 +20,27 @@ _To be filled after publishing Rusche to crate.io._
 
 ## Usage
 
+### Rusche language
+
+```scheme
+(define (fizzbuzz n)
+    (define (rem0 n m) (= (% n m) 0))
+    (cond ((rem0 n 15) "FizzBuzz")
+          ((rem0 n 3) "Fizz")
+          ((rem0 n 5) "Buzz")
+          (#t n)))
+
+(print "Enter a number: ")
+
+(let ((n 1)
+      (m (read-num)))
+    (while (<= n m)
+        (println (fizzbuzz n))
+        (set! n (+ n 1))))
+```
+
+### Implementing or embedding Rusche interpreter
+
 ```rust
 use rusche::eval::Evaluator;
 use rusche::lexer::tokenize;
