@@ -20,7 +20,10 @@ To be completed after publishing crate to crate.io.
 
 ## Usage
 
-WIP
+```rust
+```
+
+To learn about how to implement a standalone interpreter that suppors REPL, have a look at [examples/rusche-cli](https://github.com/chanryu/rusche/tree/readme/examples/rusche-cli).
 
 ## Documentation
 
