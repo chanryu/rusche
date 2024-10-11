@@ -7,7 +7,7 @@ use std::collections::VecDeque;
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
-    NeedMoreToken,
+    IncompleteExpr(Token),
     UnexpectedToken(Token),
 }
 
@@ -56,8 +56,8 @@ impl Parser {
     pub fn parse(&mut self) -> ParseResult {
         loop {
             let Some(token) = self.get_token() else {
-                return if self.is_parsing() {
-                    Err(ParseError::NeedMoreToken)
+                return if let Some(first) = self.contexts.first() {
+                    Err(ParseError::IncompleteExpr(first.token.clone().unwrap()))
                 } else {
                     Ok(None)
                 };
@@ -182,10 +182,16 @@ mod tests {
         parser.add_tokens(vec![tok!(OpenParen), tok!(Num(1_f64))]);
 
         // error on incomplete expression
-        assert_eq!(parser.parse(), Err(ParseError::NeedMoreToken));
+        assert_eq!(
+            parser.parse(),
+            Err(ParseError::IncompleteExpr(tok!(OpenParen)))
+        );
 
         // cannot recover from previous error
-        assert_eq!(parser.parse(), Err(ParseError::NeedMoreToken));
+        assert_eq!(
+            parser.parse(),
+            Err(ParseError::IncompleteExpr(tok!(OpenParen)))
+        );
 
         // reset tokens and contexts
         parser.reset();

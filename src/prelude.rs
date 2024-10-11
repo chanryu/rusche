@@ -164,7 +164,7 @@ fn eval_src(src: &str, context: &EvalContext) {
             Ok(Some(expr)) => {
                 let _ = eval(&expr, context).expect(&format!("Prelude evaluation failed: {}", src));
             }
-            Err(ParseError::NeedMoreToken) => {
+            Err(ParseError::IncompleteExpr(_)) => {
                 panic!("Prelude parse failure - incomplete expression: {}", src);
             }
             Err(ParseError::UnexpectedToken(token)) => {
