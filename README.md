@@ -4,9 +4,15 @@
 
 ## Overview
 
-Rusche is a library that enables you to write an interpreter for a Scheme-like language in Rust. It allows you to embed a Scheme interpreter into your Rust applications, enabling the use of Scheme as a scripting language within your Rust projects, or to create standalone Scheme interpreters.
+Rusche is a library for writing an interpreter for a Scheme-like language in Rust. It lets you embed a Scheme interpreter into your Rust applications, allowing you to use Scheme as a scripting language or to create standalone Scheme interpreters.
+
 
 ## Features
+
+- Minimalistic library with no rumtime dependency
+- Garbage collection
+- Tail-call optimization
+- Interoperability with hosting Rust application via `Foreign` data type.
 
 ## Installation
 
@@ -14,7 +20,11 @@ To be completed after publishing crate to crate.io.
 
 ## Usage
 
+WIP
+
 ## Documentation
+
+- [Rusche Language Reference](https://github.com/chanryu/rusche/wiki/Rusche-Language-Reference)
 
 <!--
 ## Background
