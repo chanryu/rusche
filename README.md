@@ -21,7 +21,6 @@ To be completed after publishing crate to crate.io.
 ## Usage
 
 ```rust
-
 use rusche::eval::Evaluator;
 use rusche::lexer::tokenize;
 use rusche::parser::Parser;
@@ -43,7 +42,7 @@ if let Some(expr) = parser.parse()? {
 
 ```
 
-To learn about how to implement a standalone interpreter that suppors REPL, have a look at [examples/rusche-cli](https://github.com/chanryu/rusche/tree/readme/examples/rusche-cli).
+To learn about how to implement a standalone interpreter with REPL, have a look at [examples/rusche-cli](https://github.com/chanryu/rusche/blob/readme/examples/rusche-cli/repl.rs).
 
 ## Documentation
 
