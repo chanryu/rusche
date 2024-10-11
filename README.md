@@ -2,8 +2,21 @@
 
 ![Build and Test](https://github.com/chanryu/rusche/actions/workflows/rust.yml/badge.svg)
 
-Teaching myself **Rus**t by writing a **Sche**me interpreter.
+## Overview
 
+Rusche is a library that enables you to write an interpreter for a Scheme-like language in Rust. It allows you to embed a Scheme interpreter into your Rust applications, enabling the use of Scheme as a scripting language within your Rust projects, or to create standalone Scheme interpreters.
+
+## Features
+
+## Installation
+
+To be completed after publishing crate to crate.io.
+
+## Usage
+
+## Documentation
+
+<!--
 ## Background
 
 About five years ago, I decided to learn more about Lisp by [writing a Lisp interpreter in C++](https://github.com/chanryu/mlisp). 
@@ -25,3 +38,4 @@ probably choose Swift. Even though I'm still better at C++, Swift makes me more 
 
 This time, I'm using Rust because I have a different goal -- Learning Rust. I'm not sure how this project will turn out, but there are a few 
 Rust features I want to explore along the way.
+-->
