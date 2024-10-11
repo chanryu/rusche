@@ -21,6 +21,29 @@ To be completed after publishing crate to crate.io.
 ## Usage
 
 ```rust
+
+use rusche::{
+    eval::Evaluator,
+    lexer::{tokenize, LexError},
+    parser::{ParseError, Parser},
+};
+
+let evaluator = Evaluator::with_prelude();
+
+let mut parser = Parser::with_tokens(tokenize("(+ 1 (% 9 2))")?);
+
+match parser.parse() {
+    Ok(Some(expr)) => match evaluator.eval(&expr) {
+        Ok(result) => {
+            println!("{}", result);
+        }
+        Err(error) => {
+            println!("Error: {}", error);
+        }
+    },
+    _ => {}
+}
+
 ```
 
 To learn about how to implement a standalone interpreter that suppors REPL, have a look at [examples/rusche-cli](https://github.com/chanryu/rusche/tree/readme/examples/rusche-cli).
