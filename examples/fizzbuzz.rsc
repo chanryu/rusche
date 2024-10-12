@@ -1,14 +1,14 @@
-(define (fizzbuzz n)
-    (define (mod0 n m) (= (% n m) 0))
-    (cond ((mod0 n 15) "FizzBuzz")
-          ((mod0 n 3) "Fizz")
-          ((mod0 n 5) "Buzz")
+(defun fizzbuzz (n)
+    (defun div? (n m) (= (% n m) 0))
+    (cond ((div? n 15) "FizzBuzz")
+          ((div? n 3) "Fizz")
+          ((div? n 5) "Buzz")
           (#t n)))
 
-(print "Enter a number: ")
+(print "Enter a number to fizzbuzz: ")
 
 (let ((n 1)
-      (m (read-num)))
+      (m (read-num))) ; read a number from stdio and store it to `m`
     (while (<= n m)
         (println (fizzbuzz n))
         (set! n (+ n 1))))
