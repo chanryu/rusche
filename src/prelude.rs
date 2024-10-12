@@ -23,7 +23,7 @@ const PRELUDE_SYMBOLS: [&str; 4] = [
     "(define = eq?)",
 ];
 
-const PRELUDE_MACROS: [&str; 5] = [
+const PRELUDE_MACROS: [&str; 6] = [
     // begin
     r#"
     (defmacro begin (*exprs)
@@ -40,6 +40,11 @@ const PRELUDE_MACROS: [&str; 5] = [
                     `(if ,(car clause)                  ; Otherwise, expand to an if expression
                         (begin ,@(cdr clause))          ; If condition is true, evaluate the body
                         (cond ,@(cdr clauses)))))))     ; Else, recursively process remaining clauses
+    "#,
+    // defun
+    r#"
+    (defmacro defun (name args *body)
+        `(define ,name (lambda ,args ,@body)))
     "#,
     // let
     r#"
