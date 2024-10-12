@@ -16,8 +16,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - uses: taiki-e/install-action@cargo-llvm-cov
     - name: Build
       run: cargo build --verbose
+    - name: Create Coverage Directory
+      # coverage-badge-action requires this
+      run: mkdir ${GITHUB_WORKSPACE}/coverage
     - name: Test and Coverage
       run: cargo llvm-cov --json --output-path ${GITHUB_WORKSPACE}/coverage/coverage-summary.json
     - name: Update Coverage Badge
