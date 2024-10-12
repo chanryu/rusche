@@ -17,7 +17,7 @@ Rusche is a library for writing an interpreter for a Scheme-like language in Rus
 
 ## Installation
 
-_To be filled after publishing Rusche to crate.io._
+_To be filled after publishing Rusche to crates.io._
 
 ## Usage
 
@@ -47,21 +47,24 @@ use rusche::eval::Evaluator;
 use rusche::lexer::tokenize;
 use rusche::parser::Parser;
 
+let source = "(+ 1 (% 9 2))";
+
+// Create Evaluator with basic primitives
 let evaluator = Evaluator::with_prelude();
-let tokens = tokenize("(+ 1 (% 9 2))")?;
-let mut parser = Parser::with_tokens();
 
-if let Some(expr) = parser.parse()? {
-    match evaluator.eval(&expr) {
-        Ok(result) => {
-            println!("{}", result);
-        }
-        Err(error) => {
-            println!("Error: {}", error);
-        }
-    }
-}
+// Create Parser
+let mut parser = Parser::new();
 
+// Tokenize source and add tokens to parser
+parser.add_tokens(tokenize(source)?);
+
+// Parse tokens into an expression
+let expr = parser.parse().unwrap();
+
+// Evaluate the parsed expression
+let result = evaluator.eval(&expr).unwrap();
+
+println!("{}", result); // this will print 2
 ```
 
 To learn about how to implement a standalone interpreter with REPL, have a look at [examples/rusche-cli](https://github.com/chanryu/rusche/blob/readme/examples/rusche-cli/repl.rs).
