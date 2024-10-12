@@ -1,7 +1,7 @@
 # Rusche
 
 [![Build and Test](https://github.com/chanryu/rusche/actions/workflows/rust.yml/badge.svg)](https://github.com/chanryu/rusche/actions)
-[![Code Coverage](https://codecov.io/gh/chanryu/rusche/graph/badge.svg?token=EHPCRUWK96)](https://codecov.io/gh/chanryu/rusche)
+[![Coverage](https://chanryu.github.io/rusche/badges/coverage.svg)](https://github.com/chanryu/rusche/actions)
 
 ## Overview
 
