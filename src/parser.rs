@@ -250,4 +250,18 @@ mod tests {
         let expected_expr = list!(intern("unquote-splicing"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
     }
+
+    #[test]
+    fn test_get_quote_name() {
+        assert_eq!(get_quote_name(Some(&tok!(Quote))), Some("quote"));
+        assert_eq!(get_quote_name(Some(&tok!(Quasiquote))), Some("quasiquote"));
+        assert_eq!(get_quote_name(Some(&tok!(Unquote))), Some("unquote"));
+        assert_eq!(
+            get_quote_name(Some(&tok!(UnquoteSplicing))),
+            Some("unquote-splicing")
+        );
+        assert_eq!(get_quote_name(None), None);
+        assert_eq!(get_quote_name(Some(&tok!(OpenParen))), None);
+        assert_eq!(get_quote_name(Some(&tok!(Num(1_f64)))), None);
+    }
 }
