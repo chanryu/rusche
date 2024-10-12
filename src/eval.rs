@@ -41,15 +41,12 @@ impl From<String> for EvalError {
 
 pub type EvalResult = Result<Expr, EvalError>;
 
-#[cfg(debug_assertions)]
-const TRACE_CALL_STACK: bool = false;
-
 #[derive(Clone, Debug)]
 pub struct EvalContext {
     pub env: Rc<Env>,
     call_depth: Rc<Cell<usize>>,
 
-    #[cfg(debug_assertions)]
+    #[cfg(feature = "callstack_trace")]
     call_stack: Rc<RefCell<Vec<String>>>,
 }
 
@@ -58,39 +55,34 @@ impl EvalContext {
         Self {
             env: Env::derive_from(&base.env),
             call_depth: base.call_depth.clone(),
-            #[cfg(debug_assertions)]
+            #[cfg(feature = "callstack_trace")]
             call_stack: base.call_stack.clone(),
         }
     }
 
     pub(crate) fn push_call(&self, proc: &Proc) {
-        #[cfg(not(debug_assertions))]
+        #[cfg(not(feature = "callstack_trace"))]
         let _ = proc;
 
         let depth = self.call_depth.get();
         self.call_depth.set(depth + 1);
 
-        #[cfg(debug_assertions)]
+        #[cfg(feature = "callstack_trace")]
         {
             self.call_stack.borrow_mut().push(proc.badge());
-            if TRACE_CALL_STACK {
-                println!("{:03}{} -> {}", depth, " ".repeat(depth), proc.badge());
-            }
+            println!("{:03}{} -> {}", depth, " ".repeat(depth), proc.badge());
         }
     }
 
     pub(crate) fn pop_call(&self) {
         self.call_depth.set(self.call_depth.get() - 1);
 
-        #[cfg(debug_assertions)]
+        #[cfg(feature = "callstack_trace")]
         {
             let badge = self.call_stack.borrow_mut().pop();
-
-            if TRACE_CALL_STACK {
-                if let Some(badge) = badge {
-                    let depth = self.call_depth.get();
-                    println!("{:03}{} <- {}", depth, " ".repeat(depth), badge);
-                }
+            if let Some(badge) = badge {
+                let depth = self.call_depth.get();
+                println!("{:03}{} <- {}", depth, " ".repeat(depth), badge);
             }
         }
     }
@@ -195,7 +187,7 @@ impl Evaluator {
             context: EvalContext {
                 env: root_env,
                 call_depth: Rc::new(Cell::new(0)),
-                #[cfg(debug_assertions)]
+                #[cfg(feature = "callstack_trace")]
                 call_stack: Rc::new(RefCell::new(Vec::new())),
             },
         }

@@ -11,5 +11,8 @@ rustyline = "14.0.0"
 [lib]
 name = "rusche"
 
+[features]
+callstack_trace = []
+
 [[example]]
 name = "rusche-cli"
