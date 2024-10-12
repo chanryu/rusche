@@ -56,10 +56,10 @@ impl Parser {
     pub fn parse(&mut self) -> ParseResult {
         loop {
             let Some(token) = self.get_token() else {
-                return if let Some(first) = self.contexts.first() {
-                    Err(ParseError::IncompleteExpr(first.token.clone().unwrap()))
-                } else {
+                return if self.contexts.is_empty() {
                     Ok(None)
+                } else {
+                    Err(ParseError::IncompleteExpr(self.get_expr_begin_token()))
                 };
             };
 
@@ -131,6 +131,18 @@ impl Parser {
         }
         Err(ParseError::UnexpectedToken(token)) // dangling ')'
     }
+
+    fn get_expr_begin_token(&self) -> Token {
+        assert!(!self.contexts.is_empty());
+
+        // Find the first token that started the current expression
+        for context in self.contexts.iter().rev() {
+            if let Some(token) = context.token.as_ref() {
+                return token.clone();
+            }
+        }
+        panic!("No token found for the current expression");
+    }
 }
 
 fn get_quote_name(token: Option<&Token>) -> Option<&'static str> {
@@ -186,15 +198,19 @@ mod tests {
             parser.parse(),
             Err(ParseError::IncompleteExpr(tok!(OpenParen)))
         );
+        assert!(parser.is_parsing());
 
         // cannot recover from previous error
         assert_eq!(
             parser.parse(),
             Err(ParseError::IncompleteExpr(tok!(OpenParen)))
         );
+        assert!(parser.is_parsing());
 
         // reset tokens and contexts
         parser.reset();
+
+        assert!(!parser.is_parsing());
 
         // verify that parser is reset
         assert_eq!(parser.parse(), Ok(None));
