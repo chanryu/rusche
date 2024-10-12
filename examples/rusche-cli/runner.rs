@@ -44,7 +44,7 @@ fn run_file_content(text: &str) {
                     None => eprintln!("Error: {}", e.message),
                 },
             },
-            Err(ParseError::NeedMoreToken) => {
+            Err(ParseError::IncompleteExpr(_)) => {
                 eprintln!("Failed to parse - incomplete expression");
                 break;
             }
