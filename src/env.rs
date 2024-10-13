@@ -5,6 +5,11 @@ use std::rc::{Rc, Weak};
 use crate::expr::Expr;
 use crate::proc::{NativeFunc, Proc};
 
+/// `Env` object stores variable bindings and manages scope for expression evaluation.
+///
+/// The `Env` struct is used to create an environment for evaluating expressions.
+/// It supports nested scopes by maintaining a reference to a base environment.
+/// It also keeps track of all environments and their reachability status.
 #[derive(Debug)]
 pub struct Env {
     base: Option<Rc<Env>>,
@@ -38,6 +43,19 @@ impl Env {
         derived_env
     }
 
+    /// Defines a new variable binding in the current environment.
+    ///
+    /// This function inserts a new variable binding into the current environment's variable map.
+    /// If the variable already exists, its binding will be overwritten with the new expression.
+    ///
+    /// # Type Parameters
+    ///
+    /// * `IntoExpr` - A type that can be converted into an `Expr`.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the variable to define.
+    /// * `expr` - The expression to bind to the variable. This can be any type that implements the `Into<Expr>` trait.
     pub fn define<IntoExpr>(&self, name: &str, expr: IntoExpr)
     where
         IntoExpr: Into<Expr>,
@@ -45,6 +63,21 @@ impl Env {
         self.vars.borrow_mut().insert(name.into(), expr.into());
     }
 
+    /// Updates a variable binding in the environment.
+    ///
+    /// This function first searches for the variable in the current environment.
+    /// If the variable is found, it updates the binding with the new expression.
+    /// If the variable is not found, it recursively searches in the base environment.
+    /// If the variable is not found in any ancestor environments, it returns `false`.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the variable to update.
+    /// * `expr` - The expression to bind to the variable.
+    ///
+    /// # Returns
+    ///
+    /// Returns `true` if the variable was successfully updated, `false` otherwise.
     pub fn update<IntoExpr>(&self, name: &str, expr: IntoExpr) -> bool
     where
         IntoExpr: Into<Expr>,
@@ -62,6 +95,18 @@ impl Env {
         }
     }
 
+    /// Looks up the binding for the given name.
+    ///
+    /// This function first searches for the binding in the current environment.
+    /// If the binding is not found, it recursively searches in all ancestor environments.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the variable to look up.
+    ///
+    /// # Returns
+    ///
+    /// Returns an `Option` containing the expression bound to the variable if found, or `None` if not found.
     pub fn lookup(&self, name: &str) -> Option<Expr> {
         let mut env = self;
         loop {
@@ -75,6 +120,8 @@ impl Env {
         }
     }
 
+    /// A convience fucntion to define a native procedure in the current environment.
+    /// This is a shorthand for `define(name, Expr::Proc(Proc::Native { ... }))`.
     pub fn define_native_proc(&self, name: &str, func: NativeFunc) {
         self.define(
             name,
