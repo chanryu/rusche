@@ -2,6 +2,7 @@
 ///
 /// ```
 /// use rusche::list;
+/// use rusche::expr::{Expr, intern};
 ///
 /// list!(); // => ()
 /// list!(1); // => (1)
