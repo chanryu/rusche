@@ -21,25 +21,6 @@ _To be filled after publishing Rusche to crates.io._
 
 ## Usage
 
-### Rusche language
-
-```scheme
-(define (fizzbuzz n)
-    (define (rem0 n m) (= (% n m) 0))
-    (cond ((rem0 n 15) "FizzBuzz")
-          ((rem0 n 3) "Fizz")
-          ((rem0 n 5) "Buzz")
-          (#t n)))
-
-(print "Enter a number: ")
-
-(let ((n 1)
-      (m (read-num)))
-    (while (<= n m)
-        (println (fizzbuzz n))
-        (set! n (+ n 1))))
-```
-
 ### Implementing or embedding Rusche interpreter
 
 ```rust
@@ -52,11 +33,10 @@ let source = "(+ 1 (% 9 2))";
 // Create Evaluator with basic primitives
 let evaluator = Evaluator::with_prelude();
 
-// Create Parser
 let mut parser = Parser::new();
 
 // Tokenize source and add tokens to parser
-parser.add_tokens(tokenize(source)?);
+parser.add_tokens(tokenize(source).unwrap());
 
 // Parse tokens into an expression
 let expr = parser.parse().unwrap();
@@ -64,10 +44,33 @@ let expr = parser.parse().unwrap();
 // Evaluate the parsed expression
 let result = evaluator.eval(&expr).unwrap();
 
-println!("{}", result); // this will print 2
+println!("{}", result); // This will print 2
 ```
 
 To learn about how to implement a standalone interpreter with REPL, have a look at [examples/rusche-cli](https://github.com/chanryu/rusche/blob/readme/examples/rusche-cli/repl.rs).
+
+### Rusche language
+
+Here's a quick example to show what's possible with the Rusche language.
+
+```scheme
+(defun fizzbuzz (n)
+    (defun div? (n m) (= (% n m) 0))
+    (cond ((div? n 15) "FizzBuzz")
+          ((div? n 3) "Fizz")
+          ((div? n 5) "Buzz")
+          (#t n)))
+
+(print "Enter a number to fizzbuzz: ")
+
+(let ((n 1)
+      (m (read-num))) ; read a number from stdio and store it to `m`
+    (while (<= n m)
+        (println (fizzbuzz n))
+        (set! n (+ n 1))))
+```
+
+To see more example, please checkout *.rsc files in the [examples](https://github.com/chanryu/rusche/tree/main/examples) directory.
 
 ## Documentation
 
