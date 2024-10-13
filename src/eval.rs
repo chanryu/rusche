@@ -92,10 +92,36 @@ impl EvalContext {
     }
 }
 
+/// Evaluates an expression in the given context.
+///
+/// This function serves as the entry point for evaluating an expression.
+/// It delegates the actual evaluation to the `eval_internal` function, specifying that the evaluation is not in a tail position.
+///
+/// # Arguments
+///
+/// * `expr` - A reference to the expression to be evaluated.
+/// * `context` - A reference to the evaluation context, which includes the environment and other necessary state.
+///
+/// # Returns
+///
+/// Returns an `EvalResult`, which is typically a `Result` containing either the evaluated expression or an error.
 pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
     eval_internal(expr, context, /*is_tail*/ false)
 }
 
+/// Evaluates an expression in the given context, with tail call optimization.
+///
+/// This function serves as the entry point for evaluating an expression with tail call optimization.
+/// It delegates the actual evaluation to the `eval_internal` function, specifying that the evaluation is in a tail position.
+///
+/// # Arguments
+///
+/// * `expr` - A reference to the expression to be evaluated.
+/// * `context` - A reference to the evaluation context, which includes the environment and other necessary state.
+///
+/// # Returns
+///
+/// Returns an `EvalResult`, which is typically a `Result` containing either the evaluated expression or an error.
 pub fn eval_tail(expr: &Expr, context: &EvalContext) -> EvalResult {
     eval_internal(expr, context, /*is_tail*/ true)
 }
@@ -170,12 +196,26 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
     }
 }
 
+/// The `Evaluator` is a self-contained struct that encapsulates the evaluation environment,
+/// tail-call optimization context, and garbage collection.
+///
+/// It maintains the evaluation context and provides utility functions to facilitate the evaluation process.
+/// The `Evaluator` also manages garbage collection to ensure efficient memory usage during expression evaluation.
 pub struct Evaluator {
     all_envs: Rc<RefCell<Vec<Weak<Env>>>>,
     context: EvalContext,
 }
 
 impl Evaluator {
+    /// Creates a new `Evaluator` with the given context.
+    ///
+    /// # Arguments
+    ///
+    /// * `context` - The evaluation context, which includes the environment and other necessary state.
+    ///
+    /// # Returns
+    ///
+    /// Returns a new instance of `Evaluator`.
     pub fn new() -> Self {
         let all_envs = Rc::new(RefCell::new(Vec::new()));
         let root_env = Env::root(Rc::downgrade(&all_envs));
@@ -193,34 +233,39 @@ impl Evaluator {
         }
     }
 
+    /// Creates a new `Evaluator` with built-in functions.
     pub fn with_builtin() -> Self {
         let evaluator = Self::new();
         load_builtin(&evaluator.root_env());
         evaluator
     }
 
+    /// Creates a new `Evaluator` with built-in functions and preludes.
     pub fn with_prelude() -> Self {
         let evaluator = Self::with_builtin();
         load_prelude(&evaluator.context());
         evaluator
     }
 
+    /// Returns the root environment of the evaluator.
     pub fn root_env(&self) -> &Rc<Env> {
         return &self.context.env;
     }
 
+    /// Returns the evaluation context of the evaluator.
     pub fn context(&self) -> &EvalContext {
         &self.context
     }
 
+    /// Evaluates an expression in the current context.
+    /// This function is a convenience wrapper around the `eval()` function.
     pub fn eval(&self, expr: &Expr) -> EvalResult {
-        let result = eval(expr, &self.context());
-
-        // TODO: Collect garbage if needed
-
-        result
+        eval(expr, &self.context())
     }
 
+    /// Count the number of unreachable environments in the evaluator.
+    /// This function is useful for monitoring memory usage and can be used
+    /// to determin when to trigger garbage collection.
     pub fn count_unreachable_envs(&self) -> usize {
         self.all_envs.borrow().iter().for_each(|env| {
             if let Some(env) = env.upgrade() {
@@ -240,6 +285,7 @@ impl Evaluator {
         })
     }
 
+    /// Perform garbage collection on the evaluator.
     pub fn collect_garbage(&self) {
         #[cfg(debug_assertions)]
         println!("GC: begin garbage collection");
