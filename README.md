@@ -58,25 +58,6 @@ To learn about how to implement a standalone interpreter with REPL, have a look 
 
 ### Rusche language
 
-```scheme
-(define (fizzbuzz n)
-    (define (rem0 n m) (= (% n m) 0))
-    (cond ((rem0 n 15) "FizzBuzz")
-          ((rem0 n 3) "Fizz")
-          ((rem0 n 5) "Buzz")
-          (#t n)))
-
-(print "Enter a number: ")
-
-(let ((n 1)
-      (m (read-num)))
-    (while (<= n m)
-        (println (fizzbuzz n))
-        (set! n (+ n 1))))
-```
-
-### Rusche language
-
 Here's a quick example to show what's possible with the Rusche language.
 
 ```scheme
