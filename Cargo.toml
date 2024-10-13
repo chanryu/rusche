@@ -2,6 +2,18 @@
 name = "rusche"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "A minimalistic scheme interpreter written in Rust"
+readme = "README.md"
+repository = "https://github.com/chanryu/rusche"
+keywords = ["interpreter", "lisp", "scheme", "scripting", "scripting-language"]
+categories = [
+    "development-tools::interpreter",
+    "development-tools::lisp",
+    "development-tools::scheme",
+    "development-tools::scripting",
+    "development-tools::scripting-language",
+]
 
 [dependencies]
 
