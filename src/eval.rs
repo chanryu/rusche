@@ -14,6 +14,7 @@ use crate::{
     span::Span,
 };
 
+/// The object that represents an expression evaluation error.
 #[derive(Debug, PartialEq)]
 pub struct EvalError {
     pub message: String,
@@ -112,7 +113,7 @@ pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
     eval_internal(expr, context, /*is_tail*/ false)
 }
 
-/// Evaluates an expression in the given context, with tail call optimization.
+/// Evaluates an expression in the given context, denoting that the evaluation is in a tail position.
 ///
 /// This function serves as the entry point for evaluating an expression with tail call optimization.
 /// It delegates the actual evaluation to the `eval_internal` function, specifying that the evaluation is in a tail position.
@@ -199,11 +200,8 @@ fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResul
     }
 }
 
-/// The `Evaluator` is a self-contained struct that encapsulates the evaluation environment,
-/// tail-call optimization context, and garbage collection.
-///
-/// It maintains the evaluation context and provides utility functions to facilitate the evaluation process.
-/// The `Evaluator` also manages garbage collection to ensure efficient memory usage during expression evaluation.
+/// The struct that encapsulates the evaluation environment, tail-call optimization context, and garbage collection.
+/// It also maintains the evaluation context and provides utility functions to facilitate the evaluation process.
 pub struct Evaluator {
     all_envs: Rc<RefCell<Vec<Weak<Env>>>>,
     context: EvalContext,
