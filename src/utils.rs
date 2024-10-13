@@ -197,7 +197,6 @@ pub fn get_2_or_3_args<'a>(
 /// Check if `list` contains only symbols. If so, return a vector of the symbols.
 /// Otherwise, return an error message. This function can be used to extract formal
 /// arguments when implementing a function-like special form such as lambda or macro.
-/// ```
 pub fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
     let mut formal_args = Vec::new();
     for item in list.iter() {
