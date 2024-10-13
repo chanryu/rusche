@@ -41,6 +41,7 @@ impl From<String> for EvalError {
 
 pub type EvalResult = Result<Expr, EvalError>;
 
+/// The evaluation context contains the environment and other necessary state for expression evaluation.
 #[derive(Clone, Debug)]
 pub struct EvalContext {
     pub env: Rc<Env>,
@@ -51,6 +52,8 @@ pub struct EvalContext {
 }
 
 impl EvalContext {
+    /// Derives a new evaluation context from the given base context.
+    /// This function can be used to create a new context within a lambda or other procedure.
     pub fn derive_from(base: &EvalContext) -> Self {
         Self {
             env: Env::derive_from(&base.env),
