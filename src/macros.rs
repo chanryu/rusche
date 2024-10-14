@@ -1,4 +1,4 @@
-/// A macro for creating `crate::list::List`.
+/// A macro for creating [`crate::list::List`].
 ///
 /// ```
 /// use rusche::list;
@@ -10,7 +10,7 @@
 /// list!(1, 2, list!(3, 4)); // => (1 2 (3 4))
 /// list!("str"); // => ("str")
 /// list!("str", "str"); // => ("str" "str")
-/// list!(intern("sym"), Expr::from("str")); // => (str "str")
+/// list!(intern("sym"), Expr::from("str")); // => (sym "str")
 /// ```
 #[macro_export]
 macro_rules! list {
