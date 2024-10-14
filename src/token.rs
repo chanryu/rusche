@@ -2,16 +2,34 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 
 use crate::span::{Loc, Span};
 
+/// The enum that represents a lexical unit of the source code in Rusche.
 #[derive(Clone, Debug)]
 pub enum Token {
+    /// Open parenthesis `(`.
     OpenParen(Loc),
+
+    /// Close parenthesis `)`.
     CloseParen(Loc),
+
+    /// Quote `'`.
     Quote(Loc),
+
+    /// Quasiquote `` ` ``.
     Quasiquote(Loc),
+
+    /// Unquote `,`.
     Unquote(Loc),
+
+    /// Unquote-splicing `,@`.
     UnquoteSplicing(Loc),
+
+    /// A number literal.
     Num(f64, Span),
+
+    /// A string literal.
     Str(String, Span),
+
+    /// A symbol.
     Sym(String, Span),
 }
 
