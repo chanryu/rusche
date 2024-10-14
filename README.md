@@ -51,7 +51,7 @@ let result = evaluator.eval(&expr).unwrap();
 println!("{}", result); // This will print 2
 ```
 
-To learn about how to implement a standalone interpreter with REPL, have a look at [examples/rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli/repl.rs).
+To learn about how to implement a standalone interpreter with REPL, have a look at [examples/rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli/).
 
 ### Rusche language
 
