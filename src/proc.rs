@@ -5,29 +5,36 @@ use crate::eval::{eval, eval_tail, EvalContext, EvalError, EvalResult};
 use crate::expr::NIL;
 use crate::list::List;
 
+/// The function signature for native procedures -- [`Proc::Native`].
 pub type NativeFunc = fn(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult;
 
+/// The enum that represents all procedure variants in the Rusche language.
 #[derive(Clone, Debug)]
 pub enum Proc {
+    /// A user-defied producdure that captures outer environment.
+    /// Closures can be created by the `lambda` form.
     Closure {
         name: Option<String>,
         formal_args: Vec<String>,
         body: Box<List>,
         outer_context: EvalContext,
     },
+
+    /// A user-defied producdure that allows the user to define arbitrary functions
+    /// that convert certain Lisp forms into different forms before evaluating or compiling them.
+    /// Macros can be created by the `macro` form.
     Macro {
         name: Option<String>,
         formal_args: Vec<String>,
         body: Box<List>,
     },
-    Native {
-        name: String,
-        func: NativeFunc,
-    },
+
+    /// A native procedure that is implemented in Rust.
+    Native { name: String, func: NativeFunc },
 }
 
 impl Proc {
-    pub fn invoke(&self, args: &List, context: &EvalContext) -> EvalResult {
+    pub(crate) fn invoke(&self, args: &List, context: &EvalContext) -> EvalResult {
         context.push_call(self);
         let result = match self {
             Proc::Closure {
@@ -54,7 +61,7 @@ impl Proc {
         result
     }
 
-    pub fn badge(&self) -> String {
+    pub(crate) fn badge(&self) -> String {
         match self {
             Proc::Closure { name, .. } => {
                 format!("proc/closure:{}", name.as_deref().unwrap_or("unnamed"),)
