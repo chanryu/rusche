@@ -9,7 +9,7 @@ use crate::{
 
 pub type Foreign = Rc<dyn Any>;
 
-/// An enum that represents all expression variants in the Rusche language.
+/// The enum that represents all expression variants in the Rusche language.
 #[derive(Clone, Debug)]
 pub enum Expr {
     /// A 64-bit floating number value.
