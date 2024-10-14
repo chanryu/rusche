@@ -2,16 +2,34 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 
 use crate::span::{Loc, Span};
 
+/// The enum that represents a lexical unit of the source code in Rusche.
 #[derive(Clone, Debug)]
 pub enum Token {
+    /// Open parenthesis `(`.
     OpenParen(Loc),
+
+    /// Close parenthesis `)`.
     CloseParen(Loc),
+
+    /// Quote `'`.
     Quote(Loc),
+
+    /// Quasiquote `` ` ``.
     Quasiquote(Loc),
+
+    /// Unquote `,`.
     Unquote(Loc),
+
+    /// Unquote-splicing `,@`.
     UnquoteSplicing(Loc),
+
+    /// A number literal.
     Num(f64, Span),
+
+    /// A string literal.
     Str(String, Span),
+
+    /// A symbol.
     Sym(String, Span),
 }
 
@@ -70,7 +88,9 @@ mod tests {
     fn test_span_fixed_len() {
         macro_rules! assert_token_span_length_eq {
             ($length:literal, $token_case:ident) => {
-                assert_eq!($length, Token::$token_case(Loc::new(0, 0)).span().len());
+                let span = Token::$token_case(Loc::new(1, 1)).span();
+                assert_eq!(span.begin.line, span.end.line);
+                assert_eq!($length, span.end.column - span.begin.column);
             };
         }
         assert_token_span_length_eq!(1, OpenParen);

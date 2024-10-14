@@ -1,8 +1,4 @@
-use std::{
-    any::Any,
-    fmt::{self},
-    rc::Rc,
-};
+use std::{any::Any, fmt, rc::Rc};
 
 use crate::{
     eval::EvalContext,
@@ -13,17 +9,31 @@ use crate::{
 
 pub type Foreign = Rc<dyn Any>;
 
+/// The enum that represents all expression variants in the Rusche language.
 #[derive(Clone, Debug)]
 pub enum Expr {
+    /// A 64-bit floating number value.
     Num(f64, Option<Span>),
+
+    /// A string value.
     Str(String, Option<Span>),
+
+    /// A symbol value.
     Sym(String, Option<Span>),
+
+    /// A procedure value. There are 3 types of procedures in Rusche:
+    /// - [`Proc::Native`]: implemented in Rust
+    /// - [`Proc::Closure`]: user-defined via `lambda` form
+    /// - [`Proc::Macro`]: user-defined via `defmacro` form
     Proc(Proc, Option<Span>),
+
+    /// A list value. It can be either a cons cell or an empty list.
     List(List, Option<Span>),
 
+    /// A foreign object value. This is used to store Rust objects in the interpreter.
     Foreign(Foreign),
 
-    /// A special case for tail-call optimization.
+    /// A special case for tail-call optimization. _Internal use only._
     TailCall {
         proc: Proc,
         args: List,
@@ -34,6 +44,8 @@ pub enum Expr {
 pub const NIL: Expr = Expr::List(List::Nil, None);
 
 impl Expr {
+    /// Returns `true` if the expression is an atom.
+    /// Every expresssion that is not a cons cell list is an atom.
     pub fn is_atom(&self) -> bool {
         match self {
             Expr::List(List::Cons(_), _) => false,
@@ -41,6 +53,7 @@ impl Expr {
         }
     }
 
+    /// Return `true` if the expression is an empty list.
     pub fn is_nil(&self) -> bool {
         match self {
             Expr::List(List::Nil, _) => true,
@@ -48,6 +61,8 @@ impl Expr {
         }
     }
 
+    /// Returns `true` if the expression can be considered to be truthy.
+    /// In Rusche, only the empty list ([`List::Nil`]) is considered to be falsy.
     pub fn is_truthy(&self) -> bool {
         !self.is_nil()
     }

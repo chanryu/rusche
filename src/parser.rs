@@ -18,12 +18,14 @@ struct ParseContext {
     car: Option<Expr>,
 }
 
+/// A parser that converts a sequence of tokens into expressions.
 pub struct Parser {
     tokens: VecDeque<Token>,
     contexts: Vec<ParseContext>,
 }
 
 impl Parser {
+    /// Create a new parser.
     pub fn new() -> Self {
         Self {
             tokens: VecDeque::new(),
@@ -31,6 +33,7 @@ impl Parser {
         }
     }
 
+    /// Create a new parser with the given tokens.
     pub fn with_tokens(tokens: Vec<Token>) -> Self {
         let mut parser = Self::new();
         parser.add_tokens(tokens);

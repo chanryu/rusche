@@ -12,6 +12,7 @@ pub enum LexError {
 
 type LexResult = Result<Option<Token>, LexError>;
 
+/// Lexical analyzer for the Rusche language.
 pub struct Lexer<Iter>
 where
     Iter: Iterator<Item = char>,
@@ -27,10 +28,11 @@ where
     pub fn new(iter: Iter) -> Self {
         Self {
             iter: iter.peekable(),
-            loc: Loc::new(1, 1),
+            loc: Loc::default(),
         }
     }
 
+    /// Returns the next token from the input stream.
     pub fn get_token(&mut self) -> LexResult {
         loop {
             self.skip_spaces();
@@ -163,7 +165,7 @@ where
         if let Some(ch) = ch {
             if *ch == '\n' {
                 self.loc.line += 1;
-                self.loc.column = 1;
+                self.loc.column = 0;
             } else {
                 self.loc.column += 1;
             }
@@ -171,6 +173,8 @@ where
     }
 }
 
+/// A convinient function to tokenize a string. Internally, it uses the [`Lexer`] to tokenize
+/// the input string.
 pub fn tokenize(text: &str) -> Result<Vec<Token>, LexError> {
     let mut tokens = Vec::new();
     let mut lexer = Lexer::new(text.chars());
@@ -206,7 +210,7 @@ mod tests {
         assert_parse_string!(r#""an escaped\" string""#, "an escaped\" string");
         assert_parse_string!(
             r#""incomplete string"#,
-            LexError::IncompleteString(Span::new(Loc::new(1, 1), Loc::new(1, 19)))
+            LexError::IncompleteString(Span::new(Loc::new(0, 0), Loc::new(0, 18)))
         );
     }
 
@@ -336,20 +340,20 @@ mod tests {
             };
         }
 
-        match_next_span!(Span::new(Loc::new(2, 13), Loc::new(2, 14))); // (
-        match_next_span!(Span::new(Loc::new(2, 14), Loc::new(2, 20))); // define
-        match_next_span!(Span::new(Loc::new(2, 21), Loc::new(2, 22))); // (
-        match_next_span!(Span::new(Loc::new(2, 22), Loc::new(2, 31))); // factorial
-        match_next_span!(Span::new(Loc::new(2, 32), Loc::new(2, 33))); // n
-        match_next_span!(Span::new(Loc::new(2, 33), Loc::new(2, 34))); // )
-        match_next_span!(Span::new(Loc::new(3, 17), Loc::new(3, 18))); // (
-        match_next_span!(Span::new(Loc::new(3, 18), Loc::new(3, 20))); // if
-        match_next_span!(Span::new(Loc::new(3, 21), Loc::new(3, 22))); // (
-        match_next_span!(Span::new(Loc::new(3, 22), Loc::new(3, 23))); // =
-        match_next_span!(Span::new(Loc::new(3, 24), Loc::new(3, 25))); // n
-        match_next_span!(Span::new(Loc::new(3, 26), Loc::new(3, 27))); // 0
-        match_next_span!(Span::new(Loc::new(3, 27), Loc::new(3, 28))); // )
-        match_next_span!(Span::new(Loc::new(4, 21), Loc::new(4, 22))); // 1
+        match_next_span!(Span::new(Loc::new(1, 12), Loc::new(1, 13))); // (
+        match_next_span!(Span::new(Loc::new(1, 13), Loc::new(1, 19))); // define
+        match_next_span!(Span::new(Loc::new(1, 20), Loc::new(1, 21))); // (
+        match_next_span!(Span::new(Loc::new(1, 21), Loc::new(1, 30))); // factorial
+        match_next_span!(Span::new(Loc::new(1, 31), Loc::new(1, 32))); // n
+        match_next_span!(Span::new(Loc::new(1, 32), Loc::new(1, 33))); // )
+        match_next_span!(Span::new(Loc::new(2, 16), Loc::new(2, 17))); // (
+        match_next_span!(Span::new(Loc::new(2, 17), Loc::new(2, 19))); // if
+        match_next_span!(Span::new(Loc::new(2, 20), Loc::new(2, 21))); // (
+        match_next_span!(Span::new(Loc::new(2, 21), Loc::new(2, 22))); // =
+        match_next_span!(Span::new(Loc::new(2, 23), Loc::new(2, 24))); // n
+        match_next_span!(Span::new(Loc::new(2, 25), Loc::new(2, 26))); // 0
+        match_next_span!(Span::new(Loc::new(2, 26), Loc::new(2, 27))); // )
+        match_next_span!(Span::new(Loc::new(3, 20), Loc::new(3, 21))); // 1
 
         // ...
     }
@@ -368,11 +372,11 @@ mod tests {
             };
         }
 
-        match_next_span!(Span::new(Loc::new(1, 1), Loc::new(1, 2))); // (
-        match_next_span!(Span::new(Loc::new(1, 2), Loc::new(1, 8))); // define
-        match_next_span!(Span::new(Loc::new(1, 9), Loc::new(1, 13))); // test
-        match_next_span!(Span::new(Loc::new(1, 14), Loc::new(1, 20))); // "test"
-        match_next_span!(Span::new(Loc::new(1, 20), Loc::new(1, 21))); // )
+        match_next_span!(Span::new(Loc::new(0, 0), Loc::new(0, 1))); // (
+        match_next_span!(Span::new(Loc::new(0, 1), Loc::new(0, 7))); // define
+        match_next_span!(Span::new(Loc::new(0, 8), Loc::new(0, 12))); // test
+        match_next_span!(Span::new(Loc::new(0, 13), Loc::new(0, 19))); // "test"
+        match_next_span!(Span::new(Loc::new(0, 19), Loc::new(0, 20))); // )
         match_next_span!(None);
     }
 }

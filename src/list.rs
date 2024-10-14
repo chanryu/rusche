@@ -3,6 +3,7 @@ use crate::span::Span;
 use std::fmt;
 use std::iter::Iterator;
 
+/// The struct that represents a [cons cell](https://en.wikipedia.org/wiki/Cons) that contains a value and a reference to the next cons cell.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cons {
     pub car: Box<Expr>,
@@ -29,6 +30,7 @@ impl Cons {
     }
 }
 
+/// The enum that represents a list which is either a cons cell or the empty list.
 #[derive(Clone, Debug, PartialEq)]
 pub enum List {
     Cons(Cons),
@@ -99,6 +101,7 @@ fn write_list(f: &mut fmt::Formatter<'_>, list: &List, is_top_level: bool) -> fm
     Ok(())
 }
 
+/// An iterator that iterates over the elements of [`List`].
 pub struct ListIter<'a> {
     list: &'a List,
 }
@@ -123,6 +126,7 @@ impl<'a> Iterator for ListIter<'a> {
     }
 }
 
+/// Create a new cons cell with the given value and the next cons cell.
 pub fn cons<T, U>(car: T, cdr: U) -> List
 where
     T: Into<Expr>,
