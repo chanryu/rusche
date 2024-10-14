@@ -22,7 +22,7 @@ pub enum Proc {
 
     /// A user-defied producdure that allows the user to define arbitrary functions
     /// that convert certain Lisp forms into different forms before evaluating or compiling them.
-    /// Macros can be created by the `macro` form.
+    /// Macros can be created by the `defmacro` form.
     Macro {
         name: Option<String>,
         formal_args: Vec<String>,
