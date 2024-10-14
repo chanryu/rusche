@@ -33,7 +33,8 @@ impl fmt::Display for Loc {
     }
 }
 
-/// A region in the source code defined by a beginning and ending location.
+/// A region in the source code defined by a beginning and ending location. `Span` is used to
+/// represent a range of token or expression in the source code.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Span {
     pub begin: Loc,
