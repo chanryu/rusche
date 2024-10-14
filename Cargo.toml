@@ -8,13 +8,7 @@ description = "A minimalistic Scheme interpreter written in Rust"
 readme = "README.md"
 repository = "https://github.com/chanryu/rusche"
 keywords = ["interpreter", "lisp", "scheme", "scripting", "scripting-language"]
-categories = [
-    "development-tools::interpreter",
-    "development-tools::lisp",
-    "development-tools::scheme",
-    "development-tools::scripting",
-    "development-tools::scripting-language",
-]
+categories = ["compilers", "config", "parser-implementations", "parsing"]
 include = ["/src", "/examples", "LICENSE", "README.md"]
 
 [dependencies]
