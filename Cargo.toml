@@ -9,7 +9,7 @@ readme = "README.md"
 repository = "https://github.com/chanryu/rusche"
 keywords = ["interpreter", "lisp", "scheme", "scripting", "scripting-language"]
 categories = ["compilers", "config", "parser-implementations", "parsing"]
-include = ["/src", "/examples", "LICENSE", "README.md"]
+include = ["/src", "/examples", "/tests", "LICENSE", "README.md"]
 
 [dependencies]
 
