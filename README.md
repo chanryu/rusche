@@ -16,17 +16,13 @@ Rusche is a library for writing an interpreter for a Scheme-like language in Rus
 - Tail-call optimization
 - Interoperability with hosting Rust application via `Foreign` data type.
 
-## Installation
-
-_To be filled after publishing Rusche to crates.io._
-
 ## Usage
 
 ### Set up dependency
 
 ```toml
 [dependencies]
-rusche = "0.1.0"
+rusche = "0.1.1"
 ```
 
 ### Implementing or embedding Rusche interpreter
@@ -55,7 +51,7 @@ let result = evaluator.eval(&expr).unwrap();
 println!("{}", result); // This will print 2
 ```
 
-To learn about how to implement a standalone interpreter with REPL, have a look at [examples/rusche-cli](https://github.com/chanryu/rusche/blob/readme/examples/rusche-cli/repl.rs).
+To learn about how to implement a standalone interpreter with REPL, have a look at [examples/rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli/).
 
 ### Rusche language
 
