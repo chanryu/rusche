@@ -1,8 +1,8 @@
 use std::fmt;
 
 /// A location in the source code defined by a line and column number.
-/// Be aware both line and column numbers are 0-based.
-/// However, when displayed to the user, they should be converted to 1-based.
+/// Be aware both line and column numbers are 0-based, even though they
+/// need to be converted to 1-based when displayed to the user.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Loc {
     pub line: usize,
@@ -28,6 +28,7 @@ impl Loc {
 
 impl fmt::Display for Loc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Convert 0-based line and column numbers to 1-based.
         write!(f, "{}:{}", self.line + 1, self.column + 1)
     }
 }
@@ -52,9 +53,9 @@ impl Span {
 impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.begin.line == self.end.line {
-            write!(f, "{}-{}", self.begin, self.end.column) // 10:5, 10:7 => "10:5-7"
+            write!(f, "{}-{}", self.begin, self.end.column + 1) // (10:5, 10:7) => "11:6-8"
         } else {
-            write!(f, "{}-{}", self.begin, self.end) // 10:5, 11:3 => "10:5-11:3"
+            write!(f, "{}-{}", self.begin, self.end) // ((10:5, 11:3) => "11:6-12:4"
         }
     }
 }
