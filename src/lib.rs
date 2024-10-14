@@ -1,6 +1,9 @@
 //! Rusche is a library for writing an interpreter for a Scheme-like language in Rust.
 //! It lets you embed a Scheme interpreter into your Rust applications, allowing you
 //! to use Scheme as a scripting language or to create standalone Scheme interpreters.
+//!
+//! To learn how to use Rusche, please have a look at the
+//! [examples/rusche-cli](https://github.com/chanryu/rusche/tree/publish-prep/examples/rusche-cli).
 
 mod builtin;
 mod prelude;
