@@ -12,6 +12,7 @@ pub enum LexError {
 
 type LexResult = Result<Option<Token>, LexError>;
 
+/// Lexical analyzer for the Rusche language.
 pub struct Lexer<Iter>
 where
     Iter: Iterator<Item = char>,
@@ -31,6 +32,7 @@ where
         }
     }
 
+    /// Returns the next token from the input stream.
     pub fn get_token(&mut self) -> LexResult {
         loop {
             self.skip_spaces();
@@ -171,6 +173,8 @@ where
     }
 }
 
+/// A convinient function to tokenize a string. Internally, it uses the [`Lexer`] to tokenize
+/// the input string.
 pub fn tokenize(text: &str) -> Result<Vec<Token>, LexError> {
     let mut tokens = Vec::new();
     let mut lexer = Lexer::new(text.chars());
