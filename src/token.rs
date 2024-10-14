@@ -70,7 +70,9 @@ mod tests {
     fn test_span_fixed_len() {
         macro_rules! assert_token_span_length_eq {
             ($length:literal, $token_case:ident) => {
-                assert_eq!($length, Token::$token_case(Loc::new(0, 0)).span().len());
+                let span = Token::$token_case(Loc::new(1, 1)).span();
+                assert_eq!(span.begin.line, span.end.line);
+                assert_eq!($length, span.end.column - span.begin.column);
             };
         }
         assert_token_span_length_eq!(1, OpenParen);
