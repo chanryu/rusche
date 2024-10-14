@@ -2,6 +2,7 @@
 
 [![ci](https://github.com/chanryu/rusche/actions/workflows/ci.yml/badge.svg)](https://github.com/chanryu/rusche/actions)
 [![coverage](https://codecov.io/gh/chanryu/rusche/graph/badge.svg?token=EHPCRUWK96)](https://codecov.io/gh/chanryu/rusche)
+[![crates.io](https://img.shields.io/crates/v/rusche)](https://crates.io/crates/rusche)
 
 ## Overview
 
