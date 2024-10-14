@@ -24,7 +24,7 @@ pub enum Expr {
     /// A procedure value. There are 3 types of procedures in Rusche:
     /// - [`Proc::Native`]: implemented in Rust
     /// - [`Proc::Closure`]: user-defined via `lambda` form
-    /// - [`Proc::Macro`]: user-defined via `macro` form
+    /// - [`Proc::Macro`]: user-defined via `defmacro` form
     Proc(Proc, Option<Span>),
 
     /// A list value. It can be either a cons cell or an empty list.

@@ -60,3 +60,17 @@ impl fmt::Display for Span {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_span_display() {
+        let span = Span::new(Loc::new(0, 1), Loc::new(0, 3));
+        assert_eq!(format!("{}", span), "1:2-4");
+
+        let span = Span::new(Loc::new(0, 1), Loc::new(2, 3));
+        assert_eq!(format!("{}", span), "1:2-3:4");
+    }
+}
