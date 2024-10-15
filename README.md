@@ -18,13 +18,6 @@ Rusche is a library for writing an interpreter for a Scheme-like language in Rus
 
 ## Usage
 
-### Set up dependency
-
-```toml
-[dependencies]
-rusche = "0.1.1"
-```
-
 ### Implementing or embedding Rusche interpreter
 
 ```rust
