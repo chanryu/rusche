@@ -36,7 +36,7 @@ let mut parser = Parser::new();
 parser.add_tokens(tokenize(source).unwrap());
 
 // Parse tokens into an expression
-let expr = parser.parse().unwrap();
+let expr = parser.parse().unwrap().unwrap();
 
 // Evaluate the parsed expression
 let result = evaluator.eval(&expr).unwrap();
