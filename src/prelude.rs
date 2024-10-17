@@ -174,10 +174,36 @@ fn eval_src(src: &str, context: &EvalContext) {
             }
             Err(ParseError::UnexpectedToken(token)) => {
                 panic!(
-                    "Prelude parse failure - unexpected token ({}): {}",
+                    "Prelude parse failure - unexpected token \"{}\": {}",
                     token, src
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::eval::Evaluator;
+
+    #[test]
+    fn test_eval_src() {
+        let e = Evaluator::with_builtin();
+        eval_src("(define x 1)", e.context()); // no panic
+    }
+
+    #[test]
+    #[should_panic(expected = "Prelude parse failure - incomplete expression: (define x 1")]
+    fn test_eval_src_incomplete_expr() {
+        let e = Evaluator::with_builtin();
+        eval_src("(define x 1", e.context());
+    }
+
+    #[test]
+    #[should_panic(expected = "Prelude parse failure - unexpected token \")\": (define x 1))")]
+    fn test_eval_src_unexpected_token() {
+        let e = Evaluator::with_builtin();
+        eval_src("(define x 1))", e.context());
     }
 }
