@@ -92,67 +92,105 @@ fn quasiquote_expr(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::eval::Evaluator;
     use crate::expr::intern;
-    use crate::macros::list;
+    use crate::macros::*;
 
     #[test]
     fn test_quote() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
-        // (quote (1 2)) => (1 2)
-        let result = quote(QUOTE, &list!(list!(1, 2)), context);
+        setup_native_proc_test!(quote);
+
+        // '(1 2) => (1 2)
+        let result = quote(list!(list!(1, 2)));
         assert_eq!(result, Ok(list!(1, 2).into()));
     }
 
     #[test]
+    fn test_quote_error() {
+        setup_native_proc_test!(quote);
+
+        // (quote 1 2) => error
+        assert!(quote(list!(1, 2)).is_err());
+    }
+
+    #[test]
     fn test_quasiquote() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
+        setup_native_proc_test!(quasiquote);
 
-        context.env.define("x", 2);
+        // `(0 1 2) => (0 1 2)
+        let result = quasiquote(list!(list!(0, 1, 2)));
+        assert_eq!(result, Ok(list!(0, 1, 2).into()));
+    }
 
-        // `(0 1 ,x 3) => (0 1 2 3)
-        let result = quasiquote(
-            QUASIQUOTE,
-            &list!(list!(0, 1, list!(intern(UNQUOTE), intern("x")), 3)),
-            context,
-        );
-        assert_eq!(result, Ok(list!(0, 1, 2, 3).into()));
+    #[test]
+    fn test_quasiquote_error() {
+        setup_native_proc_test!(quasiquote);
+
+        // `,@'(1 2) => error
+        let result = quasiquote(list!(list!(
+            intern(UNQUOTE_SPLICING),
+            list!(intern(QUOTE), list!(1, 2))
+        )));
+        assert!(result.is_err());
+
+        // (quasiquote 1 2) => error
+        assert!(quasiquote(list!(1, 2)).is_err());
     }
 
     #[test]
     fn test_quasiquote_unquote() {
-        let evaluator = Evaluator::with_builtin(); // make `num-add` available
-        let context = evaluator.context();
+        setup_native_proc_test!(quasiquote, env);
 
-        // (quasiquote (0 (unquote (+ 1 2)) 4)) => (0 3 4)
-        let result = quasiquote(
-            QUASIQUOTE,
-            &list!(list!(0, list!(unquote, list!(intern("num-add"), 1, 2)), 4)),
-            context,
-        );
+        env.define_native_proc("+", crate::builtin::num::add);
+
+        // `(0 ,(+ 1 2) 4) => (0 3 4)
+        let result = quasiquote(list!(list!(
+            0,
+            list!(intern("unquote"), list!(intern("+"), 1, 2)),
+            4
+        )));
         assert_eq!(result, Ok(list!(0, 3, 4).into()));
     }
 
     #[test]
-    fn test_quasiquote_unquote_splicing() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
+    fn test_quasiquote_unquote_error() {
+        setup_native_proc_test!(quasiquote);
 
+        // `(0 (unquote) 4) => error
+        let result = quasiquote(list!(list!(0, list!(intern("unquote")), 4)));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_quasiquote_unquote_splicing() {
+        setup_native_proc_test!(quasiquote);
+
+        // `(0 ,@'(1 2 3) 4) => (0 1 2 3 4)
         // (quasiquote (0 (unquote-splicing (quote (1 2 3))) 4)) => (0 1 2 3 4)
-        let result = quasiquote(
-            QUASIQUOTE,
-            &list!(list!(
-                0,
-                list!(
-                    intern(UNQUOTE_SPLICING),
-                    list!(intern(QUOTE), list!(1, 2, 3))
-                ),
-                4
-            )),
-            context,
-        );
+        let result = quasiquote(list!(list!(
+            0,
+            list!(
+                intern(UNQUOTE_SPLICING),
+                list!(intern(QUOTE), list!(1, 2, 3))
+            ),
+            4
+        )));
         assert_eq!(result, Ok(list!(0, 1, 2, 3, 4).into()));
+    }
+
+    #[test]
+    fn test_quasiquote_unquote_splicing_error() {
+        setup_native_proc_test!(quasiquote);
+
+        // `(0 ,@1 2) => error
+        let result = quasiquote(list!(list!(
+            0,
+            list!(intern(UNQUOTE_SPLICING), list!(intern(QUOTE), 1)),
+            2
+        )));
+        assert!(result.is_err());
+
+        // `(0 (unquote-splicing) 2) => error
+        let result = quasiquote(list!(list!(0, list!(intern(UNQUOTE_SPLICING)), 2)));
+        assert!(result.is_err());
     }
 }

@@ -86,20 +86,11 @@ pub fn slice(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::eval::Evaluator;
-    use crate::macros::list;
-
-    macro_rules! setup_test_for {
-        ($fn_name:ident) => {
-            let evaluator = Evaluator::new();
-            let context = evaluator.context();
-            let $fn_name = |args| $fn_name("", &args, context);
-        };
-    }
+    use crate::macros::*;
 
     #[test]
     fn test_is_str() {
-        setup_test_for!(is_str);
+        setup_native_proc_test!(is_str);
 
         // (str? "abc") => 1
         assert_eq!(is_str(list!("abc")), Ok(Expr::from(true)));
@@ -113,7 +104,7 @@ mod tests {
 
     #[test]
     fn test_append() {
-        setup_test_for!(append);
+        setup_native_proc_test!(append);
 
         // (str-append "abc" "def") => "abcdef"
         assert_eq!(append(list!("abc", "def")), Ok(Expr::from("abcdef")));
@@ -136,7 +127,7 @@ mod tests {
 
     #[test]
     fn test_compare() {
-        setup_test_for!(compare);
+        setup_native_proc_test!(compare);
 
         // (str-compare "abc" "def") => 1
         assert_eq!(compare(list!("abc", "def")), Ok(Expr::from(-1)));
@@ -156,7 +147,7 @@ mod tests {
 
     #[test]
     fn test_length() {
-        setup_test_for!(length);
+        setup_native_proc_test!(length);
 
         // (str-length "") => 0
         assert_eq!(length(list!("")), Ok(Expr::from(0)));
@@ -176,46 +167,27 @@ mod tests {
 
     #[test]
     fn test_slice() {
-        let evaluator = Evaluator::new();
-        let context = evaluator.context();
+        setup_native_proc_test!(slice);
 
         // (str-slice "abcdef" 0 1) => "a"
-        assert_eq!(
-            slice("", &list!("abcdef", 0, 1), context),
-            Ok(Expr::from("a"))
-        );
+        assert_eq!(slice(list!("abcdef", 0, 1)), Ok(Expr::from("a")));
 
         // (str-slice "abcdef" 0 2) => "ab"
-        assert_eq!(
-            slice("", &list!("abcdef", 0, 2), context),
-            Ok(Expr::from("ab"))
-        );
+        assert_eq!(slice(list!("abcdef", 0, 2)), Ok(Expr::from("ab")));
 
         // (str-slice "abcdef" 1 3) => "bc"
-        assert_eq!(
-            slice("", &list!("abcdef", 1, 3), context),
-            Ok(Expr::from("bc"))
-        );
+        assert_eq!(slice(list!("abcdef", 1, 3)), Ok(Expr::from("bc")));
 
         // (str-slice "abcdef" 1) => "abcdef"
-        assert_eq!(
-            slice("", &list!("abcdef", 1), context),
-            Ok(Expr::from("bcdef"))
-        );
+        assert_eq!(slice(list!("abcdef", 1)), Ok(Expr::from("bcdef")));
 
         // (str-slice "abcdef" -2) => ""
-        assert_eq!(
-            slice("", &list!("abcdef", -2), context),
-            Ok(Expr::from("ef"))
-        );
+        assert_eq!(slice(list!("abcdef", -2)), Ok(Expr::from("ef")));
 
         // (str-slice "abcdef" -2 -4) => ""
-        assert_eq!(
-            slice("", &list!("abcdef", -2, -4), context),
-            Ok(Expr::from("cd"))
-        );
+        assert_eq!(slice(list!("abcdef", -2, -4)), Ok(Expr::from("cd")));
 
         // error: (str-slice "abcdef" 0.5 1)
-        assert!(slice("", &list!("abcdef", 0.5, 1), context).is_err());
+        assert!(slice(list!("abcdef", 0.5, 1)).is_err());
     }
 }
