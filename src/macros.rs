@@ -34,6 +34,24 @@ macro_rules! list {
 pub(crate) use list;
 
 #[cfg(test)]
+macro_rules! setup_native_proc_test {
+    ($fn_name:ident) => {
+        let evaluator = $crate::eval::Evaluator::new();
+        let context = evaluator.context();
+        let $fn_name = |args| $fn_name(stringify!($fn_name), &args, context);
+    };
+    ($fn_name:ident, $env_name:ident) => {
+        let evaluator = $crate::eval::Evaluator::new();
+        let context = evaluator.context();
+        let $fn_name = |args| $fn_name(stringify!($fn_name), &args, context);
+        let $env_name = &context.env;
+    };
+}
+
+#[cfg(test)]
+pub(crate) use setup_native_proc_test;
+
+#[cfg(test)]
 mod tests {
     macro_rules! format_eq {
         ($list:expr, $result:literal) => {

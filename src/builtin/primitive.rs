@@ -212,28 +212,13 @@ pub fn set(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::eval::Evaluator;
     use crate::expr::intern;
     use crate::expr::test_utils::num;
-    use crate::macros::list;
-
-    macro_rules! setup_test_for {
-        ($fn_name:ident) => {
-            let evaluator = Evaluator::new();
-            let context = evaluator.context();
-            let $fn_name = |args| $fn_name("", &args, context);
-        };
-        ($fn_name:ident, $env_name:ident) => {
-            let evaluator = Evaluator::new();
-            let context = evaluator.context();
-            let $fn_name = |args| $fn_name("", &args, context);
-            let $env_name = &context.env;
-        };
-    }
+    use crate::macros::*;
 
     #[test]
     fn test_atom() {
-        setup_test_for!(atom);
+        setup_native_proc_test!(atom);
 
         // (atom 1) => #t
         assert_eq!(atom(list!(1)), Ok(true.into()));
@@ -250,7 +235,7 @@ mod tests {
 
     #[test]
     fn test_car() {
-        setup_test_for!(car);
+        setup_native_proc_test!(car);
 
         // (car '(1 2 3)) => 1
         assert_eq!(car(list!(list!(quote, list!(1, 2, 3)))), Ok(num(1)));
@@ -267,7 +252,7 @@ mod tests {
 
     #[test]
     fn test_cdr() {
-        setup_test_for!(cdr);
+        setup_native_proc_test!(cdr);
 
         // (cdr '(1 2 3)) => (2 3)
         assert_eq!(
@@ -287,7 +272,7 @@ mod tests {
 
     #[test]
     fn test_cons() {
-        setup_test_for!(cons);
+        setup_native_proc_test!(cons);
 
         // (cons 1 '(2 3)) => (1 2 3)
         assert_eq!(
@@ -304,7 +289,7 @@ mod tests {
 
     #[test]
     fn test_define() {
-        setup_test_for!(define, env);
+        setup_native_proc_test!(define, env);
 
         // (define name "value")
         let ret = define(list!(name, "value"));
@@ -326,7 +311,7 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        setup_test_for!(eq);
+        setup_native_proc_test!(eq);
 
         // (eq 1 1) => #t
         assert_ne!(eq(list!(1, 1)).unwrap(), NIL);
@@ -340,7 +325,7 @@ mod tests {
 
     #[test]
     fn test_set() {
-        setup_test_for!(set, env);
+        setup_native_proc_test!(set, env);
 
         env.define("name", "old-value");
 

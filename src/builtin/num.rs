@@ -86,19 +86,11 @@ mod tests {
     use crate::eval::Evaluator;
     use crate::expr::test_utils::num;
     use crate::expr::{intern, NIL};
-    use crate::macros::list;
-
-    macro_rules! setup_test_for {
-        ($fn_name:ident) => {
-            let evaluator = Evaluator::new();
-            let context = evaluator.context();
-            let $fn_name = |args| $fn_name("", &args, context);
-        };
-    }
+    use crate::macros::*;
 
     #[test]
     fn test_is_num() {
-        setup_test_for!(is_num);
+        setup_native_proc_test!(is_num);
 
         // (is-num 1) => #t
         let args = list!(1);
@@ -123,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_add() {
-        setup_test_for!(add);
+        setup_native_proc_test!(add);
 
         // (+ 1) => 1
         let args = list!(1);
@@ -140,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_minus() {
-        setup_test_for!(subtract);
+        setup_native_proc_test!(subtract);
 
         // (- 1) => -1
         let args = list!(1);
@@ -161,7 +153,7 @@ mod tests {
 
     #[test]
     fn test_multiply() {
-        setup_test_for!(multiply);
+        setup_native_proc_test!(multiply);
 
         // (* 1) => 1
         let args = list!(1);
@@ -178,7 +170,7 @@ mod tests {
 
     #[test]
     fn test_divide() {
-        setup_test_for!(divide);
+        setup_native_proc_test!(divide);
 
         // (/ 2) => 0.5
         let args = list!(2);
@@ -191,7 +183,7 @@ mod tests {
 
     #[test]
     fn test_modulo() {
-        setup_test_for!(modulo);
+        setup_native_proc_test!(modulo);
 
         // (% 1 2) => 1
         assert_eq!(modulo(list!(1, 2)), Ok(Expr::from(1)));
@@ -230,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_greater() {
-        setup_test_for!(greater);
+        setup_native_proc_test!(greater);
 
         // (> 1 2) => #t
         assert_eq!(greater(list!(1, 2)), Ok(false.into()));

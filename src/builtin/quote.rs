@@ -92,27 +92,12 @@ fn quasiquote_expr(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::eval::Evaluator;
     use crate::expr::intern;
-    use crate::macros::list;
-
-    macro_rules! setup_test_for {
-        ($fn_name:ident) => {
-            let evaluator = Evaluator::new();
-            let context = evaluator.context();
-            let $fn_name = |args| $fn_name("", &args, context);
-        };
-        ($fn_name:ident, $env_name:ident) => {
-            let evaluator = Evaluator::new();
-            let context = evaluator.context();
-            let $fn_name = |args| $fn_name("", &args, context);
-            let $env_name = &context.env;
-        };
-    }
+    use crate::macros::*;
 
     #[test]
     fn test_quote() {
-        setup_test_for!(quote);
+        setup_native_proc_test!(quote);
 
         // '(1 2) => (1 2)
         let result = quote(list!(list!(1, 2)));
@@ -121,7 +106,7 @@ mod tests {
 
     #[test]
     fn test_quote_error() {
-        setup_test_for!(quote);
+        setup_native_proc_test!(quote);
 
         // (quote 1 2) => error
         assert!(quote(list!(1, 2)).is_err());
@@ -129,7 +114,7 @@ mod tests {
 
     #[test]
     fn test_quasiquote() {
-        setup_test_for!(quasiquote);
+        setup_native_proc_test!(quasiquote);
 
         // `(0 1 2) => (0 1 2)
         let result = quasiquote(list!(list!(0, 1, 2)));
@@ -138,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_quasiquote_error() {
-        setup_test_for!(quasiquote);
+        setup_native_proc_test!(quasiquote);
 
         // `,@'(1 2) => error
         let result = quasiquote(list!(list!(
@@ -153,7 +138,7 @@ mod tests {
 
     #[test]
     fn test_quasiquote_unquote() {
-        setup_test_for!(quasiquote, env);
+        setup_native_proc_test!(quasiquote, env);
 
         env.define_native_proc("+", crate::builtin::num::add);
 
@@ -164,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_quasiquote_unquote_error() {
-        setup_test_for!(quasiquote);
+        setup_native_proc_test!(quasiquote);
 
         // `(0 (unquote) 4) => error
         let result = quasiquote(list!(list!(0, list!(unquote), 4)));
@@ -173,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_quasiquote_unquote_splicing() {
-        setup_test_for!(quasiquote);
+        setup_native_proc_test!(quasiquote);
 
         // `(0 ,@'(1 2 3) 4) => (0 1 2 3 4)
         // (quasiquote (0 (unquote-splicing (quote (1 2 3))) 4)) => (0 1 2 3 4)
@@ -190,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_quasiquote_unquote_splicing_error() {
-        setup_test_for!(quasiquote);
+        setup_native_proc_test!(quasiquote);
 
         // `(0 ,@1 2) => error
         let result = quasiquote(list!(list!(
