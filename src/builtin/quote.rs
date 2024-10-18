@@ -143,7 +143,11 @@ mod tests {
         env.define_native_proc("+", crate::builtin::num::add);
 
         // `(0 ,(+ 1 2) 4) => (0 3 4)
-        let result = quasiquote(list!(list!(0, list!(unquote, list!(intern("+"), 1, 2)), 4)));
+        let result = quasiquote(list!(list!(
+            0,
+            list!(intern("unquote"), list!(intern("+"), 1, 2)),
+            4
+        )));
         assert_eq!(result, Ok(list!(0, 3, 4).into()));
     }
 
@@ -152,7 +156,7 @@ mod tests {
         setup_native_proc_test!(quasiquote);
 
         // `(0 (unquote) 4) => error
-        let result = quasiquote(list!(list!(0, list!(unquote), 4)));
+        let result = quasiquote(list!(list!(0, list!(intern("unquote")), 4)));
         assert!(result.is_err());
     }
 

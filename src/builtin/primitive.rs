@@ -227,10 +227,13 @@ mod tests {
         assert_eq!(atom(list!("str")), Ok(true.into()));
 
         // (atom '()) => #t
-        assert_eq!(atom(list!(list!(quote, NIL))), Ok(true.into()));
+        assert_eq!(atom(list!(list!(intern("quote"), NIL))), Ok(true.into()));
 
         // (atom '(1 2 3)) => #f
-        assert_eq!(atom(list!(list!(quote, list!(1, 2, 3)))), Ok(false.into()));
+        assert_eq!(
+            atom(list!(list!(intern("quote"), list!(1, 2, 3)))),
+            Ok(false.into())
+        );
     }
 
     #[test]
@@ -238,7 +241,10 @@ mod tests {
         setup_native_proc_test!(car);
 
         // (car '(1 2 3)) => 1
-        assert_eq!(car(list!(list!(quote, list!(1, 2, 3)))), Ok(num(1)));
+        assert_eq!(
+            car(list!(list!(intern("quote"), list!(1, 2, 3)))),
+            Ok(num(1))
+        );
 
         // (car (1 2 3)) => err
         assert!(car(list!(list!(1, 2, 3))).is_err());
@@ -256,7 +262,7 @@ mod tests {
 
         // (cdr '(1 2 3)) => (2 3)
         assert_eq!(
-            cdr(list!(list!(quote, list!(1, 2, 3)))),
+            cdr(list!(list!(intern("quote"), list!(1, 2, 3)))),
             Ok(list!(2, 3).into())
         );
 
@@ -267,7 +273,7 @@ mod tests {
         assert!(cdr(list!(1)).is_err());
 
         // (cdr '(1 2 3) 4) => err
-        assert!(cdr(list!(list!(quote, list!(1, 2, 3)), 4)).is_err());
+        assert!(cdr(list!(list!(intern("quote"), list!(1, 2, 3)), 4)).is_err());
     }
 
     #[test]
@@ -276,7 +282,7 @@ mod tests {
 
         // (cons 1 '(2 3)) => (1 2 3)
         assert_eq!(
-            cons(list!(1, list!(quote, list!(2, 3)))),
+            cons(list!(1, list!(intern("quote"), list!(2, 3)))),
             Ok(list!(1, 2, 3).into())
         );
 
@@ -292,7 +298,7 @@ mod tests {
         setup_native_proc_test!(define, env);
 
         // (define name "value")
-        let ret = define(list!(name, "value"));
+        let ret = define(list!(intern("name"), "value"));
         assert_eq!(ret, Ok(NIL));
         assert_eq!(env.lookup("name"), Some("value".into()));
 
@@ -300,13 +306,13 @@ mod tests {
         assert!(define(list!(1, "value")).is_err());
 
         // (define name) -> Err
-        assert!(define(list!(name)).is_err());
+        assert!(define(list!(intern("name"))).is_err());
 
         // (define (1 a b) '()) -> Err
         assert!(define(list!(list!(1, intern("a"), intern("b")), NIL)).is_err());
 
         // (define (name 1 b) '()) -> Err
-        assert!(define(list!(list!(name, 1, intern("b")), NIL)).is_err());
+        assert!(define(list!(list!(intern("name"), 1, intern("b")), NIL)).is_err());
     }
 
     #[test]

@@ -22,10 +22,6 @@ macro_rules! list {
         $crate::list::cons($crate::expr::Expr::from($car), list!($($cdr),*))
     };
 
-    ($car:ident $(, $cdr:expr)*) => {
-        $crate::list::cons($crate::expr::intern(stringify!($car)), list!($($cdr),*))
-    };
-
     ($car:expr $(, $cdr:expr)*) => {
         $crate::list::cons($car, list!($($cdr),*))
     };
@@ -75,14 +71,5 @@ mod tests {
     fn test_list_str() {
         format_eq!(list!("str"), "(\"str\")");
         format_eq!(list!("str", "str"), "(\"str\" \"str\")");
-    }
-
-    #[test]
-    fn test_list_sym() {
-        format_eq!(list!(sym), "(sym)");
-        format_eq!(list!(sym, "str", 1), "(sym \"str\" 1)");
-
-        // For now, symbol can only be place as the first element
-        // format_eq!(list!(sym, sym), "(sym sym)");
     }
 }

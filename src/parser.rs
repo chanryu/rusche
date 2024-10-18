@@ -185,7 +185,7 @@ mod tests {
         ]);
 
         let parsed_expr = parser.parse().unwrap().unwrap();
-        let expected_expr = list!(add, 1, 2).into();
+        let expected_expr = list!(intern("add"), 1, 2).into();
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -225,7 +225,7 @@ mod tests {
         let mut parser = Parser::with_tokens(vec![tok!(Quote), tok!(Num(1_f64))]);
 
         let parsed_expr = parser.parse().unwrap().unwrap();
-        let expected_expr = list!(quote, 1).into();
+        let expected_expr = list!(intern("quote"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -246,7 +246,7 @@ mod tests {
 
         let parsed_expr = parser.parse().unwrap().unwrap();
         print!("{}", parsed_expr);
-        let expected_expr = list!(quote, list!(list!(1), 2)).into();
+        let expected_expr = list!(intern("quote"), list!(list!(1), 2)).into();
         assert_eq!(parsed_expr, expected_expr);
     }
 
@@ -258,14 +258,14 @@ mod tests {
         parser.add_tokens(vec![tok!(Quasiquote), tok!(Num(1_f64))]);
 
         let parsed_expr = parser.parse().unwrap().unwrap();
-        let expected_expr = list!(quasiquote, 1).into();
+        let expected_expr = list!(intern("quasiquote"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
 
         // ,1
         parser.add_tokens(vec![tok!(Unquote), tok!(Num(1_f64))]);
 
         let parsed_expr = parser.parse().unwrap().unwrap();
-        let expected_expr = list!(unquote, 1).into();
+        let expected_expr = list!(intern("unquote"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
 
         // ,@1
