@@ -16,7 +16,7 @@ Rusche is a library for writing an interpreter for a Scheme-like language in Rus
 - Garbage collection
 - Tail-call optimization
 - Interoperability with hosting Rust application via `Foreign` data type.
-- Token span support for proper error message handling, for example:
+- Token span support for informative error message, for example:
   ```
   rusche:01❯ (define plus
   ......:02❯     (lambda (x 7)   ;; 7 should be y
