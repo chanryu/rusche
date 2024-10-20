@@ -1,3 +1,4 @@
+use colored::Colorize;
 use rusche::{tokenize, Evaluator, LexError, Loc, ParseError, Parser, Span};
 use rustyline::{error::ReadlineError, DefaultEditor};
 
@@ -18,9 +19,9 @@ pub fn run_repl() {
     let mut parser = Parser::new();
     loop {
         let prompt = if parser.is_parsing() {
-            &format!("{:06} ❯ ", lines.len() + 1)
+            &format!("{:06}❯ ", lines.len() + 1)
         } else {
-            "rusche ❯ "
+            "rusche❯ "
         };
 
         match rl.readline(prompt) {
@@ -55,7 +56,7 @@ pub fn run_repl() {
                         }
                         Ok(Some(expr)) => match evaluator.eval(&expr) {
                             Ok(result) => {
-                                println!("{}", result);
+                                println!("{}", result.to_string().green());
                             }
                             Err(error) => {
                                 print_error(&error.message, &lines, error.span);
@@ -85,32 +86,31 @@ pub fn run_repl() {
     }
 }
 
+#[rustfmt::skip]
 fn print_logo() {
-    println!(r"              ____                  __         ");
-    println!(r"             / __ \__  ____________/ /_  ___   ");
-    println!(r"            / /_/ / / / / ___/ ___/ __ \/ _ \  ");
-    println!(r"Welcome to / _, _/ /_/ (__  ) /__/ / / /  __/ !");
-    println!(r"          /_/ |_|\__,_/____/\___/_/ /_/\___/   ");
-    println!(r"                                               ");
-    println!(r"To exit, press Ctrl + D.                       ");
+    println!("          {}  ", r"    ____                  __       ".bold().cyan());
+    println!("          {}  ", r"   / __ \__  ____________/ /_  ___ ".bold().cyan());
+    println!("          {}  ", r"  / /_/ / / / / ___/ ___/ __ \/ _ \".bold().cyan());
+    println!("Welcome to{} !", r" / _, _/ /_/ (__  ) /__/ / / /  __/".bold().cyan());
+    println!("          {}  ", r"/_/ |_|\__,_/____/\___/_/ /_/\___/ ".bold().cyan());
+
+    println!("\n{}", "To exit, press Ctrl + D.".dimmed());
 }
 
 fn print_error(message: &str, lines: &Vec<String>, span: Option<Span>) {
-    if let Some(span) = span {
-        println!("error [{span}]: {message}");
+    println!("{}: {}", "error".red(), message);
 
-        if span.begin.line < lines.len() {
-            if span.begin.line > 0 {
-                println!("{:03}: {}", span.begin.line, lines[span.begin.line - 1]);
-            }
-            println!("{:03}: {}", span.begin.line + 1, lines[span.begin.line]);
-            println!(
-                "     {}{}",
-                " ".repeat(span.begin.column),
-                "^".repeat(span.end.column - span.begin.column)
-            );
+    let Some(span) = span else { return };
+
+    if span.begin.line < lines.len() {
+        if span.begin.line > 0 {
+            println!("  {:03}: {}", span.begin.line, lines[span.begin.line - 1]);
         }
-    } else {
-        println!("error: {message}");
+        println!("  {:03}: {}", span.begin.line + 1, lines[span.begin.line]);
+        println!(
+            "       {}{}",
+            " ".repeat(span.begin.column),
+            "^".repeat(span.end.column - span.begin.column).red()
+        );
     }
 }
