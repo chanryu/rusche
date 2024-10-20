@@ -24,3 +24,13 @@ pub mod proc;
 pub mod span;
 pub mod token;
 pub mod utils;
+
+// Re-export the public API
+pub use env::Env;
+pub use eval::{eval, eval_tail, EvalContext, EvalError, EvalResult, Evaluator};
+pub use expr::{intern, Expr, Foreign, NIL};
+pub use lexer::{tokenize, LexError, Lexer};
+pub use parser::{ParseError, Parser};
+pub use proc::{NativeFunc, Proc};
+pub use span::{Loc, Span};
+pub use token::Token;
