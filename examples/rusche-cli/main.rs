@@ -67,7 +67,7 @@ fn run_file(evaluator: Evaluator, path: &str) {
                     }
                     Err(ParseError::UnexpectedToken(token)) => {
                         print_error(
-                            &format!("unexpected token - \"{token}\""),
+                            &format!("unexpected token: \"{token}\""),
                             &text,
                             Some(token.span()),
                         );
@@ -92,7 +92,7 @@ fn print_error_lines(message: &str, lines: &Vec<String>, span: Option<Span>) {
 
     if span.end.line < lines.len() {
         let print_line =
-            |line| println!("{}{}", format!("{:>4}| ", line + 1).dimmed(), lines[line]);
+            |line| println!("{}{}", format!("{:>3}| ", line + 1).dimmed(), lines[line]);
         if span.begin.line >= 2 {
             print_line(span.begin.line - 2);
         }
@@ -118,7 +118,7 @@ fn print_error_lines(message: &str, lines: &Vec<String>, span: Option<Span>) {
             };
             println!(
                 "{}{}{}",
-                "    | ".dimmed(),
+                "   | ".dimmed(),
                 " ".repeat(begin_col),
                 "^".repeat(end_col - begin_col).red()
             );
