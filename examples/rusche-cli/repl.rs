@@ -2,6 +2,8 @@ use rusche::{
     eval::Evaluator,
     lexer::{tokenize, LexError},
     parser::{ParseError, Parser},
+    span::Loc,
+    token::Token,
 };
 use rustyline::{error::ReadlineError, DefaultEditor};
 
@@ -11,13 +13,15 @@ pub fn run_repl() {
     print_logo();
 
     let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");
-    let mut parser = Parser::new();
 
     let evaluator = Evaluator::with_prelude();
 
     load_io_procs(evaluator.context());
     load_vec_procs(evaluator.context());
 
+    let mut lines = Vec::new();
+
+    let mut parser = Parser::new();
     loop {
         let prompt = if parser.is_parsing() {
             "...... ❯ "
@@ -28,8 +32,9 @@ pub fn run_repl() {
         match rl.readline(prompt) {
             Ok(line) => {
                 let _ = rl.add_history_entry(line.as_str());
+                let loc = Loc::new(lines.len(), 0);
 
-                match tokenize(&line) {
+                match tokenize(&line, loc) {
                     Ok(tokens) => parser.add_tokens(tokens),
                     Err(LexError::IncompleteString(span)) => {
                         println!("Error:{span}: Incomplete string");
@@ -41,14 +46,17 @@ pub fn run_repl() {
                     }
                 }
 
+                lines.push(line);
+
                 loop {
                     match parser.parse() {
                         Ok(None) => {
+                            lines.clear();
                             break;
                         }
                         Ok(Some(expr)) => match evaluator.eval(&expr) {
                             Ok(result) => {
-                                println!("; {}", result);
+                                println!("{}", result);
                             }
                             Err(error) => {
                                 println!("Error: {}", error);
@@ -57,7 +65,8 @@ pub fn run_repl() {
                         Err(ParseError::IncompleteExpr(_)) => break,
                         Err(ParseError::UnexpectedToken(token)) => {
                             parser.reset();
-                            println!("Error: Unexpected token - {token}");
+                            print_unexpected_token_error(&lines, &token);
+                            lines.clear();
                         }
                     }
                 }
@@ -81,4 +90,18 @@ fn print_logo() {
     println!(r"          /_/ |_|\__,_/____/\___/_/ /_/\___/   ");
     println!(r"                                               ");
     println!(r"To exit, press Ctrl + D.                       ");
+}
+
+fn print_unexpected_token_error(lines: &Vec<String>, token: &Token) {
+    println!("Error: Unexpected token - {token}");
+
+    let span = token.span();
+    if span.begin.line < lines.len() {
+        println!("{:05}: {}", span.begin.line + 1, lines[span.begin.line]);
+        println!(
+            "       {}{}",
+            " ".repeat(span.begin.column),
+            "^".repeat(span.end.column - span.begin.column)
+        );
+    }
 }

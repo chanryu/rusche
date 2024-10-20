@@ -25,10 +25,10 @@ impl<Iter> Lexer<Iter>
 where
     Iter: Iterator<Item = char>,
 {
-    pub fn new(iter: Iter) -> Self {
+    pub fn new(iter: Iter, loc: Loc) -> Self {
         Self {
             iter: iter.peekable(),
-            loc: Loc::default(),
+            loc,
         }
     }
 
@@ -175,9 +175,9 @@ where
 
 /// A convinient function to tokenize a string. Internally, it uses the [`Lexer`] to tokenize
 /// the input string.
-pub fn tokenize(text: &str) -> Result<Vec<Token>, LexError> {
+pub fn tokenize(text: &str, loc: Loc) -> Result<Vec<Token>, LexError> {
     let mut tokens = Vec::new();
-    let mut lexer = Lexer::new(text.chars());
+    let mut lexer = Lexer::new(text.chars(), loc);
 
     while let Some(token) = lexer.get_token()? {
         tokens.push(token);
@@ -196,13 +196,19 @@ mod tests {
             ($source:literal, $expected:literal) => {
                 assert_eq!($source.chars().next(), Some('"'));
                 let chars = $source.chars();
-                let token = Lexer::new(chars).get_token().unwrap().unwrap();
+                let token = Lexer::new(chars, Loc::default())
+                    .get_token()
+                    .unwrap()
+                    .unwrap();
                 assert_eq!(token, Token::Str(String::from($expected), token.span()));
             };
             ($source:literal, $expected:expr) => {
                 assert_eq!($source.chars().next(), Some('"'));
                 let chars = $source.chars();
-                assert_eq!(Lexer::new(chars).get_token(), Err($expected));
+                assert_eq!(
+                    Lexer::new(chars, Loc::default()).get_token(),
+                    Err($expected)
+                );
             };
         }
 
@@ -220,7 +226,10 @@ mod tests {
             ($source:literal, $expected:literal) => {
                 assert!(!$source.is_empty());
                 let chars = $source.chars();
-                let token = Lexer::new(chars).get_token().unwrap().unwrap();
+                let token = Lexer::new(chars, Loc::default())
+                    .get_token()
+                    .unwrap()
+                    .unwrap();
                 assert_eq!(token, Token::Num($expected.into(), token.span()));
             };
         }
@@ -230,21 +239,23 @@ mod tests {
         assert_parsed_number!("1.1", 1.1);
         assert_parsed_number!("-1", -1);
 
-        assert!(Lexer::new("123xya".chars()).get_token().is_err());
+        assert!(Lexer::new("123xya".chars(), Loc::default())
+            .get_token()
+            .is_err());
     }
 
     #[test]
     fn test_scanner_eof() {
-        let mut lexer = Lexer::new("".chars());
+        let mut lexer = Lexer::new("".chars(), Loc::default());
         assert_eq!(lexer.get_token(), Ok(None));
 
-        let mut lexer = Lexer::new("    ".chars());
+        let mut lexer = Lexer::new("    ".chars(), Loc::default());
         assert_eq!(lexer.get_token(), Ok(None));
 
-        let mut lexer = Lexer::new("   ; comment".chars());
+        let mut lexer = Lexer::new("   ; comment".chars(), Loc::default());
         assert_eq!(lexer.get_token(), Ok(None));
 
-        let mut lexer = Lexer::new("".chars());
+        let mut lexer = Lexer::new("".chars(), Loc::default());
         assert_eq!(lexer.get_token(), Ok(None));
         assert_eq!(lexer.get_token(), Ok(None));
         assert_eq!(lexer.get_token(), Ok(None));
@@ -252,7 +263,7 @@ mod tests {
 
     #[test]
     fn test_scanner_parans() {
-        let mut lexer = Lexer::new("()(())(()())".chars());
+        let mut lexer = Lexer::new("()(())(()())".chars(), Loc::default());
         macro_rules! match_next_paren {
             (None) => {
                 assert_eq!(lexer.get_token().unwrap(), None);
@@ -287,7 +298,7 @@ mod tests {
             ; another comment
         "#;
 
-        let mut lexer = Lexer::new(all_tokens.chars());
+        let mut lexer = Lexer::new(all_tokens.chars(), Loc::default());
         macro_rules! match_next_token {
             (None) => {
                 assert_eq!(lexer.get_token().unwrap(), None);
@@ -331,7 +342,7 @@ mod tests {
                     (* n (factorial (- n 1)))))
         "#;
 
-        let mut lexer = Lexer::new(src.chars());
+        let mut lexer = Lexer::new(src.chars(), Loc::default());
 
         macro_rules! match_next_span {
             ($span:expr) => {
@@ -360,7 +371,7 @@ mod tests {
 
     #[test]
     fn test_span_define_test() {
-        let mut lexer = Lexer::new(r#"(define test "test")"#.chars());
+        let mut lexer = Lexer::new(r#"(define test "test")"#.chars(), Loc::default());
 
         macro_rules! match_next_span {
             (None) => {

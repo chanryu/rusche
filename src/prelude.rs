@@ -2,6 +2,7 @@ use crate::{
     eval::{eval, EvalContext},
     lexer::tokenize,
     parser::{ParseError, Parser},
+    span::Loc,
 };
 
 const PRELUDE_SYMBOLS: [&str; 4] = [
@@ -157,7 +158,8 @@ pub fn load_prelude(context: &EvalContext) {
 }
 
 fn eval_src(src: &str, context: &EvalContext) {
-    let tokens = tokenize(src).expect(&format!("Prelude tokniization failed: {}", src));
+    let tokens =
+        tokenize(src, Loc::default()).expect(&format!("Prelude tokniization failed: {}", src));
 
     let mut parser = Parser::with_tokens(tokens);
 
