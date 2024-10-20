@@ -2,7 +2,7 @@ mod builtin;
 mod repl;
 
 use colored::Colorize;
-use rusche::{tokenize, Evaluator, LexError, ParseError, Parser, Span};
+use rusche::{tokenize, Evaluator, LexError, Loc, ParseError, Parser, Span};
 
 use builtin::{load_io_procs, load_vec_procs};
 use repl::run_repl;
@@ -53,16 +53,16 @@ fn run_file(evaluator: Evaluator, path: &str) {
                         }
                     },
                     Err(ParseError::IncompleteExpr(token)) => {
-                        // let lines: Vec<String> =
-                        //     text.lines().map(|line| line.to_string()).collect();
-                        // let begin_loc = token.span().begin;
-                        // let end_loc = Loc::new(lines.len() - 1, lines.last().unwrap().len());
-                        // print_error_lines(
-                        //     "incomplete expression",
-                        //     &lines,
-                        //     Some(Span::new(begin_loc, end_loc)),
-                        // );
-                        print_error("incomplete expression", &text, Some(token.span()));
+                        let lines: Vec<String> =
+                            text.lines().map(|line| line.to_string()).collect();
+                        let begin_loc = token.span().begin;
+                        let end_loc = Loc::new(lines.len() - 1, lines.last().unwrap().len());
+                        print_error_lines(
+                            "incomplete expression",
+                            &lines,
+                            Some(Span::new(begin_loc, end_loc)),
+                        );
+                        //print_error("incomplete expression", &text, Some(token.span()));
                         break;
                     }
                     Err(ParseError::UnexpectedToken(token)) => {
@@ -100,12 +100,28 @@ fn print_error_lines(message: &str, lines: &Vec<String>, span: Option<Span>) {
             print_line(span.begin.line - 1);
         }
 
-        print_line(span.begin.line);
-        println!(
-            "{}{}{}",
-            "    | ".dimmed(),
-            " ".repeat(span.begin.column),
-            "^".repeat(span.end.column - span.begin.column).red()
-        );
+        for line in span.begin.line..span.end.line + 1 {
+            print_line(line);
+
+            let begin_col = if line == span.begin.line {
+                span.begin.column
+            } else {
+                lines[line]
+                    .chars()
+                    .take_while(|c| c.is_whitespace())
+                    .count()
+            };
+            let end_col = if line == span.end.line {
+                span.end.column
+            } else {
+                lines[line].len()
+            };
+            println!(
+                "{}{}{}",
+                "    | ".dimmed(),
+                " ".repeat(begin_col),
+                "^".repeat(end_col - begin_col).red()
+            );
+        }
     }
 }
