@@ -32,7 +32,7 @@ pub fn run_repl() {
         match rl.readline(prompt) {
             Ok(line) => {
                 let _ = rl.add_history_entry(line.as_str());
-                let loc = Loc::new(lines.len(), 0);
+                let loc = Some(Loc::new(lines.len(), 0));
 
                 match tokenize(&line, loc) {
                     Ok(tokens) => parser.add_tokens(tokens),
@@ -93,13 +93,16 @@ fn print_logo() {
 }
 
 fn print_unexpected_token_error(lines: &Vec<String>, token: &Token) {
-    println!("Error: Unexpected token - {token}");
-
     let span = token.span();
+    println!("error:[{span}]: Unexpected token - {token}");
+
     if span.begin.line < lines.len() {
-        println!("{:05}: {}", span.begin.line + 1, lines[span.begin.line]);
+        if span.begin.line > 0 {
+            println!("{:03}: {}", span.begin.line, lines[span.begin.line - 1]);
+        }
+        println!("{:03}: {}", span.begin.line + 1, lines[span.begin.line]);
         println!(
-            "       {}{}",
+            "     {}{}",
             " ".repeat(span.begin.column),
             "^".repeat(span.end.column - span.begin.column)
         );

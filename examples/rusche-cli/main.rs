@@ -5,7 +5,6 @@ use rusche::{
     eval::Evaluator,
     lexer::{tokenize, LexError},
     parser::{ParseError, Parser},
-    span::Loc,
 };
 
 use builtin::{load_io_procs, load_vec_procs};
@@ -29,7 +28,7 @@ fn run_file(path: &str) {
 }
 
 fn run_file_content(text: &str) {
-    let tokens = match tokenize(text, Loc::default()) {
+    let tokens = match tokenize(text, None) {
         Ok(tokens) => tokens,
         Err(LexError::IncompleteString(span)) => {
             eprintln!("Error:{span}: Incomplete string");

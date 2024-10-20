@@ -175,9 +175,9 @@ where
 
 /// A convinient function to tokenize a string. Internally, it uses the [`Lexer`] to tokenize
 /// the input string.
-pub fn tokenize(text: &str, loc: Loc) -> Result<Vec<Token>, LexError> {
+pub fn tokenize(text: &str, loc: Option<Loc>) -> Result<Vec<Token>, LexError> {
     let mut tokens = Vec::new();
-    let mut lexer = Lexer::new(text.chars(), loc);
+    let mut lexer = Lexer::new(text.chars(), loc.unwrap_or_default());
 
     while let Some(token) = lexer.get_token()? {
         tokens.push(token);
