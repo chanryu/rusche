@@ -29,11 +29,11 @@ fn run_file(evaluator: Evaluator, path: &str) {
                 Ok(tokens) => tokens,
                 Err(error) => match error {
                     LexError::InvalidNumber(span) => {
-                        print_error("invalid number", &text_to_lines(&text), Some(span));
+                        print_error("invalid number", &text, Some(span));
                         return;
                     }
                     LexError::IncompleteString(span) => {
-                        print_error("incomplete string", &text_to_lines(&text), Some(span));
+                        print_error("incomplete string", &text, Some(span));
                         return;
                     }
                 },
@@ -48,18 +48,27 @@ fn run_file(evaluator: Evaluator, path: &str) {
                     Ok(Some(expr)) => match evaluator.eval(&expr) {
                         Ok(_) => {}
                         Err(e) => {
-                            print_error(&e.message, &text_to_lines(&text), e.span);
+                            print_error(&e.message, &text, e.span);
                             break;
                         }
                     },
-                    Err(ParseError::IncompleteExpr(_)) => {
-                        eprintln!("Failed to parse - incomplete expression");
+                    Err(ParseError::IncompleteExpr(token)) => {
+                        // let lines: Vec<String> =
+                        //     text.lines().map(|line| line.to_string()).collect();
+                        // let begin_loc = token.span().begin;
+                        // let end_loc = Loc::new(lines.len() - 1, lines.last().unwrap().len());
+                        // print_error_lines(
+                        //     "incomplete expression",
+                        //     &lines,
+                        //     Some(Span::new(begin_loc, end_loc)),
+                        // );
+                        print_error("incomplete expression", &text, Some(token.span()));
                         break;
                     }
                     Err(ParseError::UnexpectedToken(token)) => {
                         print_error(
                             &format!("unexpected token - \"{token}\""),
-                            &text_to_lines(&text),
+                            &text,
                             Some(token.span()),
                         );
                         break;
@@ -71,22 +80,30 @@ fn run_file(evaluator: Evaluator, path: &str) {
     }
 }
 
-fn text_to_lines(text: &str) -> Vec<String> {
-    text.lines().map(|line| line.to_string()).collect()
+fn print_error(message: &str, src: &str, span: Option<Span>) {
+    let lines = src.lines().map(|line| line.to_string()).collect();
+    print_error_lines(message, &lines, span);
 }
 
-fn print_error(message: &str, lines: &Vec<String>, span: Option<Span>) {
+fn print_error_lines(message: &str, lines: &Vec<String>, span: Option<Span>) {
     println!("{}: {}", "error".red(), message);
 
     let Some(span) = span else { return };
 
-    if span.begin.line < lines.len() {
-        if span.begin.line > 0 {
-            println!("  {:03}: {}", span.begin.line, lines[span.begin.line - 1]);
+    if span.end.line < lines.len() {
+        let print_line =
+            |line| println!("{}{}", format!("{:>4}| ", line + 1).dimmed(), lines[line]);
+        if span.begin.line >= 2 {
+            print_line(span.begin.line - 2);
         }
-        println!("  {:03}: {}", span.begin.line + 1, lines[span.begin.line]);
+        if span.begin.line >= 1 {
+            print_line(span.begin.line - 1);
+        }
+
+        print_line(span.begin.line);
         println!(
-            "       {}{}",
+            "{}{}{}",
+            "    | ".dimmed(),
             " ".repeat(span.begin.column),
             "^".repeat(span.end.column - span.begin.column).red()
         );

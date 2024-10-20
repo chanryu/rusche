@@ -2,7 +2,7 @@ use colored::Colorize;
 use rusche::{tokenize, Evaluator, LexError, Loc, ParseError, Parser};
 use rustyline::{error::ReadlineError, DefaultEditor};
 
-use crate::print_error;
+use crate::print_error_lines;
 
 pub fn run_repl(evaluator: Evaluator) {
     print_logo();
@@ -32,10 +32,10 @@ pub fn run_repl(evaluator: Evaluator) {
                     Err(err) => {
                         match err {
                             LexError::InvalidNumber(span) => {
-                                print_error("invalid number", &lines, Some(span))
+                                print_error_lines("invalid number", &lines, Some(span))
                             }
                             LexError::IncompleteString(span) => {
-                                print_error("incomplete string", &lines, Some(span))
+                                print_error_lines("incomplete string", &lines, Some(span))
                             }
                         }
                         lines.pop();
@@ -54,13 +54,13 @@ pub fn run_repl(evaluator: Evaluator) {
                                 println!("{}", result.to_string().green());
                             }
                             Err(error) => {
-                                print_error(&error.message, &lines, error.span);
+                                print_error_lines(&error.message, &lines, error.span);
                             }
                         },
                         Err(ParseError::IncompleteExpr(_)) => break,
                         Err(ParseError::UnexpectedToken(token)) => {
                             parser.reset();
-                            print_error(
+                            print_error_lines(
                                 &format!("unexpected token - \"{token}\""),
                                 &lines,
                                 Some(token.span()),
