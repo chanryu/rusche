@@ -10,7 +10,7 @@ pub trait EvalToStr {
 
 impl EvalToStr for EvalContext {
     fn eval_to_str(&self, src: &str) -> String {
-        let tokens = tokenize(src).expect(&format!("Failed to tokenize: {}", src));
+        let tokens = tokenize(src, None).expect(&format!("Failed to tokenize: {}", src));
         let mut parser = Parser::with_tokens(tokens);
         let Some(expr) = parser
             .parse()

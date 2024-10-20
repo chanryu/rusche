@@ -157,7 +157,7 @@ pub fn load_prelude(context: &EvalContext) {
 }
 
 fn eval_src(src: &str, context: &EvalContext) {
-    let tokens = tokenize(src).expect(&format!("Prelude tokniization failed: {}", src));
+    let tokens = tokenize(src, None).expect(&format!("Prelude tokniization failed: {}", src));
 
     let mut parser = Parser::with_tokens(tokens);
 
