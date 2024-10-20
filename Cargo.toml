@@ -21,6 +21,3 @@ name = "rusche"
 
 [features]
 callstack_trace = []
-
-[[example]]
-name = "rusche-cli"
