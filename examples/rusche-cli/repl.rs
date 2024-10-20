@@ -1,18 +1,13 @@
 use colored::Colorize;
-use rusche::{tokenize, Evaluator, LexError, Loc, ParseError, Parser, Span};
+use rusche::{tokenize, Evaluator, LexError, Loc, ParseError, Parser};
 use rustyline::{error::ReadlineError, DefaultEditor};
 
-use crate::builtin::{load_io_procs, load_vec_procs};
+use crate::print_error;
 
-pub fn run_repl() {
+pub fn run_repl(evaluator: Evaluator) {
     print_logo();
 
     let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");
-
-    let evaluator = Evaluator::with_prelude();
-
-    load_io_procs(evaluator.context());
-    load_vec_procs(evaluator.context());
 
     let mut lines = Vec::new();
 
@@ -66,7 +61,7 @@ pub fn run_repl() {
                         Err(ParseError::UnexpectedToken(token)) => {
                             parser.reset();
                             print_error(
-                                &format!("unexpected token - {token}"),
+                                &format!("unexpected token - \"{token}\""),
                                 &lines,
                                 Some(token.span()),
                             );
@@ -95,22 +90,4 @@ fn print_logo() {
     println!("          {}  ", r"/_/ |_|\__,_/____/\___/_/ /_/\___/ ".bold().cyan());
 
     println!("\n{}", "To exit, press Ctrl + D.".dimmed());
-}
-
-fn print_error(message: &str, lines: &Vec<String>, span: Option<Span>) {
-    println!("{}: {}", "error".red(), message);
-
-    let Some(span) = span else { return };
-
-    if span.begin.line < lines.len() {
-        if span.begin.line > 0 {
-            println!("  {:03}: {}", span.begin.line, lines[span.begin.line - 1]);
-        }
-        println!("  {:03}: {}", span.begin.line + 1, lines[span.begin.line]);
-        println!(
-            "       {}{}",
-            " ".repeat(span.begin.column),
-            "^".repeat(span.end.column - span.begin.column).red()
-        );
-    }
 }
