@@ -12,7 +12,7 @@ Rusche is a library for writing an interpreter for a Scheme-like language in Rus
 
 ## Features
 
-- Minimalistic library with no rumtime dependency
+- Minimalistic library with zero dependency
 - Garbage collection
 - Tail-call optimization
 - Interoperability with hosting Rust application via `Foreign` data type.
