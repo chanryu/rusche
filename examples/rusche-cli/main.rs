@@ -53,16 +53,14 @@ fn run_file(evaluator: Evaluator, path: &str) {
                         }
                     },
                     Err(ParseError::IncompleteExpr(token)) => {
-                        let lines: Vec<String> =
-                            text.lines().map(|line| line.to_string()).collect();
                         let begin_loc = token.span().begin;
-                        let end_loc = Loc::new(lines.len() - 1, lines.last().unwrap().len());
-                        print_error_lines(
+                        let end_loc =
+                            Loc::new(text.lines().count() - 1, text.lines().last().unwrap().len());
+                        print_error(
                             "incomplete expression",
-                            &lines,
+                            &text,
                             Some(Span::new(begin_loc, end_loc)),
                         );
-                        //print_error("incomplete expression", &text, Some(token.span()));
                         break;
                     }
                     Err(ParseError::UnexpectedToken(token)) => {
@@ -81,11 +79,8 @@ fn run_file(evaluator: Evaluator, path: &str) {
 }
 
 fn print_error(message: &str, src: &str, span: Option<Span>) {
-    let lines = src.lines().map(|line| line.to_string()).collect();
-    print_error_lines(message, &lines, span);
-}
+    let lines: Vec<&str> = src.lines().collect();
 
-fn print_error_lines(message: &str, lines: &Vec<String>, span: Option<Span>) {
     println!("{}: {}", "error".red(), message);
 
     let Some(span) = span else { return };

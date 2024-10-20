@@ -89,7 +89,7 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
             Ok(NIL)
         }
         _ => Err(EvalError::from(format!(
-            "{proc_name}: invalid definition form -- expected a symbol or a list."
+            "{proc_name}: invalid form -- expected a symbol or a list."
         ))),
     }
 }
