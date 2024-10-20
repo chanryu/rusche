@@ -1,9 +1,14 @@
 mod builtin;
 mod repl;
-mod runner;
 
+use rusche::{
+    eval::Evaluator,
+    lexer::{tokenize, LexError},
+    parser::{ParseError, Parser},
+};
+
+use builtin::{load_io_procs, load_vec_procs};
 use repl::run_repl;
-use runner::run_file;
 
 fn main() {
     let mut args = std::env::args().skip(1); // skip the program name
@@ -11,17 +16,56 @@ fn main() {
     if let Some(path) = args.next() {
         run_file(&path);
     } else {
-        print_logo();
         run_repl();
     }
 }
 
-fn print_logo() {
-    println!(r"              ____                  __         ");
-    println!(r"             / __ \__  ____________/ /_  ___   ");
-    println!(r"            / /_/ / / / / ___/ ___/ __ \/ _ \  ");
-    println!(r"Welcome to / _, _/ /_/ (__  ) /__/ / / /  __/ !");
-    println!(r"          /_/ |_|\__,_/____/\___/_/ /_/\___/   ");
-    println!(r"                                               ");
-    println!(r"To exit, press Ctrl + D.                       ");
+fn run_file(path: &str) {
+    match std::fs::read_to_string(path) {
+        Ok(text) => run_file_content(&text),
+        Err(e) => eprintln!("Failed to read file at \"{path}\": {e}"),
+    }
+}
+
+fn run_file_content(text: &str) {
+    let tokens = match tokenize(text) {
+        Ok(tokens) => tokens,
+        Err(LexError::IncompleteString(span)) => {
+            eprintln!("Error:{span}: Incomplete string");
+            return;
+        }
+        Err(LexError::InvalidNumber(span)) => {
+            eprintln!("Error:{span}: Invalid number");
+            return;
+        }
+    };
+
+    let evaluator = Evaluator::with_prelude();
+
+    load_io_procs(evaluator.context());
+    load_vec_procs(evaluator.context());
+
+    let mut parser = Parser::with_tokens(tokens);
+    loop {
+        match parser.parse() {
+            Ok(None) => {
+                break;
+            }
+            Ok(Some(expr)) => match evaluator.eval(&expr) {
+                Ok(_) => {}
+                Err(e) => match e.span {
+                    Some(span) => eprintln!("Error: {}:{}", span, e.message),
+                    None => eprintln!("Error: {}", e.message),
+                },
+            },
+            Err(ParseError::IncompleteExpr(_)) => {
+                eprintln!("Failed to parse - incomplete expression");
+                break;
+            }
+            Err(ParseError::UnexpectedToken(token)) => {
+                eprintln!("Error: Unexpected token - {token}");
+                break;
+            }
+        }
+    }
 }

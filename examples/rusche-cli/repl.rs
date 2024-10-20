@@ -8,6 +8,8 @@ use rustyline::{error::ReadlineError, DefaultEditor};
 use crate::builtin::{load_io_procs, load_vec_procs};
 
 pub fn run_repl() {
+    print_logo();
+
     let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");
     let mut parser = Parser::new();
 
@@ -69,4 +71,14 @@ pub fn run_repl() {
             }
         }
     }
+}
+
+fn print_logo() {
+    println!(r"              ____                  __         ");
+    println!(r"             / __ \__  ____________/ /_  ___   ");
+    println!(r"            / /_/ / / / / ___/ ___/ __ \/ _ \  ");
+    println!(r"Welcome to / _, _/ /_/ (__  ) /__/ / / /  __/ !");
+    println!(r"          /_/ |_|\__,_/____/\___/_/ /_/\___/   ");
+    println!(r"                                               ");
+    println!(r"To exit, press Ctrl + D.                       ");
 }
