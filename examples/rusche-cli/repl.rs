@@ -41,10 +41,10 @@ pub fn run_repl() {
                     Err(err) => {
                         match err {
                             LexError::InvalidNumber(span) => {
-                                print_error("invalid number", &lines, span)
+                                print_error("invalid number", &lines, Some(span))
                             }
                             LexError::IncompleteString(span) => {
-                                print_error("incomplete string", &lines, span)
+                                print_error("incomplete string", &lines, Some(span))
                             }
                         }
                         lines.pop();
@@ -63,7 +63,7 @@ pub fn run_repl() {
                                 println!("{}", result);
                             }
                             Err(error) => {
-                                println!("Error: {}", error);
+                                print_error(&error.message, &lines, error.span);
                             }
                         },
                         Err(ParseError::IncompleteExpr(_)) => break,
@@ -72,7 +72,7 @@ pub fn run_repl() {
                             print_error(
                                 &format!("unexpected token - {token}"),
                                 &lines,
-                                token.span(),
+                                Some(token.span()),
                             );
                             lines.clear();
                         }
@@ -83,7 +83,7 @@ pub fn run_repl() {
                 break;
             }
             Err(error) => {
-                println!("Error: {error}");
+                eprintln!("{error}");
                 break;
             }
         }
@@ -100,18 +100,22 @@ fn print_logo() {
     println!(r"To exit, press Ctrl + D.                       ");
 }
 
-fn print_error(message: &str, lines: &Vec<String>, span: Span) {
-    println!("error [{span}]: {message}");
+fn print_error(message: &str, lines: &Vec<String>, span: Option<Span>) {
+    if let Some(span) = span {
+        println!("error [{span}]: {message}");
 
-    if span.begin.line < lines.len() {
-        if span.begin.line > 0 {
-            println!("{:03}: {}", span.begin.line, lines[span.begin.line - 1]);
+        if span.begin.line < lines.len() {
+            if span.begin.line > 0 {
+                println!("{:03}: {}", span.begin.line, lines[span.begin.line - 1]);
+            }
+            println!("{:03}: {}", span.begin.line + 1, lines[span.begin.line]);
+            println!(
+                "     {}{}",
+                " ".repeat(span.begin.column),
+                "^".repeat(span.end.column - span.begin.column)
+            );
         }
-        println!("{:03}: {}", span.begin.line + 1, lines[span.begin.line]);
-        println!(
-            "     {}{}",
-            " ".repeat(span.begin.column),
-            "^".repeat(span.end.column - span.begin.column)
-        );
+    } else {
+        println!("error: {message}");
     }
 }
