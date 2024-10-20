@@ -1,9 +1,4 @@
-use rusche::{
-    eval::Evaluator,
-    lexer::{tokenize, LexError},
-    parser::{ParseError, Parser},
-    span::{Loc, Span},
-};
+use rusche::{tokenize, Evaluator, LexError, Loc, ParseError, Parser, Span};
 use rustyline::{error::ReadlineError, DefaultEditor};
 
 use crate::builtin::{load_io_procs, load_vec_procs};
