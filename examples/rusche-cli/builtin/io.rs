@@ -1,8 +1,4 @@
-use rusche::{
-    eval::{eval, EvalContext, EvalError, EvalResult},
-    expr::{Expr, NIL},
-    list::List,
-};
+use rusche::{eval, EvalContext, EvalError, EvalResult, Expr, List, NIL};
 use std::io::Write;
 
 pub fn load_io_procs(context: &EvalContext) {

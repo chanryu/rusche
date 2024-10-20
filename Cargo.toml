@@ -1,6 +1,6 @@
 [package]
 name = "rusche"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 authors = ["Chan Ryu"]
@@ -21,6 +21,3 @@ name = "rusche"
 
 [features]
 callstack_trace = []
-
-[[example]]
-name = "rusche-cli"

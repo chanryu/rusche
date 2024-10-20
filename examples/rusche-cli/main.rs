@@ -1,11 +1,7 @@
 mod builtin;
 mod repl;
 
-use rusche::{
-    eval::Evaluator,
-    lexer::{tokenize, LexError},
-    parser::{ParseError, Parser},
-};
+use rusche::{tokenize, Evaluator, LexError, ParseError, Parser};
 
 use builtin::{load_io_procs, load_vec_procs};
 use repl::run_repl;

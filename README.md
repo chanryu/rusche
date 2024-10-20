@@ -22,9 +22,7 @@ Rusche is a library for writing an interpreter for a Scheme-like language in Rus
 ### Implementing or embedding Rusche interpreter
 
 ```rust
-use rusche::eval::Evaluator;
-use rusche::lexer::tokenize;
-use rusche::parser::Parser;
+use rusche::{Evaluator, Parser, tokenize};
 
 let source = "(+ 1 (% 9 2))";
 
@@ -34,7 +32,8 @@ let evaluator = Evaluator::with_prelude();
 let mut parser = Parser::new();
 
 // Tokenize source and add tokens to parser
-parser.add_tokens(tokenize(source).unwrap());
+let tokens = tokenize(source, None).unwrap();
+parser.add_tokens(tokens);
 
 // Parse tokens into an expression
 let expr = parser.parse().unwrap().unwrap();
@@ -42,7 +41,7 @@ let expr = parser.parse().unwrap().unwrap();
 // Evaluate the parsed expression
 let result = evaluator.eval(&expr).unwrap();
 
-println!("{}", result); // This will print 2
+println!("{}", result); // this will print 2
 ```
 
 To learn about how to implement a standalone interpreter with REPL, have a look at [examples/rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli/).

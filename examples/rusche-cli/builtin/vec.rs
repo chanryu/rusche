@@ -1,9 +1,8 @@
 use rusche::{
-    eval::{eval, EvalContext, EvalError, EvalResult},
-    expr::{Expr, NIL},
-    list::List,
-    utils::{eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args},
+    eval, eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args, EvalContext,
+    EvalError, EvalResult, Expr, List, NIL,
 };
+
 use std::{cell::RefCell, rc::Rc};
 
 pub fn load_vec_procs(context: &EvalContext) {
