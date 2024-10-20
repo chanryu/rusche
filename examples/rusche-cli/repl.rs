@@ -23,7 +23,7 @@ pub fn run_repl() {
     let mut parser = Parser::new();
     loop {
         let prompt = if parser.is_parsing() {
-            "...... ❯ "
+            &format!("{:06} ❯ ", lines.len() + 1)
         } else {
             "rusche ❯ "
         };
@@ -32,20 +32,25 @@ pub fn run_repl() {
             Ok(line) => {
                 let _ = rl.add_history_entry(line.as_str());
                 let loc = Some(Loc::new(lines.len(), 0));
+                let res = tokenize(&line, loc);
 
-                match tokenize(&line, loc) {
+                lines.push(line);
+
+                match res {
                     Ok(tokens) => parser.add_tokens(tokens),
-                    Err(LexError::IncompleteString(span)) => {
-                        println!("Error:{span}: Incomplete string");
-                        continue;
-                    }
-                    Err(LexError::InvalidNumber(span)) => {
-                        println!("Error:{span}: Invalid number");
+                    Err(err) => {
+                        match err {
+                            LexError::InvalidNumber(span) => {
+                                print_error("invalid number", &lines, span)
+                            }
+                            LexError::IncompleteString(span) => {
+                                print_error("incomplete string", &lines, span)
+                            }
+                        }
+                        lines.pop();
                         continue;
                     }
                 }
-
-                lines.push(line);
 
                 loop {
                     match parser.parse() {
