@@ -93,7 +93,7 @@ where
     fn read_string(&mut self, begin_loc: Loc) -> LexResult {
         let mut text = String::new();
         let mut escaped = false;
-        while let Some(ch) = self.next_char_if(|&ch| ch != '\n') {
+        while let Some(ch) = self.next_char_if(|ch| *ch != '\n') {
             match (ch, escaped) {
                 (ch, true) => {
                     escaped = false;

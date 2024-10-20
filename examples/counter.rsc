@@ -1,4 +1,3 @@
-"ddd
 (define counter
     (let ((count 0))
         (lambda ()
