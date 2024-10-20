@@ -2,8 +2,7 @@ use rusche::{
     eval::Evaluator,
     lexer::{tokenize, LexError},
     parser::{ParseError, Parser},
-    span::Loc,
-    token::Token,
+    span::{Loc, Span},
 };
 use rustyline::{error::ReadlineError, DefaultEditor};
 
@@ -65,7 +64,11 @@ pub fn run_repl() {
                         Err(ParseError::IncompleteExpr(_)) => break,
                         Err(ParseError::UnexpectedToken(token)) => {
                             parser.reset();
-                            print_unexpected_token_error(&lines, &token);
+                            print_error(
+                                &format!("unexpected token - {token}"),
+                                &lines,
+                                token.span(),
+                            );
                             lines.clear();
                         }
                     }
@@ -92,9 +95,8 @@ fn print_logo() {
     println!(r"To exit, press Ctrl + D.                       ");
 }
 
-fn print_unexpected_token_error(lines: &Vec<String>, token: &Token) {
-    let span = token.span();
-    println!("error:[{span}]: Unexpected token - {token}");
+fn print_error(message: &str, lines: &Vec<String>, span: Span) {
+    println!("error [{span}]: {message}");
 
     if span.begin.line < lines.len() {
         if span.begin.line > 0 {

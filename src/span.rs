@@ -26,13 +26,6 @@ impl Loc {
     }
 }
 
-impl fmt::Display for Loc {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Convert 0-based line and column numbers to 1-based.
-        write!(f, "{}:{}", self.line + 1, self.column + 1)
-    }
-}
-
 /// A region in the source code defined by a beginning and ending location. `Span` is used to
 /// represent a range of token or expression in the source code.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -54,9 +47,29 @@ impl Span {
 impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.begin.line == self.end.line {
-            write!(f, "{}-{}", self.begin, self.end.column + 1) // (10:5, 10:7) => "11:6-8"
+            if self.begin.column + 1 == self.end.column {
+                // (10:5, 10:6) => "11:6"
+                write!(f, "{}:{}", self.begin.line + 1, self.begin.column + 1)
+            } else {
+                // (10:5, 10:8) => "11:6-8"
+                write!(
+                    f,
+                    "{}:{}-{}",
+                    self.begin.line + 1,
+                    self.begin.column + 1,
+                    self.end.column
+                )
+            }
         } else {
-            write!(f, "{}-{}", self.begin, self.end) // ((10:5, 11:3) => "11:6-12:4"
+            // ((10:5, 11:3) => "11:6-12:3"
+            write!(
+                f,
+                "{}:{}-{}:{}",
+                self.begin.line + 1,
+                self.begin.column + 1,
+                self.end.line + 1,
+                self.end.column
+            )
         }
     }
 }
@@ -67,10 +80,13 @@ mod tests {
 
     #[test]
     fn test_span_display() {
-        let span = Span::new(Loc::new(0, 1), Loc::new(0, 3));
-        assert_eq!(format!("{}", span), "1:2-4");
+        let span = Span::new(Loc::new(0, 1), Loc::new(0, 2));
+        assert_eq!(format!("{}", span), "1:2");
 
-        let span = Span::new(Loc::new(0, 1), Loc::new(2, 3));
-        assert_eq!(format!("{}", span), "1:2-3:4");
+        let span = Span::new(Loc::new(0, 1), Loc::new(0, 3));
+        assert_eq!(format!("{}", span), "1:2-3");
+
+        let span = Span::new(Loc::new(0, 9), Loc::new(2, 3));
+        assert_eq!(format!("{}", span), "1:10-3:3");
     }
 }
