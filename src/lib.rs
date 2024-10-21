@@ -3,11 +3,11 @@
 //! to use Scheme as a scripting language or to create standalone Scheme interpreters.
 //!
 //! To learn how to implement or embed a Rusche interpreter, please have a look at
-//! [rusche-cli](https://github.com/chanryu/rusche/tree/publish-prep/examples/rusche-cli).
+//! [rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli).
 //!
 //! To learn more about the Rusche language, please have a look at *.rsc files in
-//! the [examples](https://github.com/chanryu/rusche/tree/publish-prep/examples/) directory, or
-//! have a look at the preludes in the [src/prelude.rs](https://github.com/chanryu/rusche/blob/publish-prep/src/prelude.rs) file.
+//! the [examples](https://github.com/chanryu/rusche/tree/main/examples/) directory, or
+//! have a look at the preludes in the [src/prelude.rs](https://github.com/chanryu/rusche/blob/main/src/prelude.rs) file.
 
 mod builtin;
 mod prelude;
@@ -25,7 +25,7 @@ pub mod span;
 pub mod token;
 pub mod utils;
 
-// Re-export the public API
+// Re-export public APIs
 pub use env::Env;
 pub use eval::{eval, eval_tail, EvalContext, EvalError, EvalResult, Evaluator};
 pub use expr::{intern, Expr, Foreign, NIL};

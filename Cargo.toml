@@ -1,10 +1,10 @@
 [package]
 name = "rusche"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 license = "MIT"
 authors = ["Chan Ryu"]
-description = "A minimalistic Scheme interpreter written in Rust"
+description = "A lightweight Scheme interpreter embeddable in Rust applications"
 readme = "README.md"
 repository = "https://github.com/chanryu/rusche"
 keywords = ["interpreter", "lisp", "scheme", "scripting", "scripting-language"]
