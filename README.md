@@ -26,6 +26,7 @@ Rusche is a library for writing an interpreter for a Scheme-like language in Rus
     2|     (lambda (x 7)
      |                ^
   ```
+  Have a look at [rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli) to learn more.
 
 ## Usage
 
