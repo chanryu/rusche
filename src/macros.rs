@@ -48,6 +48,24 @@ macro_rules! setup_native_proc_test {
 pub(crate) use setup_native_proc_test;
 
 #[cfg(test)]
+macro_rules! tok {
+    ($token_case:ident) => {{
+        use rand::{thread_rng, Rng};
+        let mut rng = thread_rng();
+        Token::$token_case(crate::span::Loc::new(rng.gen(), rng.gen()))
+    }};
+    ($token_case:ident($value:expr)) => {
+        Token::$token_case(
+            $value.into(),
+            crate::span::Span::new(crate::span::Loc::new(0, 0), crate::span::Loc::new(0, 1)),
+        )
+    };
+}
+
+#[cfg(test)]
+pub(crate) use tok;
+
+#[cfg(test)]
 mod tests {
     macro_rules! format_eq {
         ($list:expr, $result:literal) => {
