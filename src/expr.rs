@@ -67,7 +67,7 @@ impl Expr {
             | Expr::Str(_, span)
             | Expr::Sym(_, span)
             | Expr::Proc(_, span)
-            | Expr::List(_, span) => span.clone(),
+            | Expr::List(_, span) => *span,
             Expr::Foreign(_) => None,
             Expr::TailCall { .. } => None,
         }
@@ -121,7 +121,7 @@ impl From<Vec<Expr>> for Expr {
 
 impl<'a> From<ListIter<'a>> for Expr {
     fn from(value: ListIter) -> Self {
-        value.map(|expr| expr.clone()).collect::<Vec<_>>().into()
+        value.cloned().collect::<Vec<_>>().into()
     }
 }
 
