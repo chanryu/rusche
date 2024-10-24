@@ -14,7 +14,7 @@ pub fn quote(proc_name: &str, args: &List, _context: &EvalContext) -> EvalResult
 
 pub fn quasiquote(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
-    let mut exprs = quasiquote_expr(proc_name, expr, context)?;
+    let mut exprs = quasiquote_expr(expr, context)?;
     if exprs.len() == 1 {
         Ok(exprs.remove(0))
     } else {
@@ -24,11 +24,7 @@ pub fn quasiquote(proc_name: &str, args: &List, context: &EvalContext) -> EvalRe
     }
 }
 
-fn quasiquote_expr(
-    proc_name: &str,
-    expr: &Expr,
-    context: &EvalContext,
-) -> Result<Vec<Expr>, EvalError> {
+fn quasiquote_expr(expr: &Expr, context: &EvalContext) -> Result<Vec<Expr>, EvalError> {
     let Expr::List(list, _) = expr else {
         return Ok(vec![expr.clone()]);
     };
@@ -59,7 +55,7 @@ fn quasiquote_expr(
                 match eval(cdar, context)? {
                     Expr::List(list, _) => {
                         // TODO: implement consuming `into_iter()`
-                        exprs.extend(list.iter().map(|e| e.clone()));
+                        exprs.extend(list.iter().cloned());
                     }
                     _ => {
                         return Err(EvalError {
@@ -80,7 +76,7 @@ fn quasiquote_expr(
         _ => {
             let mut v = Vec::with_capacity(list.len());
             for expr in list.iter() {
-                v.extend(quasiquote_expr(proc_name, expr, context)?);
+                v.extend(quasiquote_expr(expr, context)?);
             }
             exprs.push(Expr::from(v));
         }

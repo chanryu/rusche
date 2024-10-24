@@ -14,9 +14,9 @@ pub fn is_str(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
 }
 
 pub fn append(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let mut args = args.iter();
+    let args = args.iter();
     let mut result = String::from("");
-    while let Some(expr) = args.next() {
+    for expr in args {
         match eval(expr, context)? {
             Expr::Str(text, _) => result += &text,
             _ => {

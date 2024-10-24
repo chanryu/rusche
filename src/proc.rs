@@ -246,7 +246,7 @@ mod tests {
 
     #[test]
     fn test_proc_eq() {
-        let evaluator = Evaluator::new();
+        let evaluator = Evaluator::default();
         let context = evaluator.context();
 
         let closure = Proc::Closure {
@@ -299,7 +299,7 @@ mod tests {
 
     #[test]
     fn test_fingerprint() {
-        let evaluator = Evaluator::new();
+        let evaluator = Evaluator::default();
         let context = evaluator.context();
 
         let closure1 = Proc::Closure {

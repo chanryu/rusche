@@ -333,6 +333,12 @@ impl Evaluator {
     }
 }
 
+impl Default for Evaluator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Drop for Evaluator {
     fn drop(&mut self) {
         self.all_envs.borrow().iter().for_each(|env| {
