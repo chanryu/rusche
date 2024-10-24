@@ -132,14 +132,14 @@ impl PartialEq for Proc {
 
 fn eval_closure(
     closure_name: Option<&str>,
-    formal_args: &Vec<String>,
+    formal_args: &[String],
     body: &List,
     outer_context: &EvalContext,
     actual_args: &List,
     context: &EvalContext,
 ) -> EvalResult {
     let closure_name = closure_name.unwrap_or("unnamed-closure");
-    let closure_context = EvalContext::derive_from(&outer_context);
+    let closure_context = EvalContext::derive_from(outer_context);
     let mut formal_args = formal_args.iter();
     let mut actual_args = actual_args.iter();
 
@@ -176,7 +176,7 @@ fn eval_closure(
 
 fn eval_macro(
     macro_name: Option<&str>,
-    formal_args: &Vec<String>,
+    formal_args: &[String],
     body: &List,
     actual_args: &List,
     context: &EvalContext,
