@@ -46,12 +46,12 @@ impl List {
         self.iter().count()
     }
 
+    pub fn is_empty(&self) -> bool {
+        matches!(self, List::Nil)
+    }
+
     pub fn is_nil(&self) -> bool {
-        if let List::Nil = self {
-            true
-        } else {
-            false
-        }
+        self.is_empty()
     }
 
     pub fn span(&self) -> Option<Span> {

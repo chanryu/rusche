@@ -47,18 +47,12 @@ impl Expr {
     /// Returns `true` if the expression is an atom.
     /// Every expresssion that is not a cons cell list is an atom.
     pub fn is_atom(&self) -> bool {
-        match self {
-            Expr::List(List::Cons(_), _) => false,
-            _ => true,
-        }
+        !matches!(self, Expr::List(List::Cons(_), _))
     }
 
     /// Return `true` if the expression is an empty list.
     pub fn is_nil(&self) -> bool {
-        match self {
-            Expr::List(List::Nil, _) => true,
-            _ => false,
-        }
+        matches!(self, Expr::List(List::Nil, _))
     }
 
     /// Returns `true` if the expression can be considered to be truthy.
@@ -73,7 +67,7 @@ impl Expr {
             | Expr::Str(_, span)
             | Expr::Sym(_, span)
             | Expr::Proc(_, span)
-            | Expr::List(_, span) => span.clone(),
+            | Expr::List(_, span) => *span,
             Expr::Foreign(_) => None,
             Expr::TailCall { .. } => None,
         }
@@ -127,7 +121,7 @@ impl From<Vec<Expr>> for Expr {
 
 impl<'a> From<ListIter<'a>> for Expr {
     fn from(value: ListIter) -> Self {
-        value.map(|expr| expr.clone()).collect::<Vec<_>>().into()
+        value.cloned().collect::<Vec<_>>().into()
     }
 }
 

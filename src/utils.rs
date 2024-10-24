@@ -231,7 +231,7 @@ pub fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
 ///     utils::eval_into_str,
 /// };
 ///
-/// let evaluator = Evaluator::new();
+/// let evaluator = Evaluator::default();
 /// let expr = Expr::from("hello");
 /// let result = eval_into_str("test", &expr, evaluator.context());
 /// assert_eq!(result, Ok("hello".to_string()));
@@ -269,7 +269,7 @@ pub fn eval_into_str(
 ///     utils::eval_into_num,
 /// };
 ///
-/// let evaluator = Evaluator::new();
+/// let evaluator = Evaluator::default();
 /// let expr = Expr::from(12e-3);
 /// let result = eval_into_num("test", &expr, evaluator.context());
 /// assert_eq!(result, Ok(12e-3));
@@ -309,7 +309,7 @@ pub fn eval_into_num(
 ///     utils::eval_into_int,
 /// };
 ///
-/// let evaluator = Evaluator::new();
+/// let evaluator = Evaluator::default();
 ///
 /// let expr = Expr::from(12);
 /// let result = eval_into_int("test", "index", &expr, evaluator.context());
@@ -366,7 +366,7 @@ pub fn eval_into_int(
 ///     utils::eval_into_foreign,
 /// };
 ///
-/// let evaluator = Evaluator::new();
+/// let evaluator = Evaluator::default();
 /// let context = evaluator.context();
 /// let expr = Expr::Foreign(Rc::new(Vec::<i32>::new()));
 /// let object = eval_into_foreign("test", &expr, context).unwrap();

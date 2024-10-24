@@ -237,20 +237,20 @@ impl Evaluator {
     /// Creates a new `Evaluator` with built-in functions.
     pub fn with_builtin() -> Self {
         let evaluator = Self::new();
-        load_builtin(&evaluator.root_env());
+        load_builtin(evaluator.root_env());
         evaluator
     }
 
     /// Creates a new `Evaluator` with built-in functions and preludes.
     pub fn with_prelude() -> Self {
         let evaluator = Self::with_builtin();
-        load_prelude(&evaluator.context());
+        load_prelude(evaluator.context());
         evaluator
     }
 
     /// Returns the root environment of the evaluator.
     pub fn root_env(&self) -> &Rc<Env> {
-        return &self.context.env;
+        &self.context.env
     }
 
     /// Returns the evaluation context of the evaluator.
@@ -261,7 +261,7 @@ impl Evaluator {
     /// Evaluates an expression in the current context.
     /// This function is a convenience wrapper around the `eval()` function.
     pub fn eval(&self, expr: &Expr) -> EvalResult {
-        eval(expr, &self.context())
+        eval(expr, self.context())
     }
 
     /// Count the number of unreachable environments in the evaluator.
@@ -333,10 +333,18 @@ impl Evaluator {
     }
 }
 
+impl Default for Evaluator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Drop for Evaluator {
     fn drop(&mut self) {
         self.all_envs.borrow().iter().for_each(|env| {
-            env.upgrade().map(|env| env.gc_sweep());
+            if let Some(env) = env.upgrade() {
+                env.gc_sweep()
+            }
         });
 
         // at this point, we should only have `context.env`

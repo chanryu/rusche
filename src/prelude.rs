@@ -157,7 +157,8 @@ pub fn load_prelude(context: &EvalContext) {
 }
 
 fn eval_src(src: &str, context: &EvalContext) {
-    let tokens = tokenize(src, None).expect(&format!("Prelude tokniization failed: {}", src));
+    let tokens =
+        tokenize(src, None).unwrap_or_else(|_| panic!("Prelude tokniization failed: {}", src));
 
     let mut parser = Parser::with_tokens(tokens);
 
@@ -167,7 +168,8 @@ fn eval_src(src: &str, context: &EvalContext) {
                 break; // we're done!
             }
             Ok(Some(expr)) => {
-                let _ = eval(&expr, context).expect(&format!("Prelude evaluation failed: {}", src));
+                let _ = eval(&expr, context)
+                    .unwrap_or_else(|_| panic!("Prelude evaluation failed: {}", src));
             }
             Err(ParseError::IncompleteExpr(_)) => {
                 panic!("Prelude parse failure - incomplete expression: {}", src);
