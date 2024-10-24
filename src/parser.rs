@@ -197,7 +197,7 @@ mod tests {
 
     #[test]
     fn test_parser_reset() {
-        let mut parser = Parser::new();
+        let mut parser = Parser::default();
 
         // add "(1" -- incomplete expression
         parser.add_tokens(vec![tok!(OpenParen), tok!(Num(1_f64))]);
@@ -258,7 +258,7 @@ mod tests {
 
     #[test]
     fn test_parser_other_quotes() {
-        let mut parser = Parser::new();
+        let mut parser = Parser::default();
 
         // `1
         parser.add_tokens(vec![tok!(Quasiquote), tok!(Num(1_f64))]);
