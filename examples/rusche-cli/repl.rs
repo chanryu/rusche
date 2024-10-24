@@ -14,7 +14,7 @@ pub fn run_repl(evaluator: Evaluator) {
 
     let mut parser = Parser::new();
     loop {
-        let line = consumed_lines + src.lines().count();
+        let line = src.lines().count();
         let prompt = if line == consumed_lines {
             format!("repl:{:03}❯ ", line + 1)
         } else {
@@ -50,8 +50,7 @@ pub fn run_repl(evaluator: Evaluator) {
                 loop {
                     match parser.parse() {
                         Ok(None) => {
-                            consumed_lines += src.lines().count();
-                            src.clear();
+                            consumed_lines = src.lines().count();
                             break;
                         }
                         Ok(Some(expr)) => match evaluator.eval(&expr) {
@@ -70,8 +69,7 @@ pub fn run_repl(evaluator: Evaluator) {
                                 &src,
                                 Some(token.span()),
                             );
-                            consumed_lines += src.lines().count();
-                            src.clear();
+                            consumed_lines = src.lines().count();
                         }
                     }
                 }
