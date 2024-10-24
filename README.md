@@ -41,13 +41,13 @@ use rusche::{tokenize, Evaluator, Expr, Parser};
 let source = "(+ 1 (% 9 2))"; // 1 + (9 % 2) = 1 + 1 = 2
 
 // Create Evaluator with basic primitives
-let evaluator = Evaluator::with_prelude();
+let evaluator = Evaluator::default();
 
-let mut parser = Parser::new();
-
-// Tokenize source and add tokens to parser
+// Tokenize source
 let tokens = tokenize(source, None).unwrap();
-parser.add_tokens(tokens);
+
+// Create Parser with the tokens
+let mut parser = Parser::with_tokens(tokens);
 
 // Parse tokens into an expression
 let expr = parser.parse().unwrap().unwrap();
