@@ -72,7 +72,7 @@ Here's a quick example to show what's possible with the Rusche language.
 (print "Enter a number to fizzbuzz: ")
 
 (let ((n 1)
-      (m (read-num))) ; read a number from stdio and store it to `m`
+      (m (num-parse (read)))) ; read a number from stdio and store it to `m`
     (while (<= n m)
         (println (fizzbuzz n))
         (set! n (+ n 1))))

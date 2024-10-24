@@ -4,5 +4,5 @@
       (+ (fib (- n 1)) (fib (- n 2)))))
 
 (print "Enter a number: ")
-(define n (read-num))
+(define n (num-parse (read)))
 (println "fib(" n ") => " (fib n))
