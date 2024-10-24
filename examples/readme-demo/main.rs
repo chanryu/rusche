@@ -22,5 +22,5 @@ fn main() {
 
     assert_eq!(result, Ok(Expr::from(2)));
 
-    println!("{}", result.unwrap()); // this will print out 2
+    println!("{}", result.unwrap()); // this prints out 2
 }
