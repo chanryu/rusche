@@ -80,7 +80,12 @@ Here's a quick example to show what's possible with the Rusche language.
         (set! n (+ n 1))))
 ```
 
-To see more example, please checkout *.rsc files in the [examples](https://github.com/chanryu/rusche/tree/main/examples) directory.
+To see more examples, please checkout *.rsc files in the [examples](https://github.com/chanryu/rusche/tree/main/examples) directory.
+
+Also, you can run `rusche-cli` yourself with the following command:
+```bash
+cargo run --example rusche-cli
+```
 
 ## Documentation
 
