@@ -15,10 +15,10 @@ pub fn run_repl(evaluator: Evaluator) {
     loop {
         let line = src.lines().count();
         let prompt = if line == 0 {
-            format!("rusche:{:02}❯ ", line + 1)
+            format!("repl:{:02}❯ ", line + 1)
         } else {
             debug_assert!(parser.is_parsing());
-            format!("......:{:02}❯ ", line + 1)
+            format!("....:{:02}❯ ", line + 1)
         };
 
         match rl.readline(&prompt) {
