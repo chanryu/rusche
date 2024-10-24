@@ -18,24 +18,24 @@ Rusche is a library for writing an interpreter for a Scheme-like language in Rus
 - Interoperability with hosting Rust application via `Foreign` data type.
 - `Span` support for informative error message, for example:
   ```
-  rusche:01❯ (define plus
-  ......:02❯     (lambda (x 7)   ;; 7 should be y
-  ......:03❯         (+ x y)))
+  repl:01❯ (define plus
+  ....:02❯     (lambda (x 7)   ;; 7 should be y
+  ....:03❯         (+ x y)))
+
   error: 7 is not a symbol.
     1| (define plus
     2|     (lambda (x 7)
      |                ^
   ```
-  Have a look at [rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli) to learn more.
 
 ## Usage
 
 ### Implementing or embedding Rusche interpreter
 
 ```rust
-use rusche::{Evaluator, Parser, tokenize};
+use rusche::{tokenize, Evaluator, Expr, Parser};
 
-let source = "(+ 1 (% 9 2))";
+let source = "(+ 1 (% 9 2))"; // 1 + (9 % 2) = 1 + 1 = 2
 
 // Create Evaluator with basic primitives
 let evaluator = Evaluator::with_prelude();
@@ -50,9 +50,11 @@ parser.add_tokens(tokens);
 let expr = parser.parse().unwrap().unwrap();
 
 // Evaluate the parsed expression
-let result = evaluator.eval(&expr).unwrap();
+let result = evaluator.eval(&expr);
 
-println!("{}", result); // this will print 2
+assert_eq!(result, Ok(Expr::from(2)));
+
+println!("{}", result.unwrap()); // this prints out 2
 ```
 
 To learn about how to implement a standalone interpreter with REPL, have a look at [examples/rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli/).
