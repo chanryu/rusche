@@ -10,15 +10,16 @@ pub fn run_repl(evaluator: Evaluator) {
     let mut rl = DefaultEditor::new().expect("Failed to initialize line reader!");
 
     let mut src = String::new();
+    let mut consumed_lines: usize = 0;
 
     let mut parser = Parser::new();
     loop {
-        let line = src.lines().count();
-        let prompt = if line == 0 {
-            format!("repl:{:02}❯ ", line + 1)
+        let line = consumed_lines + src.lines().count();
+        let prompt = if line == consumed_lines {
+            format!("repl:{:03}❯ ", line + 1)
         } else {
             debug_assert!(parser.is_parsing());
-            format!("....:{:02}❯ ", line + 1)
+            format!("....:{:03}❯ ", line + 1)
         };
 
         match rl.readline(&prompt) {
@@ -49,6 +50,7 @@ pub fn run_repl(evaluator: Evaluator) {
                 loop {
                     match parser.parse() {
                         Ok(None) => {
+                            consumed_lines += src.lines().count();
                             src.clear();
                             break;
                         }
@@ -68,6 +70,7 @@ pub fn run_repl(evaluator: Evaluator) {
                                 &src,
                                 Some(token.span()),
                             );
+                            consumed_lines += src.lines().count();
                             src.clear();
                         }
                     }
