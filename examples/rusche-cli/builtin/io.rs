@@ -5,7 +5,6 @@ pub fn load_io_procs(context: &EvalContext) {
     context.env.define_native_proc("print", print);
     context.env.define_native_proc("println", println);
     context.env.define_native_proc("read", read);
-    context.env.define_native_proc("read-num", read_num);
 }
 
 fn print_args(args: &List, context: &EvalContext) -> Result<(), EvalError> {
@@ -30,21 +29,10 @@ fn println(_: &str, args: &List, context: &EvalContext) -> EvalResult {
     Ok(NIL)
 }
 
-fn read_line() -> Result<String, EvalError> {
+fn read(_: &str, _: &List, _: &EvalContext) -> EvalResult {
     let mut input = String::new();
     if let Err(error) = std::io::stdin().read_line(&mut input) {
         return Err(EvalError::from(format!("Error reading input: {}", error)));
     }
-    Ok(input.trim().to_string())
-}
-
-fn read(_: &str, _: &List, _: &EvalContext) -> EvalResult {
-    Ok(read_line()?.into())
-}
-
-fn read_num(proc_name: &str, _: &List, _: &EvalContext) -> EvalResult {
-    match read_line()?.parse::<f64>() {
-        Ok(num) => Ok(Expr::from(num)),
-        Err(err) => Err(EvalError::from(format!("{}: {}", proc_name, err))),
-    }
+    Ok(input.trim().to_string().into())
 }

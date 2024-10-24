@@ -4,5 +4,5 @@
         (* n (factorial (- n 1)))))
 
 (print "Enter a number: ")
-(define n (read-num))
+(define n (num-parse (read)))
 (println "factorial(" n ") => " (factorial n))
