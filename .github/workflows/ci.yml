@@ -19,6 +19,8 @@ jobs:
               uses: taiki-e/install-action@cargo-llvm-cov
             - name: Build
               run: cargo build --verbose
+            - name: Run Clippy
+              run: cargo clippy -- -D warnings
             - name: Run tests and generate coverage report
               run: cargo llvm-cov --lcov --output-path lcov.info
             - name: Upload coverage to Codecov
