@@ -168,25 +168,16 @@ fn get_quote_name(token: Option<&Token>) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::span::{Loc, Span};
-
-    macro_rules! tok {
-        ($token_case:ident) => {
-            Token::$token_case(Loc::new(1, 1))
-        };
-        ($token_case:ident($value:expr)) => {
-            Token::$token_case($value, Span::new(Loc::new(1, 1), Loc::new(1, 2)))
-        };
-    }
+    use crate::macros::tok;
 
     #[test]
     fn test_parser() {
         // (add 1 2)
         let mut parser = Parser::with_tokens(vec![
             tok!(OpenParen),
-            tok!(Sym(String::from("add"))),
-            tok!(Num(1_f64)),
-            tok!(Num(2_f64)),
+            tok!(Sym("add")),
+            tok!(Num(1)),
+            tok!(Num(2)),
             tok!(CloseParen),
         ]);
 
@@ -228,7 +219,7 @@ mod tests {
     #[test]
     fn test_parser_quote_atom() {
         // '1
-        let mut parser = Parser::with_tokens(vec![tok!(Quote), tok!(Num(1_f64))]);
+        let mut parser = Parser::with_tokens(vec![tok!(Quote), tok!(Num(1))]);
 
         let parsed_expr = parser.parse().unwrap().unwrap();
         let expected_expr = list!(intern("quote"), 1).into();

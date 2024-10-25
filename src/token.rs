@@ -83,6 +83,7 @@ impl Display for Token {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::macros::tok;
 
     #[test]
     fn test_span_fixed_len() {
@@ -99,6 +100,24 @@ mod tests {
         assert_token_span_length_eq!(1, Quasiquote);
         assert_token_span_length_eq!(1, Unquote);
         assert_token_span_length_eq!(2, UnquoteSplicing);
+    }
+
+    #[test]
+    fn test_eq() {
+        assert_eq!(tok!(OpenParen), tok!(OpenParen));
+        assert_eq!(tok!(CloseParen), tok!(CloseParen));
+        assert_eq!(tok!(Quote), tok!(Quote));
+        assert_eq!(tok!(Quasiquote), tok!(Quasiquote));
+        assert_eq!(tok!(Unquote), tok!(Unquote));
+        assert_eq!(tok!(UnquoteSplicing), tok!(UnquoteSplicing));
+        assert_eq!(tok!(Num(1)), tok!(Num(1)));
+        assert_eq!(tok!(Str("str")), tok!(Str("str")));
+        assert_eq!(tok!(Sym("sym")), tok!(Sym("sym")));
+
+        assert_ne!(tok!(Num(1)), tok!(Num(2)));
+        assert_ne!(tok!(Str("str")), tok!(Str("abc")));
+        assert_ne!(tok!(Sym("sym")), tok!(Sym("abc")));
+        assert_ne!(tok!(Str("sym")), tok!(Sym("sym")));
     }
 
     #[test]
@@ -120,6 +139,7 @@ mod tests {
                 );
             };
         }
+        assert_token_format_eq!(OpenParen, "(");
         assert_token_format_eq!(CloseParen, ")");
         assert_token_format_eq!(Quote, "'");
         assert_token_format_eq!(Quasiquote, "`");
