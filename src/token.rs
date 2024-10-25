@@ -109,6 +109,7 @@ mod tests {
         assert_eq!(tok!(Quote), tok!(Quote));
         assert_eq!(tok!(Quasiquote), tok!(Quasiquote));
         assert_eq!(tok!(Unquote), tok!(Unquote));
+        assert_eq!(tok!(UnquoteSplicing), tok!(UnquoteSplicing));
         assert_eq!(tok!(Num(1)), tok!(Num(1)));
         assert_eq!(tok!(Str("str")), tok!(Str("str")));
         assert_eq!(tok!(Sym("sym")), tok!(Sym("sym")));
@@ -138,6 +139,7 @@ mod tests {
                 );
             };
         }
+        assert_token_format_eq!(OpenParen, "(");
         assert_token_format_eq!(CloseParen, ")");
         assert_token_format_eq!(Quote, "'");
         assert_token_format_eq!(Quasiquote, "`");
