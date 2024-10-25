@@ -196,6 +196,20 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "Prelude tokniization failed: \"x")]
+    fn test_eval_src_invalid_string() {
+        let e = Evaluator::with_builtin();
+        eval_src("\"x", e.context());
+    }
+
+    #[test]
+    #[should_panic(expected = "Prelude evaluation failed: (x)")]
+    fn test_eval_src_eval_failed() {
+        let e = Evaluator::with_builtin();
+        eval_src("(x)", e.context());
+    }
+
+    #[test]
     #[should_panic(expected = "Prelude parse failure - incomplete expression: (define x 1")]
     fn test_eval_src_incomplete_expr() {
         let e = Evaluator::with_builtin();
