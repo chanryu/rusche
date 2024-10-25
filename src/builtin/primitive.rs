@@ -316,6 +316,53 @@ mod tests {
     }
 
     #[test]
+    fn test_defmacro() {
+        setup_native_proc_test!(defmacro);
+
+        // (defmacro x () ())
+        assert!(defmacro(list!(intern("x"), list!(), list!())).is_ok());
+
+        // (defmacro add (a b) (+ a b))
+        assert!(defmacro(list!(
+            intern("add"),
+            list!(intern("a"), intern("b")),
+            list!(intern("+"), intern("a"), intern("b"))
+        ))
+        .is_ok());
+
+        // (defmacro (add a b) (+ a b))
+        assert!(defmacro(list!(
+            list!(intern("add"), intern("a"), intern("b")),
+            list!(intern("+"), intern("a"), intern("b"))
+        ))
+        .is_ok());
+
+        // (defmacro) -> Err
+        assert!(defmacro(list!()).is_err());
+
+        // (defmacro x a ()) -> Err
+        assert!(defmacro(list!(intern("x"), intern("a"), list!())).is_err());
+
+        // (defmacro (x 1) ()) -> Err
+        assert!(defmacro(list!(intern("x"), list!(intern("a"), 1), list!())).is_err());
+
+        // (defmacro add (a 1) (+ a 1)) -> Err
+        assert!(defmacro(list!(
+            intern("add"),
+            list!(intern("a"), 1),
+            list!(intern("+"), intern("a"), 1)
+        ))
+        .is_err());
+
+        // (defmacro (add a 1) (+ a 1)) -> Err
+        assert!(defmacro(list!(
+            list!(intern("add"), intern("a"), 1),
+            list!(intern("+"), intern("a"), 1)
+        ))
+        .is_err());
+    }
+
+    #[test]
     fn test_eq() {
         setup_native_proc_test!(eq);
 
