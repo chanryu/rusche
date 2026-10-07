@@ -33,7 +33,7 @@ fn quasiquote_expr(expr: &Expr, context: &EvalContext) -> Result<Vec<Expr>, Eval
         return Ok(vec![NIL]);
     };
 
-    let car_name = match cons.car.as_ref() {
+    let car_name = match &cons.car {
         Expr::Sym(name, _) => Some(name.as_str()),
         _ => None,
     };
@@ -41,8 +41,8 @@ fn quasiquote_expr(expr: &Expr, context: &EvalContext) -> Result<Vec<Expr>, Eval
     let mut exprs = Vec::new();
     match car_name {
         Some(UNQUOTE) => {
-            if let Some(cdar) = cons.cdar() {
-                exprs.push(eval(cdar, context)?);
+            if let Some(cadr) = cons.cadr() {
+                exprs.push(eval(cadr, context)?);
             } else {
                 return Err(EvalError {
                     message: format!("{UNQUOTE}: missing argument"),
@@ -51,8 +51,8 @@ fn quasiquote_expr(expr: &Expr, context: &EvalContext) -> Result<Vec<Expr>, Eval
             }
         }
         Some(UNQUOTE_SPLICING) => {
-            if let Some(cdar) = cons.cdar() {
-                match eval(cdar, context)? {
+            if let Some(cadr) = cons.cadr() {
+                match eval(cadr, context)? {
                     Expr::List(list, _) => {
                         // TODO: implement consuming `into_iter()`
                         exprs.extend(list.iter().cloned());
@@ -60,9 +60,9 @@ fn quasiquote_expr(expr: &Expr, context: &EvalContext) -> Result<Vec<Expr>, Eval
                     _ => {
                         return Err(EvalError {
                             message: format!(
-                                "{UNQUOTE_SPLICING}: `{cdar}` does not evaluate to a list"
+                                "{UNQUOTE_SPLICING}: `{cadr}` does not evaluate to a list"
                             ),
-                            span: cdar.span(),
+                            span: cadr.span(),
                         });
                     }
                 }

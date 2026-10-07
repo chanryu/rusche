@@ -1,10 +1,40 @@
+use std::rc::Rc;
+
 use crate::{
+    builtin::quote::QUOTE,
     eval::{eval, eval_tail, EvalContext, EvalError, EvalResult},
-    expr::{Expr, NIL},
+    expr::{intern, Expr, NIL},
     list::List,
+    macros::list,
     proc::Proc,
     utils::{get_2_or_3_args, get_exact_1_arg, get_exact_2_args, make_formal_args},
 };
+
+pub fn apply(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let (proc_expr, args_expr) = get_exact_2_args(proc_name, args)?;
+
+    let Expr::Proc(proc, _) = eval(proc_expr, context)? else {
+        return Err(EvalError {
+            message: format!("{proc_name}: `{proc_expr}` does not evaluate to a procedure."),
+            span: proc_expr.span(),
+        });
+    };
+    let Expr::List(arg_list, _) = eval(args_expr, context)? else {
+        return Err(EvalError {
+            message: format!("{proc_name}: `{args_expr}` does not evaluate to a list."),
+            span: args_expr.span(),
+        });
+    };
+
+    // The arguments are already evaluated; quote them so the callee does not evaluate them again.
+    let quoted_args: List = arg_list
+        .iter()
+        .map(|arg| Expr::from(list!(intern(QUOTE), arg.clone())))
+        .collect::<Vec<_>>()
+        .into();
+
+    proc.invoke(&quoted_args, context)
+}
 
 pub fn atom(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
@@ -16,7 +46,7 @@ pub fn car(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
 
     if let Expr::List(List::Cons(cons), _) = eval(expr, context)? {
-        Ok(cons.car.as_ref().clone())
+        Ok(cons.car.clone())
     } else {
         Err(EvalError {
             message: format!("{proc_name}: `{expr}` does not evaluate to a list."),
@@ -29,7 +59,7 @@ pub fn cdr(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
 
     if let Expr::List(List::Cons(cons), _) = eval(expr, context)? {
-        Ok(cons.cdr.as_ref().clone().into())
+        Ok(cons.cdr.clone().into())
     } else {
         Err(EvalError {
             message: format!("{proc_name}: `{expr}` does not evaluate to a list."),
@@ -63,11 +93,33 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
                 });
             };
 
-            context.env.define(name, eval(expr, context)?);
+            let value = match eval(expr, context)? {
+                // `(define f (lambda ...))` -- give the anonymous closure a name so that
+                // error messages can refer to it.
+                Expr::Proc(
+                    Proc::Closure {
+                        name: None,
+                        formal_args,
+                        body,
+                        outer_context,
+                    },
+                    span,
+                ) => Expr::Proc(
+                    Proc::Closure {
+                        name: Some(name.clone()),
+                        formal_args,
+                        body,
+                        outer_context,
+                    },
+                    span,
+                ),
+                value => value,
+            };
+            context.env.define(name, value);
             Ok(NIL)
         }
         Some(Expr::List(List::Cons(cons), _)) => {
-            let Expr::Sym(name, _) = cons.car.as_ref() else {
+            let Expr::Sym(name, _) = &cons.car else {
                 return Err(EvalError {
                     message: format!("{proc_name}: expects a symbol for a procedure name"),
                     span: cons.car.span(),
@@ -80,7 +132,7 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
                     Proc::Closure {
                         name: Some(name.to_string()),
                         formal_args: make_formal_args(&cons.cdr)?,
-                        body: Box::new(iter.into()),
+                        body: Rc::new(iter.into()),
                         outer_context: context.clone(),
                     },
                     args.span(),
@@ -114,7 +166,7 @@ pub fn defmacro(proc_name: &str, args: &List, context: &EvalContext) -> EvalResu
         }
         // (defmacro (name args) body)
         Some(Expr::List(List::Cons(cons), _)) => {
-            let Expr::Sym(macro_name, _) = cons.car.as_ref() else {
+            let Expr::Sym(macro_name, _) = &cons.car else {
                 return Err(EvalError {
                     message: format!(
                         "{proc_name}: a macro name expected as the first element of the list."
@@ -139,9 +191,9 @@ pub fn defmacro(proc_name: &str, args: &List, context: &EvalContext) -> EvalResu
             Proc::Macro {
                 name: Some(macro_name.clone()),
                 formal_args,
-                body: Box::new(iter.into()),
+                body: Rc::new(iter.into()),
             },
-            None, // TODO: add span
+            args.span(),
         ),
     );
 
@@ -187,10 +239,10 @@ pub fn lambda(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
         Proc::Closure {
             name: None,
             formal_args: make_formal_args(list)?,
-            body: Box::new(iter.into()),
+            body: Rc::new(iter.into()),
             outer_context: context.clone(),
         },
-        None, // TODO: add span
+        args.span(),
     ))
 }
 
@@ -204,7 +256,13 @@ pub fn set(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
         });
     };
 
-    context.env.update(name, eval(value_expr, context)?);
+    let value = eval(value_expr, context)?;
+    if !context.env.update(name, value) {
+        return Err(EvalError {
+            message: format!("{proc_name}: `{name}` is not defined."),
+            span: name_expr.span(),
+        });
+    }
 
     Ok(NIL)
 }

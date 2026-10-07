@@ -2,7 +2,7 @@ use std::{any::Any, fmt, rc::Rc};
 
 use crate::{
     eval::EvalContext,
-    list::{cons, List, ListIter},
+    list::{List, ListIter},
     proc::Proc,
     span::Span,
 };
@@ -72,6 +72,18 @@ impl Expr {
             Expr::TailCall { .. } => None,
         }
     }
+
+    /// Returns a copy of the expression with every span removed, recursively.
+    pub(crate) fn without_spans(&self) -> Expr {
+        match self {
+            Expr::Num(value, _) => Expr::Num(*value, None),
+            Expr::Str(text, _) => Expr::Str(text.clone(), None),
+            Expr::Sym(name, _) => Expr::Sym(name.clone(), None),
+            Expr::Proc(proc, _) => Expr::Proc(proc.clone(), None),
+            Expr::List(list, _) => Expr::List(list.without_spans(), None),
+            Expr::Foreign(_) | Expr::TailCall { .. } => self.clone(),
+        }
+    }
 }
 
 impl PartialEq for Expr {
@@ -82,16 +94,33 @@ impl PartialEq for Expr {
             (Expr::Sym(lhs, _), Expr::Sym(rhs, _)) => lhs == rhs,
             (Expr::Proc(lhs, _), Expr::Proc(rhs, _)) => lhs == rhs,
             (Expr::List(lhs, _), Expr::List(rhs, _)) => lhs == rhs,
+            (Expr::Foreign(lhs), Expr::Foreign(rhs)) => Rc::ptr_eq(lhs, rhs),
             _ => false,
         }
     }
+}
+
+/// Writes `text` as a double-quoted string literal that the lexer can read back.
+fn write_escaped_str(f: &mut fmt::Formatter<'_>, text: &str) -> fmt::Result {
+    write!(f, "\"")?;
+    for ch in text.chars() {
+        match ch {
+            '"' => write!(f, "\\\"")?,
+            '\\' => write!(f, "\\\\")?,
+            '\n' => write!(f, "\\n")?,
+            '\r' => write!(f, "\\r")?,
+            '\t' => write!(f, "\\t")?,
+            ch => write!(f, "{ch}")?,
+        }
+    }
+    write!(f, "\"")
 }
 
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Expr::Num(value, _) => write!(f, "{}", value),
-            Expr::Str(text, _) => write!(f, "\"{}\"", text), // TODO: escape control chars
+            Expr::Str(text, _) => write_escaped_str(f, text),
             Expr::Sym(name, _) => write!(f, "{}", name),
             Expr::Proc(proc, _) => write!(f, "<{}>", proc.fingerprint()),
             Expr::List(list, _) => write!(f, "{}", list),
@@ -110,12 +139,8 @@ impl From<List> for Expr {
 }
 
 impl From<Vec<Expr>> for Expr {
-    fn from(mut value: Vec<Expr>) -> Self {
-        let mut list = List::Nil;
-        while let Some(expr) = value.pop() {
-            list = cons(expr, list);
-        }
-        list.into()
+    fn from(value: Vec<Expr>) -> Self {
+        List::from(value).into()
     }
 }
 
@@ -207,6 +232,19 @@ mod tests {
     #[test]
     fn test_display_str() {
         assert_eq!(format!("{}", Expr::from("str")), "\"str\"");
+        assert_eq!(
+            format!("{}", Expr::from("a\"b\\c\nd\te")),
+            r#""a\"b\\c\nd\te""#
+        );
+    }
+
+    #[test]
+    fn test_foreign_eq() {
+        use std::rc::Rc;
+        let a: crate::expr::Foreign = Rc::new(1_i32);
+        let b: crate::expr::Foreign = Rc::new(1_i32);
+        assert_eq!(Expr::Foreign(a.clone()), Expr::Foreign(a.clone()));
+        assert_ne!(Expr::Foreign(a), Expr::Foreign(b));
     }
 
     #[test]

@@ -27,7 +27,10 @@ pub mod utils;
 
 // Re-export public APIs
 pub use env::Env;
-pub use eval::{eval, eval_tail, EvalContext, EvalError, EvalResult, Evaluator};
+pub use eval::{
+    eval, eval_tail, EvalContext, EvalError, EvalResult, Evaluator, ForeignTracer,
+    DEFAULT_GC_THRESHOLD, DEFAULT_MAX_CALL_DEPTH,
+};
 pub use expr::{intern, Expr, Foreign, NIL};
 pub use lexer::{tokenize, LexError, Lexer};
 pub use list::{cons, Cons, List, ListIter};

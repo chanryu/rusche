@@ -23,11 +23,11 @@ const PRELUDE_SYMBOLS: [&str; 4] = [
     "(define = eq?)",
 ];
 
-const PRELUDE_MACROS: [&str; 6] = [
+const PRELUDE_MACROS: [&str; 8] = [
     // begin
     r#"
     (defmacro begin (*exprs)
-        `(let () ,@exprs))
+        `((lambda () ,@exprs)))
     "#,
     // cond
     r#"
@@ -36,7 +36,7 @@ const PRELUDE_MACROS: [&str; 6] = [
             #f                                          ; No more clauses, return #f by default
             (let ((clause (car clauses)))
                 (if (eq? (car clause) 'else)            ; If the first clause is 'else'
-                    `(,@(cdr clause))                   ; Expand to the else expression(s)
+                    `(begin ,@(cdr clause))             ; Expand to the else expression(s)
                     `(if ,(car clause)                  ; Otherwise, expand to an if expression
                         (begin ,@(cdr clause))          ; If condition is true, evaluate the body
                         (cond ,@(cdr clauses)))))))     ; Else, recursively process remaining clauses
@@ -51,7 +51,7 @@ const PRELUDE_MACROS: [&str; 6] = [
     (defmacro let (bindings *body)
         `((lambda ,(map car bindings) ; Get the list of variable names
              ,@body)                  ; The body of the let becomes the lambda's body
-          ,@(map cdar bindings)))     ; Apply the values to the lambda
+          ,@(map cadr bindings)))     ; Apply the values to the lambda
     "#,
     // list
     r#"
@@ -60,51 +60,70 @@ const PRELUDE_MACROS: [&str; 6] = [
             '()
             `(cons ,(car args) (list ,@(cdr args)))))
     "#,
-    // while
+    // while -- the helper `loop` is scoped inside a lambda so it does not leak into the caller
     r#"
     (defmacro while (condition *body)
-        `(define (loop)
-            (if ,condition (begin ,@body (loop))))
-        (loop))
+        `((lambda ()
+            (define (loop)
+                (if ,condition (begin ,@body (loop))))
+            (loop))))
+    "#,
+    // and -- short-circuits, returns the last operand or #f
+    r#"
+    (defmacro and (*args)
+        (cond ((null? args) #t)
+              ((null? (cdr args)) (car args))
+              (else `(if ,(car args) (and ,@(cdr args)) #f))))
+    "#,
+    // or -- short-circuits, returns the first truthy operand or #f
+    r#"
+    (defmacro or (*args)
+        (cond ((null? args) #f)
+              ((null? (cdr args)) (car args))
+              (else `((lambda (or-value)
+                        (if or-value or-value (or ,@(cdr args))))
+                      ,(car args)))))
     "#,
 ];
 
-const PRELUDE_FUNCS: [&str; 11] = [
-    // caar, cadr, cdar, cdar
+const PRELUDE_FUNCS: [&str; 10] = [
+    // caar, cadr, cdar, cddr
     r#"
     (define (caar lst) (car (car lst)))
-    (define (cadr lst) (cdr (car lst)))
-    (define (cdar lst) (car (cdr lst)))
+    (define (cadr lst) (car (cdr lst)))
+    (define (cdar lst) (cdr (car lst)))
     (define (cddr lst) (cdr (cdr lst)))
     "#,
-    // and, or, not
+    // not
     r#"
-    (define (and x y) (if x (if y #t #f) #f))
-    (define (or  x y) (if x #t (if y #t #f)))
-    (define (not x  ) (if x #f #t))
+    (define (not x) (if x #f #t))
     "#,
     // null?
     r#"
     (define (null? e) (eq? e '()))
     "#,
-    // map
+    // reverse -- tail-recursive so long lists do not hit the call depth limit
+    r#"
+    (define (reverse lst)
+        (define (loop lst acc)
+            (if (null? lst) acc (loop (cdr lst) (cons (car lst) acc))))
+        (loop lst '()))
+    "#,
+    // map -- tail-recursive
     r#"
     (define (map fn lst)
-        (if (null? lst)
-            '()                          ; Base case: empty list
-            (cons (fn (car lst))         ; Apply function to the first element
-                  (map fn (cdr lst)))))  ; Recursive call on the rest of the list
+        (define (loop lst acc)
+            (if (null? lst)
+                (reverse acc)
+                (loop (cdr lst) (cons (fn (car lst)) acc))))
+        (loop lst '()))
     "#,
-    // append
+    // append -- tail-recursive
     r#"
     (define (append lst1 lst2)
-        (if (null? lst1) lst2                             ; If lst1 is empty, return lst2
-            (cons (car lst1) (append (cdr lst1) lst2))))  ; Otherwise, prepend the first element of lst1 and recurse
-    "#,
-    // apply
-    r#"
-    (define (apply f args)
-        (eval (cons f args)))
+        (define (loop lst acc)
+            (if (null? lst) acc (loop (cdr lst) (cons (car lst) acc))))
+        (loop (reverse lst1) lst2))
     "#,
     // pair
     r#"
@@ -130,12 +149,6 @@ const PRELUDE_FUNCS: [&str; 11] = [
             ((eq? (car lst) old)                               ; If the first element matches 'old'
             (cons new (subst new old (cdr lst))))              ; Replace it with 'new' and recurse on the rest
             (#t (cons (car lst) (subst new old (cdr lst))))))  ; Otherwise, keep the first element and recurse
-    "#,
-    // reverse
-    r#"
-    (define (reverse lst)
-        (if (null? lst) lst
-            (append (reverse (cdr lst)) (list (car lst)))))
     "#,
     // numeric operations
     r#"
@@ -168,6 +181,9 @@ fn eval_src(src: &str, context: &EvalContext) {
                 break; // we're done!
             }
             Ok(Some(expr)) => {
+                // Prelude source locations are meaningless to users; strip them so errors
+                // raised inside prelude code are attributed to the user's call site instead.
+                let expr = expr.without_spans();
                 let _ = eval(&expr, context)
                     .unwrap_or_else(|_| panic!("Prelude evaluation failed: {}", src));
             }

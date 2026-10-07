@@ -13,7 +13,7 @@ fn main() {
     let evaluator = Evaluator::with_prelude();
 
     load_io_procs(evaluator.context());
-    load_vec_procs(evaluator.context());
+    load_vec_procs(&evaluator);
 
     if let Some(path) = args.next() {
         run_file(evaluator, &path);

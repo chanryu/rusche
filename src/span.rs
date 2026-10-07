@@ -3,7 +3,7 @@ use std::fmt;
 /// A location in the source code defined by a line and column number.
 /// Be aware both line and column numbers are 0-based, even though they
 /// need to be converted to 1-based when displayed to the user.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Loc {
     pub line: usize,
     pub column: usize,
@@ -36,9 +36,7 @@ pub struct Span {
 
 impl Span {
     pub fn new(begin: Loc, end: Loc) -> Self {
-        debug_assert!(
-            begin.line < end.line || (begin.line == end.line && begin.column < end.column)
-        );
+        debug_assert!(begin < end, "invalid span: {begin:?}..{end:?}");
 
         Self { begin, end }
     }

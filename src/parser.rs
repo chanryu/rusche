@@ -84,8 +84,18 @@ impl Parser {
             loop {
                 if let Some(context) = self.contexts.last_mut() {
                     if let Some(quote_name) = get_quote_name(context.token.as_ref()) {
+                        // The quoted form spans from the quote character to the end of the
+                        // expression it quotes.
+                        let span = match (context.token.as_ref(), expr.span()) {
+                            (Some(token), Some(expr_span))
+                                if token.span().begin < expr_span.end =>
+                            {
+                                Some(Span::new(token.span().begin, expr_span.end))
+                            }
+                            _ => None,
+                        };
                         self.contexts.pop();
-                        expr = list!(intern(quote_name), expr).into();
+                        expr = Expr::List(list!(intern(quote_name), expr), span);
                         continue;
                     }
                     if context.car.is_none() {
@@ -138,8 +148,8 @@ impl Parser {
     fn get_expr_begin_token(&self) -> Token {
         assert!(!self.contexts.is_empty());
 
-        // Find the first token that started the current expression
-        for context in self.contexts.iter().rev() {
+        // Find the token that started the outermost (top-level) expression being parsed.
+        for context in self.contexts.iter() {
             if let Some(token) = context.token.as_ref() {
                 return token.clone();
             }
@@ -224,6 +234,41 @@ mod tests {
         let parsed_expr = parser.parse().unwrap().unwrap();
         let expected_expr = list!(intern("quote"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
+    }
+
+    #[test]
+    fn test_parser_quote_span() {
+        use crate::span::{Loc, Span};
+
+        // 'abc at columns 4..8
+        let mut parser = Parser::with_tokens(vec![
+            Token::Quote(Loc::new(0, 4)),
+            Token::Sym("abc".into(), Span::new(Loc::new(0, 5), Loc::new(0, 8))),
+        ]);
+        let parsed_expr = parser.parse().unwrap().unwrap();
+        assert_eq!(
+            parsed_expr.span(),
+            Some(Span::new(Loc::new(0, 4), Loc::new(0, 8)))
+        );
+    }
+
+    #[test]
+    fn test_parser_incomplete_reports_outermost_token() {
+        use crate::span::Loc;
+
+        // "(a (b" -- the incomplete expression starts at the first paren
+        let mut parser = Parser::with_tokens(vec![
+            Token::OpenParen(Loc::new(0, 0)),
+            tok!(Sym("a")),
+            Token::OpenParen(Loc::new(0, 3)),
+            tok!(Sym("b")),
+        ]);
+        match parser.parse() {
+            Err(ParseError::IncompleteExpr(Token::OpenParen(loc))) => {
+                assert_eq!(loc, Loc::new(0, 0));
+            }
+            other => panic!("unexpected: {other:?}"),
+        }
     }
 
     #[test]

@@ -10,6 +10,7 @@ use crate::env::Env;
 
 pub fn load_builtin(env: &Rc<Env>) {
     // lisp primitives
+    env.define_native_proc("apply", primitive::apply);
     env.define_native_proc("atom?", primitive::atom);
     env.define_native_proc("car", primitive::car);
     env.define_native_proc("cdr", primitive::cdr);

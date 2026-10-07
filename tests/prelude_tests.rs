@@ -15,10 +15,11 @@ fn test_t_f() {
 
 #[test]
 fn test_cxxr() {
-    assert_eq!(eval_str("(caar '((1 2) 3 4))"), "1");
-    assert_eq!(eval_str("(cadr '((1 2) 3 4))"), "(2)");
-    assert_eq!(eval_str("(cdar '((1 2) 3 4))"), "3");
-    assert_eq!(eval_str("(cddr '((1 2) 3 4))"), "(4)");
+    // Scheme semantics: c[ad]+r reads right-to-left.
+    assert_eq!(eval_str("(caar '((1 2) 3 4))"), "1"); // car of car
+    assert_eq!(eval_str("(cadr '((1 2) 3 4))"), "3"); // car of cdr
+    assert_eq!(eval_str("(cdar '((1 2) 3 4))"), "(2)"); // cdr of car
+    assert_eq!(eval_str("(cddr '((1 2) 3 4))"), "(4)"); // cdr of cdr
 }
 
 #[test]
@@ -66,6 +67,22 @@ fn test_and_or_not() {
 
     assert_eq!(eval_str("(not #f)"), "1");
     assert_eq!(eval_str("(not #t)"), "()");
+
+    // variadic
+    assert_eq!(eval_str("(and)"), "1");
+    assert_eq!(eval_str("(and 1 2 3)"), "3");
+    assert_eq!(eval_str("(and 1 #f 3)"), "()");
+    assert_eq!(eval_str("(or)"), "()");
+    assert_eq!(eval_str("(or #f 2 3)"), "2");
+    assert_eq!(eval_str("(or #f #f)"), "()");
+
+    // short-circuit: the second operand would error if evaluated
+    assert_eq!(eval_str("(and #f (car '()))"), "()");
+    assert_eq!(eval_str("(or #t (car '()))"), "1");
+    assert_eq!(
+        eval_str("(let ((lst '())) (and (not (null? lst)) (eq? (car lst) 1)))"),
+        "()"
+    );
 }
 
 #[test]

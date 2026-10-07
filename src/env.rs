@@ -2,6 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
+use crate::eval::ForeignTracers;
 use crate::expr::Expr;
 use crate::proc::{NativeFunc, Proc};
 
@@ -37,7 +38,14 @@ impl Env {
         });
 
         if let Some(all_envs) = base.all_envs.upgrade() {
-            all_envs.borrow_mut().push(Rc::downgrade(&derived_env));
+            let mut all_envs = all_envs.borrow_mut();
+            // Drop registry entries for environments that reference counting has already
+            // freed. Doing this only when the vector is full keeps the cost amortised O(1)
+            // while preventing unbounded growth in long-running loops.
+            if all_envs.len() == all_envs.capacity() {
+                all_envs.retain(|env| env.strong_count() > 0);
+            }
+            all_envs.push(Rc::downgrade(&derived_env));
         }
 
         derived_env
@@ -142,18 +150,52 @@ impl Env {
         self.is_reachable.set(false);
     }
 
-    pub(crate) fn gc_mark(&self) {
+    pub(crate) fn gc_mark(&self, tracers: &ForeignTracers) {
         if self.is_reachable.get() {
             return;
         }
 
         self.is_reachable.set(true);
 
-        self.vars.borrow().values().for_each(|expr| {
-            if let Expr::Proc(Proc::Closure { outer_context, .. }, _) = expr {
-                outer_context.env.gc_mark();
+        self.vars
+            .borrow()
+            .values()
+            .for_each(|expr| Self::gc_mark_expr(expr, tracers));
+    }
+
+    /// Marks every environment reachable from `expr`: closures captured directly, inside
+    /// lists, inside pending tail calls, or inside foreign objects with a registered tracer.
+    pub(crate) fn gc_mark_expr(expr: &Expr, tracers: &ForeignTracers) {
+        match expr {
+            Expr::Proc(proc, _) => Self::gc_mark_proc(proc, tracers),
+            Expr::List(list, _) => list
+                .iter()
+                .for_each(|expr| Self::gc_mark_expr(expr, tracers)),
+            Expr::TailCall {
+                proc,
+                args,
+                context,
+            } => {
+                Self::gc_mark_proc(proc, tracers);
+                context.env.gc_mark(tracers);
+                args.iter()
+                    .for_each(|expr| Self::gc_mark_expr(expr, tracers));
             }
-        });
+            Expr::Foreign(object) => {
+                if let Some(tracer) = tracers.get(&object.as_ref().type_id()) {
+                    tracer(object.as_ref(), &mut |expr| {
+                        Self::gc_mark_expr(expr, tracers)
+                    });
+                }
+            }
+            Expr::Num(..) | Expr::Str(..) | Expr::Sym(..) => {}
+        }
+    }
+
+    fn gc_mark_proc(proc: &Proc, tracers: &ForeignTracers) {
+        if let Proc::Closure { outer_context, .. } = proc {
+            outer_context.env.gc_mark(tracers);
+        }
     }
 
     pub(crate) fn gc_sweep(&self) {

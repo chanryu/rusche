@@ -1,16 +1,23 @@
 use rusche::{
     eval, eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args, EvalContext,
-    EvalError, EvalResult, Expr, List, NIL,
+    EvalError, EvalResult, Evaluator, Expr, List, NIL,
 };
 
 use std::{cell::RefCell, rc::Rc};
 
-pub fn load_vec_procs(context: &EvalContext) {
-    context.env.define_native_proc("vec?", is_vec);
-    context.env.define_native_proc("vec-make", vec_make);
-    context.env.define_native_proc("vec-push", vec_push);
-    context.env.define_native_proc("vec-pop", vec_pop);
-    context.env.define_native_proc("vec-get", vec_get);
+pub fn load_vec_procs(evaluator: &Evaluator) {
+    let env = evaluator.root_env();
+    env.define_native_proc("vec?", is_vec);
+    env.define_native_proc("vec-make", vec_make);
+    env.define_native_proc("vec-push", vec_push);
+    env.define_native_proc("vec-pop", vec_pop);
+    env.define_native_proc("vec-get", vec_get);
+
+    // Let the garbage collector see closures stored inside vectors; without this, calling a
+    // closure that only lives in a vector would fail after a collection.
+    evaluator.register_foreign_tracer::<ExprVecRefCell>(|vec, trace| {
+        vec.borrow().iter().for_each(trace);
+    });
 }
 
 type ExprVecRefCell = RefCell<Vec<Expr>>;
