@@ -236,6 +236,36 @@ mod tests {
             format!("{}", Expr::from("a\"b\\c\nd\te")),
             r#""a\"b\\c\nd\te""#
         );
+        assert_eq!(format!("{}", Expr::from("a\r\nb")), r#""a\r\nb""#);
+    }
+
+    #[test]
+    fn test_without_spans() {
+        use crate::span::{Loc, Span};
+
+        let span = Some(Span::new(Loc::new(1, 1), Loc::new(1, 2)));
+        let proc = Proc::Native {
+            name: "noop".into(),
+            func: |_, _, _| Ok(NIL),
+        };
+        let spanned = [
+            Expr::Num(1.0, span),
+            Expr::Str("s".into(), span),
+            Expr::Sym("x".into(), span),
+            Expr::Proc(proc, span),
+            Expr::List(list!(Expr::Num(2.0, span)), span),
+        ];
+        for expr in &spanned {
+            assert!(expr.span().is_some());
+            let stripped = expr.without_spans();
+            assert!(stripped.span().is_none());
+            assert_eq!(&stripped, expr); // PartialEq ignores spans
+        }
+
+        // Variants without spans are returned as-is.
+        let foreign = Expr::Foreign(Rc::new(1_i32));
+        assert!(foreign.without_spans().span().is_none());
+        assert_eq!(foreign.without_spans(), foreign);
     }
 
     #[test]

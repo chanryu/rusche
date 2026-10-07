@@ -195,11 +195,16 @@ mod tests {
 
         let stripped = list.without_spans();
         assert_eq!(stripped, list); // PartialEq ignores spans
-        assert!(stripped.iter().all(|e| e.span().is_none()));
-        let Some(Expr::List(inner, None)) = stripped.iter().nth(1) else {
-            panic!("expected inner list without span");
-        };
-        assert!(inner.iter().all(|e| e.span().is_none()));
+
+        fn has_no_spans(expr: &Expr) -> bool {
+            expr.span().is_none()
+                && match expr {
+                    Expr::List(list, _) => list.iter().all(has_no_spans),
+                    _ => true,
+                }
+        }
+        assert!(!list.iter().all(has_no_spans));
+        assert!(stripped.iter().all(has_no_spans));
     }
 
     #[test]

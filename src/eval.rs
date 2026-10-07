@@ -485,3 +485,117 @@ impl Drop for Evaluator {
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{lexer::tokenize, parser::Parser};
+
+    /// Evaluates every top-level form in `src` and returns the last result.
+    fn eval_all(evaluator: &Evaluator, src: &str) -> Expr {
+        let mut parser = Parser::with_tokens(tokenize(src, None).unwrap());
+        let mut last = Expr::from(List::Nil);
+        while let Some(expr) = parser.parse().unwrap() {
+            last = evaluator.eval(&expr).unwrap();
+        }
+        last
+    }
+
+    #[test]
+    fn test_gc_threshold_accessors() {
+        let evaluator = Evaluator::new();
+        assert_eq!(evaluator.gc_threshold(), Some(DEFAULT_GC_THRESHOLD));
+
+        evaluator.set_gc_threshold(Some(42));
+        assert_eq!(evaluator.gc_threshold(), Some(42));
+
+        evaluator.set_gc_threshold(None);
+        assert_eq!(evaluator.gc_threshold(), None);
+    }
+
+    #[test]
+    fn test_disabled_auto_gc_leaves_cycles_alone() {
+        let evaluator = Evaluator::with_prelude();
+        evaluator.set_gc_threshold(None);
+
+        // Each `(make)` leaves behind an env <-> closure cycle (`get` lives in the env it
+        // captures) that only a GC can reclaim.
+        let src = "(define (make) (define n 0) (define (get) n) get)
+                   (define i 0)
+                   (while (< i 20) (make) (set! i (+ i 1)))";
+        eval_all(&evaluator, src);
+
+        assert!(evaluator.count_unreachable_envs() >= 20);
+        evaluator.collect_garbage();
+        assert_eq!(evaluator.count_unreachable_envs(), 0);
+    }
+
+    #[test]
+    fn test_gc_marks_through_pending_tail_call() {
+        let evaluator = Evaluator::with_prelude();
+
+        let src = "(define (make-counter) (define n 0) (lambda () (set! n (+ n 1)) n))
+                   (make-counter)";
+        let counter_in_args = eval_all(&evaluator, src);
+        let Expr::Proc(callee, _) = eval_all(&evaluator, "(make-counter)") else {
+            panic!("expected a closure");
+        };
+
+        // A pending tail call references a procedure, its arguments, and the context it
+        // will run in. All three must survive a collection.
+        let context = EvalContext::derive_from(&evaluator.context);
+        context.env.define("kept", 7);
+        let tail_call = Expr::TailCall {
+            proc: callee.clone(),
+            args: List::from(vec![counter_in_args.clone()]),
+            context: context.clone(),
+        };
+        evaluator.root_env().define("pending", tail_call);
+
+        evaluator.collect_garbage();
+
+        assert_eq!(context.env.lookup("kept"), Some(Expr::from(7)));
+        evaluator
+            .root_env()
+            .define("callee", Expr::Proc(callee, None));
+        evaluator.root_env().define("counter", counter_in_args);
+        assert_eq!(
+            evaluator.eval(&parse_one("(callee)")).unwrap(),
+            Expr::from(1)
+        );
+        assert_eq!(
+            evaluator.eval(&parse_one("(counter)")).unwrap(),
+            Expr::from(1)
+        );
+    }
+
+    #[test]
+    fn test_gc_ignores_foreign_objects_without_tracer() {
+        let evaluator = Evaluator::with_prelude();
+
+        let closure = eval_all(
+            &evaluator,
+            "(define (make-counter) (define n 0) (lambda () (set! n (+ n 1)) n))
+             (make-counter)",
+        );
+        let held: Rc<RefCell<Vec<Expr>>> = Rc::new(RefCell::new(vec![closure]));
+        evaluator
+            .root_env()
+            .define("box", Expr::Foreign(held.clone()));
+
+        // Without a registered tracer the closure inside the foreign object is not a root,
+        // so its environment is swept and the closure no longer works.
+        evaluator.collect_garbage();
+
+        let closure = held.borrow()[0].clone();
+        evaluator.root_env().define("counter", closure);
+        assert!(evaluator.eval(&parse_one("(counter)")).is_err());
+    }
+
+    fn parse_one(src: &str) -> Expr {
+        Parser::with_tokens(tokenize(src, None).unwrap())
+            .parse()
+            .unwrap()
+            .unwrap()
+    }
+}

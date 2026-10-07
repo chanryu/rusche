@@ -267,7 +267,8 @@ mod tests {
             .is_err());
 
         // things that merely start with a sign or dot remain symbols
-        for text in ["-", "+", ".", "...", "-inf", "-x", ".foo"] {
+        // (`.5x` looks like a fraction but does not parse as one, so it stays a symbol too)
+        for text in ["-", "+", ".", "...", "-inf", "-x", ".foo", ".5x", "-.5.5"] {
             let token = Lexer::new(text.chars(), Loc::default())
                 .get_token()
                 .unwrap()

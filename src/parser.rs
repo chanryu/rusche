@@ -263,12 +263,10 @@ mod tests {
             Token::OpenParen(Loc::new(0, 3)),
             tok!(Sym("b")),
         ]);
-        match parser.parse() {
-            Err(ParseError::IncompleteExpr(Token::OpenParen(loc))) => {
-                assert_eq!(loc, Loc::new(0, 0));
-            }
-            other => panic!("unexpected: {other:?}"),
-        }
+        assert_eq!(
+            parser.parse(),
+            Err(ParseError::IncompleteExpr(Token::OpenParen(Loc::new(0, 0))))
+        );
     }
 
     #[test]
