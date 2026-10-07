@@ -38,7 +38,7 @@ pub enum List {
 }
 
 impl List {
-    pub fn iter(&self) -> ListIter {
+    pub fn iter(&self) -> ListIter<'_> {
         ListIter::new(self)
     }
 
