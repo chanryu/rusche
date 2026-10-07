@@ -4,6 +4,6 @@
             (set! count (+ count 1))
             count)))
 
-(println (counter)) ; 1
-(println (counter)) ; 2
-(println (counter)) ; 3
+(display (counter)) (newline) ; 1
+(display (counter)) (newline) ; 2
+(display (counter)) (newline) ; 3

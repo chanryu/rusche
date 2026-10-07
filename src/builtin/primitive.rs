@@ -131,7 +131,7 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
                 Expr::Proc(
                     Proc::Closure {
                         name: Some(name.to_string()),
-                        formal_args: make_formal_args(&cons.cdr)?,
+                        formal_args: make_formal_args(&Expr::from(cons.cdr.clone()))?,
                         body: Rc::new(iter.into()),
                         outer_context: context.clone(),
                     },
@@ -152,17 +152,14 @@ pub fn defmacro(proc_name: &str, args: &List, context: &EvalContext) -> EvalResu
     let (macro_name, formal_args) = match expr {
         // (defmacro name (args) body)
         Some(Expr::Sym(macro_name, _)) => {
-            let expr = iter.next();
-            let Some(Expr::List(list, _)) = expr else {
+            let Some(expr) = iter.next() else {
                 return Err(EvalError {
-                    message: format!(
-                        "{proc_name}: expected a list of formal arguments after a macro name."
-                    ),
-                    span: expr.map(|e| e.span()).unwrap_or(None),
+                    message: format!("{proc_name}: expected formal arguments after a macro name."),
+                    span: args.span(),
                 });
             };
 
-            (macro_name, make_formal_args(list)?)
+            (macro_name, make_formal_args(expr)?)
         }
         // (defmacro (name args) body)
         Some(Expr::List(List::Cons(cons), _)) => {
@@ -175,7 +172,7 @@ pub fn defmacro(proc_name: &str, args: &List, context: &EvalContext) -> EvalResu
                 });
             };
 
-            (macro_name, make_formal_args(&cons.cdr)?)
+            (macro_name, make_formal_args(&Expr::from(cons.cdr.clone()))?)
         }
         _ => {
             return Err(EvalError {
@@ -227,18 +224,17 @@ pub fn if_(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 pub fn lambda(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let mut iter = args.iter();
 
-    let expr = iter.next();
-    let Some(Expr::List(list, _)) = expr else {
+    let Some(expr) = iter.next() else {
         return Err(EvalError {
-            message: format!("{proc_name}: expected a list of formal arguments."),
-            span: expr.map(|e| e.span()).unwrap_or(None),
+            message: format!("{proc_name}: expected formal arguments."),
+            span: args.span(),
         });
     };
 
     Ok(Expr::Proc(
         Proc::Closure {
             name: None,
-            formal_args: make_formal_args(list)?,
+            formal_args: make_formal_args(expr)?,
             body: Rc::new(iter.into()),
             outer_context: context.clone(),
         },
@@ -380,6 +376,9 @@ mod tests {
         // (defmacro x () ())
         assert!(defmacro(list!(intern("x"), list!(), list!())).is_ok());
 
+        // (defmacro x) -> Err
+        assert!(defmacro(list!(intern("x"))).is_err());
+
         // (defmacro add (a b) (+ a b))
         assert!(defmacro(list!(
             intern("add"),
@@ -398,8 +397,11 @@ mod tests {
         // (defmacro) -> Err
         assert!(defmacro(list!()).is_err());
 
-        // (defmacro x a ()) -> Err
-        assert!(defmacro(list!(intern("x"), intern("a"), list!())).is_err());
+        // (defmacro x args ()) -> Ok, `args` receives every argument
+        assert!(defmacro(list!(intern("x"), intern("args"), list!())).is_ok());
+
+        // (defmacro x 1 ()) -> Err
+        assert!(defmacro(list!(intern("x"), 1, list!())).is_err());
 
         // (defmacro (x 1) ()) -> Err
         assert!(defmacro(list!(intern("x"), list!(intern("a"), 1), list!())).is_err());

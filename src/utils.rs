@@ -4,6 +4,7 @@ use std::rc::Rc;
 use crate::eval::{eval, EvalContext, EvalError};
 use crate::expr::Expr;
 use crate::list::List;
+use crate::proc::FormalArgs;
 
 /// Get exactly one argument from a list.
 ///
@@ -192,37 +193,67 @@ pub fn get_2_or_3_args<'a>(
     }
 }
 
-/// Make a vector of symbol names from a list of arguments.
+/// Parse the formal parameters of a `lambda`, `define`, or `defmacro` form.
 ///
-/// Check if `list` contains only symbols. If so, return a vector of the symbols.
-/// Otherwise, return an error message. This function can be used to extract formal
-/// arguments when implementing a function-like special form such as `lambda` or `defmacro`.
-pub fn make_formal_args(list: &List) -> Result<Rc<[String]>, EvalError> {
-    let mut formal_args = Vec::new();
-    let mut variadic: Option<&Expr> = None;
-    for item in list.iter() {
-        // A variadic parameter (`*name`) swallows every remaining argument, so anything
-        // after it could never be bound.
-        if let Some(variadic) = variadic {
+/// Accepts the Scheme spellings: a list of symbols `(a b)`, a list with a rest parameter
+/// `(a b . rest)`, or a bare symbol `args` that receives every argument as a list.
+pub fn make_formal_args(expr: &Expr) -> Result<Rc<FormalArgs>, EvalError> {
+    let list = match expr {
+        Expr::Sym(rest, _) => {
+            return Ok(Rc::new(FormalArgs {
+                names: Vec::new(),
+                rest: Some(rest.clone()),
+            }));
+        }
+        Expr::List(list, _) => list,
+        _ => {
             return Err(EvalError {
-                message: format!("variadic parameter {variadic} must be the last parameter."),
-                span: item.span(),
+                message: format!("{expr} is not a valid parameter list."),
+                span: expr.span(),
             });
         }
+    };
 
-        let Expr::Sym(formal_arg, _) = item else {
+    let mut formal_args = FormalArgs::default();
+    let mut iter = list.iter();
+    while let Some(item) = iter.next() {
+        let Expr::Sym(name, _) = item else {
             return Err(EvalError {
                 message: format!("{item} is not a symbol."),
                 span: item.span(),
             });
         };
-        if formal_arg.starts_with('*') && formal_arg.len() > 1 {
-            variadic = Some(item);
+
+        if name != "." {
+            formal_args.names.push(name.clone());
+            continue;
         }
-        formal_args.push(formal_arg.clone());
+
+        // `. rest` must be followed by exactly one symbol and nothing else.
+        match (iter.next(), iter.next()) {
+            (Some(Expr::Sym(rest, _)), None) => formal_args.rest = Some(rest.clone()),
+            (Some(rest), None) => {
+                return Err(EvalError {
+                    message: format!("{rest} is not a symbol."),
+                    span: rest.span(),
+                });
+            }
+            (_, Some(extra)) => {
+                return Err(EvalError {
+                    message: format!("unexpected {extra} after the rest parameter."),
+                    span: extra.span(),
+                });
+            }
+            (None, None) => {
+                return Err(EvalError {
+                    message: "expected a rest parameter after `.`.".to_string(),
+                    span: item.span(),
+                });
+            }
+        }
     }
 
-    Ok(formal_args.into())
+    Ok(Rc::new(formal_args))
 }
 
 /// Evaluate an expression into a string.
@@ -507,18 +538,47 @@ mod tests {
 
     #[test]
     fn test_make_formal_args() {
-        let args = make_formal_args(&list!(intern("a"), intern("*rest"))).unwrap();
-        assert_eq!(&*args, &["a".to_string(), "*rest".to_string()]);
+        let formal = |names: &[&str], rest: Option<&str>| FormalArgs {
+            names: names.iter().map(|s| s.to_string()).collect(),
+            rest: rest.map(str::to_string),
+        };
 
-        assert!(make_formal_args(&list!()).unwrap().is_empty());
+        // (a b)
+        let args = make_formal_args(&Expr::from(list!(intern("a"), intern("b")))).unwrap();
+        assert_eq!(*args, formal(&["a", "b"], None));
 
-        // non-symbol
-        assert!(make_formal_args(&list!(intern("a"), 1)).is_err());
+        // ()
+        let args = make_formal_args(&Expr::from(list!())).unwrap();
+        assert_eq!(*args, formal(&[], None));
 
-        // variadic parameter must be last
-        assert!(make_formal_args(&list!(intern("*a"), intern("b"))).is_err());
+        // (a . rest)
+        let args =
+            make_formal_args(&Expr::from(list!(intern("a"), intern("."), intern("rest")))).unwrap();
+        assert_eq!(*args, formal(&["a"], Some("rest")));
 
-        // a lone `*` is an ordinary symbol, not a variadic marker
-        assert!(make_formal_args(&list!(intern("*"), intern("b"))).is_ok());
+        // (. rest)
+        let args = make_formal_args(&Expr::from(list!(intern("."), intern("rest")))).unwrap();
+        assert_eq!(*args, formal(&[], Some("rest")));
+
+        // args
+        let args = make_formal_args(&intern("args")).unwrap();
+        assert_eq!(*args, formal(&[], Some("args")));
+
+        // non-symbol parameter
+        assert!(make_formal_args(&Expr::from(list!(intern("a"), 1))).is_err());
+        // non-symbol rest parameter
+        assert!(make_formal_args(&Expr::from(list!(intern("a"), intern("."), 1))).is_err());
+        // nothing after the dot
+        assert!(make_formal_args(&Expr::from(list!(intern("a"), intern(".")))).is_err());
+        // more than one name after the dot
+        assert!(make_formal_args(&Expr::from(list!(
+            intern("a"),
+            intern("."),
+            intern("b"),
+            intern("c")
+        )))
+        .is_err());
+        // not a list or symbol at all
+        assert!(make_formal_args(&Expr::from(1)).is_err());
     }
 }

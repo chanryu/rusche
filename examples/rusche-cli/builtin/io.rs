@@ -2,29 +2,24 @@ use rusche::{eval, EvalContext, EvalError, EvalResult, Expr, List, NIL};
 use std::io::Write;
 
 pub fn load_io_procs(context: &EvalContext) {
-    context.env.define_native_proc("print", print);
-    context.env.define_native_proc("println", println);
+    context.env.define_native_proc("display", display);
+    context.env.define_native_proc("newline", newline);
     context.env.define_native_proc("read", read);
 }
 
-fn print_args(args: &List, context: &EvalContext) -> Result<(), EvalError> {
+/// `(display expr ...)` -- prints each argument; strings are printed without quotes.
+fn display(_: &str, args: &List, context: &EvalContext) -> EvalResult {
     for expr in args.iter() {
         match eval(expr, context)? {
-            Expr::Str(text, _) => print!("{}", text), // w/o double quotes
+            Expr::Str(text, _) => print!("{}", text),
             expr => print!("{}", expr),
         }
     }
-    Ok(())
-}
-
-fn print(_: &str, args: &List, context: &EvalContext) -> EvalResult {
-    print_args(args, context)?;
     let _ = std::io::stdout().flush();
     Ok(NIL)
 }
 
-fn println(_: &str, args: &List, context: &EvalContext) -> EvalResult {
-    print_args(args, context)?;
+fn newline(_: &str, _: &List, _: &EvalContext) -> EvalResult {
     println!();
     Ok(NIL)
 }

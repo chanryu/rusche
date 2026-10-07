@@ -1,7 +1,7 @@
-(defmacro (backwards *args)
+(defmacro (backwards . args)
     `(begin ,@(reverse args)))
 
 (backwards
-    (println "uno")
-    (println "dos")
-    (println "tres"))
+    (display "uno\n")
+    (display "dos\n")
+    (display "tres\n"))

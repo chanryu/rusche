@@ -7,7 +7,9 @@
 
 ## Overview
 
-Rusche is a library for writing an interpreter for a Scheme-like language in Rust. It lets you embed a Scheme interpreter into your Rust applications, allowing you to use Scheme as a scripting language or to create standalone Scheme interpreters.
+Rusche is a library for writing an interpreter for a Scheme-like language in Rust. It lets you embed a Scheme-like interpreter into your Rust applications, allowing you to use it as a scripting language or to create standalone interpreters.
+
+Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but keeps the core language small. See [Differences from Scheme](#differences-from-scheme).
 
 
 ## Features
@@ -81,21 +83,23 @@ To learn about how to implement a standalone interpreter with REPL, have a look 
 Here's a quick example to show what's possible with the Rusche language.
 
 ```scheme
-(defun fizzbuzz (n)
-    (defun div? (n m) (= (% n m) 0))
+(define (fizzbuzz n)
+    (define (div? n m) (= (% n m) 0))
     (cond ((div? n 15) "FizzBuzz")
           ((div? n 3) "Fizz")
           ((div? n 5) "Buzz")
-          (#t n)))
+          (else n)))
 
-(print "Enter a number to fizzbuzz: ")
+(display "Enter a number to fizzbuzz: ")
 
 (let ((n 1)
       (m (num-parse (read)))) ; read a number from stdio and store it to `m`
     (while (<= n m)
-        (println (fizzbuzz n))
+        (display (fizzbuzz n)) (newline)
         (set! n (+ n 1))))
 ```
+
+`display`, `newline`, and `read` are provided by `rusche-cli`, not by the core library. `rusche-cli` also defines Scheme-style aliases for the core procedures (`number?`, `string-append`, `string->number`, `modulo`, ...); see [scheme.rs](https://github.com/chanryu/rusche/blob/main/examples/rusche-cli/builtin/scheme.rs).
 
 To see more examples, please checkout *.rsc files in the [examples](https://github.com/chanryu/rusche/tree/main/examples) directory.
 
@@ -103,6 +107,17 @@ Also, you can run `rusche-cli` yourself with the following command:
 ```bash
 cargo run --example rusche-cli
 ```
+
+#### Differences from Scheme
+
+- **Truthiness.** `'()` is the only false value; `#t` is `1` and `#f` is `'()`. There is no boolean type, and predicates return `1` or `()`.
+- **Equality.** `eq?` compares structurally and `=` is an alias for it.
+- **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. Lists are immutable and shared.
+- **Numbers.** All numbers are 64-bit floats.
+- **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
+- **Names.** Core procedures use short names (`num?`, `str-append`, `atom?`, `%`, ...) rather than the Scheme ones.
+- **Small surface.** `<`, `>`, `<=`, `>=` are binary; `if` without an else branch and `define` return `()`; there is no `let*`, named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
+- **Rest parameters** do use Scheme syntax: `(define (f a . rest) ...)` and `(lambda args ...)`.
 
 ## Documentation
 
