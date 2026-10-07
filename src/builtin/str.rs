@@ -61,7 +61,7 @@ pub fn slice(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult 
     let end = if let Some(arg3) = opt_arg3 {
         eval_into_int(proc_name, "end index", arg3, context)?
     } else {
-        text_len as i32
+        text_len
     };
 
     let to_index = |pos: i32| -> usize {
