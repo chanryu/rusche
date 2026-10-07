@@ -62,6 +62,20 @@ println!("{}", result.unwrap()); // this prints out 2
 
 To learn about how to implement a standalone interpreter with REPL, have a look at [examples/rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli/).
 
+#### Limits and garbage collection
+
+- **Call depth.** Evaluation fails with an error (instead of overflowing the Rust stack) once
+  more than `Evaluator::max_call_depth()` procedure calls are active. The default is tuned for
+  the main thread of a debug build; adjust it with `Evaluator::set_max_call_depth` to match the
+  stack size of the thread you evaluate on. Tail calls do not count towards the limit.
+- **Garbage collection.** Environments captured by closures form reference cycles, so the
+  evaluator collects them: automatically after a top-level `Evaluator::eval` once the number of
+  live environments reaches `Evaluator::gc_threshold()` (set it to `None` to disable), or on
+  demand with `Evaluator::collect_garbage`. Reachability starts from the root environment and
+  the value `eval` just returned. If your host stores `Expr` values inside a `Foreign` object,
+  register a tracer with `Evaluator::register_foreign_tracer` so the collector can see them
+  (see `vec.rs` in `rusche-cli`).
+
 ### Rusche language
 
 Here's a quick example to show what's possible with the Rusche language.

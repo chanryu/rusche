@@ -2,7 +2,7 @@ use crate::span::{Loc, Span};
 use crate::token::Token;
 use std::iter::{Iterator, Peekable};
 
-const TOKEN_DELIMITERS: &str = " \t\r\n()';\"";
+const TOKEN_DELIMITERS: &str = " \t\r\n()'`,;\"";
 
 #[derive(Debug, PartialEq)]
 pub enum LexError {
@@ -140,7 +140,28 @@ where
             name.push(ch);
         }
 
-        Ok(Some(Token::Sym(name, Span::new(begin_loc, self.loc))))
+        let span = Span::new(begin_loc, self.loc);
+
+        // Numbers without a leading digit (`.5`, `-.5`, `+.5`) reach here because they start
+        // like a symbol. Only treat the text as a number if it looks like one, so that symbols
+        // such as `-inf` or `...` stay symbols.
+        if looks_like_fraction(&name) {
+            if let Ok(value) = name.parse::<f64>() {
+                return Ok(Some(Token::Num(value, span)));
+            }
+        }
+
+        Ok(Some(Token::Sym(name, span)))
+    }
+}
+
+/// Returns `true` for text of the form `[+-]?.digit...` (optionally followed by more
+/// numeric characters), i.e. a fractional number literal with no leading integer digit.
+fn looks_like_fraction(text: &str) -> bool {
+    let digits = text.strip_prefix(['+', '-']).unwrap_or(text);
+    match digits.strip_prefix('.') {
+        Some(rest) => rest.chars().next().is_some_and(|ch| ch.is_ascii_digit()),
+        None => false,
     }
 }
 
@@ -237,10 +258,30 @@ mod tests {
         assert_parsed_number!("1", 1);
         assert_parsed_number!("1.1", 1.1);
         assert_parsed_number!("-1", -1);
+        assert_parsed_number!(".5", 0.5);
+        assert_parsed_number!("-.5", -0.5);
+        assert_parsed_number!("+.25", 0.25);
 
         assert!(Lexer::new("123xya".chars(), Loc::default())
             .get_token()
             .is_err());
+
+        // things that merely start with a sign or dot remain symbols
+        // (`.5x` looks like a fraction but does not parse as one, so it stays a symbol too)
+        for text in ["-", "+", ".", "...", "-inf", "-x", ".foo", ".5x", "-.5.5"] {
+            let token = Lexer::new(text.chars(), Loc::default())
+                .get_token()
+                .unwrap()
+                .unwrap();
+            assert_eq!(token, Token::Sym(text.into(), token.span()), "{text}");
+        }
+    }
+
+    #[test]
+    fn test_quasiquote_chars_are_delimiters() {
+        let tokens = tokenize("`(a,b ,@c)", None).unwrap();
+        let texts: Vec<String> = tokens.iter().map(|t| t.to_string()).collect();
+        assert_eq!(texts, ["`", "(", "a", ",", "b", ",@", "c", ")"]);
     }
 
     #[test]

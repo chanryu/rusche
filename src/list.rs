@@ -2,12 +2,13 @@ use crate::expr::Expr;
 use crate::span::Span;
 use std::fmt;
 use std::iter::Iterator;
+use std::rc::Rc;
 
 /// The struct that represents a [cons cell](https://en.wikipedia.org/wiki/Cons) that contains a value and a reference to the next cons cell.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cons {
-    pub car: Box<Expr>,
-    pub cdr: Box<List>,
+    pub car: Expr,
+    pub cdr: List,
 }
 
 impl Cons {
@@ -16,13 +17,14 @@ impl Cons {
         T: Into<Expr>,
     {
         Self {
-            car: Box::new(car.into()),
-            cdr: Box::new(cdr),
+            car: car.into(),
+            cdr,
         }
     }
 
-    pub fn cdar(&self) -> Option<&Expr> {
-        if let List::Cons(cons) = self.cdr.as_ref() {
+    /// Returns the second element, i.e. the `car` of the `cdr`.
+    pub fn cadr(&self) -> Option<&Expr> {
+        if let List::Cons(cons) = &self.cdr {
             Some(&cons.car)
         } else {
             None
@@ -31,9 +33,12 @@ impl Cons {
 }
 
 /// The enum that represents a list which is either a cons cell or the empty list.
+///
+/// Cons cells are reference counted and immutable, so cloning a list -- which happens on
+/// every variable lookup -- is O(1) and shares structure with the original.
 #[derive(Clone, Debug, PartialEq)]
 pub enum List {
-    Cons(Cons),
+    Cons(Rc<Cons>),
     Nil,
 }
 
@@ -54,25 +59,49 @@ impl List {
         self.is_empty()
     }
 
+    /// Returns the span from the first element to the last one.
+    ///
+    /// Returns `None` if either end has no span, or if the spans are not in source order --
+    /// which happens when a macro expansion mixes expressions from the macro definition with
+    /// expressions from the call site.
     pub fn span(&self) -> Option<Span> {
         let mut iter = self.iter();
 
-        match (iter.next(), iter.last()) {
-            (Some(first), Some(last)) => match (first.span(), last.span()) {
-                (Some(first_span), Some(last_span)) => {
-                    Some(Span::new(first_span.begin, last_span.end))
-                }
-                _ => None,
-            },
-            (Some(first), None) => first.span(),
-            _ => None,
+        let first_span = iter.next()?.span()?;
+        let Some(last) = iter.last() else {
+            return Some(first_span);
+        };
+        let last_span = last.span()?;
+
+        if first_span.begin < last_span.end {
+            Some(Span::new(first_span.begin, last_span.end))
+        } else {
+            None
         }
+    }
+
+    /// Returns a copy of the list with every span removed, recursively.
+    pub(crate) fn without_spans(&self) -> List {
+        self.iter()
+            .map(Expr::without_spans)
+            .collect::<Vec<_>>()
+            .into()
     }
 }
 
 impl<'a> From<ListIter<'a>> for List {
     fn from(val: ListIter<'a>) -> Self {
         val.list.clone()
+    }
+}
+
+impl From<Vec<Expr>> for List {
+    fn from(mut value: Vec<Expr>) -> Self {
+        let mut list = List::Nil;
+        while let Some(expr) = value.pop() {
+            list = cons(expr, list);
+        }
+        list
     }
 }
 
@@ -132,7 +161,7 @@ where
     T: Into<Expr>,
     U: Into<List>,
 {
-    List::Cons(Cons::new(car, cdr.into()))
+    List::Cons(Rc::new(Cons::new(car, cdr.into())))
 }
 
 #[cfg(test)]
@@ -144,15 +173,38 @@ mod tests {
     use crate::span::Loc;
 
     #[test]
-    fn test_cons_cdar() {
-        // (1 nil).cdar => None
-        assert_eq!(Cons::new(Expr::from(1), List::Nil).cdar(), None);
+    fn test_cons_cadr() {
+        // (1 nil).cadr => None
+        assert_eq!(Cons::new(Expr::from(1), List::Nil).cadr(), None);
 
-        // (1 '(1 2)).cdar => Some(1)
+        // (1 '(1 2)).cadr => Some(1)
         assert_eq!(
-            Cons::new(Expr::from(1), list!(1, 2)).cdar(),
+            Cons::new(Expr::from(1), list!(1, 2)).cadr(),
             Some(&Expr::from(1))
         );
+    }
+
+    #[test]
+    fn test_list_from_vec_and_without_spans() {
+        let span = Some(Span::new(Loc::new(1, 1), Loc::new(1, 2)));
+        let list = List::from(vec![
+            Expr::Num(1.0, span),
+            Expr::List(list!(Expr::Sym("a".into(), span)), span),
+        ]);
+        assert_eq!(format!("{}", list), "(1 (a))");
+
+        let stripped = list.without_spans();
+        assert_eq!(stripped, list); // PartialEq ignores spans
+
+        fn has_no_spans(expr: &Expr) -> bool {
+            expr.span().is_none()
+                && match expr {
+                    Expr::List(list, _) => list.iter().all(has_no_spans),
+                    _ => true,
+                }
+        }
+        assert!(!list.iter().all(has_no_spans));
+        assert!(stripped.iter().all(has_no_spans));
     }
 
     #[test]
@@ -202,6 +254,14 @@ mod tests {
             Expr::Num(3.0, Some(Span::new(Loc::new(1, 5), Loc::new(1, 6))))
         );
         assert_eq!(args.span(), Some(Span::new(Loc::new(1, 1), Loc::new(1, 6))));
+
+        // Regression: elements out of source order (macro expansion mixing the call site
+        // with the definition site) must not produce an inverted span.
+        let args = list!(
+            Expr::Num(1.0, Some(Span::new(Loc::new(5, 1), Loc::new(5, 2)))),
+            Expr::Num(2.0, Some(Span::new(Loc::new(1, 5), Loc::new(1, 6))))
+        );
+        assert_eq!(args.span(), None);
     }
 
     #[test]

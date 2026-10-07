@@ -9,14 +9,17 @@ use crate::list::List;
 pub type NativeFunc = fn(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult;
 
 /// The enum that represents all procedure variants in the Rusche language.
+///
+/// `formal_args` and `body` are reference-counted so that looking up or calling
+/// a procedure does not deep-copy its source.
 #[derive(Clone, Debug)]
 pub enum Proc {
     /// A user-defied producdure that captures outer environment.
     /// Closures can be created by the `lambda` form.
     Closure {
         name: Option<String>,
-        formal_args: Vec<String>,
-        body: Box<List>,
+        formal_args: Rc<[String]>,
+        body: Rc<List>,
         outer_context: EvalContext,
     },
 
@@ -25,8 +28,8 @@ pub enum Proc {
     /// Macros can be created by the `defmacro` form.
     Macro {
         name: Option<String>,
-        formal_args: Vec<String>,
-        body: Box<List>,
+        formal_args: Rc<[String]>,
+        body: Rc<List>,
     },
 
     /// A native procedure that is implemented in Rust.
@@ -35,7 +38,7 @@ pub enum Proc {
 
 impl Proc {
     pub(crate) fn invoke(&self, args: &List, context: &EvalContext) -> EvalResult {
-        context.push_call(self);
+        context.push_call(self)?;
         let result = match self {
             Proc::Closure {
                 name,
@@ -125,7 +128,29 @@ impl PartialEq for Proc {
                     && body1 == body2
                     && Rc::ptr_eq(&outer_context1.env, &outer_context2.env)
             }
-            (lhs, rhs) => lhs == rhs,
+            (
+                Proc::Macro {
+                    name: name1,
+                    formal_args: formal_args1,
+                    body: body1,
+                },
+                Proc::Macro {
+                    name: name2,
+                    formal_args: formal_args2,
+                    body: body2,
+                },
+            ) => name1 == name2 && formal_args1 == formal_args2 && body1 == body2,
+            (
+                Proc::Native {
+                    name: name1,
+                    func: func1,
+                },
+                Proc::Native {
+                    name: name2,
+                    func: func2,
+                },
+            ) => name1 == name2 && std::ptr::fn_addr_eq(*func1, *func2),
+            _ => false,
         }
     }
 }
@@ -251,50 +276,94 @@ mod tests {
 
         let closure = Proc::Closure {
             name: Some("closure".into()),
-            formal_args: vec!["a".into(), "b".into()],
-            body: Box::new(list!(1, 2, 3)),
+            formal_args: vec!["a".into(), "b".into()].into(),
+            body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
 
         let closure_same = Proc::Closure {
             name: Some("closure".into()),
-            formal_args: vec!["a".into(), "b".into()],
-            body: Box::new(list!(1, 2, 3)),
+            formal_args: vec!["a".into(), "b".into()].into(),
+            body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
         assert_eq!(closure, closure_same);
 
         let closure_name_diff = Proc::Closure {
             name: None,
-            formal_args: vec!["a".into(), "b".into()],
-            body: Box::new(list!(1, 2, 3)),
+            formal_args: vec!["a".into(), "b".into()].into(),
+            body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
         assert_ne!(closure, closure_name_diff);
 
         let closure_args_diff = Proc::Closure {
             name: None,
-            formal_args: vec!["a".into(), "b".into(), "c".into()],
-            body: Box::new(list!(1, 2, 3)),
+            formal_args: vec!["a".into(), "b".into(), "c".into()].into(),
+            body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
         assert_ne!(closure, closure_args_diff);
 
         let closure_body_diff = Proc::Closure {
             name: None,
-            formal_args: vec!["a".into(), "b".into(), "c".into()],
-            body: Box::new(list!(1, 2, 3, 4)),
+            formal_args: vec!["a".into(), "b".into(), "c".into()].into(),
+            body: Rc::new(list!(1, 2, 3, 4)),
             outer_context: context.clone(),
         };
         assert_ne!(closure, closure_body_diff);
 
         let closure_context_diff = Proc::Closure {
             name: None,
-            formal_args: vec!["a".into(), "b".into(), "c".into()],
-            body: Box::new(list!(1, 2, 3, 4)),
+            formal_args: vec!["a".into(), "b".into(), "c".into()].into(),
+            body: Rc::new(list!(1, 2, 3, 4)),
             outer_context: EvalContext::derive_from(&context),
         };
         assert_ne!(closure, closure_context_diff);
+    }
+
+    #[test]
+    fn test_proc_eq_native_and_macro() {
+        // Regression: comparing two non-closure procs used to recurse forever.
+        fn native_fn_1(_: &str, _: &List, _: &EvalContext) -> EvalResult {
+            Ok(NIL)
+        }
+        fn native_fn_2(_: &str, _: &List, _: &EvalContext) -> EvalResult {
+            Ok(NIL)
+        }
+
+        let native = |name: &str, func: NativeFunc| Proc::Native {
+            name: name.into(),
+            func,
+        };
+        assert_eq!(native("a", native_fn_1), native("a", native_fn_1));
+        assert_ne!(native("a", native_fn_1), native("b", native_fn_1));
+        assert_ne!(native("a", native_fn_1), native("a", native_fn_2));
+
+        let macro_ = |name: &str| Proc::Macro {
+            name: Some(name.into()),
+            formal_args: vec!["x".into()].into(),
+            body: Rc::new(list!(1)),
+        };
+        assert_eq!(macro_("m"), macro_("m"));
+        assert_ne!(macro_("m"), macro_("n"));
+
+        // mixed kinds are never equal
+        assert_ne!(native("m", native_fn_1), macro_("m"));
+
+        let evaluator = Evaluator::new();
+        let closure = Proc::Closure {
+            name: Some("m".into()),
+            formal_args: vec!["x".into()].into(),
+            body: Rc::new(list!(1)),
+            outer_context: evaluator.context().clone(),
+        };
+        assert_ne!(closure, macro_("m"));
+        assert_ne!(closure, native("m", native_fn_1));
+
+        // code coverage workaround (#[coverage(off)] is unstable)
+        native_fn_1("", &list!(), evaluator.context()).unwrap();
+        native_fn_2("", &list!(), evaluator.context()).unwrap();
     }
 
     #[test]
@@ -304,20 +373,20 @@ mod tests {
 
         let closure1 = Proc::Closure {
             name: Some("closure".into()),
-            formal_args: vec!["a".into(), "b".into()],
-            body: Box::new(list!(1, 2, 3)),
+            formal_args: vec!["a".into(), "b".into()].into(),
+            body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
         let closure2 = Proc::Closure {
             name: Some("closure".into()),
-            formal_args: vec!["a".into(), "b".into()],
-            body: Box::new(list!(1, 2, 3)),
+            formal_args: vec!["a".into(), "b".into()].into(),
+            body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
         let closure3 = Proc::Closure {
             name: Some("closure".into()),
-            formal_args: vec!["a".into()],
-            body: Box::new(list!(1, 2)),
+            formal_args: vec!["a".into()].into(),
+            body: Rc::new(list!(1, 2)),
             outer_context: context.clone(),
         };
         assert_eq!(closure1.fingerprint(), closure2.fingerprint());

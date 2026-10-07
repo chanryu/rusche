@@ -197,19 +197,32 @@ pub fn get_2_or_3_args<'a>(
 /// Check if `list` contains only symbols. If so, return a vector of the symbols.
 /// Otherwise, return an error message. This function can be used to extract formal
 /// arguments when implementing a function-like special form such as `lambda` or `defmacro`.
-pub fn make_formal_args(list: &List) -> Result<Vec<String>, EvalError> {
+pub fn make_formal_args(list: &List) -> Result<Rc<[String]>, EvalError> {
     let mut formal_args = Vec::new();
+    let mut variadic: Option<&Expr> = None;
     for item in list.iter() {
+        // A variadic parameter (`*name`) swallows every remaining argument, so anything
+        // after it could never be bound.
+        if let Some(variadic) = variadic {
+            return Err(EvalError {
+                message: format!("variadic parameter {variadic} must be the last parameter."),
+                span: item.span(),
+            });
+        }
+
         let Expr::Sym(formal_arg, _) = item else {
             return Err(EvalError {
                 message: format!("{item} is not a symbol."),
                 span: item.span(),
             });
         };
+        if formal_arg.starts_with('*') && formal_arg.len() > 1 {
+            variadic = Some(item);
+        }
         formal_args.push(formal_arg.clone());
     }
 
-    Ok(formal_args)
+    Ok(formal_args.into())
 }
 
 /// Evaluate an expression into a string.
@@ -490,5 +503,22 @@ mod tests {
         assert!(eval_into_foreign("test", &Expr::from(1), context).is_err());
         assert!(eval_into_foreign("test", &Expr::from("str"), context).is_err());
         assert!(eval_into_foreign("test", &intern("sym"), context).is_err());
+    }
+
+    #[test]
+    fn test_make_formal_args() {
+        let args = make_formal_args(&list!(intern("a"), intern("*rest"))).unwrap();
+        assert_eq!(&*args, &["a".to_string(), "*rest".to_string()]);
+
+        assert!(make_formal_args(&list!()).unwrap().is_empty());
+
+        // non-symbol
+        assert!(make_formal_args(&list!(intern("a"), 1)).is_err());
+
+        // variadic parameter must be last
+        assert!(make_formal_args(&list!(intern("*a"), intern("b"))).is_err());
+
+        // a lone `*` is an ordinary symbol, not a variadic marker
+        assert!(make_formal_args(&list!(intern("*"), intern("b"))).is_ok());
     }
 }
