@@ -3,8 +3,8 @@ pub mod quote;
 mod convert;
 mod list;
 mod num;
-mod primitive;
 mod proc;
+mod special;
 mod str;
 mod sym;
 
@@ -13,16 +13,16 @@ use std::rc::Rc;
 use crate::env::Env;
 
 pub fn load_builtin(env: &Rc<Env>) {
-    // special forms and evaluator primitives
-    env.define_native_proc("apply", primitive::apply);
-    env.define_native_proc("define", primitive::define);
-    env.define_native_proc("defmacro", primitive::defmacro);
-    env.define_native_proc("eq?", primitive::eq);
-    env.define_native_proc("error", primitive::error);
-    env.define_native_proc("eval", primitive::eval_);
-    env.define_native_proc("if", primitive::if_);
-    env.define_native_proc("lambda", primitive::lambda);
-    env.define_native_proc("set!", primitive::set);
+    // special forms and evaluator ops
+    env.define_native_proc("apply", special::apply);
+    env.define_native_proc("define", special::define);
+    env.define_native_proc("defmacro", special::defmacro);
+    env.define_native_proc("eq?", special::eq);
+    env.define_native_proc("error", special::error);
+    env.define_native_proc("eval", special::eval_);
+    env.define_native_proc("if", special::if_);
+    env.define_native_proc("lambda", special::lambda);
+    env.define_native_proc("set!", special::set);
 
     // list
     env.define_native_proc("atom?", list::is_atom);
