@@ -142,3 +142,51 @@ fn test_subst() {
 fn test_reverse() {
     assert_eq!(eval_str("(reverse '(a b c d))"), "(d c b a)");
 }
+
+#[test]
+fn test_length_filter_fold_member() {
+    assert_eq!(eval_str("(length '())"), "0");
+    assert_eq!(eval_str("(length '(a b c))"), "3");
+    assert_eq!(
+        eval_str("(filter (lambda (x) (< x 3)) '(1 2 3 4))"),
+        "(1 2)"
+    );
+    assert_eq!(eval_str("(fold + 0 '(1 2 3))"), "6");
+    assert_eq!(
+        eval_str("(fold (lambda (acc x) (cons x acc)) '() '(a b c))"),
+        "(c b a)"
+    );
+    assert_eq!(eval_str("(member 'b '(a b c))"), "(b c)");
+    assert_eq!(eval_str("(member 'x '(a b c))"), "()");
+}
+
+#[test]
+fn test_let_star() {
+    assert_eq!(eval_str("(let* ((x 1) (y (+ x 2))) y)"), "3");
+    assert_eq!(eval_str("(let* () 42)"), "42");
+    // Shadowing: inner x uses outer x
+    assert_eq!(eval_str("(let* ((x 1) (x (+ x 10))) x)"), "11");
+}
+
+#[test]
+fn test_abs_min_max() {
+    assert_eq!(eval_str("(abs -3)"), "3");
+    assert_eq!(eval_str("(abs 3)"), "3");
+    assert_eq!(eval_str("(min 3)"), "3");
+    assert_eq!(eval_str("(min 3 1 2)"), "1");
+    assert_eq!(eval_str("(max 3)"), "3");
+    assert_eq!(eval_str("(max 3 1 2)"), "3");
+}
+
+#[test]
+fn test_variadic_comparisons() {
+    assert_eq!(eval_str("(< 1 2)"), "1");
+    assert_eq!(eval_str("(< 1 2 3)"), "1");
+    assert_eq!(eval_str("(< 1 3 2)"), "()");
+    assert_eq!(eval_str("(<= 1 1 2)"), "1");
+    assert_eq!(eval_str("(> 3 2 1)"), "1");
+    assert_eq!(eval_str("(> 3 1 2)"), "()");
+    assert_eq!(eval_str("(>= 3 3 1)"), "1");
+    assert!(eval_str("(< 1)").starts_with("Err:"));
+    assert!(eval_str("(<)").starts_with("Err:"));
+}

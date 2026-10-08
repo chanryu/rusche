@@ -101,7 +101,7 @@ The core language is everything available from `Evaluator::default()` (built-ins
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
 - **Names.** Core procedures use short names (`num?`, `str-append`, `atom?`, `%`, ...) rather than the usual Scheme spellings.
-- **Small surface.** `<`, `>`, `<=`, `>=` are binary; `if` without an else branch and `define` return `()`; there is no `let*`, named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
+- **Small surface.** `if` without an else branch and `define` return `()`; there is no named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
 - **Rest parameters** do use Scheme syntax: `(define (f a . rest) ...)` and `(lambda args ...)`.
 
 ### `rusche-cli` (example host)

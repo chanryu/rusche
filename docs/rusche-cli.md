@@ -58,11 +58,16 @@ Core procedures keep short names (`num?`, `%`, `str-append`, `num-parse`, …).
 | `number?` | `num?` |
 | `modulo` | `%` |
 | `string->number` | `num-parse` |
+| `number->string` | `num-str` |
 | `string?` | `str?` |
 | `string-append` | `str-append` |
 | `string-compare` | `str-compare` |
 | `string-length` | `str-length` |
 | `substring` | `str-slice` |
+| `symbol?` | `sym?` |
+| `procedure?` | `proc?` |
+| `symbol->string` | `sym-str` |
+| `string->symbol` | `str-sym` |
 | `pair?` | `(lambda (x) (not (atom? x)))` |
 
 An embedding that wants Scheme names can copy
