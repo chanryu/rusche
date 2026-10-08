@@ -84,7 +84,7 @@ const PRELUDE_MACROS: [&str; 8] = [
     "#,
 ];
 
-const PRELUDE_FUNCS: [&str; 16] = [
+const PRELUDE_FUNCS: [&str; 14] = [
     // = (eq? alias)
     "(define = eq?)",
     // caar, cadr, cdar, cddr
@@ -163,14 +163,6 @@ const PRELUDE_FUNCS: [&str; 16] = [
             ((eq? (car lst) x) lst)
             (#t (member x (cdr lst)))))
     "#,
-    // pair
-    r#"
-    (define (pair lst1 lst2)
-        (cond ((and (null? lst1) (null? lst2)) '())
-              ((and (not (atom? lst1)) (not (atom? lst2)))
-               (cons (cons (car lst1) (cons (car lst2) '()))
-                     (pair (cdr lst1) (cdr lst2))))))
-    "#,
     // assoc
     r#"
     (define (assoc key lst)
@@ -178,15 +170,6 @@ const PRELUDE_FUNCS: [&str; 16] = [
             ((null? lst) #f)                       ; If the list is empty, return #f
             ((eq? (car (car lst)) key) (car lst))  ; If the car of the first element matches the key, return the pair
             (#t (assoc key (cdr lst)))))           ; Otherwise, recursively search the rest of the list
-    "#,
-    // subst
-    r#"
-    (define (subst new old lst)
-        (cond
-            ((null? lst) '())                                  ; If the list is empty, return an empty list
-            ((eq? (car lst) old)                               ; If the first element matches 'old'
-            (cons new (subst new old (cdr lst))))              ; Replace it with 'new' and recurse on the rest
-            (#t (cons (car lst) (subst new old (cdr lst))))))  ; Otherwise, keep the first element and recurse
     "#,
     // numeric operations
     r#"

@@ -230,7 +230,7 @@ The following forms and procedures are implemented in Rusche itself. Please chec
 
 Macros: `and`, `begin`, `cond` (with `else`), `defun`, `let`, `let*`, `or`, `while`
 
-Procedures: `append`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `map`, `member`, `not`, `null?`, `pair`, `reverse`, `subst`, `<`, `>`, `<=`, `>=`, `abs`, `min`, `max`
+Procedures: `append`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `map`, `member`, `not`, `null?`, `reverse`, `<`, `>`, `<=`, `>=`, `abs`, `min`, `max`
 
 `and` and `or` short-circuit and return the deciding operand:
 ```scheme
