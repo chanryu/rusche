@@ -25,7 +25,7 @@ Rusche supports the following data types.
 - `Symbol`: Name or identifier, e.g. `car`, `num?`, `+`
 - `List`: `()` or a chain of pairs ending in `()`, e.g. `(1 2 3)`. Lists are immutable.
 - `Procedure`: a closure, a macro, or a native procedure.
-- `Foreign`: A wrapper data type to support external objects. See [this example](../examples/rusche-cli/builtin/vec.rs) to learn more.
+- `Foreign`: A wrapper data type to support external objects. See the [foreign object tutorial](tutorials/foreign.md) and [vec.rs](../examples/rusche-cli/builtin/vec.rs).
 
 ## Boolean Values
 

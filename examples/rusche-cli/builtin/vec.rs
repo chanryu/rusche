@@ -29,11 +29,9 @@ fn eval_into_vec(
 ) -> Result<Rc<ExprVecRefCell>, EvalError> {
     eval_into_foreign(proc_name, expr, context)?
         .downcast::<ExprVecRefCell>()
-        .or_else(|_| {
-            Err(EvalError {
-                message: format!("{proc_name}: `{expr}` does not evaluate to a vector."),
-                span: expr.span(),
-            })
+        .map_err(|_| EvalError {
+            message: format!("{proc_name}: `{expr}` does not evaluate to a vector."),
+            span: expr.span(),
         })
 }
 
