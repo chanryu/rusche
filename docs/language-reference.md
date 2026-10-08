@@ -77,6 +77,13 @@ The following forms and procedures are implemented via native functions.
   (atom? '(1 2 3)) ; ()
   ```
 
+#### `apply`
+  Calls a procedure with arguments taken from a list. Closures and natives receive each value without re-evaluating it; macros receive the values as unevaluated arguments.
+  ```scheme
+  (apply + '(1 2 3))      ; 6
+  (apply car '((1 2 3)))  ; 1
+  ```
+
 #### `car`
   Returns the first element of a list.
   ```scheme
@@ -134,6 +141,12 @@ The following forms and procedures are implemented via native functions.
   (= 1 1)             ; 1
   ```
 
+#### `error`
+  Raises an evaluation error. One or more arguments; strings contribute their raw text, other values use their printed form. Arguments are joined with a single space.
+  ```scheme
+  (error "bad value:" 42)  ; error: bad value: 42
+  ```
+
 #### `eval`
   Evaluates an expression in the current environment.
   ```scheme
@@ -159,12 +172,27 @@ The following forms and procedures are implemented via native functions.
   ((lambda args args) 1 2 3)         ; (1 2 3)
   ```
 
+#### `proc?`
+  Evaluates to true (`1`) if the given expression is a procedure (closure, macro, or native), otherwise false (`()`).
+  ```scheme
+  (proc? +)              ; 1
+  (proc? (lambda (x) x)) ; 1
+  (proc? 1)              ; ()
+  ```
+
 #### `set!`
   Mutates the value of an already defined variable. Setting an undefined variable is an error.
   ```scheme
   (define x 5)
   (set! x 10)
   x                ; 10
+  ```
+
+#### `sym?`
+  Evaluates to true (`1`) if the given expression is a symbol, otherwise false (`()`).
+  ```scheme
+  (sym? 'foo)  ; 1
+  (sym? "foo") ; ()
   ```
 
 #### `quote` (`'`)
@@ -175,10 +203,11 @@ The following forms and procedures are implemented via native functions.
   ```
 
 #### `quasiquote` (`` ` ``)
-  Partially prevents evaluation of an expression, but allows evaluation within it via unquote.
+  Partially prevents evaluation of an expression, but allows evaluation within it via unquote. Nested quasiquotes track nesting depth so an unquote only evaluates at the matching level.
   ```scheme
   (define x 10)
-  `(1 2 ,x)        ; (1 2 10)
+  `(1 2 ,x)           ; (1 2 10)
+  ``(a ,,(+ 1 2))     ; (quasiquote (a (unquote 3)))
   ```
 
 #### `unquote` (`,`)
@@ -199,9 +228,9 @@ The following forms and procedures are implemented via native functions.
 
 The following forms and procedures are implemented in Rusche itself. Please check [prelude.rs](../src/prelude.rs) to see how they are actually implemented.
 
-Macros: `and`, `begin`, `cond` (with `else`), `defun`, `let`, `or`, `while`
+Macros: `and`, `begin`, `cond` (with `else`), `defun`, `let`, `let*`, `or`, `while`
 
-Procedures: `append`, `apply`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `list`, `map`, `not`, `null?`, `pair`, `reverse`, `subst`, `>`, `<=`, `>=`
+Procedures: `append`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `map`, `member`, `not`, `null?`, `reverse`, `<`, `>`, `<=`, `>=`, `abs`, `min`, `max`
 
 `and` and `or` short-circuit and return the deciding operand:
 ```scheme
@@ -211,12 +240,35 @@ Procedures: `append`, `apply`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `list`, 
 (or)              ; ()
 ```
 
-`list` and `apply` are ordinary procedures:
+`list` is an ordinary procedure; `apply` is a built-in:
 ```scheme
 (list 1 2 3)            ; (1 2 3)
 (map list '(1 2))       ; ((1) (2))
 (apply + '(1 2 3))      ; 6
 (apply car '((1 2 3)))  ; 1
+```
+
+`let*` binds sequentially; each binding can use previous ones:
+```scheme
+(let* ((x 1) (y (+ x 2))) y)  ; 3
+```
+
+List helpers:
+```scheme
+(length '(a b c))                      ; 3
+(filter (lambda (x) (< x 3)) '(1 2 3)) ; (1 2)
+(fold + 0 '(1 2 3))                    ; 6
+(member 'b '(a b c))                   ; (b c)
+```
+
+Numeric helpers and comparisons (comparisons take two or more arguments):
+```scheme
+(abs -3)           ; 3
+(min 3 1 2)        ; 1
+(max 3 1 2)        ; 3
+(< 1 2 3)          ; 1
+(<= 1 1 2)         ; 1
+(> 3 2 1)          ; 1
 ```
 
 ### Number functions
@@ -267,17 +319,11 @@ Procedures: `append`, `apply`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `list`, 
   ```
 
 #### `>`
-  Compares two numbers, returns true (`1`) if the first is greater than the second, otherwise false (`()`). Implemented in the prelude as `(define (> a b) (< b a))`.
+  Compares numbers, returns true (`1`) if each is greater than the next, otherwise false (`()`). Implemented in the prelude via `<` on the reversed arguments.
   ```scheme
   (> 5 3)       ; 1
+  (> 3 2 1)     ; 1
   (> 2 4)       ; ()
-  ```
-
-#### `num-parse`
-  Parses a string into a number if possible, otherwise returns `()`.
-  ```scheme
-  (num-parse "123")  ; 123
-  (num-parse "abc")  ; ()
   ```
 
 ### String functions
@@ -318,6 +364,34 @@ Procedures: `append`, `apply`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `list`, 
   (str-slice "example" 1 -1) ; "xampl"
   ```
 
+### Conversion functions
+
+#### `num->str`
+  Converts a number to a string, using the same formatting as printed numbers (`1` not `1.0`).
+  ```scheme
+  (num->str 123)   ; "123"
+  (num->str 1.5)   ; "1.5"
+  ```
+
+#### `str->num`
+  Parses a string into a number if possible, otherwise returns `()`.
+  ```scheme
+  (str->num "123")  ; 123
+  (str->num "abc")  ; ()
+  ```
+
+#### `sym->str`
+  Converts a symbol to a string.
+  ```scheme
+  (sym->str 'foo)  ; "foo"
+  ```
+
+#### `str->sym`
+  Converts a string to a symbol. Any string is accepted, including the empty string.
+  ```scheme
+  (str->sym "foo")  ; foo
+  ```
+
 ## Differences from Scheme
 
 - **Truthiness.** `()` is the only false value; `#t` is `1` and `#f` is `()`. There is no boolean type.
@@ -325,8 +399,8 @@ Procedures: `append`, `apply`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `list`, 
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
-- **Names.** Core procedures use short names (`num?`, `str-append`, `atom?`, `%`, ...) rather than the usual Scheme spellings. Scheme aliases are a [`rusche-cli`](rusche-cli.md#scheme-style-aliases) convenience, not part of the core.
-- **Small surface.** `<`, `>`, `<=`, `>=` are binary; `if` without an else branch and `define` return `()`; there is no `let*`, named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
+- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Same-type operations use a type prefix (`num-add`, `str-append`). Conversions use `type1->type2` (`num->str`, `str->num`). Scheme spellings are a [`rusche-cli`](rusche-cli.md#scheme-style-aliases) convenience, not part of the core.
+- **Small surface.** `if` without an else branch and `define` return `()`; there is no named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
 - **Rest parameters** do use Scheme syntax: `(define (f a . rest) ...)` and `(lambda args ...)`.
 
 ## See also

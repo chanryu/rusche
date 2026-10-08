@@ -2,56 +2,62 @@ use std::rc::Rc;
 
 use crate::{
     eval::{eval, eval_tail, EvalContext, EvalError, EvalResult},
-    expr::{Expr, NIL},
+    expr::{intern, Expr, NIL},
     list::List,
     proc::Proc,
     utils::{get_2_or_3_args, get_exact_1_arg, get_exact_2_args, make_formal_args},
 };
 
-pub fn atom(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let expr = get_exact_1_arg(proc_name, args)?;
-
-    Ok(eval(expr, context)?.is_atom().into())
-}
-
-pub fn car(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let expr = get_exact_1_arg(proc_name, args)?;
-
-    if let Expr::List(List::Cons(cons), _) = eval(expr, context)? {
-        Ok(cons.car.clone())
-    } else {
-        Err(EvalError {
-            message: format!("{proc_name}: `{expr}` does not evaluate to a list."),
-            span: expr.span(),
-        })
+pub fn error(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    if args.is_nil() {
+        return Err(EvalError::from(format!(
+            "{proc_name}: needs at least one argument."
+        )));
     }
-}
 
-pub fn cdr(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let expr = get_exact_1_arg(proc_name, args)?;
-
-    if let Expr::List(List::Cons(cons), _) = eval(expr, context)? {
-        Ok(cons.cdr.clone().into())
-    } else {
-        Err(EvalError {
-            message: format!("{proc_name}: `{expr}` does not evaluate to a list."),
-            span: expr.span(),
-        })
+    let mut parts = Vec::new();
+    for arg in args.iter() {
+        let value = eval(arg, context)?;
+        match value {
+            Expr::Str(text, _) => parts.push(text),
+            other => parts.push(other.to_string()),
+        }
     }
+
+    Err(EvalError::from(parts.join(" ")))
 }
 
-pub fn cons(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let (car, cdr) = get_exact_2_args(proc_name, args)?;
+/// Applies a procedure to a list of already-evaluated arguments.
+///
+/// Closures and natives receive each value wrapped in `(quote ...)`, so they do
+/// not re-evaluate the arguments. Macros receive the values as-is.
+pub fn apply(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let (proc_expr, args_expr) = get_exact_2_args(proc_name, args)?;
 
-    let car = eval(car, context)?;
-    let Expr::List(cdr, _) = eval(cdr, context)? else {
+    let Expr::Proc(proc, _) = eval(proc_expr, context)? else {
         return Err(EvalError {
-            message: format!("{proc_name}: `{cdr}` does not evaluate to a list."),
-            span: cdr.span(),
+            message: format!("{proc_name}: `{proc_expr}` does not evaluate to a procedure."),
+            span: proc_expr.span(),
         });
     };
 
-    Ok(crate::list::cons(car, cdr).into())
+    let Expr::List(arg_list, _) = eval(args_expr, context)? else {
+        return Err(EvalError {
+            message: format!("{proc_name}: `{args_expr}` does not evaluate to a list."),
+            span: args_expr.span(),
+        });
+    };
+
+    let invoke_args = match &proc {
+        Proc::Macro { .. } => arg_list,
+        _ => arg_list.iter().map(quote_expr).collect::<Vec<_>>().into(),
+    };
+
+    proc.invoke(&invoke_args, context)
+}
+
+fn quote_expr(value: &Expr) -> Expr {
+    crate::list::cons(intern("quote"), crate::list::cons(value.clone(), List::Nil)).into()
 }
 
 pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -243,83 +249,6 @@ mod tests {
     use crate::macros::*;
 
     #[test]
-    fn test_atom() {
-        setup_native_proc_test!(atom);
-
-        // (atom 1) => #t
-        assert_eq!(atom(list!(1)), Ok(true.into()));
-
-        // (atom "str") => #t
-        assert_eq!(atom(list!("str")), Ok(true.into()));
-
-        // (atom '()) => #t
-        assert_eq!(atom(list!(list!(intern("quote"), NIL))), Ok(true.into()));
-
-        // (atom '(1 2 3)) => #f
-        assert_eq!(
-            atom(list!(list!(intern("quote"), list!(1, 2, 3)))),
-            Ok(false.into())
-        );
-    }
-
-    #[test]
-    fn test_car() {
-        setup_native_proc_test!(car);
-
-        // (car '(1 2 3)) => 1
-        assert_eq!(
-            car(list!(list!(intern("quote"), list!(1, 2, 3)))),
-            Ok(num(1))
-        );
-
-        // (car (1 2 3)) => err
-        assert!(car(list!(list!(1, 2, 3))).is_err());
-
-        // (car 1) => err
-        assert!(car(list!(1)).is_err());
-
-        // (car 1 2) => err
-        assert!(car(list!(1, 2)).is_err());
-    }
-
-    #[test]
-    fn test_cdr() {
-        setup_native_proc_test!(cdr);
-
-        // (cdr '(1 2 3)) => (2 3)
-        assert_eq!(
-            cdr(list!(list!(intern("quote"), list!(1, 2, 3)))),
-            Ok(list!(2, 3).into())
-        );
-
-        // (cdr (1 2 3)) => err
-        assert!(cdr(list!(list!(1, 2, 3))).is_err());
-
-        // (cdr 1) => err
-        assert!(cdr(list!(1)).is_err());
-
-        // (cdr '(1 2 3) 4) => err
-        assert!(cdr(list!(list!(intern("quote"), list!(1, 2, 3)), 4)).is_err());
-    }
-
-    #[test]
-    fn test_cons() {
-        setup_native_proc_test!(cons);
-
-        // (cons 1 '(2 3)) => (1 2 3)
-        assert_eq!(
-            cons(list!(1, list!(intern("quote"), list!(2, 3)))),
-            Ok(list!(1, 2, 3).into())
-        );
-
-        // (car 1 2) => err (cdr is not a list)
-        assert!(cons(list!(1, 2)).is_err());
-
-        // (car 1 2 3) => err (wrong number of arguments)
-        assert!(cons(list!(1, 2, 3)).is_err());
-    }
-
-    #[test]
     fn test_define() {
         setup_native_proc_test!(define, env);
 
@@ -420,5 +349,40 @@ mod tests {
 
         // (set! 1 "value") -> Err
         assert!(set(list!(1, "value")).is_err());
+    }
+
+    #[test]
+    fn test_error() {
+        setup_native_proc_test!(error);
+
+        let err = error(list!("bad", 42)).unwrap_err();
+        assert_eq!(err.message, "bad 42");
+
+        let err = error(list!("only")).unwrap_err();
+        assert_eq!(err.message, "only");
+
+        assert!(error(list!()).is_err());
+    }
+
+    #[test]
+    fn test_apply() {
+        setup_native_proc_test!(apply, env);
+
+        env.define_native_proc("+", crate::builtin::num::add);
+        env.define_native_proc("car", crate::builtin::list::car);
+
+        assert_eq!(
+            apply(list!(intern("+"), list!(intern("quote"), list!(1, 2, 3)))),
+            Ok(num(6))
+        );
+        assert_eq!(
+            apply(list!(
+                intern("car"),
+                list!(intern("quote"), list!(list!(1, 2, 3)))
+            )),
+            Ok(num(1))
+        );
+        assert!(apply(list!(1, list!(intern("quote"), list!()))).is_err());
+        assert!(apply(list!(intern("+"), 1)).is_err());
     }
 }

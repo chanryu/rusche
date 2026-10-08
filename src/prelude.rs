@@ -4,7 +4,7 @@ use crate::{
     parser::{ParseError, Parser},
 };
 
-const PRELUDE_SYMBOLS: [&str; 4] = [
+const PRELUDE_SYMBOLS: [&str; 3] = [
     // #t
     "(define #t 1)",
     // #f
@@ -16,13 +16,10 @@ const PRELUDE_SYMBOLS: [&str; 4] = [
     (define * num-multiply)
     (define / num-divide)
     (define % num-modulo)
-    (define < num-less)
     "#,
-    // = (eq? alias)
-    "(define = eq?)",
 ];
 
-const PRELUDE_MACROS: [&str; 7] = [
+const PRELUDE_MACROS: [&str; 8] = [
     // begin
     r#"
     (defmacro (begin . exprs)
@@ -52,6 +49,15 @@ const PRELUDE_MACROS: [&str; 7] = [
              ,@body)                  ; The body of the let becomes the lambda's body
           ,@(map cadr bindings)))     ; Apply the values to the lambda
     "#,
+    // let*
+    r#"
+    (defmacro (let* bindings . body)
+        (if (null? bindings)
+            `(begin ,@body)
+            (let ((binding (car bindings)))
+                `(let ((,(car binding) ,(cadr binding)))
+                    (let* ,(cdr bindings) ,@body)))))
+    "#,
     // while -- the helper `loop` is scoped inside a lambda so it does not leak into the caller
     r#"
     (defmacro (while condition . body)
@@ -78,7 +84,9 @@ const PRELUDE_MACROS: [&str; 7] = [
     "#,
 ];
 
-const PRELUDE_FUNCS: [&str; 12] = [
+const PRELUDE_FUNCS: [&str; 14] = [
+    // = (eq? alias)
+    "(define = eq?)",
     // caar, cadr, cdar, cddr
     r#"
     (define (caar lst) (car (car lst)))
@@ -114,11 +122,6 @@ const PRELUDE_FUNCS: [&str; 12] = [
                 (loop (cdr lst) (cons (fn (car lst)) acc))))
         (loop lst '()))
     "#,
-    // apply -- quote each argument so the callee does not re-evaluate them
-    r#"
-    (define (apply f args)
-        (eval (cons f (map (lambda (arg) (list 'quote arg)) args))))
-    "#,
     // append -- tail-recursive
     r#"
     (define (append lst1 lst2)
@@ -126,13 +129,39 @@ const PRELUDE_FUNCS: [&str; 12] = [
             (if (null? lst) acc (loop (cdr lst) (cons (car lst) acc))))
         (loop (reverse lst1) lst2))
     "#,
-    // pair
+    // length -- tail-recursive
     r#"
-    (define (pair lst1 lst2)
-        (cond ((and (null? lst1) (null? lst2)) '())
-              ((and (not (atom? lst1)) (not (atom? lst2)))
-               (cons (cons (car lst1) (cons (car lst2) '()))
-                     (pair (cdr lst1) (cdr lst2))))))
+    (define (length lst)
+        (define (loop lst n)
+            (if (null? lst) n (loop (cdr lst) (+ n 1))))
+        (loop lst 0))
+    "#,
+    // filter -- tail-recursive
+    r#"
+    (define (filter pred lst)
+        (define (loop lst acc)
+            (if (null? lst)
+                (reverse acc)
+                (loop (cdr lst)
+                      (if (pred (car lst))
+                          (cons (car lst) acc)
+                          acc))))
+        (loop lst '()))
+    "#,
+    // fold -- left fold, tail-recursive
+    r#"
+    (define (fold f init lst)
+        (if (null? lst)
+            init
+            (fold f (f init (car lst)) (cdr lst))))
+    "#,
+    // member
+    r#"
+    (define (member x lst)
+        (cond
+            ((null? lst) #f)
+            ((eq? (car lst) x) lst)
+            (#t (member x (cdr lst)))))
     "#,
     // assoc
     r#"
@@ -142,20 +171,26 @@ const PRELUDE_FUNCS: [&str; 12] = [
             ((eq? (car (car lst)) key) (car lst))  ; If the car of the first element matches the key, return the pair
             (#t (assoc key (cdr lst)))))           ; Otherwise, recursively search the rest of the list
     "#,
-    // subst
-    r#"
-    (define (subst new old lst)
-        (cond
-            ((null? lst) '())                                  ; If the list is empty, return an empty list
-            ((eq? (car lst) old)                               ; If the first element matches 'old'
-            (cons new (subst new old (cdr lst))))              ; Replace it with 'new' and recurse on the rest
-            (#t (cons (car lst) (subst new old (cdr lst))))))  ; Otherwise, keep the first element and recurse
-    "#,
     // numeric operations
     r#"
-    (define (> a b) (< b a))
-    (define (<= x y) (or (< x y) (= x y)))
-    (define (>= x y) (or (> x y) (= x y)))
+    (define (< a b . rest)
+        (if (num-less a b)
+            (if (null? rest) #t (apply < (cons b rest)))
+            #f))
+    (define (<= a b . rest)
+        (if (or (num-less a b) (= a b))
+            (if (null? rest) #t (apply <= (cons b rest)))
+            #f))
+    (define (> a b . rest)
+        (apply < (reverse (cons a (cons b rest)))))
+    (define (>= a b . rest)
+        (apply <= (reverse (cons a (cons b rest)))))
+    (define (abs x)
+        (if (< x 0) (- x) x))
+    (define (min a . rest)
+        (fold (lambda (acc x) (if (< x acc) x acc)) a rest))
+    (define (max a . rest)
+        (fold (lambda (acc x) (if (< acc x) x acc)) a rest))
     "#,
 ];
 

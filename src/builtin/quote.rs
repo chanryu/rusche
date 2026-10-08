@@ -1,5 +1,5 @@
 use crate::eval::{eval, EvalContext, EvalError, EvalResult};
-use crate::expr::{Expr, NIL};
+use crate::expr::{intern, Expr, NIL};
 use crate::list::List;
 use crate::utils::get_exact_1_arg;
 
@@ -14,7 +14,7 @@ pub fn quote(proc_name: &str, args: &List, _context: &EvalContext) -> EvalResult
 
 pub fn quasiquote(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
-    let mut exprs = quasiquote_expr(expr, context)?;
+    let mut exprs = quasiquote_expr(expr, context, 1)?;
     if exprs.len() == 1 {
         Ok(exprs.remove(0))
     } else {
@@ -24,7 +24,11 @@ pub fn quasiquote(proc_name: &str, args: &List, context: &EvalContext) -> EvalRe
     }
 }
 
-fn quasiquote_expr(expr: &Expr, context: &EvalContext) -> Result<Vec<Expr>, EvalError> {
+fn quasiquote_expr(
+    expr: &Expr,
+    context: &EvalContext,
+    level: usize,
+) -> Result<Vec<Expr>, EvalError> {
     let Expr::List(list, _) = expr else {
         return Ok(vec![expr.clone()]);
     };
@@ -40,18 +44,38 @@ fn quasiquote_expr(expr: &Expr, context: &EvalContext) -> Result<Vec<Expr>, Eval
 
     let mut exprs = Vec::new();
     match car_name {
+        Some(QUASIQUOTE) => {
+            let Some(cadr) = cons.cadr() else {
+                return Err(EvalError {
+                    message: format!("{QUASIQUOTE}: missing argument"),
+                    span: expr.span(),
+                });
+            };
+            let processed = expect_one(quasiquote_expr(cadr, context, level + 1)?, QUASIQUOTE)?;
+            exprs.push(Expr::from(vec![intern(QUASIQUOTE), processed]));
+        }
         Some(UNQUOTE) => {
-            if let Some(cadr) = cons.cadr() {
-                exprs.push(eval(cadr, context)?);
-            } else {
+            let Some(cadr) = cons.cadr() else {
                 return Err(EvalError {
                     message: format!("{UNQUOTE}: missing argument"),
                     span: expr.span(),
                 });
+            };
+            if level == 1 {
+                exprs.push(eval(cadr, context)?);
+            } else {
+                let processed = expect_one(quasiquote_expr(cadr, context, level - 1)?, UNQUOTE)?;
+                exprs.push(Expr::from(vec![intern(UNQUOTE), processed]));
             }
         }
         Some(UNQUOTE_SPLICING) => {
-            if let Some(cadr) = cons.cadr() {
+            let Some(cadr) = cons.cadr() else {
+                return Err(EvalError {
+                    message: format!("{UNQUOTE_SPLICING}: argument missing"),
+                    span: expr.span(),
+                });
+            };
+            if level == 1 {
                 match eval(cadr, context)? {
                     Expr::List(list, _) => {
                         // TODO: implement consuming `into_iter()`
@@ -67,22 +91,31 @@ fn quasiquote_expr(expr: &Expr, context: &EvalContext) -> Result<Vec<Expr>, Eval
                     }
                 }
             } else {
-                return Err(EvalError {
-                    message: format!("{UNQUOTE_SPLICING}: argument missing"),
-                    span: expr.span(),
-                });
+                let processed =
+                    expect_one(quasiquote_expr(cadr, context, level - 1)?, UNQUOTE_SPLICING)?;
+                exprs.push(Expr::from(vec![intern(UNQUOTE_SPLICING), processed]));
             }
         }
         _ => {
             let mut v = Vec::with_capacity(list.len());
             for expr in list.iter() {
-                v.extend(quasiquote_expr(expr, context)?);
+                v.extend(quasiquote_expr(expr, context, level)?);
             }
             exprs.push(Expr::from(v));
         }
     }
 
     Ok(exprs)
+}
+
+fn expect_one(mut exprs: Vec<Expr>, form: &str) -> Result<Expr, EvalError> {
+    if exprs.len() == 1 {
+        Ok(exprs.remove(0))
+    } else {
+        Err(EvalError::from(format!(
+            "{form}: expects only 1 argument"
+        )))
+    }
 }
 
 #[cfg(test)]
@@ -188,5 +221,28 @@ mod tests {
         // `(0 (unquote-splicing) 2) => error
         let result = quasiquote(list!(list!(0, list!(intern(UNQUOTE_SPLICING)), 2)));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_quasiquote_nested() {
+        setup_native_proc_test!(quasiquote, env);
+
+        env.define_native_proc("+", crate::builtin::num::add);
+
+        // ``(a ,,(+ 1 2)) => (quasiquote (a (unquote 3)))
+        let result = quasiquote(list!(list!(
+            intern(QUASIQUOTE),
+            list!(
+                intern("a"),
+                list!(
+                    intern(UNQUOTE),
+                    list!(intern(UNQUOTE), list!(intern("+"), 1, 2))
+                )
+            )
+        )));
+        assert_eq!(
+            result,
+            Ok(list!(intern(QUASIQUOTE), list!(intern("a"), list!(intern(UNQUOTE), 3))).into())
+        );
     }
 }

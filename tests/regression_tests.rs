@@ -172,6 +172,18 @@ fn apply_does_not_reevaluate_arguments() {
     assert!(eval_str("(apply car 1)").starts_with("Err:"));
 }
 
+#[test]
+fn apply_passes_values_to_macros() {
+    // Macros must see the value itself, not a `(quote ...)` wrapper.
+    let e = Evaluator::with_prelude();
+    let result = eval_all(
+        &e,
+        "(defmacro (m x) `(list 'got ,x)) (apply m (list 42))",
+    )
+    .unwrap();
+    assert_eq!(result.to_string(), "(got 42)");
+}
+
 // B9 -- covered by `test_cxxr` in prelude_tests.rs; `let` must still work after the swap.
 #[test]
 fn let_after_cadr_fix() {

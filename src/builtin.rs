@@ -1,26 +1,34 @@
 pub mod quote;
 
+mod convert;
+mod list;
 mod num;
-mod primitive;
+mod proc;
+mod special;
 mod str;
+mod sym;
 
 use std::rc::Rc;
 
 use crate::env::Env;
 
 pub fn load_builtin(env: &Rc<Env>) {
-    // lisp primitives
-    env.define_native_proc("atom?", primitive::atom);
-    env.define_native_proc("car", primitive::car);
-    env.define_native_proc("cdr", primitive::cdr);
-    env.define_native_proc("cons", primitive::cons);
-    env.define_native_proc("define", primitive::define);
-    env.define_native_proc("defmacro", primitive::defmacro);
-    env.define_native_proc("eq?", primitive::eq);
-    env.define_native_proc("eval", primitive::eval_);
-    env.define_native_proc("if", primitive::if_);
-    env.define_native_proc("lambda", primitive::lambda);
-    env.define_native_proc("set!", primitive::set);
+    // special forms and evaluator ops
+    env.define_native_proc("apply", special::apply);
+    env.define_native_proc("define", special::define);
+    env.define_native_proc("defmacro", special::defmacro);
+    env.define_native_proc("eq?", special::eq);
+    env.define_native_proc("error", special::error);
+    env.define_native_proc("eval", special::eval_);
+    env.define_native_proc("if", special::if_);
+    env.define_native_proc("lambda", special::lambda);
+    env.define_native_proc("set!", special::set);
+
+    // list
+    env.define_native_proc("atom?", list::is_atom);
+    env.define_native_proc("car", list::car);
+    env.define_native_proc("cdr", list::cdr);
+    env.define_native_proc("cons", list::cons);
 
     // num
     env.define_native_proc("num?", num::is_num);
@@ -30,7 +38,6 @@ pub fn load_builtin(env: &Rc<Env>) {
     env.define_native_proc("num-divide", num::divide);
     env.define_native_proc("num-modulo", num::modulo);
     env.define_native_proc("num-less", num::less);
-    env.define_native_proc("num-parse", num::parse);
 
     // str
     env.define_native_proc("str?", str::is_str);
@@ -38,4 +45,16 @@ pub fn load_builtin(env: &Rc<Env>) {
     env.define_native_proc("str-compare", str::compare);
     env.define_native_proc("str-length", str::length);
     env.define_native_proc("str-slice", str::slice);
+
+    // sym
+    env.define_native_proc("sym?", sym::is_sym);
+
+    // proc
+    env.define_native_proc("proc?", proc::is_proc);
+
+    // conversions
+    env.define_native_proc("num->str", convert::num_to_str);
+    env.define_native_proc("str->num", convert::str_to_num);
+    env.define_native_proc("sym->str", convert::sym_to_str);
+    env.define_native_proc("str->sym", convert::str_to_sym);
 }

@@ -25,3 +25,20 @@ fn test_quasiquote() {
     // `(0 ,@'(1 2 (3 4)) 5) => (0 1 2 (3 4) 5)
     assert_eq!(e.eval_to_str("`(0 ,@'(1 2 (3 4)) 5)"), "(0 1 2 (3 4) 5)");
 }
+
+#[test]
+fn test_quasiquote_nested() {
+    let e = Evaluator::with_builtin();
+
+    // ``(a ,,(num-add 1 2)) => (quasiquote (a (unquote 3)))
+    assert_eq!(
+        e.eval_to_str("``(a ,,(num-add 1 2))"),
+        "(quasiquote (a (unquote 3)))"
+    );
+
+    // Nested unquote-splicing stays quoted at the outer level
+    assert_eq!(
+        e.eval_to_str("``(a ,@'(1 2))"),
+        "(quasiquote (a (unquote-splicing (quote (1 2)))))"
+    );
+}
