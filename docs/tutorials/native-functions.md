@@ -1,8 +1,9 @@
 # Tutorial: Writing a native function
 
 Native functions are Rust procedures registered in a Rusche environment. They are
-how the host adds I/O, domain APIs, and other capabilities the core library does
-not provide.
+how a **host** adds I/O, domain APIs, and other capabilities the core language
+does not provide — the same mechanism [`rusche-cli`](../rusche-cli.md) uses for
+`display` and friends.
 
 A runnable version of the worked example lives in
 [`examples/tutorial-native`](../../examples/tutorial-native/main.rs).

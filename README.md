@@ -61,7 +61,7 @@ assert_eq!(result, Ok(Expr::from(2)));
 println!("{}", result.unwrap()); // this prints out 2
 ```
 
-To learn about how to implement a standalone interpreter with REPL, have a look at [examples/rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli/).
+For a standalone REPL and file runner built on the library, see [`rusche-cli`](#rusche-cli-example-host) below.
 
 #### Limits and garbage collection
 
@@ -77,9 +77,9 @@ To learn about how to implement a standalone interpreter with REPL, have a look 
   register a tracer with `Evaluator::register_foreign_tracer` so the collector can see them
   (see `vec.rs` in `rusche-cli`).
 
-### Rusche language
+### Core language
 
-Here's a quick example to show what's possible with the Rusche language -- the same program as [examples/fizzbuzz.rsc](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsc), here using the core procedure names.
+The core language is everything available from `Evaluator::default()` (built-ins plus the prelude). No I/O, no vectors, no Scheme name aliases — those are host concerns. Full detail: [language reference](docs/language-reference.md).
 
 ```scheme
 (define (fizzbuzz n)
@@ -89,23 +89,8 @@ Here's a quick example to show what's possible with the Rusche language -- the s
           ((div? n 5) "Buzz")
           (else n)))
 
-(display "Enter a number to fizzbuzz: ")
-
-(let ((n 1)
-      (m (num-parse (read)))) ; read a number from stdio and store it to `m`
-    (while (<= n m)
-        (display (fizzbuzz n)) (newline)
-        (set! n (+ n 1))))
-```
-
-`display`, `newline`, and `read` are I/O procedures provided by `rusche-cli`, not by the core library. `rusche-cli` also defines Scheme-style aliases for the core procedures (`number?`, `string-append`, `string->number`, `modulo`, ...); see [scheme.rs](https://github.com/chanryu/rusche/blob/main/examples/rusche-cli/builtin/scheme.rs). The example scripts use those aliases.
-
-To see more examples, please check out the *.rsc files in the [examples](https://github.com/chanryu/rusche/tree/main/examples) directory.
-
-You can run `rusche-cli` yourself, either as a REPL or on a script:
-```bash
-cargo run --example rusche-cli
-cargo run --example rusche-cli -- examples/fizzbuzz.rsc
+(map fizzbuzz '(1 2 3 4 5 15))
+; => (1 2 "Fizz" 4 "Buzz" "FizzBuzz")
 ```
 
 #### Differences from Scheme
@@ -115,14 +100,30 @@ cargo run --example rusche-cli -- examples/fizzbuzz.rsc
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
-- **Names.** Core procedures use short names (`num?`, `str-append`, `atom?`, `%`, ...) rather than the Scheme ones; `rusche-cli` adds the Scheme spellings as aliases.
+- **Names.** Core procedures use short names (`num?`, `str-append`, `atom?`, `%`, ...) rather than the usual Scheme spellings.
 - **Small surface.** `<`, `>`, `<=`, `>=` are binary; `if` without an else branch and `define` return `()`; there is no `let*`, named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
 - **Rest parameters** do use Scheme syntax: `(define (f a . rest) ...)` and `(lambda args ...)`.
 
+### `rusche-cli` (example host)
+
+[`rusche-cli`](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli/) is a sample interpreter built on the library. It is **not** part of the core language. On top of `Evaluator::with_prelude()`, it adds:
+
+- I/O: `display`, `newline`, `read`
+- A `vec` foreign type
+- Scheme-style aliases (`number?`, `modulo`, `string-append`, `string->number`, …)
+
+The `*.rsc` scripts under [`examples/`](https://github.com/chanryu/rusche/tree/main/examples) are written for this host (for example [fizzbuzz.rsc](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsc) uses `display` and `modulo`). See [`docs/rusche-cli.md`](docs/rusche-cli.md).
+
+```bash
+cargo run --example rusche-cli
+cargo run --example rusche-cli -- examples/fizzbuzz.rsc
+```
+
 ## Documentation
 
-- [Language reference](docs/language-reference.md) -- every special form and built-in procedure, with examples (kept in-repo so it can stay in sync with the code)
-- [API documentation on docs.rs](https://docs.rs/rusche/latest/rusche/) -- for embedding Rusche in a Rust application
+- [Language reference](docs/language-reference.md) -- core special forms and built-ins (crate only)
+- [`rusche-cli` extras](docs/rusche-cli.md) -- I/O, `vec`, and Scheme aliases provided by the example host
+- [API documentation on docs.rs](https://docs.rs/rusche/latest/rusche/) -- embedding Rusche in a Rust application
 - Tutorials for host applications:
   - [Embedding the interpreter](docs/tutorials/embedding.md)
   - [Writing a native function](docs/tutorials/native-functions.md)
