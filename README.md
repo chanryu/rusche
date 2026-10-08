@@ -121,5 +121,5 @@ cargo run --example rusche-cli -- examples/fizzbuzz.rsc
 
 ## Documentation
 
-- [Rusche Language Reference](https://github.com/chanryu/rusche/wiki/Rusche-Language-Reference) -- every special form and built-in procedure, with examples
+- [Language reference](docs/language-reference.md) -- every special form and built-in procedure, with examples (kept in-repo so it can stay in sync with the code)
 - [API documentation on docs.rs](https://docs.rs/rusche/latest/rusche/) -- for embedding Rusche in a Rust application
