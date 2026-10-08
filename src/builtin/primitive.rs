@@ -8,28 +8,6 @@ use crate::{
     utils::{get_2_or_3_args, get_exact_1_arg, get_exact_2_args, make_formal_args},
 };
 
-pub fn is_atom(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let expr = get_exact_1_arg(proc_name, args)?;
-
-    Ok(eval(expr, context)?.is_atom().into())
-}
-
-pub fn is_sym(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    if let Expr::Sym(_, _) = eval(get_exact_1_arg(proc_name, args)?, context)? {
-        Ok(true.into())
-    } else {
-        Ok(false.into())
-    }
-}
-
-pub fn is_proc(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    if let Expr::Proc(_, _) = eval(get_exact_1_arg(proc_name, args)?, context)? {
-        Ok(true.into())
-    } else {
-        Ok(false.into())
-    }
-}
-
 pub fn error(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     if args.is_nil() {
         return Err(EvalError::from(format!(
@@ -80,46 +58,6 @@ pub fn apply(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult 
 
 fn quote_expr(value: &Expr) -> Expr {
     crate::list::cons(intern("quote"), crate::list::cons(value.clone(), List::Nil)).into()
-}
-
-pub fn car(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let expr = get_exact_1_arg(proc_name, args)?;
-
-    if let Expr::List(List::Cons(cons), _) = eval(expr, context)? {
-        Ok(cons.car.clone())
-    } else {
-        Err(EvalError {
-            message: format!("{proc_name}: `{expr}` does not evaluate to a list."),
-            span: expr.span(),
-        })
-    }
-}
-
-pub fn cdr(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let expr = get_exact_1_arg(proc_name, args)?;
-
-    if let Expr::List(List::Cons(cons), _) = eval(expr, context)? {
-        Ok(cons.cdr.clone().into())
-    } else {
-        Err(EvalError {
-            message: format!("{proc_name}: `{expr}` does not evaluate to a list."),
-            span: expr.span(),
-        })
-    }
-}
-
-pub fn cons(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let (car, cdr) = get_exact_2_args(proc_name, args)?;
-
-    let car = eval(car, context)?;
-    let Expr::List(cdr, _) = eval(cdr, context)? else {
-        return Err(EvalError {
-            message: format!("{proc_name}: `{cdr}` does not evaluate to a list."),
-            span: cdr.span(),
-        });
-    };
-
-    Ok(crate::list::cons(car, cdr).into())
 }
 
 pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -311,83 +249,6 @@ mod tests {
     use crate::macros::*;
 
     #[test]
-    fn test_is_atom() {
-        setup_native_proc_test!(is_atom);
-
-        // (atom? 1) => #t
-        assert_eq!(is_atom(list!(1)), Ok(true.into()));
-
-        // (atom? "str") => #t
-        assert_eq!(is_atom(list!("str")), Ok(true.into()));
-
-        // (atom? '()) => #t
-        assert_eq!(is_atom(list!(list!(intern("quote"), NIL))), Ok(true.into()));
-
-        // (atom? '(1 2 3)) => #f
-        assert_eq!(
-            is_atom(list!(list!(intern("quote"), list!(1, 2, 3)))),
-            Ok(false.into())
-        );
-    }
-
-    #[test]
-    fn test_car() {
-        setup_native_proc_test!(car);
-
-        // (car '(1 2 3)) => 1
-        assert_eq!(
-            car(list!(list!(intern("quote"), list!(1, 2, 3)))),
-            Ok(num(1))
-        );
-
-        // (car (1 2 3)) => err
-        assert!(car(list!(list!(1, 2, 3))).is_err());
-
-        // (car 1) => err
-        assert!(car(list!(1)).is_err());
-
-        // (car 1 2) => err
-        assert!(car(list!(1, 2)).is_err());
-    }
-
-    #[test]
-    fn test_cdr() {
-        setup_native_proc_test!(cdr);
-
-        // (cdr '(1 2 3)) => (2 3)
-        assert_eq!(
-            cdr(list!(list!(intern("quote"), list!(1, 2, 3)))),
-            Ok(list!(2, 3).into())
-        );
-
-        // (cdr (1 2 3)) => err
-        assert!(cdr(list!(list!(1, 2, 3))).is_err());
-
-        // (cdr 1) => err
-        assert!(cdr(list!(1)).is_err());
-
-        // (cdr '(1 2 3) 4) => err
-        assert!(cdr(list!(list!(intern("quote"), list!(1, 2, 3)), 4)).is_err());
-    }
-
-    #[test]
-    fn test_cons() {
-        setup_native_proc_test!(cons);
-
-        // (cons 1 '(2 3)) => (1 2 3)
-        assert_eq!(
-            cons(list!(1, list!(intern("quote"), list!(2, 3)))),
-            Ok(list!(1, 2, 3).into())
-        );
-
-        // (car 1 2) => err (cdr is not a list)
-        assert!(cons(list!(1, 2)).is_err());
-
-        // (car 1 2 3) => err (wrong number of arguments)
-        assert!(cons(list!(1, 2, 3)).is_err());
-    }
-
-    #[test]
     fn test_define() {
         setup_native_proc_test!(define, env);
 
@@ -491,29 +352,6 @@ mod tests {
     }
 
     #[test]
-    fn test_is_sym() {
-        setup_native_proc_test!(is_sym);
-
-        assert_eq!(
-            is_sym(list!(list!(intern("quote"), intern("foo")))),
-            Ok(true.into())
-        );
-        assert_eq!(is_sym(list!(1)), Ok(false.into()));
-        assert_eq!(is_sym(list!("foo")), Ok(false.into()));
-        assert!(is_sym(list!()).is_err());
-    }
-
-    #[test]
-    fn test_is_proc() {
-        setup_native_proc_test!(is_proc, env);
-
-        env.define_native_proc("atom?", is_atom);
-        assert_eq!(is_proc(list!(intern("atom?"))), Ok(true.into()));
-        assert_eq!(is_proc(list!(1)), Ok(false.into()));
-        assert!(is_proc(list!()).is_err());
-    }
-
-    #[test]
     fn test_error() {
         setup_native_proc_test!(error);
 
@@ -531,7 +369,7 @@ mod tests {
         setup_native_proc_test!(apply, env);
 
         env.define_native_proc("+", crate::builtin::num::add);
-        env.define_native_proc("car", car);
+        env.define_native_proc("car", crate::builtin::list::car);
 
         assert_eq!(
             apply(list!(intern("+"), list!(intern("quote"), list!(1, 2, 3)))),
