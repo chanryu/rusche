@@ -45,7 +45,7 @@ pub fn run_repl(evaluator: Evaluator) {
                 }
 
                 src.push_str(&text);
-                src.push_str("\n");
+                src.push('\n');
 
                 loop {
                     match parser.parse() {

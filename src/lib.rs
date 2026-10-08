@@ -4,7 +4,12 @@
 //! deliberately Scheme-*like*, not Scheme: it uses Scheme's syntax but keeps the core
 //! language small.
 //!
-//! To learn how to implement or embed a Rusche interpreter, please have a look at
+//! Tutorials for embedding Rusche in a host application:
+//! - [Embedding the interpreter](https://github.com/chanryu/rusche/blob/main/docs/tutorials/embedding.md)
+//! - [Writing a native function](https://github.com/chanryu/rusche/blob/main/docs/tutorials/native-functions.md)
+//! - [Writing a foreign object wrapper](https://github.com/chanryu/rusche/blob/main/docs/tutorials/foreign.md)
+//!
+//! For a full standalone interpreter with a REPL, see
 //! [rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli).
 //!
 //! To learn more about the Rusche language, see the

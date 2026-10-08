@@ -96,21 +96,23 @@ fn print_error(message: &str, src: &str, span: Option<Span>) {
             print_line(span.begin.line - 1);
         }
 
-        for line in span.begin.line..span.end.line + 1 {
+        for (line, text) in lines
+            .iter()
+            .enumerate()
+            .take(span.end.line + 1)
+            .skip(span.begin.line)
+        {
             print_line(line);
 
             let begin_col = if line == span.begin.line {
                 span.begin.column
             } else {
-                lines[line]
-                    .chars()
-                    .take_while(|c| c.is_whitespace())
-                    .count()
+                text.chars().take_while(|c| c.is_whitespace()).count()
             };
             let end_col = if line == span.end.line {
                 span.end.column
             } else {
-                lines[line].len()
+                text.len()
             };
             println!(
                 "{}{}{}",
