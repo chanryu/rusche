@@ -1,8 +1,9 @@
 # Tutorial: Writing a foreign object wrapper (`Foreign`)
 
 [`Foreign`](https://docs.rs/rusche/latest/rusche/type.Foreign.html) lets the host
-store arbitrary Rust values in the interpreter. Pair it with native procedures
-that construct and operate on those values.
+store arbitrary Rust values in the interpreter. The core language defines no
+foreign types; hosts add them. Pair a foreign value with native procedures that
+construct and operate on it — as [`rusche-cli`](../rusche-cli.md) does for `vec`.
 
 A small runnable example lives in
 [`examples/tutorial-foreign`](../../examples/tutorial-foreign/main.rs). The fuller

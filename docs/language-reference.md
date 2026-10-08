@@ -1,12 +1,29 @@
 # Rusche Language Reference
 
-> This file is the source of truth for the language. Prefer updating it here when
-> behaviour changes; the [GitHub wiki page](https://github.com/chanryu/rusche/wiki/Rusche-Language-Reference)
+> This file is the source of truth for the **core language**. Prefer updating it
+> here when behaviour changes; the [GitHub wiki page](https://github.com/chanryu/rusche/wiki/Rusche-Language-Reference)
 > can then be refreshed from this document.
+
+## Scope
+
+This reference covers only what the `rusche` crate provides:
+
+- **Built-ins** — native primitives loaded by `Evaluator::with_builtin()`
+- **Prelude** — macros and helpers loaded by `Evaluator::with_prelude()` / `Default`
+
+It does **not** document the example host [`rusche-cli`](rusche-cli.md). That
+application adds I/O (`display`, `read`, `newline`), a `vec` foreign type, and
+Scheme-style name aliases (`number?`, `modulo`, `string-append`, …). The
+`examples/*.rsc` scripts in this repository target `rusche-cli`, not a bare
+`Evaluator::default()`.
 
 ## Overview
 
-Rusche is a minimalist, zero-dependency language and library. This means that Rusche is not a "batteries-included" language; to make it truly useful as an embedded scripting language, you'll need to add your own "batteries" (such as native functions and custom data types like vectors or hashmaps). However, Rusche is far from a toy language. It provides a robust foundation suitable for commercial-grade production environments. Rusche supports the following features and constructs:
+Rusche is a minimalist, zero-dependency language and library. It is not
+"batteries-included": hosts add their own I/O, collections, and domain APIs via
+[native functions](tutorials/native-functions.md) and
+[`Foreign`](tutorials/foreign.md) objects. The core still provides a solid
+foundation:
 
 - Garbage collection
 - Tail-call optimization
@@ -25,7 +42,7 @@ Rusche supports the following data types.
 - `Symbol`: Name or identifier, e.g. `car`, `num?`, `+`
 - `List`: `()` or a chain of pairs ending in `()`, e.g. `(1 2 3)`. Lists are immutable.
 - `Procedure`: a closure, a macro, or a native procedure.
-- `Foreign`: A wrapper data type to support external objects. See the [foreign object tutorial](tutorials/foreign.md) and [vec.rs](../examples/rusche-cli/builtin/vec.rs).
+- `Foreign`: A host-defined wrapper for external Rust objects. The core language has no built-in foreign types; see the [foreign object tutorial](tutorials/foreign.md). (`rusche-cli`'s [`vec`](rusche-cli.md#vectors) is one host example.)
 
 ## Boolean Values
 
@@ -104,7 +121,7 @@ The following forms and procedures are implemented via native functions.
   (defmacro (unless condition . body)
     `(if ,condition () (begin ,@body)))
 
-  (unless (= 1 2) (display "Not equal"))  ; Prints "Not equal"
+  (unless (= 1 2) 'ok)  ; ok
   ```
   Both `(defmacro (name . params) body)` and `(defmacro name params body)` are accepted.
 
@@ -301,14 +318,6 @@ Procedures: `append`, `apply`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `list`, 
   (str-slice "example" 1 -1) ; "xampl"
   ```
 
-## `rusche-cli`
-
-The example interpreter [`rusche-cli`](../examples/rusche-cli) adds, on top of the core language:
-
-- I/O: `display` (strings are printed without quotes), `newline`, `read`
-- A `vec` foreign type: `vec?`, `vec-make`, `vec-push`, `vec-pop`, `vec-get`
-- Scheme-style aliases for the core procedures: `number?`, `modulo`, `string->number`, `string?`, `string-append`, `string-compare`, `string-length`, `substring`, `pair?` (see [scheme.rs](../examples/rusche-cli/builtin/scheme.rs))
-
 ## Differences from Scheme
 
 - **Truthiness.** `()` is the only false value; `#t` is `1` and `#f` is `()`. There is no boolean type.
@@ -316,6 +325,11 @@ The example interpreter [`rusche-cli`](../examples/rusche-cli) adds, on top of t
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
-- **Names.** Core procedures use short names (`num?`, `str-append`, `atom?`, `%`, ...) rather than the Scheme ones; `rusche-cli` provides the Scheme spellings as aliases.
+- **Names.** Core procedures use short names (`num?`, `str-append`, `atom?`, `%`, ...) rather than the usual Scheme spellings. Scheme aliases are a [`rusche-cli`](rusche-cli.md#scheme-style-aliases) convenience, not part of the core.
 - **Small surface.** `<`, `>`, `<=`, `>=` are binary; `if` without an else branch and `define` return `()`; there is no `let*`, named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
 - **Rest parameters** do use Scheme syntax: `(define (f a . rest) ...)` and `(lambda args ...)`.
+
+## See also
+
+- [`rusche-cli`](rusche-cli.md) — example host extras (I/O, `vec`, Scheme aliases)
+- [Embedding tutorials](tutorials/embedding.md) — using the core crate from Rust

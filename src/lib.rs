@@ -9,13 +9,14 @@
 //! - [Writing a native function](https://github.com/chanryu/rusche/blob/main/docs/tutorials/native-functions.md)
 //! - [Writing a foreign object wrapper](https://github.com/chanryu/rusche/blob/main/docs/tutorials/foreign.md)
 //!
-//! For a full standalone interpreter with a REPL, see
-//! [rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli).
+//! The [language reference](https://github.com/chanryu/rusche/blob/main/docs/language-reference.md)
+//! documents the **core language** (built-ins and prelude). The example host
+//! [rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli) adds I/O, a
+//! vector type, and Scheme-style aliases — see
+//! [rusche-cli.md](https://github.com/chanryu/rusche/blob/main/docs/rusche-cli.md).
+//! Example `*.rsc` scripts target that host, not a bare evaluator.
 //!
-//! To learn more about the Rusche language, see the
-//! [language reference](https://github.com/chanryu/rusche/blob/main/docs/language-reference.md),
-//! the *.rsc files in the [examples](https://github.com/chanryu/rusche/tree/main/examples/) directory,
-//! or the prelude in [src/prelude.rs](https://github.com/chanryu/rusche/blob/main/src/prelude.rs).
+//! Also see the prelude in [src/prelude.rs](https://github.com/chanryu/rusche/blob/main/src/prelude.rs).
 
 mod builtin;
 mod prelude;
