@@ -76,10 +76,6 @@ pub fn less(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     logical_operation(proc_name, args, context, |lhs, rhs| lhs < rhs)
 }
 
-pub fn greater(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    logical_operation(proc_name, args, context, |lhs, rhs| lhs > rhs)
-}
-
 pub fn parse(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let text = eval_into_str(proc_name, get_exact_1_arg(proc_name, args)?, context)?;
 
@@ -227,20 +223,6 @@ mod tests {
 
         // (< 2 1) => #f
         assert_eq!(less(list!(2, 1)), Ok(false.into()));
-    }
-
-    #[test]
-    fn test_greater() {
-        setup_native_proc_test!(greater);
-
-        // (> 1 2) => #t
-        assert_eq!(greater(list!(1, 2)), Ok(false.into()));
-
-        // (> 1 1) => #f
-        assert_eq!(greater(list!(1, 1)), Ok(false.into()));
-
-        // (> 2 1) => #f
-        assert_eq!(greater(list!(2, 1)), Ok(true.into()));
     }
 
     #[test]
