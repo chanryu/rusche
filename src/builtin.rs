@@ -10,7 +10,6 @@ use crate::env::Env;
 
 pub fn load_builtin(env: &Rc<Env>) {
     // lisp primitives
-    env.define_native_proc("apply", primitive::apply);
     env.define_native_proc("atom?", primitive::atom);
     env.define_native_proc("car", primitive::car);
     env.define_native_proc("cdr", primitive::cdr);
@@ -31,7 +30,6 @@ pub fn load_builtin(env: &Rc<Env>) {
     env.define_native_proc("num-divide", num::divide);
     env.define_native_proc("num-modulo", num::modulo);
     env.define_native_proc("num-less", num::less);
-    env.define_native_proc("num-greater", num::greater);
     env.define_native_proc("num-parse", num::parse);
 
     // str

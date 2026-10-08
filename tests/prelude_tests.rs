@@ -36,11 +36,22 @@ fn test_list() {
     assert_eq!(eval_str("(list 1)"), "(1)");
     assert_eq!(eval_str("(list 1 2 3)"), "(1 2 3)");
     assert_eq!(eval_str("(list 1 '(2 3))"), "(1 (2 3))");
+    // `list` is a procedure, so it can be passed around
+    assert_eq!(eval_str("(map list '(1 2))"), "((1) (2))");
+    assert_eq!(eval_str("(apply list '(a b))"), "(a b)");
 }
 
 #[test]
 fn test_map() {
     assert_eq!(eval_str("(map (lambda (x) (* x 2)) '(1 2 3))"), "(2 4 6)");
+}
+
+#[test]
+fn test_greater() {
+    assert_eq!(eval_str("(> 2 1)"), "1");
+    assert_eq!(eval_str("(> 1 2)"), "()");
+    assert_eq!(eval_str("(> 1 1)"), "()");
+    assert_eq!(eval_str("(apply > '(2 1))"), "1");
 }
 
 #[test]

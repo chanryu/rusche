@@ -17,13 +17,12 @@ const PRELUDE_SYMBOLS: [&str; 4] = [
     (define / num-divide)
     (define % num-modulo)
     (define < num-less)
-    (define > num-greater)
     "#,
     // = (eq? alias)
     "(define = eq?)",
 ];
 
-const PRELUDE_MACROS: [&str; 8] = [
+const PRELUDE_MACROS: [&str; 7] = [
     // begin
     r#"
     (defmacro (begin . exprs)
@@ -53,13 +52,6 @@ const PRELUDE_MACROS: [&str; 8] = [
              ,@body)                  ; The body of the let becomes the lambda's body
           ,@(map cadr bindings)))     ; Apply the values to the lambda
     "#,
-    // list
-    r#"
-    (defmacro (list . args)
-        (if (null? args)
-            '()
-            `(cons ,(car args) (list ,@(cdr args)))))
-    "#,
     // while -- the helper `loop` is scoped inside a lambda so it does not leak into the caller
     r#"
     (defmacro (while condition . body)
@@ -86,7 +78,7 @@ const PRELUDE_MACROS: [&str; 8] = [
     "#,
 ];
 
-const PRELUDE_FUNCS: [&str; 10] = [
+const PRELUDE_FUNCS: [&str; 12] = [
     // caar, cadr, cdar, cddr
     r#"
     (define (caar lst) (car (car lst)))
@@ -101,6 +93,10 @@ const PRELUDE_FUNCS: [&str; 10] = [
     // null?
     r#"
     (define (null? e) (eq? e '()))
+    "#,
+    // list -- a procedure so it can be passed to map/apply
+    r#"
+    (define (list . args) args)
     "#,
     // reverse -- tail-recursive so long lists do not hit the call depth limit
     r#"
@@ -117,6 +113,11 @@ const PRELUDE_FUNCS: [&str; 10] = [
                 (reverse acc)
                 (loop (cdr lst) (cons (fn (car lst)) acc))))
         (loop lst '()))
+    "#,
+    // apply -- quote each argument so the callee does not re-evaluate them
+    r#"
+    (define (apply f args)
+        (eval (cons f (map (lambda (arg) (list 'quote arg)) args))))
     "#,
     // append -- tail-recursive
     r#"
@@ -152,6 +153,7 @@ const PRELUDE_FUNCS: [&str; 10] = [
     "#,
     // numeric operations
     r#"
+    (define (> a b) (< b a))
     (define (<= x y) (or (< x y) (= x y)))
     (define (>= x y) (or (> x y) (= x y)))
     "#,

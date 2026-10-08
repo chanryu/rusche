@@ -1,40 +1,12 @@
 use std::rc::Rc;
 
 use crate::{
-    builtin::quote::QUOTE,
     eval::{eval, eval_tail, EvalContext, EvalError, EvalResult},
-    expr::{intern, Expr, NIL},
+    expr::{Expr, NIL},
     list::List,
-    macros::list,
     proc::Proc,
     utils::{get_2_or_3_args, get_exact_1_arg, get_exact_2_args, make_formal_args},
 };
-
-pub fn apply(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let (proc_expr, args_expr) = get_exact_2_args(proc_name, args)?;
-
-    let Expr::Proc(proc, _) = eval(proc_expr, context)? else {
-        return Err(EvalError {
-            message: format!("{proc_name}: `{proc_expr}` does not evaluate to a procedure."),
-            span: proc_expr.span(),
-        });
-    };
-    let Expr::List(arg_list, _) = eval(args_expr, context)? else {
-        return Err(EvalError {
-            message: format!("{proc_name}: `{args_expr}` does not evaluate to a list."),
-            span: args_expr.span(),
-        });
-    };
-
-    // The arguments are already evaluated; quote them so the callee does not evaluate them again.
-    let quoted_args: List = arg_list
-        .iter()
-        .map(|arg| Expr::from(list!(intern(QUOTE), arg.clone())))
-        .collect::<Vec<_>>()
-        .into();
-
-    proc.invoke(&quoted_args, context)
-}
 
 pub fn atom(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
