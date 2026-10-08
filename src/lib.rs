@@ -1,6 +1,8 @@
 //! Rusche is a library for writing an interpreter for a Scheme-like language in Rust.
-//! It lets you embed a Scheme interpreter into your Rust applications, allowing you
-//! to use Scheme as a scripting language or to create standalone Scheme interpreters.
+//! It lets you embed a Scheme-like interpreter into your Rust applications, allowing you
+//! to use it as a scripting language or to create standalone interpreters. Rusche is
+//! deliberately Scheme-*like*, not Scheme: it uses Scheme's syntax but keeps the core
+//! language small.
 //!
 //! To learn how to implement or embed a Rusche interpreter, please have a look at
 //! [rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli).
@@ -35,7 +37,7 @@ pub use expr::{intern, Expr, Foreign, NIL};
 pub use lexer::{tokenize, LexError, Lexer};
 pub use list::{cons, Cons, List, ListIter};
 pub use parser::{ParseError, Parser};
-pub use proc::{NativeFunc, Proc};
+pub use proc::{FormalArgs, NativeFunc, Proc};
 pub use span::{Loc, Span};
 pub use token::Token;
 pub use utils::{eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args};

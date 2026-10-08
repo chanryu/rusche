@@ -1,12 +1,23 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::rc::Rc;
 
+use crate::env::Env;
 use crate::eval::{eval, eval_tail, EvalContext, EvalError, EvalResult};
-use crate::expr::NIL;
+use crate::expr::{Expr, NIL};
 use crate::list::List;
 
 /// The function signature for native procedures -- [`Proc::Native`].
 pub type NativeFunc = fn(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult;
+
+/// The formal parameters of a closure or macro.
+///
+/// `names` are bound positionally. `rest`, if present, is bound to a list of every remaining
+/// argument -- it comes from `(a b . rest)` or from a bare symbol such as `(lambda args ...)`.
+#[derive(Clone, Debug, Default, PartialEq, Hash)]
+pub struct FormalArgs {
+    pub names: Vec<String>,
+    pub rest: Option<String>,
+}
 
 /// The enum that represents all procedure variants in the Rusche language.
 ///
@@ -18,7 +29,7 @@ pub enum Proc {
     /// Closures can be created by the `lambda` form.
     Closure {
         name: Option<String>,
-        formal_args: Rc<[String]>,
+        formal_args: Rc<FormalArgs>,
         body: Rc<List>,
         outer_context: EvalContext,
     },
@@ -28,7 +39,7 @@ pub enum Proc {
     /// Macros can be created by the `defmacro` form.
     Macro {
         name: Option<String>,
-        formal_args: Rc<[String]>,
+        formal_args: Rc<FormalArgs>,
         body: Rc<List>,
     },
 
@@ -155,9 +166,41 @@ impl PartialEq for Proc {
     }
 }
 
+/// Binds `actual_args` to `formal_args` in `env`, passing each argument through `value`
+/// (evaluation for closures, identity for macros).
+fn bind_args(
+    proc_name: &str,
+    formal_args: &FormalArgs,
+    actual_args: &List,
+    env: &Env,
+    mut value: impl FnMut(&Expr) -> EvalResult,
+) -> Result<(), EvalError> {
+    let mut actual_args = actual_args.iter();
+
+    for name in &formal_args.names {
+        let expr = actual_args
+            .next()
+            .ok_or_else(|| EvalError::from(format!("{proc_name}: too few args")))?;
+        env.define(name, value(expr)?);
+    }
+
+    match &formal_args.rest {
+        Some(rest) => {
+            let values = actual_args.map(value).collect::<Result<Vec<_>, _>>()?;
+            env.define(rest, List::from(values));
+        }
+        None if actual_args.next().is_some() => {
+            return Err(EvalError::from(format!("{proc_name}: too many args")));
+        }
+        None => {}
+    }
+
+    Ok(())
+}
+
 fn eval_closure(
     closure_name: Option<&str>,
-    formal_args: &[String],
+    formal_args: &FormalArgs,
     body: &List,
     outer_context: &EvalContext,
     actual_args: &List,
@@ -165,28 +208,13 @@ fn eval_closure(
 ) -> EvalResult {
     let closure_name = closure_name.unwrap_or("unnamed-closure");
     let closure_context = EvalContext::derive_from(outer_context);
-    let mut formal_args = formal_args.iter();
-    let mut actual_args = actual_args.iter();
-
-    loop {
-        if let Some(formal_arg) = formal_args.next() {
-            if let Some(name) = get_variadic_args_name(formal_arg) {
-                closure_context.env.define(name, actual_args);
-                break;
-            }
-
-            let expr = actual_args
-                .next()
-                .ok_or(EvalError::from(format!("{}: too few args", closure_name)))?;
-
-            closure_context.env.define(formal_arg, eval(expr, context)?);
-        } else {
-            if actual_args.next().is_none() {
-                break;
-            }
-            return Err(EvalError::from(format!("{}: too many args", closure_name)));
-        }
-    }
+    bind_args(
+        closure_name,
+        formal_args,
+        actual_args,
+        &closure_context.env,
+        |expr| eval(expr, context),
+    )?;
 
     let mut iter = body.iter().peekable();
     while let Some(expr) = iter.next() {
@@ -201,35 +229,20 @@ fn eval_closure(
 
 fn eval_macro(
     macro_name: Option<&str>,
-    formal_args: &[String],
+    formal_args: &FormalArgs,
     body: &List,
     actual_args: &List,
     context: &EvalContext,
 ) -> EvalResult {
     let macro_name = macro_name.unwrap_or("unnamed-macro");
     let macro_context = EvalContext::derive_from(context);
-    let mut formal_args = formal_args.iter();
-    let mut actual_args = actual_args.iter();
-
-    loop {
-        if let Some(formal_arg) = formal_args.next() {
-            if let Some(name) = get_variadic_args_name(formal_arg) {
-                macro_context.env.define(name, actual_args);
-                break;
-            }
-
-            let expr = actual_args
-                .next()
-                .ok_or(EvalError::from(format!("{}: too few args", macro_name)))?;
-
-            macro_context.env.define(formal_arg, expr.clone());
-        } else {
-            if actual_args.next().is_none() {
-                break;
-            }
-            return Err(EvalError::from(format!("{}: too many args", macro_name)));
-        }
-    }
+    bind_args(
+        macro_name,
+        formal_args,
+        actual_args,
+        &macro_context.env,
+        |expr| Ok(expr.clone()),
+    )?;
 
     let mut iter = body.iter().peekable();
     while let Some(expr) = iter.next() {
@@ -243,30 +256,16 @@ fn eval_macro(
     Ok(NIL)
 }
 
-/// Extracts the name of variadic arguments from the given name.
-///
-/// If the name starts with `*` and has more than one character,
-/// returns the rest of the name. Otherwise, returns `None`.
-///
-fn get_variadic_args_name(name: &str) -> Option<&str> {
-    if name.starts_with("*") && name.len() > 1 {
-        Some(&name[1..])
-    } else {
-        None
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{eval::Evaluator, macros::list};
 
-    #[test]
-    fn test_get_variadic_args_name() {
-        assert_eq!(get_variadic_args_name("args"), None);
-        assert_eq!(get_variadic_args_name("*args"), Some("args"));
-        assert_eq!(get_variadic_args_name("*a"), Some("a"));
-        assert_eq!(get_variadic_args_name("*"), None);
+    fn formal_args(names: &[&str]) -> Rc<FormalArgs> {
+        Rc::new(FormalArgs {
+            names: names.iter().map(|s| s.to_string()).collect(),
+            rest: None,
+        })
     }
 
     #[test]
@@ -276,14 +275,14 @@ mod tests {
 
         let closure = Proc::Closure {
             name: Some("closure".into()),
-            formal_args: vec!["a".into(), "b".into()].into(),
+            formal_args: formal_args(&["a", "b"]),
             body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
 
         let closure_same = Proc::Closure {
             name: Some("closure".into()),
-            formal_args: vec!["a".into(), "b".into()].into(),
+            formal_args: formal_args(&["a", "b"]),
             body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
@@ -291,7 +290,7 @@ mod tests {
 
         let closure_name_diff = Proc::Closure {
             name: None,
-            formal_args: vec!["a".into(), "b".into()].into(),
+            formal_args: formal_args(&["a", "b"]),
             body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
@@ -299,7 +298,7 @@ mod tests {
 
         let closure_args_diff = Proc::Closure {
             name: None,
-            formal_args: vec!["a".into(), "b".into(), "c".into()].into(),
+            formal_args: formal_args(&["a", "b", "c"]),
             body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
@@ -307,7 +306,7 @@ mod tests {
 
         let closure_body_diff = Proc::Closure {
             name: None,
-            formal_args: vec!["a".into(), "b".into(), "c".into()].into(),
+            formal_args: formal_args(&["a", "b", "c"]),
             body: Rc::new(list!(1, 2, 3, 4)),
             outer_context: context.clone(),
         };
@@ -315,7 +314,7 @@ mod tests {
 
         let closure_context_diff = Proc::Closure {
             name: None,
-            formal_args: vec!["a".into(), "b".into(), "c".into()].into(),
+            formal_args: formal_args(&["a", "b", "c"]),
             body: Rc::new(list!(1, 2, 3, 4)),
             outer_context: EvalContext::derive_from(&context),
         };
@@ -342,7 +341,7 @@ mod tests {
 
         let macro_ = |name: &str| Proc::Macro {
             name: Some(name.into()),
-            formal_args: vec!["x".into()].into(),
+            formal_args: formal_args(&["x"]),
             body: Rc::new(list!(1)),
         };
         assert_eq!(macro_("m"), macro_("m"));
@@ -354,7 +353,7 @@ mod tests {
         let evaluator = Evaluator::new();
         let closure = Proc::Closure {
             name: Some("m".into()),
-            formal_args: vec!["x".into()].into(),
+            formal_args: formal_args(&["x"]),
             body: Rc::new(list!(1)),
             outer_context: evaluator.context().clone(),
         };
@@ -373,19 +372,19 @@ mod tests {
 
         let closure1 = Proc::Closure {
             name: Some("closure".into()),
-            formal_args: vec!["a".into(), "b".into()].into(),
+            formal_args: formal_args(&["a", "b"]),
             body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
         let closure2 = Proc::Closure {
             name: Some("closure".into()),
-            formal_args: vec!["a".into(), "b".into()].into(),
+            formal_args: formal_args(&["a", "b"]),
             body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
         let closure3 = Proc::Closure {
             name: Some("closure".into()),
-            formal_args: vec!["a".into()].into(),
+            formal_args: formal_args(&["a"]),
             body: Rc::new(list!(1, 2)),
             outer_context: context.clone(),
         };

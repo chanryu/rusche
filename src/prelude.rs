@@ -26,12 +26,12 @@ const PRELUDE_SYMBOLS: [&str; 4] = [
 const PRELUDE_MACROS: [&str; 8] = [
     // begin
     r#"
-    (defmacro begin (*exprs)
+    (defmacro (begin . exprs)
         `((lambda () ,@exprs)))
     "#,
     // cond
     r#"
-    (defmacro (cond *clauses)
+    (defmacro (cond . clauses)
         (if (null? clauses)
             #f                                          ; No more clauses, return #f by default
             (let ((clause (car clauses)))
@@ -43,26 +43,26 @@ const PRELUDE_MACROS: [&str; 8] = [
     "#,
     // defun
     r#"
-    (defmacro defun (name args *body)
+    (defmacro (defun name args . body)
         `(define ,name (lambda ,args ,@body)))
     "#,
     // let
     r#"
-    (defmacro let (bindings *body)
+    (defmacro (let bindings . body)
         `((lambda ,(map car bindings) ; Get the list of variable names
              ,@body)                  ; The body of the let becomes the lambda's body
           ,@(map cadr bindings)))     ; Apply the values to the lambda
     "#,
     // list
     r#"
-    (defmacro list (*args)
+    (defmacro (list . args)
         (if (null? args)
             '()
             `(cons ,(car args) (list ,@(cdr args)))))
     "#,
     // while -- the helper `loop` is scoped inside a lambda so it does not leak into the caller
     r#"
-    (defmacro while (condition *body)
+    (defmacro (while condition . body)
         `((lambda ()
             (define (loop)
                 (if ,condition (begin ,@body (loop))))
@@ -70,14 +70,14 @@ const PRELUDE_MACROS: [&str; 8] = [
     "#,
     // and -- short-circuits, returns the last operand or #f
     r#"
-    (defmacro and (*args)
+    (defmacro (and . args)
         (cond ((null? args) #t)
               ((null? (cdr args)) (car args))
               (else `(if ,(car args) (and ,@(cdr args)) #f))))
     "#,
     // or -- short-circuits, returns the first truthy operand or #f
     r#"
-    (defmacro or (*args)
+    (defmacro (or . args)
         (cond ((null? args) #f)
               ((null? (cdr args)) (car args))
               (else `((lambda (or-value)

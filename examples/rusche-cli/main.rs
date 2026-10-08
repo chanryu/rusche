@@ -4,7 +4,7 @@ mod repl;
 use colored::Colorize;
 use rusche::{tokenize, Evaluator, LexError, Loc, ParseError, Parser, Span};
 
-use builtin::{load_io_procs, load_vec_procs};
+use builtin::{load_io_procs, load_scheme_aliases, load_vec_procs};
 use repl::run_repl;
 
 fn main() {
@@ -14,6 +14,7 @@ fn main() {
 
     load_io_procs(evaluator.context());
     load_vec_procs(&evaluator);
+    load_scheme_aliases(&evaluator);
 
     if let Some(path) = args.next() {
         run_file(evaluator, &path);
