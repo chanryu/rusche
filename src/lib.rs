@@ -7,9 +7,10 @@
 //! To learn how to implement or embed a Rusche interpreter, please have a look at
 //! [rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli).
 //!
-//! To learn more about the Rusche language, please have a look at *.rsc files in
-//! the [examples](https://github.com/chanryu/rusche/tree/main/examples/) directory, or
-//! have a look at the preludes in the [src/prelude.rs](https://github.com/chanryu/rusche/blob/main/src/prelude.rs) file.
+//! To learn more about the Rusche language, see the
+//! [language reference](https://github.com/chanryu/rusche/blob/main/docs/language-reference.md),
+//! the *.rsc files in the [examples](https://github.com/chanryu/rusche/tree/main/examples/) directory,
+//! or the prelude in [src/prelude.rs](https://github.com/chanryu/rusche/blob/main/src/prelude.rs).
 
 mod builtin;
 mod prelude;
