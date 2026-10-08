@@ -50,15 +50,15 @@ A GC tracer is registered so closures stored in a vector stay reachable. See the
 
 ## Scheme-style aliases
 
-Core procedures keep short names (`num?`, `%`, `str-append`, `num-parse`, …).
+Core procedures keep short names (`num?`, `%`, `str-append`, `str->num`, …).
 `rusche-cli` binds familiar Scheme spellings as aliases in the root environment:
 
 | Alias | Core name |
 | --- | --- |
 | `number?` | `num?` |
 | `modulo` | `%` |
-| `string->number` | `num-parse` |
-| `number->string` | `num-str` |
+| `string->number` | `str->num` |
+| `number->string` | `num->str` |
 | `string?` | `str?` |
 | `string-append` | `str-append` |
 | `string-compare` | `str-compare` |
@@ -66,8 +66,8 @@ Core procedures keep short names (`num?`, `%`, `str-append`, `num-parse`, …).
 | `substring` | `str-slice` |
 | `symbol?` | `sym?` |
 | `procedure?` | `proc?` |
-| `symbol->string` | `sym-str` |
-| `string->symbol` | `str-sym` |
+| `symbol->string` | `sym->str` |
+| `string->symbol` | `str->sym` |
 | `pair?` | `(lambda (x) (not (atom? x)))` |
 
 An embedding that wants Scheme names can copy

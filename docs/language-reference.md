@@ -326,20 +326,6 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   (> 2 4)       ; ()
   ```
 
-#### `num-parse`
-  Parses a string into a number if possible, otherwise returns `()`.
-  ```scheme
-  (num-parse "123")  ; 123
-  (num-parse "abc")  ; ()
-  ```
-
-#### `num-str`
-  Converts a number to a string, using the same formatting as printed numbers (`1` not `1.0`).
-  ```scheme
-  (num-str 123)   ; "123"
-  (num-str 1.5)   ; "1.5"
-  ```
-
 ### String functions
 
 #### `str?`
@@ -378,16 +364,32 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   (str-slice "example" 1 -1) ; "xampl"
   ```
 
-#### `sym-str`
-  Converts a symbol to a string.
+### Conversion functions
+
+#### `num->str`
+  Converts a number to a string, using the same formatting as printed numbers (`1` not `1.0`).
   ```scheme
-  (sym-str 'foo)  ; "foo"
+  (num->str 123)   ; "123"
+  (num->str 1.5)   ; "1.5"
   ```
 
-#### `str-sym`
+#### `str->num`
+  Parses a string into a number if possible, otherwise returns `()`.
+  ```scheme
+  (str->num "123")  ; 123
+  (str->num "abc")  ; ()
+  ```
+
+#### `sym->str`
+  Converts a symbol to a string.
+  ```scheme
+  (sym->str 'foo)  ; "foo"
+  ```
+
+#### `str->sym`
   Converts a string to a symbol. Any string is accepted, including the empty string.
   ```scheme
-  (str-sym "foo")  ; foo
+  (str->sym "foo")  ; foo
   ```
 
 ## Differences from Scheme
@@ -397,7 +399,7 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
-- **Names.** Core procedures use short names (`num?`, `str-append`, `atom?`, `%`, ...) rather than the usual Scheme spellings. Scheme aliases are a [`rusche-cli`](rusche-cli.md#scheme-style-aliases) convenience, not part of the core.
+- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Same-type operations use a type prefix (`num-add`, `str-append`). Conversions use `type1->type2` (`num->str`, `str->num`). Scheme spellings are a [`rusche-cli`](rusche-cli.md#scheme-style-aliases) convenience, not part of the core.
 - **Small surface.** `if` without an else branch and `define` return `()`; there is no named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
 - **Rest parameters** do use Scheme syntax: `(define (f a . rest) ...)` and `(lambda args ...)`.
 

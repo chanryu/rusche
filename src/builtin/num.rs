@@ -1,8 +1,8 @@
 use crate::{
     eval::{eval, EvalContext, EvalResult},
-    expr::{Expr, NIL},
+    expr::Expr,
     list::List,
-    utils::{eval_into_num, eval_into_str, get_exact_1_arg, get_exact_2_args},
+    utils::{eval_into_num, get_exact_1_arg, get_exact_2_args},
 };
 
 pub fn is_num(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -74,20 +74,6 @@ fn logical_operation(
 
 pub fn less(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     logical_operation(proc_name, args, context, |lhs, rhs| lhs < rhs)
-}
-
-pub fn parse(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let text = eval_into_str(proc_name, get_exact_1_arg(proc_name, args)?, context)?;
-
-    match text.parse::<f64>() {
-        Ok(num) => Ok(Expr::Num(num, None)),
-        Err(_) => Ok(NIL),
-    }
-}
-
-pub fn to_str(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let value = eval_into_num(proc_name, get_exact_1_arg(proc_name, args)?, context)?;
-    Ok(Expr::Str(Expr::Num(value, None).to_string(), None))
 }
 
 #[cfg(test)]
@@ -230,36 +216,4 @@ mod tests {
         assert_eq!(less(list!(2, 1)), Ok(false.into()));
     }
 
-    #[test]
-    fn test_parse() {
-        setup_native_proc_test!(parse);
-
-        // (num-parse "123") => 123
-        assert_eq!(parse(list!("123")), Ok(num(123)));
-
-        // (num-parse "abc") => ()
-        assert_eq!(parse(list!("abc")), Ok(NIL));
-
-        // (num-parse "123" "456") => error
-        assert!(parse(list!("123", "456")).is_err());
-
-        // (num-parse) => error
-        assert!(parse(list!()).is_err());
-
-        // (num-parse 123) => error
-        assert!(parse(list!(123)).is_err());
-
-        // (num-parse 'sym) => error
-        assert!(parse(list!(intern("sym"))).is_err());
-    }
-
-    #[test]
-    fn test_to_str() {
-        setup_native_proc_test!(to_str);
-
-        assert_eq!(to_str(list!(123)), Ok(Expr::from("123")));
-        assert_eq!(to_str(list!(1.5)), Ok(Expr::from("1.5")));
-        assert!(to_str(list!("123")).is_err());
-        assert!(to_str(list!()).is_err());
-    }
 }

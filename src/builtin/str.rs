@@ -13,22 +13,6 @@ pub fn is_str(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     }
 }
 
-pub fn sym_str(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let expr = get_exact_1_arg(proc_name, args)?;
-    match eval(expr, context)? {
-        Expr::Sym(name, _) => Ok(Expr::Str(name, None)),
-        _ => Err(EvalError {
-            message: format!("{proc_name}: `{expr}` does not evaluate to a symbol."),
-            span: expr.span(),
-        }),
-    }
-}
-
-pub fn str_sym(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let text = eval_into_str(proc_name, get_exact_1_arg(proc_name, args)?, context)?;
-    Ok(Expr::Sym(text, None))
-}
-
 pub fn append(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let args = args.iter();
     let mut result = String::from("");
@@ -116,27 +100,6 @@ mod tests {
 
         // (str? "abc" "def") => error
         assert!(is_str(list!("abc", "def")).is_err());
-    }
-
-    #[test]
-    fn test_sym_str() {
-        setup_native_proc_test!(sym_str);
-
-        assert_eq!(
-            sym_str(list!(list!(crate::expr::intern("quote"), crate::expr::intern("foo")))),
-            Ok(Expr::from("foo"))
-        );
-        assert!(sym_str(list!("foo")).is_err());
-        assert!(sym_str(list!(1)).is_err());
-    }
-
-    #[test]
-    fn test_str_sym() {
-        setup_native_proc_test!(str_sym);
-
-        assert_eq!(str_sym(list!("foo")), Ok(crate::expr::intern("foo")));
-        assert_eq!(str_sym(list!("")), Ok(crate::expr::intern("")));
-        assert!(str_sym(list!(1)).is_err());
     }
 
     #[test]

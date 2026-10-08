@@ -6,8 +6,8 @@ use rusche::{tokenize, Evaluator, Parser};
 const SCHEME_ALIASES: &str = r#"
     (define number? num?)
     (define modulo %)
-    (define string->number num-parse)
-    (define number->string num-str)
+    (define string->number str->num)
+    (define number->string num->str)
 
     (define string? str?)
     (define string-append str-append)
@@ -17,8 +17,8 @@ const SCHEME_ALIASES: &str = r#"
 
     (define symbol? sym?)
     (define procedure? proc?)
-    (define symbol->string sym-str)
-    (define string->symbol str-sym)
+    (define symbol->string sym->str)
+    (define string->symbol str->sym)
 
     (define (pair? x) (not (atom? x)))
 "#;

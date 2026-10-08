@@ -8,7 +8,7 @@ use crate::{
     utils::{get_2_or_3_args, get_exact_1_arg, get_exact_2_args, make_formal_args},
 };
 
-pub fn atom(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+pub fn is_atom(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
 
     Ok(eval(expr, context)?.is_atom().into())
@@ -311,21 +311,21 @@ mod tests {
     use crate::macros::*;
 
     #[test]
-    fn test_atom() {
-        setup_native_proc_test!(atom);
+    fn test_is_atom() {
+        setup_native_proc_test!(is_atom);
 
-        // (atom 1) => #t
-        assert_eq!(atom(list!(1)), Ok(true.into()));
+        // (atom? 1) => #t
+        assert_eq!(is_atom(list!(1)), Ok(true.into()));
 
-        // (atom "str") => #t
-        assert_eq!(atom(list!("str")), Ok(true.into()));
+        // (atom? "str") => #t
+        assert_eq!(is_atom(list!("str")), Ok(true.into()));
 
-        // (atom '()) => #t
-        assert_eq!(atom(list!(list!(intern("quote"), NIL))), Ok(true.into()));
+        // (atom? '()) => #t
+        assert_eq!(is_atom(list!(list!(intern("quote"), NIL))), Ok(true.into()));
 
-        // (atom '(1 2 3)) => #f
+        // (atom? '(1 2 3)) => #f
         assert_eq!(
-            atom(list!(list!(intern("quote"), list!(1, 2, 3)))),
+            is_atom(list!(list!(intern("quote"), list!(1, 2, 3)))),
             Ok(false.into())
         );
     }
@@ -507,7 +507,7 @@ mod tests {
     fn test_is_proc() {
         setup_native_proc_test!(is_proc, env);
 
-        env.define_native_proc("atom?", atom);
+        env.define_native_proc("atom?", is_atom);
         assert_eq!(is_proc(list!(intern("atom?"))), Ok(true.into()));
         assert_eq!(is_proc(list!(1)), Ok(false.into()));
         assert!(is_proc(list!()).is_err());
