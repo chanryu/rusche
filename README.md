@@ -11,17 +11,16 @@ Rusche is a library for writing an interpreter for a Scheme-like language in Rus
 
 Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but keeps the core language small. See [Differences from Scheme](#differences-from-scheme).
 
-
 ## Features
 
-- Minimalistic library with zero dependency
-- Lambdas and closures
+- Minimalistic library with zero dependencies
+- Lambdas and closures, with Scheme-style rest parameters (`(define (f a . rest) ...)`, `(lambda args ...)`)
 - Lexical scopes and binding
-- Macros using special forms like qusiquote (`` ` ``), unquote (`,`), unquote-splicing (`,@`)
+- Macros using special forms like quasiquote (`` ` ``), unquote (`,`), unquote-splicing (`,@`)
 - Garbage collection
-- Tail-call optimization
-- Interoperability with hosting Rust application via user-defined (a.k.a native) functions and `Foreign` data type.
-- `Span` support for informative error message, for example:
+- Tail-call optimization, plus a call-depth limit so runaway recursion is an error rather than a stack overflow
+- Interoperability with the hosting Rust application via user-defined (a.k.a. native) functions and the `Foreign` data type
+- `Span` support for informative error messages, for example:
   ```
   repl:01❯ (define plus
   ....:02❯     (lambda (x 7)   ;; 7 should be y
@@ -30,7 +29,7 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
   error: 7 is not a symbol.
     1| (define plus
     2|     (lambda (x 7)
-     |                ^        ;; Thanks to `Span`, we can show exactly where the error is originated
+     |                ^        ;; Thanks to `Span`, we can show exactly where the error originates
   ```
 
 ## Usage
@@ -51,7 +50,7 @@ let mut parser = Parser::with_tokens(tokens);
 // Parse tokens into an expression
 let expr = parser.parse().unwrap().unwrap();
 
-// Create Evaluator with basic primitives
+// Create Evaluator with the built-in primitives and the prelude
 let evaluator = Evaluator::default();
 
 // Evaluate the parsed expression
@@ -80,7 +79,7 @@ To learn about how to implement a standalone interpreter with REPL, have a look 
 
 ### Rusche language
 
-Here's a quick example to show what's possible with the Rusche language.
+Here's a quick example to show what's possible with the Rusche language -- the same program as [examples/fizzbuzz.rsc](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsc), here using the core procedure names.
 
 ```scheme
 (define (fizzbuzz n)
@@ -99,13 +98,14 @@ Here's a quick example to show what's possible with the Rusche language.
         (set! n (+ n 1))))
 ```
 
-`display`, `newline`, and `read` are provided by `rusche-cli`, not by the core library. `rusche-cli` also defines Scheme-style aliases for the core procedures (`number?`, `string-append`, `string->number`, `modulo`, ...); see [scheme.rs](https://github.com/chanryu/rusche/blob/main/examples/rusche-cli/builtin/scheme.rs).
+`display`, `newline`, and `read` are I/O procedures provided by `rusche-cli`, not by the core library. `rusche-cli` also defines Scheme-style aliases for the core procedures (`number?`, `string-append`, `string->number`, `modulo`, ...); see [scheme.rs](https://github.com/chanryu/rusche/blob/main/examples/rusche-cli/builtin/scheme.rs). The example scripts use those aliases.
 
-To see more examples, please checkout *.rsc files in the [examples](https://github.com/chanryu/rusche/tree/main/examples) directory.
+To see more examples, please check out the *.rsc files in the [examples](https://github.com/chanryu/rusche/tree/main/examples) directory.
 
-Also, you can run `rusche-cli` yourself with the following command:
+You can run `rusche-cli` yourself, either as a REPL or on a script:
 ```bash
 cargo run --example rusche-cli
+cargo run --example rusche-cli -- examples/fizzbuzz.rsc
 ```
 
 #### Differences from Scheme
@@ -115,10 +115,11 @@ cargo run --example rusche-cli
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
-- **Names.** Core procedures use short names (`num?`, `str-append`, `atom?`, `%`, ...) rather than the Scheme ones.
+- **Names.** Core procedures use short names (`num?`, `str-append`, `atom?`, `%`, ...) rather than the Scheme ones; `rusche-cli` adds the Scheme spellings as aliases.
 - **Small surface.** `<`, `>`, `<=`, `>=` are binary; `if` without an else branch and `define` return `()`; there is no `let*`, named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
 - **Rest parameters** do use Scheme syntax: `(define (f a . rest) ...)` and `(lambda args ...)`.
 
 ## Documentation
 
-- [Rusche Language Reference](https://github.com/chanryu/rusche/wiki/Rusche-Language-Reference)
+- [Rusche Language Reference](https://github.com/chanryu/rusche/wiki/Rusche-Language-Reference) -- every special form and built-in procedure, with examples
+- [API documentation on docs.rs](https://docs.rs/rusche/latest/rusche/) -- for embedding Rusche in a Rust application
