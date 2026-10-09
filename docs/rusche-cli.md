@@ -1,6 +1,6 @@
 # `rusche-cli`
 
-[`rusche-cli`](../examples/rusche-cli) is an **example host application**, not part of
+[`rusche-cli`](../crates/rusche-cli) is an **example host application**, not part of
 the core `rusche` crate. It shows how to build a standalone interpreter with a REPL
 and file runner on top of the library.
 
@@ -14,9 +14,9 @@ On startup, `rusche-cli` creates `Evaluator::with_prelude()` and then registers:
 | Layer | Source | Contents |
 | --- | --- | --- |
 | Core built-ins + prelude | `rusche` crate | See [language reference](language-reference.md) |
-| I/O procedures | [`builtin/io.rs`](../examples/rusche-cli/builtin/io.rs) | `display`, `newline`, `read` |
-| Vector foreign type | [`builtin/vec.rs`](../examples/rusche-cli/builtin/vec.rs) | `vec?`, `vec-make`, `vec-push`, `vec-pop`, `vec-get` |
-| Scheme-style aliases | [`builtin/scheme.rs`](../examples/rusche-cli/builtin/scheme.rs) | `number?`, `modulo`, `string-append`, … |
+| I/O procedures | [`builtin/io.rs`](../crates/rusche-cli/src/builtin/io.rs) | `display`, `newline`, `read` |
+| Vector foreign type | [`builtin/vec.rs`](../crates/rusche-cli/src/builtin/vec.rs) | `vec?`, `vec-make`, `vec-push`, `vec-pop`, `vec-get` |
+| Scheme-style aliases | [`builtin/scheme.rs`](../crates/rusche-cli/src/builtin/scheme.rs) | `number?`, `modulo`, `string-append`, … |
 
 Scripts under [`examples/*.rsc`](../examples) are written for this host: they use
 `display` / `read` / `newline` and the Scheme aliases (`modulo`, `string->number`,
@@ -71,14 +71,14 @@ Core procedures keep short names (`num?`, `%`, `str-append`, `str->num`, …).
 | `pair?` | `(lambda (x) (not (atom? x)))` |
 
 An embedding that wants Scheme names can copy
-[`scheme.rs`](../examples/rusche-cli/builtin/scheme.rs); the core library does not
+[`scheme.rs`](../crates/rusche-cli/src/builtin/scheme.rs); the core library does not
 define them.
 
 ## Running
 
 ```bash
-cargo run --example rusche-cli
-cargo run --example rusche-cli -- examples/fizzbuzz.rsc
+cargo run -p rusche-cli
+cargo run -p rusche-cli -- examples/fizzbuzz.rsc
 ```
 
 ## Related docs

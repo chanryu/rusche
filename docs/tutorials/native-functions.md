@@ -59,7 +59,7 @@ Fixed arity:
 | `get_exact_3_args` | exactly three |
 
 Variable arity: iterate `args` and evaluate each element, as
-[`display`](../../examples/rusche-cli/builtin/io.rs) does in `rusche-cli`.
+[`display`](../../crates/rusche-cli/src/builtin/io.rs) does in `rusche-cli`.
 
 ## Return values and errors
 
@@ -131,4 +131,4 @@ load it the way the prelude does, instead of implementing it as a native.
 
 - [How to write a foreign object wrapper](foreign.md)
 - Simpler host embedding: [How to embed the Rusche interpreter](embedding.md)
-- Production-style natives: [`rusche-cli` builtins](../../examples/rusche-cli/builtin/)
+- Production-style natives: [`rusche-cli` builtins](../../crates/rusche-cli/src/builtin/)

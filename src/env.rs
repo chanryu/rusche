@@ -213,10 +213,10 @@ mod tests {
     #[test]
     fn test_update() {
         let env = Env::root(Weak::new());
-        assert_eq!(env.update("name", 1), false);
+        assert!(!env.update("name", 1));
 
         env.define("name", 0);
-        assert_eq!(env.update("name", 1), true);
+        assert!(env.update("name", 1));
     }
 
     #[test]
@@ -235,8 +235,8 @@ mod tests {
         base.define("one", 1);
         derived.define("two", 2);
 
-        assert_eq!(derived.update("one", "uno"), true);
-        assert_eq!(derived.update("two", "dos"), true);
+        assert!(derived.update("one", "uno"));
+        assert!(derived.update("two", "dos"));
 
         assert_eq!(base.vars.borrow().get("one"), Some(&"uno".into()));
         assert_eq!(derived.vars.borrow().get("one"), None);

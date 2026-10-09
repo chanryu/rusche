@@ -26,7 +26,7 @@ fn test_define_variable() {
     let _ = outer_context.eval_to_str("(set! x 2)");
     assert_eq!(outer_context.eval_to_str("x"), "2");
 
-    let inner_context = EvalContext::derive_from(&outer_context);
+    let inner_context = EvalContext::derive_from(outer_context);
 
     let _ = inner_context.eval_to_str("(define y 100)");
     assert_eq!(inner_context.eval_to_str("y"), "100");
@@ -67,7 +67,7 @@ fn test_lambda() {
 fn test_set() {
     let e = Evaluator::with_builtin();
     let outer_context = e.context();
-    let inner_context = EvalContext::derive_from(&outer_context);
+    let inner_context = EvalContext::derive_from(outer_context);
 
     let _ = outer_context.eval_to_str("(define x 1)");
     assert_eq!(outer_context.eval_to_str("x"), "1");

@@ -108,7 +108,7 @@ The core language is everything available from `Evaluator::default()` (built-ins
 
 ### `rusche-cli` (example host)
 
-[`rusche-cli`](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli/) is a sample interpreter built on the library. It is **not** part of the core language. On top of `Evaluator::with_prelude()`, it adds:
+[`rusche-cli`](https://github.com/chanryu/rusche/tree/main/crates/rusche-cli/) is a sample interpreter built on the library. It is **not** part of the core language. On top of `Evaluator::with_prelude()`, it adds:
 
 - I/O: `display`, `newline`, `read`
 - A `vec` foreign type
@@ -117,8 +117,8 @@ The core language is everything available from `Evaluator::default()` (built-ins
 The `*.rsc` scripts under [`examples/`](https://github.com/chanryu/rusche/tree/main/examples) are written for this host (for example [fizzbuzz.rsc](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsc) uses `display` and `modulo`). See [`docs/rusche-cli.md`](docs/rusche-cli.md).
 
 ```bash
-cargo run --example rusche-cli
-cargo run --example rusche-cli -- examples/fizzbuzz.rsc
+cargo run -p rusche-cli
+cargo run -p rusche-cli -- examples/fizzbuzz.rsc
 ```
 
 ## Documentation

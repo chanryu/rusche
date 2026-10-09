@@ -87,7 +87,7 @@ fn eval_script(evaluator: &Evaluator, source: &str) -> Result<(), String> {
 ```
 
 `EvalError` carries a `message` and an optional `Span`. The
-[`rusche-cli`](../../examples/rusche-cli/main.rs) example prints those spans
+[`rusche-cli`](../../crates/rusche-cli/src/main.rs) example prints those spans
 against the original source lines.
 
 ## Exchange values with the host
@@ -159,5 +159,5 @@ register a tracer so the collector can see them — covered in
 
 - [How to write a native function](native-functions.md)
 - [How to write a foreign object wrapper](foreign.md)
-- Standalone REPL and file runner: [`examples/rusche-cli`](../../examples/rusche-cli/)
+- Standalone REPL and file runner: [`crates/rusche-cli`](../../crates/rusche-cli/)
 - Language surface: [language reference](../language-reference.md)

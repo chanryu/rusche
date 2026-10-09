@@ -11,7 +11,7 @@
 //!
 //! The [language reference](https://github.com/chanryu/rusche/blob/main/docs/language-reference.md)
 //! documents the **core language** (built-ins and prelude). The example host
-//! [rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli) adds I/O, a
+//! [rusche-cli](https://github.com/chanryu/rusche/tree/main/crates/rusche-cli) adds I/O, a
 //! vector type, and Scheme-style aliases — see
 //! [rusche-cli.md](https://github.com/chanryu/rusche/blob/main/docs/rusche-cli.md).
 //! Example `*.rsc` scripts target that host, not a bare evaluator.

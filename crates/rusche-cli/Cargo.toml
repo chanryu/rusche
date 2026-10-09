@@ -1,0 +1,17 @@
+[package]
+name = "rusche-cli"
+version = "0.4.0"
+edition = "2021"
+license = "MIT"
+authors = ["Chan Ryu"]
+description = "A standalone REPL and file runner for the Rusche Scheme-like language"
+publish = false
+
+[[bin]]
+name = "rusche-cli"
+path = "src/main.rs"
+
+[dependencies]
+rusche = { path = "../.." }
+rustyline = "14.0.0"
+colored = "2.1"

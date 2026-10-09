@@ -11,11 +11,13 @@ keywords = ["interpreter", "lisp", "scheme", "scripting", "scripting-language"]
 categories = ["compilers", "config", "parser-implementations", "parsing"]
 include = ["/src", "/examples", "/tests", "LICENSE", "README.md"]
 
+[workspace]
+members = ["crates/rusche-cli"]
+resolver = "2"
+
 [dependencies]
 
 [dev-dependencies]
-rustyline = "14.0.0"
-colored = "2.1"
 rand = "0.8"
 
 [lib]
