@@ -1,23 +1,53 @@
 use colored::Colorize;
-use rusche::Span;
-use std::fmt::Display;
+use rusche::{Error, EvalError, Frame, LexError, ParseError, Span};
+use unicode_width::UnicodeWidthStr;
+
+use crate::host;
 
 const MAX_HEAD_LINES: usize = 3;
 const MAX_TAIL_LINES: usize = 1;
 
-/// Print an error message with optional source context to stderr.
-pub fn print_error(message: &dyn Display, src: &str, span: Option<Span>) {
-    eprintln!("{}: {}", "error".red(), message);
+/// Everything needed to print a rustc-style diagnostic against a source buffer.
+pub struct Diagnostic<'a> {
+    pub source_name: &'a str,
+    pub src: &'a str,
+    pub message: String,
+    pub span: Option<Span>,
+    pub help: Option<&'a str>,
+    pub trace: &'a [Frame],
+}
 
-    let Some(span) = span else { return };
+/// Print an error message with optional source context, help, and call trace to stderr.
+pub fn print_error(diag: &Diagnostic<'_>) {
+    host::ensure_newline();
 
-    let lines: Vec<&str> = src.lines().collect();
+    eprintln!("{}: {}", "error".red(), diag.message);
+
+    let Some(span) = diag.span else {
+        print_help_and_trace(diag);
+        return;
+    };
+
+    let lines: Vec<&str> = diag.src.lines().collect();
     if span.end.line >= lines.len() {
+        print_help_and_trace(diag);
         return;
     }
 
+    let loc = format!(
+        "{}:{}:{}",
+        diag.source_name,
+        span.begin.line + 1,
+        span.begin.column + 1
+    );
+    eprintln!("  {} {}", "-->".blue().bold(), loc);
+
     let print_line = |line: usize| {
-        eprintln!("{}{}", format!("{:>3}| ", line + 1).dimmed(), lines[line]);
+        eprintln!(
+            "{}{}",
+            format!("{:>3}| ", line + 1).dimmed(),
+            lines[line]
+        );
     };
 
     // Context lines before the span.
@@ -58,20 +88,102 @@ pub fn print_error(message: &dyn Display, src: &str, span: Option<Span>) {
             text.chars().count()
         };
 
-        let caret_len = end_col.saturating_sub(begin_col).max(1);
-        let mut padding = String::new();
-        for (i, ch) in text.chars().enumerate() {
-            if i >= begin_col {
-                break;
-            }
-            padding.push(if ch == '\t' { '\t' } else { ' ' });
-        }
+        let prefix: String = text.chars().take(begin_col).collect();
+        let marked: String = text
+            .chars()
+            .skip(begin_col)
+            .take(end_col.saturating_sub(begin_col))
+            .collect();
+        let padding_width = UnicodeWidthStr::width(prefix.as_str());
+        let caret_width = UnicodeWidthStr::width(marked.as_str()).max(1);
+
+        // Preserve tabs in the padding so terminals align carets with tabstops;
+        // otherwise pad by unicode display width so wide characters line up.
+        let pad = if prefix.contains('\t') {
+            prefix
+                .chars()
+                .map(|ch| if ch == '\t' { '\t' } else { ' ' })
+                .collect::<String>()
+        } else {
+            " ".repeat(padding_width)
+        };
 
         eprintln!(
             "{}{}{}",
             "   | ".dimmed(),
-            padding,
-            "^".repeat(caret_len).red()
+            pad,
+            "^".repeat(caret_width).red()
         );
+    }
+
+    print_help_and_trace(diag);
+}
+
+/// Print a unified pipeline error ([`Error`]) against `src`.
+pub fn print_pipeline_error(error: &Error, src: &str, source_name: &str) {
+    print_error(&Diagnostic {
+        source_name,
+        src,
+        message: error.message(),
+        span: error.span(),
+        help: error.help(),
+        trace: error.trace(),
+    });
+}
+
+/// Print an evaluation error against `src`.
+pub fn print_eval_error(error: &EvalError, src: &str, source_name: &str) {
+    print_error(&Diagnostic {
+        source_name,
+        src,
+        message: error.message().to_string(),
+        span: error.span,
+        help: error.help(),
+        trace: error.trace(),
+    });
+}
+
+/// Print a lex error against `src`.
+pub fn print_lex_error(error: &LexError, src: &str, source_name: &str) {
+    print_error(&Diagnostic {
+        source_name,
+        src,
+        message: error.message(),
+        span: Some(error.span()),
+        help: None,
+        trace: &[],
+    });
+}
+
+/// Print a parse error against `src`.
+pub fn print_parse_error(error: &ParseError, src: &str, source_name: &str, span: Option<Span>) {
+    print_error(&Diagnostic {
+        source_name,
+        src,
+        message: error.message(),
+        span: span.or(Some(error.span())),
+        help: None,
+        trace: &[],
+    });
+}
+
+fn print_help_and_trace(diag: &Diagnostic<'_>) {
+    if let Some(help) = diag.help {
+        eprintln!("  {} {}", "=".blue().bold(), format!("help: {help}").dimmed());
+    }
+
+    for frame in diag.trace {
+        let line = if let Some(span) = frame.call_site {
+            format!(
+                "in `{}`, called at {}:{}:{}",
+                frame.name,
+                diag.source_name,
+                span.begin.line + 1,
+                span.begin.column + 1
+            )
+        } else {
+            format!("in `{}` (prelude)", frame.name)
+        };
+        eprintln!("  {} {}", "=".blue().bold(), line.dimmed());
     }
 }

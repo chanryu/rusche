@@ -18,32 +18,59 @@ const PRELUDE_MACROS: [&str; 8] = [
         (if (null? clauses)
             false                                       ; No more clauses, return false by default
             (let ((clause (car clauses)))
-                (if (eq? (car clause) 'else)            ; If the first clause is 'else'
-                    `(begin ,@(cdr clause))             ; Expand to the else expression(s)
-                    `(if ,(car clause)                  ; Otherwise, expand to an if expression
-                        (begin ,@(cdr clause))          ; If condition is true, evaluate the body
-                        (cond ,@(cdr clauses)))))))     ; Else, recursively process remaining clauses
+                (if (atom? clause)
+                    (error "cond: each clause must be a list, got" clause)
+                    (if (eq? (car clause) 'else)        ; If the first clause is 'else'
+                        `(begin ,@(cdr clause))         ; Expand to the else expression(s)
+                        `(if ,(car clause)              ; Otherwise, expand to an if expression
+                            (begin ,@(cdr clause))      ; If condition is true, evaluate the body
+                            (cond ,@(cdr clauses))))))))
     "#,
     // defun
     r#"
     (defmacro (defun name args *body)
         `(define ,name (lambda ,args ,@body)))
     "#,
-    // let
+    // let -- shape checks use nested `if` (not `or`/`cond`) to avoid expanding back into `let`.
+    // `()` is an atom in Rusche, so check `null?` before `atom?` when empty bindings are allowed.
     r#"
     (defmacro (let bindings *body)
-        `((lambda ,(map car bindings) ; Get the list of variable names
-             ,@body)                  ; The body of the let becomes the lambda's body
-          ,@(map cadr bindings)))     ; Apply the values to the lambda
+        (if (null? bindings)
+            `(begin ,@body)
+            (if (atom? bindings)
+                (error "let: bindings must be a list, got" bindings)
+                (begin
+                    (map (lambda (b)
+                        (if (atom? b)
+                            (error "let: each binding must be (name value), got" b)
+                            (if (null? (cdr b))
+                                (error "let: each binding must be (name value), got" b)
+                                (if (null? (cddr b))
+                                    (if (sym? (car b))
+                                        true
+                                        (error "let: binding name must be a symbol, got" (car b)))
+                                    (error "let: each binding must be (name value), got" b)))))
+                        bindings)
+                    `((lambda ,(map car bindings)
+                         ,@body)
+                      ,@(map cadr bindings))))))
     "#,
     // let*
     r#"
     (defmacro (let* bindings *body)
         (if (null? bindings)
             `(begin ,@body)
-            (let ((binding (car bindings)))
-                `(let ((,(car binding) ,(cadr binding)))
-                    (let* ,(cdr bindings) ,@body)))))
+            (if (atom? bindings)
+                (error "let*: bindings must be a list, got" bindings)
+                (let ((binding (car bindings)))
+                    (if (atom? binding)
+                        (error "let*: each binding must be (name value), got" binding)
+                        (if (null? (cdr binding))
+                            (error "let*: each binding must be (name value), got" binding)
+                            (if (null? (cddr binding))
+                                `(let ((,(car binding) ,(cadr binding)))
+                                    (let* ,(cdr bindings) ,@body))
+                                (error "let*: each binding must be (name value), got" binding))))))))
     "#,
     // while -- the helper `loop` is scoped inside a lambda so it does not leak into the caller
     r#"
@@ -105,11 +132,11 @@ const PRELUDE_FUNCS: [&str; 14] = [
     "#,
     // map -- tail-recursive
     r#"
-    (define (map fn lst)
+    (define (map proc lst)
         (define (loop lst acc)
             (if (null? lst)
                 (reverse acc)
-                (loop (cdr lst) (cons (fn (car lst)) acc))))
+                (loop (cdr lst) (cons (proc (car lst)) acc))))
         (loop lst '()))
     "#,
     // append -- tail-recursive
@@ -140,10 +167,10 @@ const PRELUDE_FUNCS: [&str; 14] = [
     "#,
     // fold -- left fold, tail-recursive
     r#"
-    (define (fold f init lst)
+    (define (fold proc init lst)
         (if (null? lst)
             init
-            (fold f (f init (car lst)) (cdr lst))))
+            (fold proc (proc init (car lst)) (cdr lst))))
     "#,
     // member
     r#"

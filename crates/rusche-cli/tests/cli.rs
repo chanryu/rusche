@@ -58,18 +58,20 @@ fn ok_script_exits_zero() {
 fn runtime_error_goes_to_stderr_and_exits_one() {
     let out = run(&[script("runtime_error.rsc").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1));
-    assert_eq!(stdout(&out), "hi");
+    // display without newline is followed by ensure_newline before the diagnostic
+    assert_eq!(stdout(&out), "hi\n");
     let err = stderr(&out);
-    assert!(err.contains("error:"));
-    assert!(err.contains("car:"));
-    assert!(err.contains("^"));
+    assert!(err.contains("error:"), "{err}");
+    assert!(err.contains("car:"), "{err}");
+    assert!(err.contains("^"), "{err}");
+    assert!(err.contains("-->"), "{err}");
 }
 
 #[test]
 fn lex_error_exits_one() {
     let out = run(&[script("lex_error.rsc").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("incomplete string"));
+    assert!(stderr(&out).contains("unterminated string literal"));
     assert!(stdout(&out).is_empty());
 }
 
@@ -77,7 +79,11 @@ fn lex_error_exits_one() {
 fn incomplete_expression_exits_one() {
     let out = run(&[script("incomplete.rsc").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("incomplete expression"));
+    let err = stderr(&out);
+    assert!(
+        err.contains("unclosed") || err.contains("incomplete"),
+        "{err}"
+    );
 }
 
 #[test]
@@ -150,7 +156,7 @@ fn dash_means_stdin() {
 fn no_prelude_hides_plus() {
     let out = run(&["--no-prelude", "-e", "(+ 1 2)"], "");
     assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("Undefined symbol") || stderr(&out).contains("+"));
+    assert!(stderr(&out).contains("undefined symbol") || stderr(&out).contains("+"));
 }
 
 #[test]
@@ -231,14 +237,22 @@ fn load_builtin() {
 fn newline_rejects_extra_args() {
     let out = run(&["-e", "(newline 1)"], "");
     assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("expects no arguments"));
+    assert!(
+        stderr(&out).contains("expected 0 arguments"),
+        "{}",
+        stderr(&out)
+    );
 }
 
 #[test]
 fn vec_make_rejects_extra_args() {
     let out = run(&["-e", "(vec-make 1)"], "");
     assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("expects no arguments"));
+    assert!(
+        stderr(&out).contains("expected 0 arguments"),
+        "{}",
+        stderr(&out)
+    );
 }
 
 #[test]
@@ -261,6 +275,65 @@ fn example_backwards() {
     let out = run(&[example("backwards.rsc").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert_eq!(stdout(&out), "tres\ndos\nuno\n");
+}
+
+#[test]
+fn depth_limit_exits_one_not_abort() {
+    let dir = tempfile_dir();
+    let path = dir.join("depth.rsc");
+    std::fs::write(
+        &path,
+        "(define (inf n) (+ 1 (inf n)))\n(inf 0)\n",
+    )
+    .unwrap();
+    let out = run(&[path.to_str().unwrap()], "");
+    assert_eq!(out.status.code(), Some(1), "stderr={}", stderr(&out));
+    assert!(
+        stderr(&out).contains("maximum call depth"),
+        "{}",
+        stderr(&out)
+    );
+}
+
+#[test]
+fn arity_error_snapshot() {
+    let out = run(&["-e", "(car (list 1) (list 2))"], "");
+    assert_eq!(out.status.code(), Some(1));
+    let err = stderr(&out);
+    assert!(err.contains("car: expected 1 argument, got 2"), "{err}");
+    assert!(err.contains("--> <eval>:"), "{err}");
+}
+
+#[test]
+fn load_nested_prints_inner_source() {
+    let dir = tempfile_dir();
+    let inner = dir.join("inner.rsc");
+    std::fs::write(&inner, "(display \"in\")\n(car 99)\n").unwrap();
+    let expr = format!("(load \"{}\")", inner.display());
+    let out = run(&["-e", &expr], "");
+    assert_eq!(out.status.code(), Some(1));
+    let err = stderr(&out);
+    assert!(err.contains("car:"), "{err}");
+    assert!(err.contains("inner.rsc"), "{err}");
+    assert!(err.contains("failed"), "{err}");
+}
+
+#[test]
+fn call_trace_is_printed() {
+    let dir = tempfile_dir();
+    let path = dir.join("deep.rsc");
+    // Non-final `begin` forms keep each closure on the stack; tail calls would replace frames.
+    std::fs::write(
+        &path,
+        "(define (a x) (begin (b x) 0))\n(define (b x) (begin (c x) 0))\n(define (c x) (car x))\n(a 42)\n",
+    )
+    .unwrap();
+    let out = run(&[path.to_str().unwrap()], "");
+    assert_eq!(out.status.code(), Some(1));
+    let err = stderr(&out);
+    assert!(err.contains("in `c`") || err.contains("in `car`"), "{err}");
+    assert!(err.contains("in `b`"), "{err}");
+    assert!(err.contains("in `a`"), "{err}");
 }
 
 fn tempfile_dir() -> PathBuf {

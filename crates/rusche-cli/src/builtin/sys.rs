@@ -1,5 +1,8 @@
 use rand::Rng;
-use rusche::{cons, eval, get_exact_1_arg, EvalContext, EvalError, EvalResult, Expr, List};
+use rusche::{
+    arity_error, cons, eval, get_exact_1_arg, ErrorKind, EvalContext, EvalError, EvalResult, Expr,
+    List,
+};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::host;
@@ -16,10 +19,11 @@ fn getenv(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let name = match eval(arg, context)? {
         Expr::Str(name, _) => name,
         other => {
-            return Err(EvalError {
-                message: format!("{proc_name}: expected a string, got `{other}`."),
-                span: arg.span(),
-            });
+            return Err(EvalError::new(
+                ErrorKind::Type,
+                format!("{proc_name}: expected a string, got `{other}`"),
+            )
+            .with_span(arg.span()));
         }
     };
     match std::env::var(&name) {
@@ -30,9 +34,7 @@ fn getenv(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
 fn clock(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
     if !args.is_nil() {
-        return Err(EvalError::from(format!(
-            "{proc_name} expects no arguments."
-        )));
+        return Err(arity_error(proc_name, 0..=0, args.len()));
     }
     let secs = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -43,18 +45,14 @@ fn clock(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
 
 fn random(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
     if !args.is_nil() {
-        return Err(EvalError::from(format!(
-            "{proc_name} expects no arguments."
-        )));
+        return Err(arity_error(proc_name, 0..=0, args.len()));
     }
     Ok(rand::thread_rng().gen::<f64>().into())
 }
 
 fn command_line(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
     if !args.is_nil() {
-        return Err(EvalError::from(format!(
-            "{proc_name} expects no arguments."
-        )));
+        return Err(arity_error(proc_name, 0..=0, args.len()));
     }
     let mut list = List::Nil;
     for arg in host::command_line().into_iter().rev() {

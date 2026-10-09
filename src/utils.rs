@@ -1,14 +1,31 @@
 use std::any::Any;
+use std::ops::RangeInclusive;
 use std::rc::Rc;
 
-use crate::eval::{eval, EvalContext, EvalError};
+use crate::eval::{eval, ErrorKind, EvalContext, EvalError};
 use crate::expr::Expr;
 use crate::list::List;
 use crate::proc::FormalArgs;
 
+/// Builds an arity error: `proc: expected N argument(s), got M`.
+pub fn arity_error(proc_name: &str, expected: RangeInclusive<usize>, got: usize) -> EvalError {
+    let msg = if expected.start() == expected.end() {
+        let n = *expected.start();
+        let noun = if n == 1 { "argument" } else { "arguments" };
+        format!("{proc_name}: expected {n} {noun}, got {got}")
+    } else {
+        format!(
+            "{proc_name}: expected {} or {} arguments, got {got}",
+            expected.start(),
+            expected.end()
+        )
+    };
+    EvalError::new(ErrorKind::Arity, msg)
+}
+
 /// Get exactly one argument from a list.
 ///
-/// Check if `args` contains extactly one argument. If so, return a reference
+/// Check if `args` contains exactly one argument. If so, return a reference
 /// to the argument. Otherwise, return an error message.
 ///
 /// # Arguments
@@ -36,20 +53,18 @@ use crate::proc::FormalArgs;
 pub fn get_exact_1_arg<'a>(proc_name: &str, args: &'a List) -> Result<&'a Expr, EvalError> {
     let mut iter = args.iter();
     let Some(arg) = iter.next() else {
-        return Err(EvalError::from(format!("{proc_name} needs an argument.")));
+        return Err(arity_error(proc_name, 1..=1, 0));
     };
     if iter.next().is_none() {
         Ok(arg)
     } else {
-        Err(EvalError::from(format!(
-            "{proc_name} expects only 1 argument."
-        )))
+        Err(arity_error(proc_name, 1..=1, 1 + 1 + iter.count()))
     }
 }
 
 /// Get exactly two arguments from a list.
 ///
-/// Check if `args` contains extactly two arguments. If so, return a tuple that contains
+/// Check if `args` contains exactly two arguments. If so, return a tuple that contains
 /// references to the two arguments. Otherwise, return an error message.
 ///
 /// # Arguments
@@ -86,18 +101,18 @@ pub fn get_exact_2_args<'a>(
 
     match (arg1, arg2, arg3) {
         (Some(arg1), Some(arg2), None) => Ok((arg1, arg2)),
-        (Some(_), Some(_), Some(_)) => Err(EvalError::from(format!(
-            "{proc_name}: takes only two arguments"
-        ))),
-        _ => Err(EvalError::from(format!(
-            "{proc_name}: requres two arguments"
-        ))),
+        (Some(_), Some(_), Some(_)) => Err(arity_error(proc_name, 2..=2, 3 + iter.count())),
+        _ => Err(arity_error(
+            proc_name,
+            2..=2,
+            arg1.map(|_| 1).unwrap_or(0) + arg2.map(|_| 1).unwrap_or(0),
+        )),
     }
 }
 
 /// Get exactly three arguments from a list.
 ///
-/// Check if `args` contains extactly three arguments. If so, return a tuple that contains
+/// Check if `args` contains exactly three arguments. If so, return a tuple that contains
 /// references to the three arguments. Otherwise, return an error message.
 ///
 /// # Arguments
@@ -135,12 +150,11 @@ pub fn get_exact_3_args<'a>(
 
     match (arg1, arg2, arg3, arg4) {
         (Some(arg1), Some(arg2), Some(arg3), None) => Ok((arg1, arg2, arg3)),
-        (Some(_), Some(_), Some(_), Some(_)) => Err(EvalError::from(format!(
-            "{proc_name}: takes only two arguments"
-        ))),
-        _ => Err(EvalError::from(format!(
-            "{proc_name}: requres two arguments"
-        ))),
+        (Some(_), Some(_), Some(_), Some(_)) => Err(arity_error(proc_name, 3..=3, 4 + iter.count())),
+        _ => {
+            let got = [arg1, arg2, arg3].iter().filter(|a| a.is_some()).count();
+            Err(arity_error(proc_name, 3..=3, got))
+        }
     }
 }
 
@@ -184,12 +198,11 @@ pub fn get_2_or_3_args<'a>(
 
     match (arg1, arg2, arg3, arg4) {
         (Some(arg1), Some(arg2), arg3, None) => Ok((arg1, arg2, arg3)),
-        (Some(_), Some(_), Some(_), Some(_)) => Err(EvalError::from(format!(
-            "{proc_name}: takes only up to 3 arguments"
-        ))),
-        _ => Err(EvalError::from(format!(
-            "{proc_name}: requres at least 2 arguments"
-        ))),
+        (Some(_), Some(_), Some(_), Some(_)) => Err(arity_error(proc_name, 2..=3, 4 + iter.count())),
+        _ => {
+            let got = [arg1, arg2].iter().filter(|a| a.is_some()).count();
+            Err(arity_error(proc_name, 2..=3, got))
+        }
     }
 }
 
@@ -200,20 +213,22 @@ pub fn get_2_or_3_args<'a>(
 /// every remaining argument. A lone `*` is an ordinary parameter name.
 pub fn make_formal_args(expr: &Expr) -> Result<Rc<FormalArgs>, EvalError> {
     let Expr::List(list, _) = expr else {
-        return Err(EvalError {
-            message: format!("{expr} is not a valid parameter list."),
-            span: expr.span(),
-        });
+        return Err(EvalError::new(
+            ErrorKind::InvalidForm,
+            format!("`{expr}` is not a valid parameter list"),
+        )
+        .with_span(expr.span()));
     };
 
     let mut formal_args = FormalArgs::default();
     let mut iter = list.iter();
     while let Some(item) = iter.next() {
         let Expr::Sym(name, _) = item else {
-            return Err(EvalError {
-                message: format!("{item} is not a symbol."),
-                span: item.span(),
-            });
+            return Err(EvalError::new(
+                ErrorKind::InvalidForm,
+                format!("`{item}` is not a symbol"),
+            )
+            .with_span(item.span()));
         };
 
         let Some(rest) = name.strip_prefix('*').filter(|rest| !rest.is_empty()) else {
@@ -224,19 +239,21 @@ pub fn make_formal_args(expr: &Expr) -> Result<Rc<FormalArgs>, EvalError> {
         // `*name*` is the Lisp convention for globals, and `**name` is most likely a typo;
         // neither should silently become a rest parameter with a `*` in its name.
         if rest.starts_with('*') || rest.ends_with('*') {
-            return Err(EvalError {
-                message: format!(
-                    "{name} is not a valid rest parameter -- the name after `*` cannot start or end with `*`."
+            return Err(EvalError::new(
+                ErrorKind::InvalidForm,
+                format!(
+                    "`{name}` is not a valid rest parameter -- the name after `*` cannot start or end with `*`"
                 ),
-                span: item.span(),
-            });
+            )
+            .with_span(item.span()));
         }
 
         if let Some(extra) = iter.next() {
-            return Err(EvalError {
-                message: format!("unexpected {extra} after the rest parameter."),
-                span: extra.span(),
-            });
+            return Err(EvalError::new(
+                ErrorKind::InvalidForm,
+                format!("unexpected `{extra}` after the rest parameter"),
+            )
+            .with_span(extra.span()));
         }
 
         formal_args.rest = Some(rest.to_string());
@@ -276,10 +293,11 @@ pub fn eval_into_str(
 ) -> Result<String, EvalError> {
     match eval(expr, context)? {
         Expr::Str(text, _) => Ok(text),
-        _ => Err(EvalError {
-            message: format!("{proc_name}: `{expr}` does not evaluate to a string."),
-            span: expr.span(),
-        }),
+        value => Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a string"),
+        )
+        .with_span(expr.span())),
     }
 }
 
@@ -314,10 +332,11 @@ pub fn eval_into_num(
 ) -> Result<f64, EvalError> {
     match eval(expr, context)? {
         Expr::Num(value, _) => Ok(value),
-        _ => Err(EvalError {
-            message: format!("{proc_name}: `{expr}` does not evaluate to a number."),
-            span: expr.span(),
-        }),
+        value => Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a number"),
+        )
+        .with_span(expr.span())),
     }
 }
 
@@ -367,13 +386,11 @@ pub fn eval_into_int(
     if num.fract() == 0.0 {
         Ok(num as i32)
     } else {
-        Err(EvalError {
-            message: format!(
-                "{}: {} must be an integer, but got {}.",
-                proc_name, arg_name, num
-            ),
-            span: expr.span(),
-        })
+        Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: {arg_name} must be an integer, but got {num}"),
+        )
+        .with_span(expr.span()))
     }
 }
 
@@ -412,10 +429,11 @@ pub fn eval_into_foreign(
 ) -> Result<Rc<dyn Any>, EvalError> {
     match eval(expr, context)? {
         Expr::Foreign(object) => Ok(object),
-        _ => Err(EvalError {
-            message: format!("{proc_name}: `{expr}` does not evaluate to a foreign object."),
-            span: expr.span(),
-        }),
+        value => Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a foreign object"),
+        )
+        .with_span(expr.span())),
     }
 }
 

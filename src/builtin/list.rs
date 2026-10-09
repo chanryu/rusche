@@ -1,5 +1,5 @@
 use crate::{
-    eval::{eval, EvalContext, EvalError, EvalResult},
+    eval::{eval, ErrorKind, EvalContext, EvalError, EvalResult},
     expr::Expr,
     list::List,
     utils::{get_exact_1_arg, get_exact_2_args},
@@ -14,26 +14,26 @@ pub fn is_atom(proc_name: &str, args: &List, context: &EvalContext) -> EvalResul
 pub fn car(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
 
-    if let Expr::List(List::Cons(cons), _) = eval(expr, context)? {
-        Ok(cons.car.clone())
-    } else {
-        Err(EvalError {
-            message: format!("{proc_name}: `{expr}` does not evaluate to a list."),
-            span: expr.span(),
-        })
+    match eval(expr, context)? {
+        Expr::List(List::Cons(cons), _) => Ok(cons.car.clone()),
+        value => Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a list"),
+        )
+        .with_span(expr.span())),
     }
 }
 
 pub fn cdr(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
 
-    if let Expr::List(List::Cons(cons), _) = eval(expr, context)? {
-        Ok(cons.cdr.clone().into())
-    } else {
-        Err(EvalError {
-            message: format!("{proc_name}: `{expr}` does not evaluate to a list."),
-            span: expr.span(),
-        })
+    match eval(expr, context)? {
+        Expr::List(List::Cons(cons), _) => Ok(cons.cdr.clone().into()),
+        value => Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a list"),
+        )
+        .with_span(expr.span())),
     }
 }
 
@@ -41,14 +41,14 @@ pub fn cons(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (car, cdr) = get_exact_2_args(proc_name, args)?;
 
     let car = eval(car, context)?;
-    let Expr::List(cdr, _) = eval(cdr, context)? else {
-        return Err(EvalError {
-            message: format!("{proc_name}: `{cdr}` does not evaluate to a list."),
-            span: cdr.span(),
-        });
-    };
-
-    Ok(crate::list::cons(car, cdr).into())
+    match eval(cdr, context)? {
+        Expr::List(cdr, _) => Ok(crate::list::cons(car, cdr).into()),
+        value => Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: `{cdr}` evaluated to `{value}`, expected a list"),
+        )
+        .with_span(cdr.span())),
+    }
 }
 
 #[cfg(test)]

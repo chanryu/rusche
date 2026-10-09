@@ -170,7 +170,7 @@ The following forms and procedures are implemented in Rust. Most are native proc
 #### `error`
   Raises an evaluation error. One or more arguments; strings contribute their raw text, other values use their printed form. Arguments are joined with a single space.
   ```scheme
-  (error "bad value:" 42)  ; error: bad value: 42
+  (error "bad value:" 42)  ; raises a User-kind error: bad value: 42
   ```
 
 #### `eval`

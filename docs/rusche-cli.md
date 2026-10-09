@@ -117,17 +117,21 @@ An unknown command prints `unknown meta-command: ,name (try ,help)`.
 
 ## Diagnostics
 
-Errors go to stderr with a source excerpt and a caret under the span:
+Errors go to stderr in a rustc-style layout: message, source header, excerpt with
+carets, optional help, and a call trace (innermost first). Tail calls replace
+the active frame, so the trace lists the non-tail call chain.
 
 ```text
-error: 7 is not a symbol.
+error: `7` is not a symbol
+  --> example.rsc:2:16
   1| (define plus
   2|     (lambda (x 7)
    |                ^
 ```
 
-`--no-color` prints the same text without color. The REPL uses the input line
-as source; a script uses the file, with the shebang line still counted.
+Source names are the file path, `<stdin>`, `<eval>`, or `<repl>`. `--no-color`
+prints the same text without color. Evaluation runs on a dedicated thread with a
+large stack so the call-depth limit reports an error instead of aborting.
 
 ## I/O
 
@@ -176,9 +180,10 @@ process keeps running.
 
 Reads a string path (from the current directory) and evaluates it in the
 current environment. Returns the last value, or `()` when the file is empty.
-A shebang line is not stripped. A bad path or a failed form is an error whose
-message includes the path and whose span is empty, so the diagnostic is the
-message alone. `,load` prints the value and uses the file as source context.
+A shebang line is not stripped. When a form in the loaded file fails, the CLI
+prints that file's diagnostic first (with the loaded path as the source name),
+then reports a terse `load: "path" failed` error at the `(load ...)` call site.
+`,load` prints the value and uses the file as source context.
 
 ```scheme
 (load "examples/counter.rsc")

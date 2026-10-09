@@ -20,14 +20,29 @@ impl ParseError {
             ParseError::IncompleteExpr(token) | ParseError::UnexpectedToken(token) => token.span(),
         }
     }
+
+    /// Bare message text without a leading span.
+    pub fn message(&self) -> String {
+        match self {
+            ParseError::IncompleteExpr(token) => match token {
+                Token::OpenParen(_) => "unexpected end of input: unclosed `(`".into(),
+                Token::Quote(_) => "unexpected end of input after `'`".into(),
+                Token::Quasiquote(_) => "unexpected end of input after `` ` ``".into(),
+                Token::Unquote(_) => "unexpected end of input after `,`".into(),
+                Token::UnquoteSplicing(_) => "unexpected end of input after `,@`".into(),
+                _ => "incomplete expression".into(),
+            },
+            ParseError::UnexpectedToken(token) => match token {
+                Token::CloseParen(_) => "unexpected `)` with no matching `(`".into(),
+                other => format!("unexpected token: `{other}`"),
+            },
+        }
+    }
 }
 
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ParseError::IncompleteExpr(_) => write!(f, "incomplete expression"),
-            ParseError::UnexpectedToken(token) => write!(f, "unexpected token: \"{token}\""),
-        }
+        write!(f, "{}: {}", self.span(), self.message())
     }
 }
 

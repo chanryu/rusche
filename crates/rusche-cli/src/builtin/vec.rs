@@ -1,6 +1,6 @@
 use rusche::{
-    cons, eval, eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args, EvalContext,
-    EvalError, EvalResult, Evaluator, Expr, List, NIL,
+    arity_error, cons, eval, eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args,
+    ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, Expr, List, NIL,
 };
 
 use std::{cell::RefCell, rc::Rc};
@@ -34,9 +34,12 @@ fn eval_into_vec(
 ) -> Result<Rc<ExprVecRefCell>, EvalError> {
     eval_into_foreign(proc_name, expr, context)?
         .downcast::<ExprVecRefCell>()
-        .map_err(|_| EvalError {
-            message: format!("{proc_name}: `{expr}` does not evaluate to a vector."),
-            span: expr.span(),
+        .map_err(|_| {
+            EvalError::new(
+                ErrorKind::Type,
+                format!("{proc_name}: `{expr}` does not evaluate to a vector"),
+            )
+            .with_span(expr.span())
         })
 }
 
@@ -47,9 +50,7 @@ fn is_vec(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
 fn vec_make(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
     if !args.is_nil() {
-        return Err(EvalError::from(format!(
-            "{proc_name} expects no arguments."
-        )));
+        return Err(arity_error(proc_name, 0..=0, args.len()));
     }
     Ok(Expr::Foreign(Rc::new(RefCell::new(Vec::<Expr>::new()))))
 }
@@ -78,10 +79,8 @@ fn vec_pop(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     if let Some(item) = item {
         Ok(item)
     } else {
-        Err(EvalError {
-            message: format!("{proc_name}: vector is empty."),
-            span: vec_expr.span(),
-        })
+        Err(EvalError::new(ErrorKind::Other, format!("{proc_name}: vector is empty"))
+            .with_span(vec_expr.span()))
     }
 }
 
@@ -91,38 +90,38 @@ fn vec_get(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let index = eval_into_int(proc_name, "index", index_expr, context)?;
 
     if index < 0 {
-        return Err(EvalError {
-            message: format!("{proc_name}: index must be zero or positive integer."),
-            span: index_expr.span(),
-        });
+        return Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: index must be zero or positive integer"),
+        )
+        .with_span(index_expr.span()));
     }
 
     let item = vec.borrow().get(index as usize).cloned();
     if let Some(item) = item {
         Ok(item)
     } else {
-        Err(EvalError {
-            message: format!("{proc_name}: index out-of-bounds {index}."),
-            span: index_expr.span(),
-        })
+        Err(EvalError::new(
+            ErrorKind::Other,
+            format!("{proc_name}: index out-of-bounds {index}"),
+        )
+        .with_span(index_expr.span()))
     }
 }
 
 fn vec_set(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let mut iter = args.iter();
     let Some(vec_expr) = iter.next() else {
-        return Err(EvalError::from(format!("{proc_name} needs 3 arguments.")));
+        return Err(arity_error(proc_name, 3..=3, 0));
     };
     let Some(index_expr) = iter.next() else {
-        return Err(EvalError::from(format!("{proc_name} needs 3 arguments.")));
+        return Err(arity_error(proc_name, 3..=3, 1));
     };
     let Some(value_expr) = iter.next() else {
-        return Err(EvalError::from(format!("{proc_name} needs 3 arguments.")));
+        return Err(arity_error(proc_name, 3..=3, 2));
     };
     if iter.next().is_some() {
-        return Err(EvalError::from(format!(
-            "{proc_name} expects only 3 arguments."
-        )));
+        return Err(arity_error(proc_name, 3..=3, 3 + iter.count() + 1));
     }
 
     let vec = eval_into_vec(proc_name, vec_expr, context)?;
@@ -130,18 +129,20 @@ fn vec_set(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let value = eval(value_expr, context)?;
 
     if index < 0 {
-        return Err(EvalError {
-            message: format!("{proc_name}: index must be zero or positive integer."),
-            span: index_expr.span(),
-        });
+        return Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: index must be zero or positive integer"),
+        )
+        .with_span(index_expr.span()));
     }
 
     let mut borrowed = vec.borrow_mut();
     let Some(slot) = borrowed.get_mut(index as usize) else {
-        return Err(EvalError {
-            message: format!("{proc_name}: index out-of-bounds {index}."),
-            span: index_expr.span(),
-        });
+        return Err(EvalError::new(
+            ErrorKind::Other,
+            format!("{proc_name}: index out-of-bounds {index}"),
+        )
+        .with_span(index_expr.span()));
     };
     *slot = value;
     Ok(NIL)
@@ -169,10 +170,11 @@ fn list_to_vec(proc_name: &str, args: &List, context: &EvalContext) -> EvalResul
     let list = match eval(list_expr, context)? {
         Expr::List(list, _) => list,
         other => {
-            return Err(EvalError {
-                message: format!("{proc_name}: `{other}` does not evaluate to a list."),
-                span: list_expr.span(),
-            });
+            return Err(EvalError::new(
+                ErrorKind::Type,
+                format!("{proc_name}: `{other}` does not evaluate to a list"),
+            )
+            .with_span(list_expr.span()));
         }
     };
     let items: Vec<Expr> = list.iter().cloned().collect();

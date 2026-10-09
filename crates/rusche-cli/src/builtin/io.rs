@@ -1,8 +1,10 @@
 use rusche::{
-    eval, eval_source, get_exact_1_arg, EvalContext, EvalError, EvalResult, Expr, List, NIL,
+    arity_error, eval, eval_source, get_exact_1_arg, ErrorKind, EvalContext, EvalError, EvalResult,
+    Expr, List, NIL,
 };
 use std::io::Write;
 
+use crate::diagnostics::print_pipeline_error;
 use crate::host;
 
 pub fn load_io_procs(context: &EvalContext) {
@@ -46,9 +48,7 @@ fn write(_: &str, args: &List, context: &EvalContext) -> EvalResult {
 
 fn newline(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
     if !args.is_nil() {
-        return Err(EvalError::from(format!(
-            "{proc_name} expects no arguments."
-        )));
+        return Err(arity_error(proc_name, 0..=0, args.len()));
     }
     println!();
     host::note_output("\n");
@@ -60,7 +60,10 @@ fn read(_: &str, _: &List, _: &EvalContext) -> EvalResult {
     match std::io::stdin().read_line(&mut input) {
         Ok(0) => Ok(false.into()),
         Ok(_) => Ok(input.trim_end_matches(['\r', '\n']).to_string().into()),
-        Err(error) => Err(EvalError::from(format!("Error reading input: {}", error))),
+        Err(error) => Err(EvalError::new(
+            ErrorKind::Other,
+            format!("error reading input: {error}"),
+        )),
     }
 }
 
@@ -72,11 +75,12 @@ fn exit(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
         let value = eval(arg, context)?;
         match value {
             Expr::Num(n, _) if n.fract() == 0.0 && (0.0..=255.0).contains(&n) => n as i32,
-            _ => {
-                return Err(EvalError {
-                    message: format!("{proc_name}: exit code must be an integer 0-255."),
-                    span: arg.span(),
-                });
+            other => {
+                return Err(EvalError::new(
+                    ErrorKind::Type,
+                    format!("{proc_name}: exit code must be an integer 0-255, got `{other}`"),
+                )
+                .with_span(arg.span()));
             }
         }
     };
@@ -89,23 +93,33 @@ fn load(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let path = match eval(arg, context)? {
         Expr::Str(path, _) => path,
         other => {
-            return Err(EvalError {
-                message: format!("{proc_name}: expected a string path, got `{other}`."),
-                span: arg.span(),
-            });
+            return Err(EvalError::new(
+                ErrorKind::Type,
+                format!("{proc_name}: expected a string path, got `{other}`"),
+            )
+            .with_span(arg.span()));
         }
     };
 
-    let text = std::fs::read_to_string(&path).map_err(|e| EvalError {
-        message: format!("{proc_name}: failed to read \"{path}\": {e}"),
-        span: arg.span(),
+    let text = std::fs::read_to_string(&path).map_err(|e| {
+        EvalError::new(
+            ErrorKind::Other,
+            format!("{proc_name}: failed to read \"{path}\": {e}"),
+        )
+        .with_span(arg.span())
     })?;
 
     match eval_source(&text, context, false) {
         Ok(result) => Ok(result),
-        Err(error) => Err(EvalError {
-            message: format!("{proc_name} \"{path}\": {error}"),
-            span: None,
-        }),
+        Err(error) => {
+            // Print the inner file's diagnostic with its own source, then return a terse error
+            // so the caller's caret lands on the `(load ...)` form without embedding spans in prose.
+            print_pipeline_error(&error, &text, &path);
+            Err(EvalError::new(
+                ErrorKind::Other,
+                format!("{proc_name}: \"{path}\" failed"),
+            )
+            .with_span(arg.span()))
+        }
     }
 }

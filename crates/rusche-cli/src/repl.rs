@@ -10,7 +10,10 @@ use rustyline::hint::Hinter;
 use rustyline::validate::{ValidationContext, ValidationResult, Validator};
 use rustyline::{Config, Context, Editor, Helper};
 
-use crate::diagnostics::print_error;
+use crate::diagnostics::{
+    print_eval_error, print_lex_error, print_parse_error, print_pipeline_error, Diagnostic,
+    print_error,
+};
 use crate::host;
 
 pub fn run_repl(evaluator: Evaluator) {
@@ -53,27 +56,30 @@ pub fn run_repl(evaluator: Evaluator) {
                                 Ok(Some(expr)) => match evaluator.eval(&expr) {
                                     Ok(result) => {
                                         if !result.is_nil() {
-                                            ensure_newline();
+                                            host::ensure_newline();
                                             println!("{}", result.to_string().green());
                                             host::set_at_column_zero(true);
                                         }
                                     }
                                     Err(error) => {
-                                        ensure_newline();
-                                        print_error(&error.message, &line, error.span);
+                                        print_eval_error(&error, &line, "<repl>");
                                         host::set_at_column_zero(true);
                                     }
                                 },
                                 Err(ParseError::IncompleteExpr(_)) => {
-                                    // Validator should prevent this for single-line; treat as error.
-                                    ensure_newline();
-                                    print_error(&"incomplete expression", &line, None);
+                                    print_error(&Diagnostic {
+                                        source_name: "<repl>",
+                                        src: &line,
+                                        message: "incomplete expression".into(),
+                                        span: None,
+                                        help: None,
+                                        trace: &[],
+                                    });
                                     host::set_at_column_zero(true);
                                     break;
                                 }
                                 Err(error) => {
-                                    ensure_newline();
-                                    print_error(&error, &line, Some(error.span()));
+                                    print_parse_error(&error, &line, "<repl>", None);
                                     host::set_at_column_zero(true);
                                     break;
                                 }
@@ -81,14 +87,13 @@ pub fn run_repl(evaluator: Evaluator) {
                         }
                     }
                     Err(error) => {
-                        ensure_newline();
-                        print_error(&error, &line, Some(error.span()));
+                        print_lex_error(&error, &line, "<repl>");
                         host::set_at_column_zero(true);
                     }
                 }
             }
             Err(ReadlineError::Interrupted) => {
-                ensure_newline();
+                host::ensure_newline();
                 println!("{}", "^C".dimmed());
                 host::set_at_column_zero(true);
             }
@@ -102,13 +107,6 @@ pub fn run_repl(evaluator: Evaluator) {
 
     if let Some(path) = &history_path {
         let _ = rl.save_history(path);
-    }
-}
-
-fn ensure_newline() {
-    if !host::at_column_zero() {
-        println!();
-        host::set_at_column_zero(true);
     }
 }
 
@@ -163,7 +161,7 @@ Meta-commands:
                         }
                     }
                     Err(error) => {
-                        print_error(&error, &text, error.span());
+                        print_pipeline_error(&error, &text, path);
                     }
                 },
                 Err(e) => eprintln!("Failed to read \"{path}\": {e}"),

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::{
-    eval::{eval, EvalContext, EvalError, EvalResult},
+    eval::{eval, ErrorKind, EvalContext, EvalError, EvalResult},
     expr::{intern, Expr, NIL},
     list::{cons, List},
     proc::Proc,
@@ -10,9 +10,10 @@ use crate::{
 
 pub fn error(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     if args.is_nil() {
-        return Err(EvalError::from(format!(
-            "{proc_name}: needs at least one argument."
-        )));
+        return Err(EvalError::new(
+            ErrorKind::Arity,
+            format!("{proc_name}: expected at least 1 argument, got 0"),
+        ));
     }
 
     let mut parts = Vec::new();
@@ -24,7 +25,7 @@ pub fn error(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult 
         }
     }
 
-    Err(EvalError::from(parts.join(" ")))
+    Err(EvalError::new(ErrorKind::User, parts.join(" ")))
 }
 
 /// Builds the call form for `(apply proc list)`: the procedure in head position followed by
@@ -40,18 +41,26 @@ pub(crate) fn apply_form(
 ) -> Result<Expr, EvalError> {
     let (proc_expr, args_expr) = get_exact_2_args(proc_name, args)?;
 
-    let Expr::Proc(proc, _) = eval(proc_expr, context)? else {
-        return Err(EvalError {
-            message: format!("{proc_name}: `{proc_expr}` does not evaluate to a procedure."),
-            span: proc_expr.span(),
-        });
+    let proc = match eval(proc_expr, context)? {
+        Expr::Proc(proc, _) => proc,
+        value => {
+            return Err(EvalError::new(
+                ErrorKind::Type,
+                format!("{proc_name}: `{proc_expr}` evaluated to `{value}`, expected a procedure"),
+            )
+            .with_span(proc_expr.span()));
+        }
     };
 
-    let Expr::List(arg_list, _) = eval(args_expr, context)? else {
-        return Err(EvalError {
-            message: format!("{proc_name}: `{args_expr}` does not evaluate to a list."),
-            span: args_expr.span(),
-        });
+    let arg_list = match eval(args_expr, context)? {
+        Expr::List(arg_list, _) => arg_list,
+        value => {
+            return Err(EvalError::new(
+                ErrorKind::Type,
+                format!("{proc_name}: `{args_expr}` evaluated to `{value}`, expected a list"),
+            )
+            .with_span(args_expr.span()));
+        }
     };
 
     let call_args = match &proc {
@@ -72,10 +81,11 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     match iter.next() {
         Some(Expr::Sym(name, span)) => {
             let Some(expr) = iter.next() else {
-                return Err(EvalError {
-                    message: format!("{proc_name}: define expects a expression after symbol"),
-                    span: *span,
-                });
+                return Err(EvalError::new(
+                    ErrorKind::InvalidForm,
+                    format!("{proc_name}: expected an expression after the symbol"),
+                )
+                .with_span(*span));
             };
 
             let value = match eval(expr, context)? {
@@ -105,10 +115,11 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
         }
         Some(Expr::List(List::Cons(cons), _)) => {
             let Expr::Sym(name, _) = &cons.car else {
-                return Err(EvalError {
-                    message: format!("{proc_name}: expects a symbol for a procedure name"),
-                    span: cons.car.span(),
-                });
+                return Err(EvalError::new(
+                    ErrorKind::InvalidForm,
+                    format!("{proc_name}: expected a symbol for a procedure name"),
+                )
+                .with_span(cons.car.span()));
             };
 
             context.env.define(
@@ -125,9 +136,10 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
             );
             Ok(NIL)
         }
-        _ => Err(EvalError::from(format!(
-            "{proc_name}: invalid form -- expected a symbol or a list."
-        ))),
+        _ => Err(EvalError::new(
+            ErrorKind::InvalidForm,
+            format!("{proc_name}: invalid form -- expected a symbol or a list"),
+        )),
     }
 }
 
@@ -138,10 +150,11 @@ pub fn defmacro(proc_name: &str, args: &List, context: &EvalContext) -> EvalResu
         // (defmacro name (args) body)
         Some(Expr::Sym(macro_name, _)) => {
             let Some(expr) = iter.next() else {
-                return Err(EvalError {
-                    message: format!("{proc_name}: expected formal arguments after a macro name."),
-                    span: args.span(),
-                });
+                return Err(EvalError::new(
+                    ErrorKind::InvalidForm,
+                    format!("{proc_name}: expected formal arguments after a macro name"),
+                )
+                .with_span(args.span()));
             };
 
             (macro_name, make_formal_args(expr)?)
@@ -149,21 +162,21 @@ pub fn defmacro(proc_name: &str, args: &List, context: &EvalContext) -> EvalResu
         // (defmacro (name args) body)
         Some(Expr::List(List::Cons(cons), _)) => {
             let Expr::Sym(macro_name, _) = &cons.car else {
-                return Err(EvalError {
-                    message: format!(
-                        "{proc_name}: a macro name expected as the first element of the list."
-                    ),
-                    span: cons.car.span(),
-                });
+                return Err(EvalError::new(
+                    ErrorKind::InvalidForm,
+                    format!("{proc_name}: expected a macro name as the first element of the list"),
+                )
+                .with_span(cons.car.span()));
             };
 
             (macro_name, make_formal_args(&Expr::from(cons.cdr.clone()))?)
         }
         _ => {
-            return Err(EvalError {
-                message: format!("{proc_name}: invalid macro form -- expected a symbol or a list."),
-                span: expr.map(|e| e.span()).unwrap_or(None),
-            });
+            return Err(EvalError::new(
+                ErrorKind::InvalidForm,
+                format!("{proc_name}: invalid macro form -- expected a symbol or a list"),
+            )
+            .with_span(expr.and_then(|e| e.span())));
         }
     };
 
@@ -192,10 +205,11 @@ pub fn lambda(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     let mut iter = args.iter();
 
     let Some(expr) = iter.next() else {
-        return Err(EvalError {
-            message: format!("{proc_name}: expected formal arguments."),
-            span: args.span(),
-        });
+        return Err(EvalError::new(
+            ErrorKind::InvalidForm,
+            format!("{proc_name}: expected formal arguments"),
+        )
+        .with_span(args.span()));
     };
 
     Ok(Expr::Proc(
@@ -213,18 +227,20 @@ pub fn set(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (name_expr, value_expr) = get_exact_2_args(proc_name, args)?;
 
     let Expr::Sym(name, _) = name_expr else {
-        return Err(EvalError {
-            message: format!("{proc_name}: expects a symbol as the first argument"),
-            span: name_expr.span(),
-        });
+        return Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: expected a symbol as the first argument"),
+        )
+        .with_span(name_expr.span()));
     };
 
     let value = eval(value_expr, context)?;
     if !context.env.update(name, value) {
-        return Err(EvalError {
-            message: format!("{proc_name}: `{name}` is not defined."),
-            span: name_expr.span(),
-        });
+        return Err(EvalError::new(
+            ErrorKind::UndefinedSymbol,
+            format!("{proc_name}: `{name}` is not defined"),
+        )
+        .with_span(name_expr.span()));
     }
 
     Ok(NIL)

@@ -1,7 +1,7 @@
 use std::error::Error as StdError;
 use std::fmt;
 
-use crate::eval::EvalError;
+use crate::eval::{EvalError, Frame};
 use crate::lexer::LexError;
 use crate::parser::ParseError;
 use crate::span::Span;
@@ -21,6 +21,31 @@ impl Error {
             Error::Lex(e) => Some(e.span()),
             Error::Parse(e) => Some(e.span()),
             Error::Eval(e) => e.span,
+        }
+    }
+
+    /// Bare message text without a leading span (for hosts that print their own location).
+    pub fn message(&self) -> String {
+        match self {
+            Error::Lex(e) => e.message(),
+            Error::Parse(e) => e.message(),
+            Error::Eval(e) => e.message().to_string(),
+        }
+    }
+
+    /// Optional secondary help text (evaluation errors only).
+    pub fn help(&self) -> Option<&str> {
+        match self {
+            Error::Eval(e) => e.help(),
+            _ => None,
+        }
+    }
+
+    /// Call trace collected while unwinding (evaluation errors only).
+    pub fn trace(&self) -> &[Frame] {
+        match self {
+            Error::Eval(e) => e.trace(),
+            _ => &[],
         }
     }
 }

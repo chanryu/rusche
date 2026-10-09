@@ -9,7 +9,8 @@ const TOKEN_DELIMITERS: &str = " \t\r\n()'`,;\"";
 #[derive(Debug, PartialEq)]
 pub enum LexError {
     IncompleteString(Span),
-    InvalidNumber(Span),
+    /// The span covers the invalid token; the string is the raw text that failed to parse.
+    InvalidNumber(String, Span),
     /// A lone `.`, which would be dotted-pair syntax in Scheme. Rusche has no dotted pairs,
     /// so it is rejected here rather than silently read as a symbol.
     UnexpectedDot(Span),
@@ -20,22 +21,27 @@ impl LexError {
     pub fn span(&self) -> Span {
         match self {
             LexError::IncompleteString(span)
-            | LexError::InvalidNumber(span)
+            | LexError::InvalidNumber(_, span)
             | LexError::UnexpectedDot(span) => *span,
+        }
+    }
+
+    /// Bare message text without a leading span.
+    pub fn message(&self) -> String {
+        match self {
+            LexError::IncompleteString(_) => "unterminated string literal".into(),
+            LexError::InvalidNumber(text, _) => format!("invalid number literal `{text}`"),
+            LexError::UnexpectedDot(_) => {
+                "unexpected `.` -- dotted pairs are not supported; use `*name` for a rest parameter"
+                    .into()
+            }
         }
     }
 }
 
 impl fmt::Display for LexError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            LexError::IncompleteString(_) => write!(f, "incomplete string"),
-            LexError::InvalidNumber(_) => write!(f, "invalid number"),
-            LexError::UnexpectedDot(_) => write!(
-                f,
-                "unexpected `.` -- dotted pairs are not supported; use `*name` for a rest parameter"
-            ),
-        }
+        write!(f, "{}: {}", self.span(), self.message())
     }
 }
 
@@ -157,10 +163,15 @@ where
         let sign = if first_char == '-' { -1.0 } else { 1.0 };
         let span = begin_loc.span_to(self.loc);
 
+        let display = if first_char == '+' || first_char == '-' {
+            format!("{first_char}{digits}")
+        } else {
+            digits.clone()
+        };
         digits
             .parse::<f64>()
             .map(|value| Some(Token::Num(value * sign, span)))
-            .map_err(|_| LexError::InvalidNumber(span))
+            .map_err(|_| LexError::InvalidNumber(display, span))
     }
 
     fn read_symbol(&mut self, first_char: char, begin_loc: Loc) -> LexResult {

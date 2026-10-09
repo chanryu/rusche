@@ -20,16 +20,17 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
 - Garbage collection
 - Tail-call optimization, plus a call-depth limit so runaway recursion is an error rather than a stack overflow
 - Interoperability with the hosting Rust application via user-defined (a.k.a. native) functions and the `Foreign` data type
-- `Span` support for informative error messages, for example:
+- Structured errors with source spans, optional help, and a call trace, for example:
   ```
-  repl:01❯ (define plus
-  ....:02❯     (lambda (x 7)   ;; 7 should be y
-  ....:03❯         (+ x y)))
+  repl❯ (define plus
+  ....❯     (lambda (x 7)   ;; 7 should be y
+  ....❯         (+ x y)))
 
-  error: 7 is not a symbol.
+  error: `7` is not a symbol
+    --> <repl>:2:16
     1| (define plus
     2|     (lambda (x 7)
-     |                ^        ;; Thanks to `Span`, we can show exactly where the error originates
+     |                ^
   ```
 
 ## Usage
