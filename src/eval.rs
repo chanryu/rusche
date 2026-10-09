@@ -310,8 +310,15 @@ fn eval_form(cons: &Cons, context: &EvalContext, frame: &mut CallFrame) -> Resul
     proc.apply(args, context)
 }
 
-/// The struct that encapsulates the evaluation environment, tail-call optimization context, and garbage collection.
-/// It also maintains the evaluation context and provides utility functions to facilitate the evaluation process.
+/// The struct that owns the root environment and evaluation context, enforces the call depth
+/// limit, and performs garbage collection.
+///
+/// # Call depth and tail calls
+///
+/// Evaluation is iterative in tail position (see [`eval`]), so tail-recursive procedures run
+/// in constant stack space and do not count towards the call depth limit. Non-tail calls --
+/// procedure arguments, `if` conditions, non-final `begin`/body expressions, and anything a
+/// native procedure evaluates -- nest, and are capped by [`Evaluator::set_max_call_depth`].
 ///
 /// # Garbage collection
 ///

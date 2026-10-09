@@ -8,6 +8,7 @@
 
 This reference covers only what the `rusche` crate provides:
 
+- **Evaluator forms** — `quote`, `quasiquote`, `begin`, `if`, `eval`, and `apply`, which the evaluator recognises by name; available from every `Evaluator`, including `Evaluator::new()`
 - **Built-ins** — native primitives loaded by `Evaluator::with_builtin()`
 - **Prelude** — macros and helpers loaded by `Evaluator::with_prelude()` / `Default`
 
@@ -59,13 +60,29 @@ Parameter lists use Scheme syntax. A rest parameter, written after a dot, receiv
 (defmacro (m form . forms) ...) ; same syntax for macros
 ```
 
+## Tail Calls
+
+A call in tail position does not consume stack or call depth, so loops written as tail-recursive procedures run in constant space. The tail positions are:
+
+- the last expression of a `lambda` body (and of `define`d procedures)
+- the last argument of `begin`
+- either branch of `if`
+- the expression that `eval` evaluates, and the call that `apply` makes
+- the expansion of a macro -- so tail position carries through prelude macros such as `cond`, `and`, `or`, `let`, `let*`, and `while`
+
+```scheme
+(define (count-down n)
+  (if (= n 0) 'done (count-down (- n 1))))
+(count-down 1000000)  ; done -- no stack growth
+```
+
 Non-tail procedure calls are capped by the host's `max_call_depth` (default 1000); exceeding it is an error rather than a crash. Tail calls do not count.
 
 ## Special Forms and Built-in Procedures
 
 ### Primitives
 
-The following forms and procedures are implemented in Rust -- most as native procedures bound in the root environment; `quote`, `quasiquote`, `begin`, `if`, `eval`, and `apply` directly by the evaluator.
+The following forms and procedures are implemented in Rust. Most are native procedures bound in the root environment and can be passed around like any other value. `quote`, `quasiquote`, `begin`, `if`, `eval`, and `apply` are instead recognised by the evaluator itself: they are not values (`(proc? if)` is an undefined-symbol error), cannot be rebound, and are available even in an `Evaluator::new()` with no built-ins loaded.
 
 #### `atom?`
   Evaluates to true (`1`) if a given expression is an atom, i.e. anything but a non-empty list. Otherwise, false (`()`).
@@ -78,7 +95,7 @@ The following forms and procedures are implemented in Rust -- most as native pro
   ```
 
 #### `apply`
-  Calls a procedure with arguments taken from a list. Closures and natives receive each value without re-evaluating it; macros receive the values as unevaluated arguments.
+  Calls a procedure with arguments taken from a list. Closures and natives receive each value without re-evaluating it; macros receive the values as unevaluated arguments. The call is made in tail position, so a procedure that ends in `(apply f ...)` is still tail-recursive.
   ```scheme
   (apply + '(1 2 3))      ; 6
   (apply car '((1 2 3)))  ; 1
@@ -155,7 +172,7 @@ The following forms and procedures are implemented in Rust -- most as native pro
   ```
 
 #### `eval`
-  Evaluates an expression in the current environment.
+  Evaluates an expression in the current environment, in tail position.
   ```scheme
   (eval '(+ 1 2))  ; 3
   (define x 10)
@@ -247,7 +264,7 @@ Procedures: `append`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `filter`, `fold`,
 (or)              ; ()
 ```
 
-`list` is an ordinary procedure; `apply` is a built-in:
+`list` is an ordinary procedure; `apply` is an evaluator form:
 ```scheme
 (list 1 2 3)            ; (1 2 3)
 (map list '(1 2))       ; ((1) (2))
@@ -408,6 +425,7 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
 - **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Same-type operations use a type prefix (`num-add`, `str-append`). Conversions use `type1->type2` (`num->str`, `str->num`). Scheme spellings are a [`rusche-cli`](rusche-cli.md#scheme-style-aliases) convenience, not part of the core.
 - **Small surface.** `if` without an else branch and `define` return `()`; there is no named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
+- **`apply` and `eval` are syntax.** In Scheme they are procedures; in Rusche they are evaluator forms like `if`, so they cannot be passed as values or rebound. `(begin)` with no arguments is allowed and returns `()`.
 - **Rest parameters** do use Scheme syntax: `(define (f a . rest) ...)` and `(lambda args ...)`.
 
 ## See also
