@@ -27,11 +27,17 @@ pub fn error(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult 
     Err(EvalError::from(parts.join(" ")))
 }
 
-/// Applies a procedure to a list of already-evaluated arguments.
+/// Builds the call form for `(apply proc list)`: the procedure in head position followed by
+/// the already-evaluated elements of `list`.
 ///
-/// Closures and natives receive each value wrapped in `(quote ...)`, so they do
-/// not re-evaluate the arguments. Macros receive the values as-is.
-pub fn apply(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+/// Closures and natives receive each value wrapped in `(quote ...)`, so they do not
+/// re-evaluate the arguments. Macros receive the values as-is. The evaluator evaluates the
+/// returned form in tail position, so `apply` does not nest a call frame.
+pub(crate) fn apply_form(
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> Result<Expr, EvalError> {
     let (proc_expr, args_expr) = get_exact_2_args(proc_name, args)?;
 
     let Expr::Proc(proc, _) = eval(proc_expr, context)? else {
@@ -54,7 +60,7 @@ pub fn apply(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult 
     };
 
     // A procedure value in head position evaluates to itself, so this is a regular call.
-    eval(&cons(Expr::Proc(proc, None), call_args).into(), context)
+    Ok(cons(Expr::Proc(proc, None), call_args).into())
 }
 
 fn quote_expr(value: &Expr) -> Expr {
@@ -348,11 +354,18 @@ mod tests {
     }
 
     #[test]
-    fn test_apply() {
-        setup_native_proc_test!(apply, env);
+    fn test_apply_form() {
+        let evaluator = crate::eval::Evaluator::new();
+        let context = evaluator.context();
+        let apply =
+            |args: List| apply_form("apply", &args, context).and_then(|f| eval(&f, context));
 
-        env.define_native_proc("+", crate::builtin::num::add);
-        env.define_native_proc("car", crate::builtin::list::car);
+        context
+            .env
+            .define_native_proc("+", crate::builtin::num::add);
+        context
+            .env
+            .define_native_proc("car", crate::builtin::list::car);
 
         assert_eq!(
             apply(list!(intern("+"), list!(intern("quote"), list!(1, 2, 3)))),
@@ -367,5 +380,6 @@ mod tests {
         );
         assert!(apply(list!(1, list!(intern("quote"), list!()))).is_err());
         assert!(apply(list!(intern("+"), 1)).is_err());
+        assert!(apply(list!(intern("+"))).is_err());
     }
 }

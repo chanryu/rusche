@@ -240,14 +240,16 @@ pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
 
 const IF: &str = "if";
 const EVAL: &str = "eval";
+const APPLY: &str = "apply";
 
 /// Reduces a single form `(car . cdr)` by one step.
 ///
-/// `quote`, `quasiquote`, `if`, and `eval` are handled here rather than as native procedures:
-/// the first two because they must see their arguments unevaluated, the last two because they
-/// evaluate something in tail position and must hand it back to the [`eval`] loop.
+/// `quote`, `quasiquote`, `if`, `eval`, and `apply` are handled here rather than as native
+/// procedures: the first two because they must see their arguments unevaluated, the others
+/// because they evaluate something in tail position and must hand it back to the [`eval`] loop.
 fn eval_form(cons: &Cons, context: &EvalContext, frame: &mut CallFrame) -> Result<Step, EvalError> {
     use crate::builtin::quote::{quasiquote, quote, QUASIQUOTE, QUOTE};
+    use crate::builtin::special::apply_form;
     use crate::utils::{get_2_or_3_args, get_exact_1_arg};
 
     let args = &cons.cdr;
@@ -270,6 +272,12 @@ fn eval_form(cons: &Cons, context: &EvalContext, frame: &mut CallFrame) -> Resul
             EVAL => {
                 let expr = get_exact_1_arg(name, args)?;
                 return Ok(Step::Eval(eval(expr, context)?, context.clone()));
+            }
+            APPLY => {
+                return Ok(Step::Eval(
+                    apply_form(name, args, context)?,
+                    context.clone(),
+                ));
             }
             _ => {}
         }

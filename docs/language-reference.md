@@ -65,7 +65,7 @@ Non-tail procedure calls are capped by the host's `max_call_depth` (default 1000
 
 ### Primitives
 
-The following forms and procedures are implemented in Rust -- most as native procedures bound in the root environment; `quote`, `quasiquote`, `if`, and `eval` directly by the evaluator.
+The following forms and procedures are implemented in Rust -- most as native procedures bound in the root environment; `quote`, `quasiquote`, `if`, `eval`, and `apply` directly by the evaluator.
 
 #### `atom?`
   Evaluates to true (`1`) if a given expression is an atom, i.e. anything but a non-empty list. Otherwise, false (`()`).

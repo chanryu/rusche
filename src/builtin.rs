@@ -4,7 +4,7 @@ mod convert;
 mod list;
 mod num;
 mod proc;
-mod special;
+pub(crate) mod special;
 mod str;
 mod sym;
 
@@ -14,8 +14,7 @@ use crate::env::Env;
 
 pub fn load_builtin(env: &Rc<Env>) {
     // special forms and evaluator ops
-    // (`quote`, `quasiquote`, `if`, and `eval` are handled by the evaluator itself.)
-    env.define_native_proc("apply", special::apply);
+    // (`quote`, `quasiquote`, `if`, `eval`, and `apply` are handled by the evaluator itself.)
     env.define_native_proc("define", special::define);
     env.define_native_proc("defmacro", special::defmacro);
     env.define_native_proc("eq?", special::eq);
