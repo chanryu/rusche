@@ -195,23 +195,15 @@ pub fn get_2_or_3_args<'a>(
 
 /// Parse the formal parameters of a `lambda`, `define`, or `defmacro` form.
 ///
-/// Accepts the Scheme spellings: a list of symbols `(a b)`, a list with a rest parameter
-/// `(a b . rest)`, or a bare symbol `args` that receives every argument as a list.
+/// The parameters must be a list of symbols. A symbol that starts with `*`, such as `*rest`,
+/// is a rest parameter: it must come last, and the name after the `*` is bound to a list of
+/// every remaining argument. A lone `*` is an ordinary parameter name.
 pub fn make_formal_args(expr: &Expr) -> Result<Rc<FormalArgs>, EvalError> {
-    let list = match expr {
-        Expr::Sym(rest, _) => {
-            return Ok(Rc::new(FormalArgs {
-                names: Vec::new(),
-                rest: Some(rest.clone()),
-            }));
-        }
-        Expr::List(list, _) => list,
-        _ => {
-            return Err(EvalError {
-                message: format!("{expr} is not a valid parameter list."),
-                span: expr.span(),
-            });
-        }
+    let Expr::List(list, _) = expr else {
+        return Err(EvalError {
+            message: format!("{expr} is not a valid parameter list."),
+            span: expr.span(),
+        });
     };
 
     let mut formal_args = FormalArgs::default();
@@ -224,33 +216,30 @@ pub fn make_formal_args(expr: &Expr) -> Result<Rc<FormalArgs>, EvalError> {
             });
         };
 
-        if name != "." {
+        let Some(rest) = name.strip_prefix('*').filter(|rest| !rest.is_empty()) else {
             formal_args.names.push(name.clone());
             continue;
+        };
+
+        // `*name*` is the Lisp convention for globals, and `**name` is most likely a typo;
+        // neither should silently become a rest parameter with a `*` in its name.
+        if rest.starts_with('*') || rest.ends_with('*') {
+            return Err(EvalError {
+                message: format!(
+                    "{name} is not a valid rest parameter -- the name after `*` cannot start or end with `*`."
+                ),
+                span: item.span(),
+            });
         }
 
-        // `. rest` must be followed by exactly one symbol and nothing else.
-        match (iter.next(), iter.next()) {
-            (Some(Expr::Sym(rest, _)), None) => formal_args.rest = Some(rest.clone()),
-            (Some(rest), None) => {
-                return Err(EvalError {
-                    message: format!("{rest} is not a symbol."),
-                    span: rest.span(),
-                });
-            }
-            (_, Some(extra)) => {
-                return Err(EvalError {
-                    message: format!("unexpected {extra} after the rest parameter."),
-                    span: extra.span(),
-                });
-            }
-            (None, None) => {
-                return Err(EvalError {
-                    message: "expected a rest parameter after `.`.".to_string(),
-                    span: item.span(),
-                });
-            }
+        if let Some(extra) = iter.next() {
+            return Err(EvalError {
+                message: format!("unexpected {extra} after the rest parameter."),
+                span: extra.span(),
+            });
         }
+
+        formal_args.rest = Some(rest.to_string());
     }
 
     Ok(Rc::new(formal_args))
@@ -551,34 +540,34 @@ mod tests {
         let args = make_formal_args(&Expr::from(list!())).unwrap();
         assert_eq!(*args, formal(&[], None));
 
-        // (a . rest)
-        let args =
-            make_formal_args(&Expr::from(list!(intern("a"), intern("."), intern("rest")))).unwrap();
+        // (a *rest)
+        let args = make_formal_args(&Expr::from(list!(intern("a"), intern("*rest")))).unwrap();
         assert_eq!(*args, formal(&["a"], Some("rest")));
 
-        // (. rest)
-        let args = make_formal_args(&Expr::from(list!(intern("."), intern("rest")))).unwrap();
+        // (*rest)
+        let args = make_formal_args(&Expr::from(list!(intern("*rest")))).unwrap();
         assert_eq!(*args, formal(&[], Some("rest")));
 
-        // args
-        let args = make_formal_args(&intern("args")).unwrap();
-        assert_eq!(*args, formal(&[], Some("args")));
+        // (* b) -- a lone `*` is an ordinary parameter
+        let args = make_formal_args(&Expr::from(list!(intern("*"), intern("b")))).unwrap();
+        assert_eq!(*args, formal(&["*", "b"], None));
+
+        // (a*b) -- `*` inside a name is fine
+        let args = make_formal_args(&Expr::from(list!(intern("a*b")))).unwrap();
+        assert_eq!(*args, formal(&["a*b"], None));
 
         // non-symbol parameter
         assert!(make_formal_args(&Expr::from(list!(intern("a"), 1))).is_err());
-        // non-symbol rest parameter
-        assert!(make_formal_args(&Expr::from(list!(intern("a"), intern("."), 1))).is_err());
-        // nothing after the dot
-        assert!(make_formal_args(&Expr::from(list!(intern("a"), intern(".")))).is_err());
-        // more than one name after the dot
-        assert!(make_formal_args(&Expr::from(list!(
-            intern("a"),
-            intern("."),
-            intern("b"),
-            intern("c")
-        )))
-        .is_err());
-        // not a list or symbol at all
+        // the rest parameter must be last
+        assert!(make_formal_args(&Expr::from(list!(intern("*a"), intern("b")))).is_err());
+        // only one rest parameter
+        assert!(make_formal_args(&Expr::from(list!(intern("*a"), intern("*b")))).is_err());
+        // earmuffs and doubled stars are not rest parameters
+        assert!(make_formal_args(&Expr::from(list!(intern("*a*")))).is_err());
+        assert!(make_formal_args(&Expr::from(list!(intern("**a")))).is_err());
+        // a bare symbol is no longer accepted
+        assert!(make_formal_args(&intern("args")).is_err());
+        // not a list at all
         assert!(make_formal_args(&Expr::from(1)).is_err());
     }
 }

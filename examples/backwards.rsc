@@ -1,4 +1,4 @@
-(defmacro (backwards . args)
+(defmacro (backwards *args)
     `(begin ,@(reverse args)))
 
 (backwards
