@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
 use crate::{
-    eval::{eval, eval_tail, EvalContext, EvalError, EvalResult},
+    eval::{eval, EvalContext, EvalError, EvalResult},
     expr::{intern, Expr, NIL},
-    list::List,
+    list::{cons, List},
     proc::Proc,
-    utils::{get_2_or_3_args, get_exact_1_arg, get_exact_2_args, make_formal_args},
+    utils::{get_exact_2_args, make_formal_args},
 };
 
 pub fn error(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -48,16 +48,17 @@ pub fn apply(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult 
         });
     };
 
-    let invoke_args = match &proc {
+    let call_args = match &proc {
         Proc::Macro { .. } => arg_list,
         _ => arg_list.iter().map(quote_expr).collect::<Vec<_>>().into(),
     };
 
-    proc.invoke(&invoke_args, context)
+    // A procedure value in head position evaluates to itself, so this is a regular call.
+    eval(&cons(Expr::Proc(proc, None), call_args).into(), context)
 }
 
 fn quote_expr(value: &Expr) -> Expr {
-    crate::list::cons(intern("quote"), crate::list::cons(value.clone(), List::Nil)).into()
+    cons(intern("quote"), cons(value.clone(), List::Nil)).into()
 }
 
 pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -179,24 +180,6 @@ pub fn eq(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (left, right) = get_exact_2_args(proc_name, args)?;
 
     Ok((eval(left, context)? == eval(right, context)?).into())
-}
-
-pub fn eval_(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let expr = get_exact_1_arg(proc_name, args)?;
-
-    eval_tail(&eval(expr, context)?, context)
-}
-
-pub fn if_(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let (condition, then_clause, else_clause) = get_2_or_3_args(proc_name, args)?;
-
-    if eval(condition, context)?.is_truthy() {
-        eval_tail(then_clause, context)
-    } else if let Some(else_clause) = else_clause {
-        eval_tail(else_clause, context)
-    } else {
-        Ok(NIL)
-    }
 }
 
 pub fn lambda(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {

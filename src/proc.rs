@@ -2,7 +2,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::rc::Rc;
 
 use crate::env::Env;
-use crate::eval::{eval, eval_tail, EvalContext, EvalError, EvalResult};
+use crate::eval::{eval, EvalContext, EvalError, EvalResult, Step};
 use crate::expr::{Expr, NIL};
 use crate::list::List;
 
@@ -48,15 +48,19 @@ pub enum Proc {
 }
 
 impl Proc {
-    pub(crate) fn invoke(&self, args: &List, context: &EvalContext) -> EvalResult {
-        context.push_call(self)?;
-        let result = match self {
+    /// Applies the procedure to the unevaluated `args`.
+    ///
+    /// Natives produce a value directly. Closures and macros evaluate everything but their
+    /// final expression and hand that expression back as [`Step::Eval`], so that the caller --
+    /// the [`eval`] loop -- can continue with it in tail position.
+    pub(crate) fn apply(&self, args: &List, context: &EvalContext) -> Result<Step, EvalError> {
+        match self {
             Proc::Closure {
                 name,
                 formal_args,
                 body,
                 outer_context,
-            } => eval_closure(
+            } => apply_closure(
                 name.as_deref(),
                 formal_args,
                 body,
@@ -68,11 +72,9 @@ impl Proc {
                 name,
                 formal_args,
                 body,
-            } => eval_macro(name.as_deref(), formal_args, body, args, context),
-            Proc::Native { name, func } => func(name, args, context),
-        };
-        context.pop_call();
-        result
+            } => apply_macro(name.as_deref(), formal_args, body, args, context),
+            Proc::Native { name, func } => func(name, args, context).map(Step::Value),
+        }
     }
 
     pub(crate) fn badge(&self) -> String {
@@ -198,14 +200,14 @@ fn bind_args(
     Ok(())
 }
 
-fn eval_closure(
+fn apply_closure(
     closure_name: Option<&str>,
     formal_args: &FormalArgs,
     body: &List,
     outer_context: &EvalContext,
     actual_args: &List,
     context: &EvalContext,
-) -> EvalResult {
+) -> Result<Step, EvalError> {
     let closure_name = closure_name.unwrap_or("unnamed-closure");
     let closure_context = EvalContext::derive_from(outer_context);
     bind_args(
@@ -219,21 +221,20 @@ fn eval_closure(
     let mut iter = body.iter().peekable();
     while let Some(expr) = iter.next() {
         if iter.peek().is_none() {
-            return eval_tail(expr, &closure_context);
-        } else {
-            eval(expr, &closure_context)?;
+            return Ok(Step::Eval(expr.clone(), closure_context));
         }
+        eval(expr, &closure_context)?;
     }
-    Ok(NIL)
+    Ok(Step::Value(NIL))
 }
 
-fn eval_macro(
+fn apply_macro(
     macro_name: Option<&str>,
     formal_args: &FormalArgs,
     body: &List,
     actual_args: &List,
     context: &EvalContext,
-) -> EvalResult {
+) -> Result<Step, EvalError> {
     let macro_name = macro_name.unwrap_or("unnamed-macro");
     let macro_context = EvalContext::derive_from(context);
     bind_args(
@@ -248,12 +249,11 @@ fn eval_macro(
     while let Some(expr) = iter.next() {
         let expanded_expr = eval(expr, &macro_context)?;
         if iter.peek().is_none() {
-            return eval_tail(&expanded_expr, context);
-        } else {
-            eval(&expanded_expr, context)?;
+            return Ok(Step::Eval(expanded_expr, context.clone()));
         }
+        eval(&expanded_expr, context)?;
     }
-    Ok(NIL)
+    Ok(Step::Value(NIL))
 }
 
 #[cfg(test)]

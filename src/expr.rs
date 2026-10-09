@@ -1,7 +1,6 @@
 use std::{any::Any, fmt, rc::Rc};
 
 use crate::{
-    eval::EvalContext,
     list::{List, ListIter},
     proc::Proc,
     span::Span,
@@ -32,13 +31,6 @@ pub enum Expr {
 
     /// A foreign object value. This is used to store Rust objects in the interpreter.
     Foreign(Foreign),
-
-    /// A special case for tail-call optimization. _Internal use only._
-    TailCall {
-        proc: Proc,
-        args: List,
-        context: EvalContext,
-    },
 }
 
 pub const NIL: Expr = Expr::List(List::Nil, None);
@@ -69,7 +61,6 @@ impl Expr {
             | Expr::Proc(_, span)
             | Expr::List(_, span) => *span,
             Expr::Foreign(_) => None,
-            Expr::TailCall { .. } => None,
         }
     }
 
@@ -81,7 +72,7 @@ impl Expr {
             Expr::Sym(name, _) => Expr::Sym(name.clone(), None),
             Expr::Proc(proc, _) => Expr::Proc(proc.clone(), None),
             Expr::List(list, _) => Expr::List(list.without_spans(), None),
-            Expr::Foreign(_) | Expr::TailCall { .. } => self.clone(),
+            Expr::Foreign(_) => self.clone(),
         }
     }
 }
@@ -125,9 +116,6 @@ impl fmt::Display for Expr {
             Expr::Proc(proc, _) => write!(f, "<{}>", proc.fingerprint()),
             Expr::List(list, _) => write!(f, "{}", list),
             Expr::Foreign(object) => write!(f, "<foreign: {:p}>", object),
-
-            // TailCall is a special case and should not be displayed.
-            Expr::TailCall { proc, .. } => panic!("Unexpected TailCall: {:?}", proc),
         }
     }
 }

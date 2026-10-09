@@ -164,23 +164,13 @@ impl Env {
     }
 
     /// Marks every environment reachable from `expr`: closures captured directly, inside
-    /// lists, inside pending tail calls, or inside foreign objects with a registered tracer.
+    /// lists, or inside foreign objects with a registered tracer.
     pub(crate) fn gc_mark_expr(expr: &Expr, tracers: &ForeignTracers) {
         match expr {
             Expr::Proc(proc, _) => Self::gc_mark_proc(proc, tracers),
             Expr::List(list, _) => list
                 .iter()
                 .for_each(|expr| Self::gc_mark_expr(expr, tracers)),
-            Expr::TailCall {
-                proc,
-                args,
-                context,
-            } => {
-                Self::gc_mark_proc(proc, tracers);
-                context.env.gc_mark(tracers);
-                args.iter()
-                    .for_each(|expr| Self::gc_mark_expr(expr, tracers));
-            }
             Expr::Foreign(object) => {
                 if let Some(tracer) = tracers.get(&object.as_ref().type_id()) {
                     tracer(object.as_ref(), &mut |expr| {

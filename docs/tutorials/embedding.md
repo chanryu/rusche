@@ -129,7 +129,6 @@ fn describe(expr: &Expr) -> String {
         Expr::List(list, _) => format!("list {list}"),
         Expr::Proc(proc, _) => format!("procedure <{}>", proc.fingerprint()),
         Expr::Foreign(object) => format!("foreign {:p}", object),
-        Expr::TailCall { .. } => unreachable!("TailCall is internal"),
     }
 }
 ```
