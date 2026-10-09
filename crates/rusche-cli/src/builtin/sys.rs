@@ -1,7 +1,5 @@
 use rand::Rng;
-use rusche::{
-    cons, eval, get_exact_1_arg, EvalContext, EvalError, EvalResult, Expr, List,
-};
+use rusche::{cons, eval, get_exact_1_arg, EvalContext, EvalError, EvalResult, Expr, List};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::host;

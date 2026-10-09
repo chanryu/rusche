@@ -52,8 +52,8 @@ impl Expr {
 
     pub fn span(&self) -> Option<Span> {
         match self {
-            Expr::Num(_, span)
-            | Expr::Bool(_, span)
+            Expr::Bool(_, span)
+            | Expr::Num(_, span)
             | Expr::Str(_, span)
             | Expr::Sym(_, span)
             | Expr::Proc(_, span)
@@ -65,8 +65,8 @@ impl Expr {
     /// Returns a copy of the expression with every span removed, recursively.
     pub(crate) fn without_spans(&self) -> Expr {
         match self {
-            Expr::Num(value, _) => Expr::Num(*value, None),
             Expr::Bool(value, _) => Expr::Bool(*value, None),
+            Expr::Num(value, _) => Expr::Num(*value, None),
             Expr::Str(text, _) => Expr::Str(text.clone(), None),
             Expr::Sym(name, _) => Expr::Sym(name.clone(), None),
             Expr::Proc(proc, _) => Expr::Proc(proc.clone(), None),
@@ -79,8 +79,8 @@ impl Expr {
 impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Expr::Num(lhs, _), Expr::Num(rhs, _)) => lhs == rhs,
             (Expr::Bool(lhs, _), Expr::Bool(rhs, _)) => lhs == rhs,
+            (Expr::Num(lhs, _), Expr::Num(rhs, _)) => lhs == rhs,
             (Expr::Str(lhs, _), Expr::Str(rhs, _)) => lhs == rhs,
             (Expr::Sym(lhs, _), Expr::Sym(rhs, _)) => lhs == rhs,
             (Expr::Proc(lhs, _), Expr::Proc(rhs, _)) => lhs == rhs,
@@ -110,9 +110,9 @@ fn write_escaped_str(f: &mut fmt::Formatter<'_>, text: &str) -> fmt::Result {
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Expr::Num(value, _) => write!(f, "{}", value),
             Expr::Bool(true, _) => write!(f, "true"),
             Expr::Bool(false, _) => write!(f, "false"),
+            Expr::Num(value, _) => write!(f, "{}", value),
             Expr::Str(text, _) => write_escaped_str(f, text),
             Expr::Sym(name, _) => write!(f, "{}", name),
             Expr::Proc(proc, _) => write!(f, "<{}>", proc.fingerprint()),
@@ -236,8 +236,8 @@ mod tests {
             func: |_, _, _| Ok(NIL),
         };
         let spanned = [
-            Expr::Num(1.0, span),
             Expr::Bool(true, span),
+            Expr::Num(1.0, span),
             Expr::Str("s".into(), span),
             Expr::Sym("x".into(), span),
             Expr::Proc(proc, span),

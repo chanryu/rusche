@@ -80,8 +80,8 @@ pub fn less(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 mod tests {
     use super::*;
     use crate::eval::Evaluator;
-    use crate::expr::test_utils::num;
     use crate::expr::intern;
+    use crate::expr::test_utils::num;
     use crate::macros::*;
 
     #[test]

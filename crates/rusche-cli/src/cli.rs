@@ -62,19 +62,19 @@ where
             "--no-prelude" => opts.no_prelude = true,
             "--no-color" => opts.no_color = true,
             "-e" | "--eval" => {
-                let expr = iter
-                    .next()
-                    .ok_or(ParseCliError::MissingValue("--eval"))?;
+                let expr = iter.next().ok_or(ParseCliError::MissingValue("--eval"))?;
                 opts.input = Input::Eval(expr);
             }
             "--max-call-depth" => {
                 let value = iter
                     .next()
                     .ok_or(ParseCliError::MissingValue("--max-call-depth"))?;
-                let depth = value.parse::<usize>().map_err(|_| ParseCliError::InvalidValue {
-                    flag: "--max-call-depth",
-                    value: value.clone(),
-                })?;
+                let depth = value
+                    .parse::<usize>()
+                    .map_err(|_| ParseCliError::InvalidValue {
+                        flag: "--max-call-depth",
+                        value: value.clone(),
+                    })?;
                 opts.max_call_depth = Some(depth);
             }
             "--gc-threshold" => {

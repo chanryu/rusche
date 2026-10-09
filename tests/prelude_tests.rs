@@ -20,7 +20,9 @@ fn test_true_false() {
     assert_eq!(eval_str("(num? true)"), "false");
     assert_eq!(eval_str("(atom? true)"), "true");
     assert!(Evaluator::with_prelude().eval_str("(+ true 1)").is_err());
-    assert!(Evaluator::with_prelude().eval_str("(define true 1)").is_err());
+    assert!(Evaluator::with_prelude()
+        .eval_str("(define true 1)")
+        .is_err());
 
     // `#t` is an ordinary (undefined) symbol in the core language.
     assert!(eval_str("#t").starts_with("Err:"));
@@ -117,7 +119,10 @@ fn test_and_or_not() {
 fn test_or_else() {
     assert_eq!(eval_str("(or-else false 42)"), "42");
     assert_eq!(eval_str("(or-else 7 42)"), "7");
-    assert_eq!(eval_str("(or-else (assoc 'x '((a 1))) 'missing)"), "missing");
+    assert_eq!(
+        eval_str("(or-else (assoc 'x '((a 1))) 'missing)"),
+        "missing"
+    );
     assert_eq!(eval_str("(or-else (assoc 'a '((a 1))) 'missing)"), "(a 1)");
 }
 

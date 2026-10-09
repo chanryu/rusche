@@ -17,11 +17,7 @@ pub fn print_error(message: &dyn Display, src: &str, span: Option<Span>) {
     }
 
     let print_line = |line: usize| {
-        eprintln!(
-            "{}{}",
-            format!("{:>3}| ", line + 1).dimmed(),
-            lines[line]
-        );
+        eprintln!("{}{}", format!("{:>3}| ", line + 1).dimmed(), lines[line]);
     };
 
     // Context lines before the span.
@@ -42,10 +38,7 @@ pub fn print_error(message: &dyn Display, src: &str, span: Option<Span>) {
         .skip(span.begin.line)
     {
         let relative = line - span.begin.line;
-        if show_ellipsis
-            && relative >= MAX_HEAD_LINES
-            && line + MAX_TAIL_LINES <= span.end.line
-        {
+        if show_ellipsis && relative >= MAX_HEAD_LINES && line + MAX_TAIL_LINES <= span.end.line {
             if relative == MAX_HEAD_LINES {
                 eprintln!("{}", "   | ...".dimmed());
             }

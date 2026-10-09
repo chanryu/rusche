@@ -111,19 +111,13 @@ fn vec_get(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 fn vec_set(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let mut iter = args.iter();
     let Some(vec_expr) = iter.next() else {
-        return Err(EvalError::from(format!(
-            "{proc_name} needs 3 arguments."
-        )));
+        return Err(EvalError::from(format!("{proc_name} needs 3 arguments.")));
     };
     let Some(index_expr) = iter.next() else {
-        return Err(EvalError::from(format!(
-            "{proc_name} needs 3 arguments."
-        )));
+        return Err(EvalError::from(format!("{proc_name} needs 3 arguments.")));
     };
     let Some(value_expr) = iter.next() else {
-        return Err(EvalError::from(format!(
-            "{proc_name} needs 3 arguments."
-        )));
+        return Err(EvalError::from(format!("{proc_name} needs 3 arguments.")));
     };
     if iter.next().is_some() {
         return Err(EvalError::from(format!(
