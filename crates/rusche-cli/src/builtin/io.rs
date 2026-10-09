@@ -1,6 +1,8 @@
 use rusche::{eval, EvalContext, EvalError, EvalResult, Expr, List, NIL};
 use std::io::Write;
 
+use crate::host;
+
 pub fn load_io_procs(context: &EvalContext) {
     context.env.define_native_proc("display", display);
     context.env.define_native_proc("newline", newline);
@@ -11,8 +13,15 @@ pub fn load_io_procs(context: &EvalContext) {
 fn display(_: &str, args: &List, context: &EvalContext) -> EvalResult {
     for expr in args.iter() {
         match eval(expr, context)? {
-            Expr::Str(text, _) => print!("{}", text),
-            expr => print!("{}", expr),
+            Expr::Str(text, _) => {
+                print!("{}", text);
+                host::note_output(&text);
+            }
+            expr => {
+                let text = expr.to_string();
+                print!("{}", text);
+                host::note_output(&text);
+            }
         }
     }
     let _ = std::io::stdout().flush();
@@ -26,6 +35,7 @@ fn newline(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
         )));
     }
     println!();
+    host::note_output("\n");
     Ok(NIL)
 }
 
