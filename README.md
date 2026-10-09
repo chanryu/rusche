@@ -99,7 +99,7 @@ The core language is everything available from `Evaluator::default()` (built-ins
 
 - **Booleans.** Literals are `true`/`false`. Conditions must be booleans; `'()` is just a value. Predicates return `true` or `false`. `#t`/`#f` exist only as `rusche-cli` aliases.
 - **Equality.** `eq?` compares structurally and `=` is an alias for it.
-- **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`, and a lone `.` is a syntax error. Lists are immutable and shared.
+- **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
 - **Names.** Type checks end in `?` (`num?`, `str?`); same-type ops use a type prefix (`num-add`, `str-append`); conversions use `type1->type2` (`num->str`). Scheme spellings are host aliases, not core.

@@ -59,7 +59,9 @@ A parameter list is a list of symbols. The last one may be a *rest parameter*, w
 
 The rest parameter must be last and there can be only one. A lone `*` is an ordinary parameter name (so `(lambda (*) ...)` shadows multiplication), and a `*` elsewhere in a name is not special. A name after the `*` may not itself start or end with `*`, so the Lisp earmuff convention `*name*` cannot be mistaken for a rest parameter.
 
-Unlike Scheme, there is no dotted syntax -- `(f a . rest)` and `(lambda args ...)` are errors.
+Unlike Scheme, there is no dotted rest syntax -- use `*rest` instead. A bare symbol
+parameter list such as `(lambda args ...)` is an error. A lone `.` is just a symbol, so
+`(a . b)` is the three-element list `(a . b)`, not a dotted pair.
 
 ## Tail Calls
 
@@ -431,7 +433,7 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 
 - **Booleans.** Literals are `true`/`false` (not Scheme's `#t`/`#f`). Conditions must be booleans; `()` is just a value. `#t`/`#f` exist only as [`rusche-cli`](rusche-cli.md#scheme-style-aliases) aliases.
 - **Equality.** `eq?` compares structurally and `=` is an alias for it.
-- **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`, and a lone `.` is a syntax error. Lists are immutable and shared.
+- **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. A lone `.` is an ordinary symbol. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
 - **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Same-type operations use a type prefix (`num-add`, `str-append`). Conversions use `type1->type2` (`num->str`, `str->num`). Scheme spellings are a [`rusche-cli`](rusche-cli.md#scheme-style-aliases) convenience, not part of the core.

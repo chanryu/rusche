@@ -91,13 +91,3 @@ fn star_alone_and_star_inside_a_name_are_ordinary_parameters() {
     assert!(eval_str("((lambda (*rest) *rest) 1 2)").contains("undefined symbol: `*rest`"));
 }
 
-#[test]
-fn dotted_pair_syntax_is_a_lex_error() {
-    for src in ["(lambda (a . rest) rest)", "'(a . b)", "(cons 1 . 2)"] {
-        let out = eval_str(src);
-        assert!(
-            out.contains("dotted pairs are not supported"),
-            "{src} => {out}"
-        );
-    }
-}
