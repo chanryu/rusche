@@ -55,7 +55,6 @@ fn malformed_rest_parameters_are_errors() {
     for src in [
         "(lambda (*a b) a)",
         "(lambda (*a *b) a)",
-        "(lambda (*a*) a)",
         "(lambda (**a) a)",
         "(lambda (a 1) a)",
         "(lambda 1 a)",
@@ -89,5 +88,7 @@ fn star_alone_and_star_inside_a_name_are_ordinary_parameters() {
     assert_eq!(eval_str("((lambda (a*b) a*b) 7)"), "7");
     // `*rest` binds `rest`, so the symbol `*rest` itself is unbound.
     assert!(eval_str("((lambda (*rest) *rest) 1 2)").contains("undefined symbol: `*rest`"));
+    // `*a*` binds `a*`
+    assert_eq!(eval_str("((lambda (*a*) a*) 1 2)"), "(1 2)");
 }
 

@@ -236,13 +236,12 @@ pub fn make_formal_args(expr: &Expr) -> Result<Rc<FormalArgs>, EvalError> {
             continue;
         };
 
-        // `*name*` is the Lisp convention for globals, and `**name` is most likely a typo;
-        // neither should silently become a rest parameter with a `*` in its name.
-        if rest.starts_with('*') || rest.ends_with('*') {
+        // `**name` is most likely a typo for `*name`, not a rest parameter named `*name`.
+        if rest.starts_with('*') {
             return Err(EvalError::new(
                 ErrorKind::InvalidForm,
                 format!(
-                    "`{name}` is not a valid rest parameter -- the name after `*` cannot start or end with `*`"
+                    "`{name}` is not a valid rest parameter -- the name after `*` cannot start with `*`"
                 ),
             )
             .with_span(item.span()));
@@ -580,8 +579,10 @@ mod tests {
         assert!(make_formal_args(&Expr::from(list!(intern("*a"), intern("b")))).is_err());
         // only one rest parameter
         assert!(make_formal_args(&Expr::from(list!(intern("*a"), intern("*b")))).is_err());
-        // earmuffs and doubled stars are not rest parameters
-        assert!(make_formal_args(&Expr::from(list!(intern("*a*")))).is_err());
+        // `*a*` is a rest parameter binding `a*`
+        let args = make_formal_args(&Expr::from(list!(intern("*a*")))).unwrap();
+        assert_eq!(*args, formal(&[], Some("a*")));
+        // doubled stars are not rest parameters
         assert!(make_formal_args(&Expr::from(list!(intern("**a")))).is_err());
         // a bare symbol is no longer accepted
         assert!(make_formal_args(&intern("args")).is_err());

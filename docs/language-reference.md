@@ -57,7 +57,7 @@ A parameter list is a list of symbols. The last one may be a *rest parameter*, w
 (defmacro (m form *forms) ...) ; same syntax for macros
 ```
 
-The rest parameter must be last and there can be only one. A lone `*` is an ordinary parameter name (so `(lambda (*) ...)` shadows multiplication), and a `*` elsewhere in a name is not special. A name after the `*` may not itself start or end with `*`, so the Lisp earmuff convention `*name*` cannot be mistaken for a rest parameter.
+The rest parameter must be last and there can be only one. A lone `*` is an ordinary parameter name (so `(lambda (*) ...)` shadows multiplication), and a `*` elsewhere in a name is not special. A name after the leading `*` may not itself start with `*` (so `**a` is rejected).
 
 Unlike Scheme, there is no dotted rest syntax -- use `*rest` instead. A bare symbol
 parameter list such as `(lambda args ...)` is an error. A lone `.` is just a symbol, so
