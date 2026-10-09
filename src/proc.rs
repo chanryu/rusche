@@ -413,8 +413,80 @@ mod tests {
         assert_eq!(native1.fingerprint(), native1_1.fingerprint());
         assert_ne!(native1.fingerprint(), native2.fingerprint());
 
+        let macro_ = |names: &[&str], body: List| Proc::Macro {
+            name: Some("m".into()),
+            formal_args: formal_args(names),
+            body: Rc::new(body),
+        };
+        assert_eq!(
+            macro_(&["x"], list!(1)).fingerprint(),
+            macro_(&["x"], list!(1)).fingerprint()
+        );
+        assert_ne!(
+            macro_(&["x"], list!(1)).fingerprint(),
+            macro_(&["y"], list!(1)).fingerprint()
+        );
+        assert_ne!(
+            macro_(&["x"], list!(1)).fingerprint(),
+            macro_(&["x"], list!(2)).fingerprint()
+        );
+        assert!(macro_(&["x"], list!(1))
+            .fingerprint()
+            .starts_with("proc/macro:m:"));
+
         // code coverage workaround (#[coverage(off)] is unstable)
         native_fn_1("", &list!(), &context).unwrap();
         native_fn_2("", &list!(), &context).unwrap();
+    }
+
+    fn eval_str(evaluator: &Evaluator, src: &str) -> EvalResult {
+        use crate::{lexer::tokenize, parser::Parser};
+
+        let mut parser = Parser::with_tokens(tokenize(src, None).unwrap());
+        let mut last = Ok(NIL);
+        while let Some(expr) = parser.parse().unwrap() {
+            last = evaluator.eval(&expr);
+        }
+        last
+    }
+
+    #[test]
+    fn test_apply_closure_body() {
+        let evaluator = Evaluator::with_builtin();
+
+        // An empty body evaluates to ().
+        assert_eq!(eval_str(&evaluator, "((lambda ()))"), Ok(NIL));
+
+        // Every body expression runs; the last one is the result.
+        let src = "(define x 0)
+                   ((lambda () (set! x (num-add x 1)) (set! x (num-add x 1)) x))";
+        assert_eq!(eval_str(&evaluator, src), Ok(2.into()));
+
+        // An error in a non-final body expression stops evaluation.
+        let src = "(define y 0)
+                   ((lambda () (car '()) (set! y 1)))";
+        assert!(eval_str(&evaluator, src).is_err());
+        assert_eq!(eval_str(&evaluator, "y"), Ok(0.into()));
+    }
+
+    #[test]
+    fn test_apply_macro_body() {
+        let evaluator = Evaluator::with_builtin();
+
+        // An empty body expands to nothing and evaluates to ().
+        assert_eq!(eval_str(&evaluator, "(defmacro (empty)) (empty)"), Ok(NIL));
+
+        // Each body form is expanded and then evaluated in the caller's environment; the
+        // expansion of the last one is the result.
+        let src = "(defmacro (m) '(define z 41) '(num-add z 1))
+                   (m)";
+        assert_eq!(eval_str(&evaluator, src), Ok(42.into()));
+        assert_eq!(eval_str(&evaluator, "z"), Ok(41.into()));
+
+        // An error in a non-final expansion stops evaluation.
+        let src = "(defmacro (bad) '(car '()) '(define w 1))
+                   (bad)";
+        assert!(eval_str(&evaluator, src).is_err());
+        assert!(eval_str(&evaluator, "w").is_err());
     }
 }
