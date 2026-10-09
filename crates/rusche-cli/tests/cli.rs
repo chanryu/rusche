@@ -317,6 +317,26 @@ fn example_backwards() {
 }
 
 #[test]
+fn example_dict() {
+    let out = run(&[example("dict.rsc").to_str().unwrap()], "");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    let s = stdout(&out);
+    assert!(s.contains("the: 3"), "{s}");
+    assert!(s.contains("fox: 2"), "{s}");
+    assert!(s.contains("unique: 8"), "{s}");
+    assert!(s.contains("has fox? true"), "{s}");
+}
+
+#[test]
+fn example_fibonacci_memoized() {
+    let out = run(&[example("fibonacci.rsc").to_str().unwrap()], "10\n");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    let s = stdout(&out);
+    assert!(s.contains("fib(10) => 55"), "{s}");
+    assert!(s.contains("cache entries: 11"), "{s}");
+}
+
+#[test]
 fn depth_limit_exits_one_not_abort() {
     let dir = tempfile_dir();
     let path = dir.join("depth.rsc");

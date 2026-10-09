@@ -242,8 +242,9 @@ booleans, numbers, strings, or symbols; lists, procedures, and foreign values
 are rejected. `-0.0` and `0.0` are the same key; `NaN` is not a valid key.
 `dict-keys` and `dict->list` use a deterministic key order. `dict-set!` and
 `dict-remove!` return `()`. A tracer keeps closures stored as values reachable.
-See the [foreign object tutorial](tutorials/foreign.md). There are no
-`hash-table-*` Scheme aliases.
+See the [foreign object tutorial](tutorials/foreign.md), and
+[`examples/dict.rsc`](../examples/dict.rsc) / [`examples/fibonacci.rsc`](../examples/fibonacci.rsc)
+for scripts that use it. There are no `hash-table-*` Scheme aliases.
 
 ```scheme
 (define d (dict "a" 1 "b" 2))
@@ -318,8 +319,9 @@ There are no `hash-table-*` aliases for `dict`.
 | --- | --- |
 | [`backwards.rsc`](../examples/backwards.rsc) | A macro that reverses a sequence of forms. |
 | [`counter.rsc`](../examples/counter.rsc) | A closure that counts with `set!`. |
+| [`dict.rsc`](../examples/dict.rsc) | Word frequencies with `dict`. Shebang. |
 | [`factorial.rsc`](../examples/factorial.rsc), [`factorial-tail-recursive.rsc`](../examples/factorial-tail-recursive.rsc) | Factorial, reading a number. |
-| [`fibonacci.rsc`](../examples/fibonacci.rsc), [`fibonacci-tail-recursive.rsc`](../examples/fibonacci-tail-recursive.rsc) | Fibonacci, reading a number. |
+| [`fibonacci.rsc`](../examples/fibonacci.rsc), [`fibonacci-tail-recursive.rsc`](../examples/fibonacci-tail-recursive.rsc) | Fibonacci, reading a number. The non-tail version memoizes with `dict`. |
 | [`fizzbuzz.rsc`](../examples/fizzbuzz.rsc) | FizzBuzz from stdin. Shebang. |
 | [`mandelbrot.rsc`](../examples/mandelbrot.rsc) | ASCII Mandelbrot. Optional width and height from `(command-line)`. Shebang. |
 
