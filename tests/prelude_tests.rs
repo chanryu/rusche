@@ -8,9 +8,22 @@ fn eval_str(src: &str) -> String {
 }
 
 #[test]
-fn test_t_f() {
-    assert_eq!(eval_str("#t"), "1");
-    assert_eq!(eval_str("#f"), "()");
+fn test_true_false() {
+    assert_eq!(eval_str("true"), "true");
+    assert_eq!(eval_str("false"), "false");
+
+    // Literals are booleans, not symbols or numbers.
+    assert_eq!(eval_str("'true"), "true");
+    assert_eq!(eval_str("(eq? true true)"), "true");
+    assert_eq!(eval_str("(eq? true 1)"), "false");
+    assert_eq!(eval_str("(sym? true)"), "false");
+    assert_eq!(eval_str("(num? true)"), "false");
+    assert_eq!(eval_str("(atom? true)"), "true");
+    assert!(Evaluator::with_prelude().eval_str("(+ true 1)").is_err());
+    assert!(Evaluator::with_prelude().eval_str("(define true 1)").is_err());
+
+    // `#t` is an ordinary (undefined) symbol in the core language.
+    assert!(eval_str("#t").starts_with("Err:"));
 }
 
 #[test]
@@ -24,10 +37,10 @@ fn test_cxxr() {
 
 #[test]
 fn test_if() {
-    assert_eq!(eval_str("(if #t 123 456)"), "123");
-    assert_eq!(eval_str("(if #f 123 456)"), "456");
-    assert_eq!(eval_str("(if 1 (+ 1 2) (+ 3 4))"), "3");
-    assert_eq!(eval_str("(if '() (+ 1 2) (+ 3 4))"), "7");
+    assert_eq!(eval_str("(if true 123 456)"), "123");
+    assert_eq!(eval_str("(if false 123 456)"), "456");
+    assert!(eval_str("(if 1 (+ 1 2) (+ 3 4))").starts_with("Err:"));
+    assert!(eval_str("(if '() (+ 1 2) (+ 3 4))").starts_with("Err:"));
 }
 
 #[test]
@@ -48,10 +61,10 @@ fn test_map() {
 
 #[test]
 fn test_greater() {
-    assert_eq!(eval_str("(> 2 1)"), "1");
-    assert_eq!(eval_str("(> 1 2)"), "()");
-    assert_eq!(eval_str("(> 1 1)"), "()");
-    assert_eq!(eval_str("(apply > '(2 1))"), "1");
+    assert_eq!(eval_str("(> 2 1)"), "true");
+    assert_eq!(eval_str("(> 1 2)"), "false");
+    assert_eq!(eval_str("(> 1 1)"), "false");
+    assert_eq!(eval_str("(apply > '(2 1))"), "true");
 }
 
 #[test]
@@ -66,34 +79,46 @@ fn test_let() {
 
 #[test]
 fn test_and_or_not() {
-    assert_eq!(eval_str("(and #f #f)"), "()");
-    assert_eq!(eval_str("(and #f #t)"), "()");
-    assert_eq!(eval_str("(and #t #f)"), "()");
-    assert_eq!(eval_str("(and #t #t)"), "1");
+    assert_eq!(eval_str("(and false false)"), "false");
+    assert_eq!(eval_str("(and false true)"), "false");
+    assert_eq!(eval_str("(and true false)"), "false");
+    assert_eq!(eval_str("(and true true)"), "true");
 
-    assert_eq!(eval_str("(or #f #f)"), "()");
-    assert_eq!(eval_str("(or #f #t)"), "1");
-    assert_eq!(eval_str("(or #t #f)"), "1");
-    assert_eq!(eval_str("(or #t #t)"), "1");
+    assert_eq!(eval_str("(or false false)"), "false");
+    assert_eq!(eval_str("(or false true)"), "true");
+    assert_eq!(eval_str("(or true false)"), "true");
+    assert_eq!(eval_str("(or true true)"), "true");
 
-    assert_eq!(eval_str("(not #f)"), "1");
-    assert_eq!(eval_str("(not #t)"), "()");
+    assert_eq!(eval_str("(not false)"), "true");
+    assert_eq!(eval_str("(not true)"), "false");
 
-    // variadic
-    assert_eq!(eval_str("(and)"), "1");
-    assert_eq!(eval_str("(and 1 2 3)"), "3");
-    assert_eq!(eval_str("(and 1 #f 3)"), "()");
-    assert_eq!(eval_str("(or)"), "()");
-    assert_eq!(eval_str("(or #f 2 3)"), "2");
-    assert_eq!(eval_str("(or #f #f)"), "()");
+    // variadic; always returns a boolean
+    assert_eq!(eval_str("(and)"), "true");
+    assert_eq!(eval_str("(and true true true)"), "true");
+    assert_eq!(eval_str("(and true false true)"), "false");
+    assert_eq!(eval_str("(or)"), "false");
+    assert_eq!(eval_str("(or false true true)"), "true");
+    assert_eq!(eval_str("(or false false)"), "false");
+
+    // Non-boolean operands are an error under strict conditions.
+    assert!(eval_str("(and 1 2 3)").starts_with("Err:"));
+    assert!(eval_str("(or false 2 3)").starts_with("Err:"));
 
     // short-circuit: the second operand would error if evaluated
-    assert_eq!(eval_str("(and #f (car '()))"), "()");
-    assert_eq!(eval_str("(or #t (car '()))"), "1");
+    assert_eq!(eval_str("(and false (car '()))"), "false");
+    assert_eq!(eval_str("(or true (car '()))"), "true");
     assert_eq!(
         eval_str("(let ((lst '())) (and (not (null? lst)) (eq? (car lst) 1)))"),
-        "()"
+        "false"
     );
+}
+
+#[test]
+fn test_or_else() {
+    assert_eq!(eval_str("(or-else false 42)"), "42");
+    assert_eq!(eval_str("(or-else 7 42)"), "7");
+    assert_eq!(eval_str("(or-else (assoc 'x '((a 1))) 'missing)"), "missing");
+    assert_eq!(eval_str("(or-else (assoc 'a '((a 1))) 'missing)"), "(a 1)");
 }
 
 #[test]
@@ -106,17 +131,17 @@ fn test_append() {
 
 #[test]
 fn test_cond() {
-    assert_eq!(eval_str("(cond ('t  0) ('t  1))"), "0");
-    assert_eq!(eval_str("(cond ('t  0) ('() 1))"), "0");
-    assert_eq!(eval_str("(cond ('() 0) ('t  1))"), "1");
-    assert_eq!(eval_str("(cond ('() 0) ('() 1))"), "()");
+    assert_eq!(eval_str("(cond (true  0) (true  1))"), "0");
+    assert_eq!(eval_str("(cond (true  0) (false 1))"), "0");
+    assert_eq!(eval_str("(cond (false 0) (true  1))"), "1");
+    assert_eq!(eval_str("(cond (false 0) (false 1))"), "false");
 }
 
 #[test]
 fn test_assoc() {
     assert_eq!(eval_str("(assoc 'a '((a 1) (b 2) (c 3)))"), "(a 1)");
     assert_eq!(eval_str("(assoc 'b '((a 1) (b 2) (c 3)))"), "(b 2)");
-    assert_eq!(eval_str("(assoc 'x '((a 1) (b 2) (c 3)))"), "()");
+    assert_eq!(eval_str("(assoc 'x '((a 1) (b 2) (c 3)))"), "false");
 }
 
 #[test]
@@ -138,7 +163,7 @@ fn test_length_filter_fold_member() {
         "(c b a)"
     );
     assert_eq!(eval_str("(member 'b '(a b c))"), "(b c)");
-    assert_eq!(eval_str("(member 'x '(a b c))"), "()");
+    assert_eq!(eval_str("(member 'x '(a b c))"), "false");
 }
 
 #[test]
@@ -161,13 +186,36 @@ fn test_abs_min_max() {
 
 #[test]
 fn test_variadic_comparisons() {
-    assert_eq!(eval_str("(< 1 2)"), "1");
-    assert_eq!(eval_str("(< 1 2 3)"), "1");
-    assert_eq!(eval_str("(< 1 3 2)"), "()");
-    assert_eq!(eval_str("(<= 1 1 2)"), "1");
-    assert_eq!(eval_str("(> 3 2 1)"), "1");
-    assert_eq!(eval_str("(> 3 1 2)"), "()");
-    assert_eq!(eval_str("(>= 3 3 1)"), "1");
+    assert_eq!(eval_str("(< 1 2)"), "true");
+    assert_eq!(eval_str("(< 1 2 3)"), "true");
+    assert_eq!(eval_str("(< 1 3 2)"), "false");
+    assert_eq!(eval_str("(<= 1 1 2)"), "true");
+    assert_eq!(eval_str("(> 3 2 1)"), "true");
+    assert_eq!(eval_str("(> 3 1 2)"), "false");
+    assert_eq!(eval_str("(>= 3 3 1)"), "true");
     assert!(eval_str("(< 1)").starts_with("Err:"));
     assert!(eval_str("(<)").starts_with("Err:"));
+}
+
+#[test]
+fn test_strict_conditions_report_span() {
+    let err = eval_str("(if 1 'a 'b)");
+    assert!(err.contains("expected `true` or `false`"), "{err}");
+    assert!(err.contains("1:5"), "{err}"); // span of the condition `1`
+
+    let err = eval_str("(not 1)");
+    assert!(err.contains("expected `true` or `false`"), "{err}");
+
+    let err = eval_str("(while 1 (+ 1 1))");
+    assert!(err.contains("expected `true` or `false`"), "{err}");
+}
+
+#[test]
+fn test_bool_without_prelude() {
+    let e = Evaluator::with_builtin();
+    assert_eq!(e.eval_to_str("true"), "true");
+    assert_eq!(e.eval_to_str("false"), "false");
+    assert_eq!(e.eval_to_str("(if true 1 2)"), "1");
+    assert_eq!(e.eval_to_str("(if false 1 2)"), "2");
+    assert_eq!(e.eval_to_str("(eq? 1 1)"), "true");
 }

@@ -96,7 +96,7 @@ The core language is everything available from `Evaluator::default()` (built-ins
 
 #### Differences from Scheme
 
-- **Truthiness.** `'()` is the only false value; `#t` is `1` and `#f` is `'()`. There is no boolean type, and predicates return `1` or `()`.
+- **Booleans.** Literals are `true`/`false`. Conditions must be booleans; `'()` is just a value. Predicates return `true` or `false`. `#t`/`#f` exist only as `rusche-cli` aliases.
 - **Equality.** `eq?` compares structurally and `=` is an alias for it.
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`, and a lone `.` is a syntax error. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.

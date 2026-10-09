@@ -81,32 +81,32 @@ mod tests {
     use super::*;
     use crate::eval::Evaluator;
     use crate::expr::test_utils::num;
-    use crate::expr::{intern, NIL};
+    use crate::expr::intern;
     use crate::macros::*;
 
     #[test]
     fn test_is_num() {
         setup_native_proc_test!(is_num);
 
-        // (is-num 1) => #t
+        // (is-num 1) => true
         let args = list!(1);
-        assert_eq!(is_num(args), Ok(num(1)));
+        assert_eq!(is_num(args), Ok(true.into()));
 
-        // (is-num "str") => #f
+        // (is-num "str") => false
         let args = list!("str");
-        assert_eq!(is_num(args), Ok(NIL));
+        assert_eq!(is_num(args), Ok(false.into()));
 
-        // (is-num 'sym) => #f
+        // (is-num 'sym) => false
         let args = list!(list!(intern("quote"), intern("sym")));
-        assert_eq!(is_num(args), Ok(NIL));
+        assert_eq!(is_num(args), Ok(false.into()));
 
-        // (is-num '()) => #f
+        // (is-num '()) => false
         let args = list!(list!(intern("quote"), list!()));
-        assert_eq!(is_num(args), Ok(NIL));
+        assert_eq!(is_num(args), Ok(false.into()));
 
-        // (is-num '(1 2 3)) => #f
+        // (is-num '(1 2 3)) => false
         let args = list!(list!(intern("quote"), list!(1, 2, 3)));
-        assert_eq!(is_num(args), Ok(NIL));
+        assert_eq!(is_num(args), Ok(false.into()));
     }
 
     #[test]
@@ -206,13 +206,13 @@ mod tests {
         let context = evaluator.context();
         let less = |args| less("", &args, context);
 
-        // (< 1 2) => #t
+        // (< 1 2) => true
         assert_eq!(less(list!(1, 2)), Ok(true.into()));
 
-        // (< 1 1) => #f
+        // (< 1 1) => false
         assert_eq!(less(list!(1, 1)), Ok(false.into()));
 
-        // (< 2 1) => #f
+        // (< 2 1) => false
         assert_eq!(less(list!(2, 1)), Ok(false.into()));
     }
 }

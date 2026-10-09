@@ -4,6 +4,9 @@ use rusche::Evaluator;
 /// Scheme. These are plain aliases defined in the root environment; the core language keeps
 /// its own, shorter names.
 const SCHEME_ALIASES: &str = r#"
+    (define #t true)
+    (define #f false)
+
     (define number? num?)
     (define modulo %)
     (define string->number str->num)

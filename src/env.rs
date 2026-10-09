@@ -195,7 +195,7 @@ impl Env {
                     });
                 }
             }
-            Expr::Num(..) | Expr::Str(..) | Expr::Sym(..) => {}
+            Expr::Num(..) | Expr::Bool(..) | Expr::Str(..) | Expr::Sym(..) => {}
         }
     }
 

@@ -51,11 +51,12 @@ fn test_eval() {
 
 #[test]
 fn test_if() {
-    assert_eq!(eval_str("(if 't 1)"), "1");
-    assert_eq!(eval_str("(if 't 1 2)"), "1");
+    assert_eq!(eval_str("(if true 1)"), "1");
+    assert_eq!(eval_str("(if true 1 2)"), "1");
 
-    assert_eq!(eval_str("(if '() 1)"), "()");
-    assert_eq!(eval_str("(if '() 1 2)"), "2");
+    assert_eq!(eval_str("(if false 1)"), "()");
+    assert_eq!(eval_str("(if false 1 2)"), "2");
+    assert!(eval_str("(if 1 2)").starts_with("Err:"));
 }
 
 #[test]

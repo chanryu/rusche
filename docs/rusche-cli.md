@@ -95,7 +95,7 @@ cargo run -p rusche-cli
 | `display` | Prints each argument; strings are printed without surrounding quotes |
 | `write` | Prints each argument with `Display` (strings quoted) |
 | `newline` | Prints a newline (no arguments) |
-| `read` | Reads one line from stdin and returns it as a string (trailing newline trimmed). At EOF returns `()` |
+| `read` | Reads one line from stdin and returns it as a string (trailing newline trimmed). At EOF returns `false` |
 | `exit` | Flushes stdout and exits with optional integer code (default 0) |
 | `load` | Reads a file and evaluates it in the current environment |
 
@@ -105,7 +105,7 @@ These are ordinary native procedures. A different host can omit them or replace 
 
 | Procedure | Behaviour |
 | --- | --- |
-| `getenv` | Returns the environment variable value as a string, or `()` if unset |
+| `getenv` | Returns the environment variable value as a string, or `false` if unset |
 | `clock` | Seconds since the UNIX epoch as a number |
 | `random` | Uniform random number in `[0, 1)` |
 | `command-line` | List of strings: program path, then script path (if any), then script args |
@@ -120,7 +120,7 @@ These are ordinary native procedures. A different host can omit them or replace 
 (vec-push v 2)
 (vec-get v 0)    ; 1
 (vec-pop v)      ; 2
-(vec? v)         ; 1
+(vec? v)         ; true
 
 (define w (vec 10 20 30))
 (vec-length w)   ; 3
@@ -140,6 +140,8 @@ Core procedures keep short names (`num?`, `%`, `str-append`, `str->num`, …).
 
 | Alias | Core / host name |
 | --- | --- |
+| `#t` | `true` |
+| `#f` | `false` |
 | `number?` | `num?` |
 | `modulo` | `%` |
 | `string->number` | `str->num` |

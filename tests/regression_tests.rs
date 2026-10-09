@@ -25,9 +25,9 @@ fn eval_all(evaluator: &Evaluator, src: &str) -> Result<Expr, rusche::EvalError>
 // B1 -- `eq?` on two native procedures used to recurse until the stack overflowed.
 #[test]
 fn eq_on_native_procs_terminates() {
-    assert_eq!(eval_str("(eq? car car)"), "1");
-    assert_eq!(eval_str("(eq? car cdr)"), "()");
-    assert_eq!(eval_str("(eq? car (lambda (x) x))"), "()");
+    assert_eq!(eval_str("(eq? car car)"), "true");
+    assert_eq!(eval_str("(eq? car cdr)"), "false");
+    assert_eq!(eval_str("(eq? car (lambda (x) x))"), "false");
 }
 
 // B2 -- unbounded recursion aborted the process; now it is an error.
@@ -153,9 +153,9 @@ fn environment_registry_does_not_grow_without_bound() {
 // B7 -- `(cond ... (else x))` tried to call `x`.
 #[test]
 fn cond_else_clause() {
-    assert_eq!(eval_str("(cond (#f 1) (else 2))"), "2");
-    assert_eq!(eval_str("(cond (#f 1) (else 2 3))"), "3");
-    assert_eq!(eval_str("(cond (#t 1) (else 2))"), "1");
+    assert_eq!(eval_str("(cond (false 1) (else 2))"), "2");
+    assert_eq!(eval_str("(cond (false 1) (else 2 3))"), "3");
+    assert_eq!(eval_str("(cond (true 1) (else 2))"), "1");
 }
 
 // B8 -- `apply` re-evaluated already evaluated arguments.
@@ -194,7 +194,7 @@ fn apply_in_tail_position_does_not_consume_depth() {
         .map(|i| i.to_string())
         .collect::<Vec<_>>()
         .join(" ");
-    assert_eq!(e.eval_to_str(&format!("(< {args})")), "1");
+    assert_eq!(e.eval_to_str(&format!("(< {args})")), "true");
 }
 
 // B9 -- covered by `test_cxxr` in prelude_tests.rs; `let` must still work after the swap.
@@ -309,8 +309,8 @@ fn display_escapes_strings_and_foreign_is_eq_to_itself() {
         "w",
         Expr::Foreign(Rc::new(RefCell::new(Vec::<Expr>::new()))),
     );
-    assert_eq!(e.eval_to_str("(eq? v v)"), "1");
-    assert_eq!(e.eval_to_str("(eq? v w)"), "()");
+    assert_eq!(e.eval_to_str("(eq? v v)"), "true");
+    assert_eq!(e.eval_to_str("(eq? v w)"), "false");
 }
 
 // B19 -- prelude list functions are tail-recursive and handle long lists under the

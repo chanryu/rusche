@@ -33,6 +33,7 @@ fn main() {
 fn describe(expr: &Expr) -> String {
     match expr {
         Expr::Num(n, _) => format!("number {n}"),
+        Expr::Bool(b, _) => format!("boolean {b}"),
         Expr::Str(s, _) => format!("string {s:?}"),
         Expr::Sym(name, _) => format!("symbol {name}"),
         Expr::List(list, _) => format!("list {list}"),

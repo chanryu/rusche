@@ -319,14 +319,14 @@ mod tests {
     fn test_eq() {
         setup_native_proc_test!(eq);
 
-        // (eq 1 1) => #t
-        assert_ne!(eq(list!(1, 1)).unwrap(), NIL);
-        // (eq 1 2) => ()
-        assert_eq!(eq(list!(1, 2)).unwrap(), NIL);
-        // (eq "str" "str") => #t
-        assert_ne!(eq(list!("str", "str")).unwrap(), NIL);
-        // (eq 1 "1") => ()
-        assert_eq!(eq(list!(1, "1")).unwrap(), NIL);
+        // (eq 1 1) => true
+        assert_eq!(eq(list!(1, 1)).unwrap(), true.into());
+        // (eq 1 2) => false
+        assert_eq!(eq(list!(1, 2)).unwrap(), false.into());
+        // (eq "str" "str") => true
+        assert_eq!(eq(list!("str", "str")).unwrap(), true.into());
+        // (eq 1 "1") => false
+        assert_eq!(eq(list!(1, "1")).unwrap(), false.into());
     }
 
     #[test]

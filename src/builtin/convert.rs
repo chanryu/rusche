@@ -1,6 +1,6 @@
 use crate::{
     eval::{eval, EvalContext, EvalError, EvalResult},
-    expr::{Expr, NIL},
+    expr::Expr,
     list::List,
     utils::{eval_into_num, eval_into_str, get_exact_1_arg},
 };
@@ -15,7 +15,7 @@ pub fn str_to_num(proc_name: &str, args: &List, context: &EvalContext) -> EvalRe
 
     match text.parse::<f64>() {
         Ok(num) => Ok(Expr::Num(num, None)),
-        Err(_) => Ok(NIL),
+        Err(_) => Ok(false.into()),
     }
 }
 
@@ -59,8 +59,8 @@ mod tests {
         // (str->num "123") => 123
         assert_eq!(str_to_num(list!("123")), Ok(num(123)));
 
-        // (str->num "abc") => ()
-        assert_eq!(str_to_num(list!("abc")), Ok(NIL));
+        // (str->num "abc") => false
+        assert_eq!(str_to_num(list!("abc")), Ok(false.into()));
 
         // (str->num "123" "456") => error
         assert!(str_to_num(list!("123", "456")).is_err());

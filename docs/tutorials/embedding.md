@@ -16,7 +16,7 @@ Rusche exposes three constructors on [`Evaluator`](https://docs.rs/rusche/latest
 | --- | --- |
 | `Evaluator::new()` | Empty root environment — only the evaluator forms (`quote`, `quasiquote`, `begin`, `if`, `eval`, `apply`) |
 | `Evaluator::with_builtin()` | Core native procedures (`num-add`, `car`, `lambda`, …) |
-| `Evaluator::with_prelude()` / `Evaluator::default()` | Built-ins plus the prelude (`+`, `%`, `let`, `while`, `#t`, `#f`, …) |
+| `Evaluator::with_prelude()` / `Evaluator::default()` | Built-ins plus the prelude (`+`, `%`, `let`, `while`, `and`, `or`, …) |
 
 For scripting, start with `with_prelude()` (or `Default`). Use `new()` or
 `with_builtin()` when you want a smaller surface.
@@ -119,6 +119,7 @@ use rusche::Expr;
 fn describe(expr: &Expr) -> String {
     match expr {
         Expr::Num(n, _) => format!("number {n}"),
+        Expr::Bool(b, _) => format!("boolean {b}"),
         Expr::Str(s, _) => format!("string {s:?}"),
         Expr::Sym(name, _) => format!("symbol {name}"),
         Expr::List(list, _) => format!("list {list}"),
@@ -128,8 +129,8 @@ fn describe(expr: &Expr) -> String {
 }
 ```
 
-Numbers are `f64`. The empty list `()` is the only false value; everything else
-is truthy. See the [language reference](../language-reference.md) for the full
+Numbers are `f64`. Booleans are `true` / `false`; conditions in `if` must be
+booleans. See the [language reference](../language-reference.md) for the full
 type system.
 
 ## Call depth and garbage collection

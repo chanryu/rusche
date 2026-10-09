@@ -305,7 +305,16 @@ fn eval_form(cons: &Cons, context: &EvalContext, frame: &mut CallFrame) -> Resul
             }
             IF => {
                 let (condition, then_clause, else_clause) = get_2_or_3_args(name, args)?;
-                let branch = if eval(condition, context)?.is_truthy() {
+                let cond_value = eval(condition, context)?;
+                let Expr::Bool(is_true, _) = cond_value else {
+                    return Err(EvalError {
+                        message: format!(
+                            "`{condition}` evaluated to `{cond_value}`, expected `true` or `false`."
+                        ),
+                        span: condition.span(),
+                    });
+                };
+                let branch = if is_true {
                     then_clause
                 } else if let Some(else_clause) = else_clause {
                     else_clause
@@ -733,14 +742,19 @@ mod tests {
     fn test_if_and_eval_forms() {
         let evaluator = Evaluator::with_prelude();
 
-        assert_eq!(evaluator.eval(&parse_one("(if 1 'a 'b)")), Ok(intern("a")));
         assert_eq!(
-            evaluator.eval(&parse_one("(if '() 'a 'b)")),
+            evaluator.eval(&parse_one("(if true 'a 'b)")),
+            Ok(intern("a"))
+        );
+        assert_eq!(
+            evaluator.eval(&parse_one("(if false 'a 'b)")),
             Ok(intern("b"))
         );
-        assert_eq!(evaluator.eval(&parse_one("(if '() 'a)")), Ok(NIL));
+        assert_eq!(evaluator.eval(&parse_one("(if false 'a)")), Ok(NIL));
+        assert!(evaluator.eval(&parse_one("(if 1 'a 'b)")).is_err());
+        assert!(evaluator.eval(&parse_one("()")).is_ok());
         assert!(evaluator.eval(&parse_one("(if 1)")).is_err());
-        assert!(evaluator.eval(&parse_one("(if 1 2 3 4)")).is_err());
+        assert!(evaluator.eval(&parse_one("(if true 2 3 4)")).is_err());
 
         assert_eq!(evaluator.eval(&parse_one("(eval '(+ 1 2))")), Ok(3.into()));
         assert!(evaluator.eval(&parse_one("(eval)")).is_err());

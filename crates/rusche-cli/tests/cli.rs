@@ -194,7 +194,14 @@ fn vec_and_write_builtins() {
         "",
     );
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
-    assert_eq!(stdout(&out), "3\n9\n\"hi\"\n1\n");
+    assert_eq!(stdout(&out), "3\n9\n\"hi\"\ntrue\n");
+}
+
+#[test]
+fn scheme_boolean_aliases() {
+    let out = run(&["-e", "(list #t #f (eq? #t true) (eq? #f false))"], "");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out).trim(), "(true false true true)");
 }
 
 #[test]

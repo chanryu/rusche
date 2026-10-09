@@ -1,10 +1,6 @@
 use crate::eval::{eval_source, EvalContext};
 
-const PRELUDE_SYMBOLS: [&str; 3] = [
-    // #t
-    "(define #t 1)",
-    // #f
-    "(define #f '())",
+const PRELUDE_SYMBOLS: [&str; 1] = [
     // numeric operation aliases
     r#"
     (define + num-add)
@@ -15,12 +11,12 @@ const PRELUDE_SYMBOLS: [&str; 3] = [
     "#,
 ];
 
-const PRELUDE_MACROS: [&str; 7] = [
+const PRELUDE_MACROS: [&str; 8] = [
     // cond
     r#"
     (defmacro (cond *clauses)
         (if (null? clauses)
-            #f                                          ; No more clauses, return #f by default
+            false                                       ; No more clauses, return false by default
             (let ((clause (car clauses)))
                 (if (eq? (car clause) 'else)            ; If the first clause is 'else'
                     `(begin ,@(cdr clause))             ; Expand to the else expression(s)
@@ -57,21 +53,24 @@ const PRELUDE_MACROS: [&str; 7] = [
                 (if ,condition (begin ,@body (loop))))
             (loop))))
     "#,
-    // and -- short-circuits, returns the last operand or #f
+    // and -- short-circuits, returns true or false
     r#"
     (defmacro (and *args)
-        (cond ((null? args) #t)
-              ((null? (cdr args)) (car args))
-              (else `(if ,(car args) (and ,@(cdr args)) #f))))
+        (cond ((null? args) true)
+              ((null? (cdr args)) `(if ,(car args) true false))
+              (else `(if ,(car args) (and ,@(cdr args)) false))))
     "#,
-    // or -- short-circuits, returns the first truthy operand or #f
+    // or -- short-circuits, returns true or false
     r#"
     (defmacro (or *args)
-        (cond ((null? args) #f)
-              ((null? (cdr args)) (car args))
-              (else `((lambda (or-value)
-                        (if or-value or-value (or ,@(cdr args))))
-                      ,(car args)))))
+        (cond ((null? args) false)
+              ((null? (cdr args)) `(if ,(car args) true false))
+              (else `(if ,(car args) true (or ,@(cdr args))))))
+    "#,
+    // or-else -- returns expr unless it is false, otherwise default
+    r#"
+    (defmacro (or-else expr default)
+        `((lambda (v) (if (eq? v false) ,default v)) ,expr))
     "#,
 ];
 
@@ -87,7 +86,7 @@ const PRELUDE_FUNCS: [&str; 14] = [
     "#,
     // not
     r#"
-    (define (not x) (if x #f #t))
+    (define (not x) (if x false true))
     "#,
     // null?
     r#"
@@ -150,28 +149,28 @@ const PRELUDE_FUNCS: [&str; 14] = [
     r#"
     (define (member x lst)
         (cond
-            ((null? lst) #f)
+            ((null? lst) false)
             ((eq? (car lst) x) lst)
-            (#t (member x (cdr lst)))))
+            (true (member x (cdr lst)))))
     "#,
     // assoc
     r#"
     (define (assoc key lst)
         (cond
-            ((null? lst) #f)                       ; If the list is empty, return #f
+            ((null? lst) false)                    ; If the list is empty, return false
             ((eq? (car (car lst)) key) (car lst))  ; If the car of the first element matches the key, return the pair
-            (#t (assoc key (cdr lst)))))           ; Otherwise, recursively search the rest of the list
+            (true (assoc key (cdr lst)))))         ; Otherwise, recursively search the rest of the list
     "#,
     // numeric operations
     r#"
     (define (< a b *rest)
         (if (num-less a b)
-            (if (null? rest) #t (apply < (cons b rest)))
-            #f))
+            (if (null? rest) true (apply < (cons b rest)))
+            false))
     (define (<= a b *rest)
         (if (or (num-less a b) (= a b))
-            (if (null? rest) #t (apply <= (cons b rest)))
-            #f))
+            (if (null? rest) true (apply <= (cons b rest)))
+            false))
     (define (> a b *rest)
         (apply < (reverse (cons a (cons b rest)))))
     (define (>= a b *rest)

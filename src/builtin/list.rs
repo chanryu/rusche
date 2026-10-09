@@ -63,16 +63,16 @@ mod tests {
     fn test_is_atom() {
         setup_native_proc_test!(is_atom);
 
-        // (atom? 1) => #t
+        // (atom? 1) => true
         assert_eq!(is_atom(list!(1)), Ok(true.into()));
 
-        // (atom? "str") => #t
+        // (atom? "str") => true
         assert_eq!(is_atom(list!("str")), Ok(true.into()));
 
-        // (atom? '()) => #t
+        // (atom? '()) => true
         assert_eq!(is_atom(list!(list!(intern("quote"), NIL))), Ok(true.into()));
 
-        // (atom? '(1 2 3)) => #f
+        // (atom? '(1 2 3)) => false
         assert_eq!(
             is_atom(list!(list!(intern("quote"), list!(1, 2, 3)))),
             Ok(false.into())
