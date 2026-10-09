@@ -58,7 +58,7 @@ fn newline(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
 fn read(_: &str, _: &List, _: &EvalContext) -> EvalResult {
     let mut input = String::new();
     match std::io::stdin().read_line(&mut input) {
-        Ok(0) => Ok(NIL),
+        Ok(0) => Ok(false.into()),
         Ok(_) => Ok(input.trim_end_matches(['\r', '\n']).to_string().into()),
         Err(error) => Err(EvalError::from(format!("Error reading input: {}", error))),
     }

@@ -26,6 +26,9 @@ pub enum Token {
     /// A number literal.
     Num(f64, Span),
 
+    /// A boolean literal (`true` or `false`).
+    Bool(bool, Span),
+
     /// A string literal.
     Str(String, Span),
 
@@ -42,7 +45,10 @@ impl Token {
             | Token::Quasiquote(loc)
             | Token::Unquote(loc) => Span::new(*loc, loc.with_column_offset(1)),
             Token::UnquoteSplicing(loc) => Span::new(*loc, loc.with_column_offset(2)),
-            Token::Num(_, span) | Token::Str(_, span) | Token::Sym(_, span) => *span,
+            Token::Num(_, span)
+            | Token::Bool(_, span)
+            | Token::Str(_, span)
+            | Token::Sym(_, span) => *span,
         }
     }
 }
@@ -57,6 +63,7 @@ impl PartialEq for Token {
             (Token::Unquote(_), Token::Unquote(_)) => true,
             (Token::UnquoteSplicing(_), Token::UnquoteSplicing(_)) => true,
             (Token::Num(a, _), Token::Num(b, _)) => a == b,
+            (Token::Bool(a, _), Token::Bool(b, _)) => a == b,
             (Token::Str(a, _), Token::Str(b, _)) => a == b,
             (Token::Sym(a, _), Token::Sym(b, _)) => a == b,
             _ => false,
@@ -74,6 +81,8 @@ impl Display for Token {
             Token::Unquote(_) => write!(f, ","),
             Token::UnquoteSplicing(_) => write!(f, ",@"),
             Token::Num(value, _) => write!(f, "{}", value),
+            Token::Bool(true, _) => write!(f, "true"),
+            Token::Bool(false, _) => write!(f, "false"),
             Token::Str(text, _) => write!(f, "\"{}\"", text),
             Token::Sym(name, _) => write!(f, "{}", name),
         }
@@ -111,10 +120,12 @@ mod tests {
         assert_eq!(tok!(Unquote), tok!(Unquote));
         assert_eq!(tok!(UnquoteSplicing), tok!(UnquoteSplicing));
         assert_eq!(tok!(Num(1)), tok!(Num(1)));
+        assert_eq!(tok!(Bool(true)), tok!(Bool(true)));
         assert_eq!(tok!(Str("str")), tok!(Str("str")));
         assert_eq!(tok!(Sym("sym")), tok!(Sym("sym")));
 
         assert_ne!(tok!(Num(1)), tok!(Num(2)));
+        assert_ne!(tok!(Bool(true)), tok!(Bool(false)));
         assert_ne!(tok!(Str("str")), tok!(Str("abc")));
         assert_ne!(tok!(Sym("sym")), tok!(Sym("abc")));
         assert_ne!(tok!(Str("sym")), tok!(Sym("sym")));
@@ -150,6 +161,8 @@ mod tests {
         assert_token_format_eq!(Num(1.0), "1");
         assert_token_format_eq!(Num(123.456), "123.456");
         assert_token_format_eq!(Num(123.456), "123.456");
+        assert_token_format_eq!(Bool(true), "true");
+        assert_token_format_eq!(Bool(false), "false");
         assert_token_format_eq!(Str("str".to_string()), "\"str\"");
         assert_token_format_eq!(Sym("sym".to_string()), "sym");
     }

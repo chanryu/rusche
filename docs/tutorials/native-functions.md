@@ -67,7 +67,8 @@ Return any `Expr`. Convenience conversions include:
 
 - numbers: `Expr::from(3.0)` / `Expr::from(3)`
 - strings: `Expr::from("hello")`
-- booleans: `true` / `false` become `1` and `()` (Rusche has no boolean type)
+- booleans: Rust `true` / `false` become `Expr::Bool` (printed as `true` / `false`)
+- "nothing found": return `false` (so callers can use `or-else` or compare with `eq?`)
 - side effects with no useful value: `NIL` (the empty list)
 
 On failure, return `Err(EvalError { message, span })`. Prefer the offending

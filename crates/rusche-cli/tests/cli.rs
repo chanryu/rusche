@@ -14,7 +14,9 @@ fn workspace_root() -> PathBuf {
 }
 
 fn script(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/scripts").join(name)
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/scripts")
+        .join(name)
 }
 
 fn example(name: &str) -> PathBuf {
@@ -92,7 +94,8 @@ fn tab_caret_aligns_with_tab_padding() {
     let err = stderr(&out);
     // The caret line should contain a literal tab before the carets (column after the tab).
     assert!(
-        err.lines().any(|line| line.contains('\t') && line.contains('^')),
+        err.lines()
+            .any(|line| line.contains('\t') && line.contains('^')),
         "expected tab-padded caret line, got:\n{err}"
     );
 }
@@ -194,7 +197,14 @@ fn vec_and_write_builtins() {
         "",
     );
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
-    assert_eq!(stdout(&out), "3\n9\n\"hi\"\n1\n");
+    assert_eq!(stdout(&out), "3\n9\n\"hi\"\ntrue\n");
+}
+
+#[test]
+fn scheme_boolean_aliases() {
+    let out = run(&["-e", "(list #t #f (eq? #t true) (eq? #f false))"], "");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out).trim(), "(true false true true)");
 }
 
 #[test]

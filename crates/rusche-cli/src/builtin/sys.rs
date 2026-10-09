@@ -1,7 +1,5 @@
 use rand::Rng;
-use rusche::{
-    cons, eval, get_exact_1_arg, EvalContext, EvalError, EvalResult, Expr, List, NIL,
-};
+use rusche::{cons, eval, get_exact_1_arg, EvalContext, EvalError, EvalResult, Expr, List};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::host;
@@ -26,7 +24,7 @@ fn getenv(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     };
     match std::env::var(&name) {
         Ok(value) => Ok(value.into()),
-        Err(_) => Ok(NIL),
+        Err(_) => Ok(false.into()),
     }
 }
 

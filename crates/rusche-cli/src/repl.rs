@@ -8,9 +8,7 @@ use rustyline::error::ReadlineError;
 use rustyline::highlight::{Highlighter, MatchingBracketHighlighter};
 use rustyline::hint::Hinter;
 use rustyline::validate::{ValidationContext, ValidationResult, Validator};
-use rustyline::{
-    Config, Context, Editor, Helper,
-};
+use rustyline::{Config, Context, Editor, Helper};
 
 use crate::diagnostics::print_error;
 use crate::host;
@@ -150,9 +148,7 @@ Meta-commands:
             let before = evaluator.count_unreachable_envs();
             evaluator.collect_garbage();
             let after = evaluator.count_unreachable_envs();
-            println!(
-                "collected; unreachable before={before}, after={after}"
-            );
+            println!("collected; unreachable before={before}, after={after}");
         }
         "load" => {
             let Some(path) = parts.next() else {

@@ -1,6 +1,4 @@
-use rusche::{
-    eval::{eval_source, EvalContext, Evaluator},
-};
+use rusche::eval::{eval_source, EvalContext, Evaluator};
 
 pub trait EvalToStr {
     fn eval_to_str(&self, src: &str) -> String;

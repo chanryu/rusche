@@ -35,6 +35,7 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
 Rusche supports the following data types.
 
 - `Number`: 64-bit floating point number, e.g. `1`, `-99.12`, `.5`
+- `Boolean`: `true` or `false`. These are reserved literals, not symbols.
 - `String`: Text, e.g. `"A quick brown fox"`. Supports `\"`, `\\`, `\n`, `\r`, `\t` escapes.
 - `Symbol`: Name or identifier, e.g. `car`, `num?`, `+`
 - `List`: `()` or a chain of pairs ending in `()`, e.g. `(1 2 3)`. Lists are immutable.
@@ -43,7 +44,7 @@ Rusche supports the following data types.
 
 ## Boolean Values
 
-Rusche doesn't have a dedicated data type for boolean values. The empty list `()` is the only false value; everything else is truthy. The prelude defines `#t` as `1` and `#f` as `()`, and predicates return `1` or `()`.
+`true` and `false` are the only boolean values. Predicates return `true` or `false`. Conditions in `if` (and therefore in prelude forms built on it: `cond`, `while`, `and`, `or`, `not`, `filter`) must evaluate to a boolean; any other type is an error. The empty list `()` is an ordinary value with no special role in conditions. Procedures that signal "absent" (for example `str->num`, `member`, `assoc`) return `false`. For a non-boolean default, use `(or-else expr default)`.
 
 ## Procedure Parameters
 
@@ -85,13 +86,14 @@ Non-tail procedure calls are capped by the host's `max_call_depth` (default 1000
 The following forms and procedures are implemented in Rust. Most are native procedures bound in the root environment and can be passed around like any other value. `quote`, `quasiquote`, `begin`, `if`, `eval`, and `apply` are instead recognised by the evaluator itself: they are not values (`(proc? if)` is an undefined-symbol error), cannot be rebound, and are available even in an `Evaluator::new()` with no built-ins loaded.
 
 #### `atom?`
-  Evaluates to true (`1`) if a given expression is an atom, i.e. anything but a non-empty list. Otherwise, false (`()`).
+  Evaluates to `true` if a given expression is an atom, i.e. anything but a non-empty list. Otherwise, `false`.
   ```scheme
-  (atom? 123)      ; 1
-  (atom? "str")    ; 1
-  (atom? 'sym)     ; 1
-  (atom? '())      ; 1
-  (atom? '(1 2 3)) ; ()
+  (atom? 123)      ; true
+  (atom? "str")    ; true
+  (atom? 'sym)     ; true
+  (atom? true)     ; true
+  (atom? '())      ; true
+  (atom? '(1 2 3)) ; false
   ```
 
 #### `apply`
@@ -159,10 +161,10 @@ The following forms and procedures are implemented in Rust. Most are native proc
 #### `eq?`, `=`
   Compares two values structurally. `=` is an alias for `eq?`.
   ```scheme
-  (eq? 'a 'a)         ; 1
-  (eq? 'a 'b)         ; ()
-  (eq? '(1 2) '(1 2)) ; 1
-  (= 1 1)             ; 1
+  (eq? 'a 'a)         ; true
+  (eq? 'a 'b)         ; false
+  (eq? '(1 2) '(1 2)) ; true
+  (= 1 1)             ; true
   ```
 
 #### `error`
@@ -180,11 +182,12 @@ The following forms and procedures are implemented in Rust. Most are native proc
   ```
 
 #### `if`
-  Conditional form that selects between two branches based on a condition. The else branch is optional; when it is omitted and the condition is false, the result is `()`.
+  Conditional form that selects between two branches based on a condition. The condition must evaluate to `true` or `false`; any other type is an error. The else branch is optional; when it is omitted and the condition is `false`, the result is `()`.
   ```scheme
   (if (= 1 1) 'yes 'no)  ; yes
   (if (= 1 2) 'yes 'no)  ; no
   (if (= 1 2) 'yes)      ; ()
+  (if 1 'yes 'no)        ; error: expected true or false
   ```
 
 #### `lambda`
@@ -197,11 +200,11 @@ The following forms and procedures are implemented in Rust. Most are native proc
   ```
 
 #### `proc?`
-  Evaluates to true (`1`) if the given expression is a procedure (closure, macro, or native), otherwise false (`()`).
+  Evaluates to `true` if the given expression is a procedure (closure, macro, or native), otherwise `false`.
   ```scheme
-  (proc? +)              ; 1
-  (proc? (lambda (x) x)) ; 1
-  (proc? 1)              ; ()
+  (proc? +)              ; true
+  (proc? (lambda (x) x)) ; true
+  (proc? 1)              ; false
   ```
 
 #### `set!`
@@ -213,10 +216,11 @@ The following forms and procedures are implemented in Rust. Most are native proc
   ```
 
 #### `sym?`
-  Evaluates to true (`1`) if the given expression is a symbol, otherwise false (`()`).
+  Evaluates to `true` if the given expression is a symbol, otherwise `false`.
   ```scheme
-  (sym? 'foo)  ; 1
-  (sym? "foo") ; ()
+  (sym? 'foo)  ; true
+  (sym? "foo") ; false
+  (sym? true)  ; false
   ```
 
 #### `quote` (`'`)
@@ -252,16 +256,22 @@ The following forms and procedures are implemented in Rust. Most are native proc
 
 The following forms and procedures are implemented in Rusche itself. Please check [prelude.rs](../src/prelude.rs) to see how they are actually implemented.
 
-Macros: `and`, `cond` (with `else`), `defun`, `let`, `let*`, `or`, `while`
+Macros: `and`, `cond` (with `else`), `defun`, `let`, `let*`, `or`, `or-else`, `while`
 
 Procedures: `append`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `map`, `member`, `not`, `null?`, `reverse`, `<`, `>`, `<=`, `>=`, `abs`, `min`, `max`
 
-`and` and `or` short-circuit and return the deciding operand:
+`and` and `or` short-circuit and always return a boolean. Operands must be booleans.
 ```scheme
-(and 1 2 3)       ; 3
-(and 1 '() 3)     ; ()
-(or '() 2 3)      ; 2
-(or)              ; ()
+(and true true false)  ; false
+(and)                  ; true
+(or false true)        ; true
+(or)                   ; false
+```
+
+`or-else` returns the first argument unless it is `false`, in which case it returns the second:
+```scheme
+(or-else (assoc 'a '((a 1))) 'missing)  ; (a 1)
+(or-else (assoc 'x '((a 1))) 'missing)  ; missing
 ```
 
 `list` is an ordinary procedure; `apply` is an evaluator form:
@@ -283,6 +293,7 @@ List helpers:
 (filter (lambda (x) (< x 3)) '(1 2 3)) ; (1 2)
 (fold + 0 '(1 2 3))                    ; 6
 (member 'b '(a b c))                   ; (b c)
+(member 'x '(a b c))                   ; false
 ```
 
 Numeric helpers and comparisons (comparisons take two or more arguments):
@@ -290,18 +301,18 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 (abs -3)           ; 3
 (min 3 1 2)        ; 1
 (max 3 1 2)        ; 3
-(< 1 2 3)          ; 1
-(<= 1 1 2)         ; 1
-(> 3 2 1)          ; 1
+(< 1 2 3)          ; true
+(<= 1 1 2)         ; true
+(> 3 2 1)          ; true
 ```
 
 ### Number functions
 
 #### `num?`
-  Evaluates to true (`1`) if the given expression is a number, otherwise false (`()`).
+  Evaluates to `true` if the given expression is a number, otherwise `false`.
   ```scheme
-  (num? 123)    ; 1
-  (num? "123")  ; ()
+  (num? 123)    ; true
+  (num? "123")  ; false
   ```
 
 #### `num-add`, `+`
@@ -336,27 +347,27 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   ```
 
 #### `num-less`, `<`
-  Compares two numbers, returns true (`1`) if the first is less than the second, otherwise false (`()`).
+  Compares two numbers, returns `true` if the first is less than the second, otherwise `false`.
   ```scheme
-  (< 3 5)       ; 1
-  (< 10 5)      ; ()
+  (< 3 5)       ; true
+  (< 10 5)      ; false
   ```
 
 #### `>`
-  Compares numbers, returns true (`1`) if each is greater than the next, otherwise false (`()`). Implemented in the prelude via `<` on the reversed arguments.
+  Compares numbers, returns `true` if each is greater than the next, otherwise `false`. Implemented in the prelude via `<` on the reversed arguments.
   ```scheme
-  (> 5 3)       ; 1
-  (> 3 2 1)     ; 1
-  (> 2 4)       ; ()
+  (> 5 3)       ; true
+  (> 3 2 1)     ; true
+  (> 2 4)       ; false
   ```
 
 ### String functions
 
 #### `str?`
-  Evaluates to true (`1`) if the given expression is a string, otherwise false (`()`).
+  Evaluates to `true` if the given expression is a string, otherwise `false`.
   ```scheme
-  (str? "hello")   ; 1
-  (str? 123)       ; ()
+  (str? "hello")   ; true
+  (str? 123)       ; false
   ```
 
 #### `str-append`
@@ -398,10 +409,10 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   ```
 
 #### `str->num`
-  Parses a string into a number if possible, otherwise returns `()`.
+  Parses a string into a number if possible, otherwise returns `false`.
   ```scheme
   (str->num "123")  ; 123
-  (str->num "abc")  ; ()
+  (str->num "abc")  ; false
   ```
 
 #### `sym->str`
@@ -418,7 +429,7 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 
 ## Differences from Scheme
 
-- **Truthiness.** `()` is the only false value; `#t` is `1` and `#f` is `()`. There is no boolean type.
+- **Booleans.** Literals are `true`/`false` (not Scheme's `#t`/`#f`). Conditions must be booleans; `()` is just a value. `#t`/`#f` exist only as [`rusche-cli`](rusche-cli.md#scheme-style-aliases) aliases.
 - **Equality.** `eq?` compares structurally and `=` is an alias for it.
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`, and a lone `.` is a syntax error. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.

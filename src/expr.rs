@@ -14,6 +14,9 @@ pub enum Expr {
     /// A 64-bit floating number value.
     Num(f64, Option<Span>),
 
+    /// A boolean value (`true` or `false`).
+    Bool(bool, Option<Span>),
+
     /// A string value.
     Str(String, Option<Span>),
 
@@ -47,15 +50,10 @@ impl Expr {
         matches!(self, Expr::List(List::Nil, _))
     }
 
-    /// Returns `true` if the expression can be considered to be truthy.
-    /// In Rusche, only the empty list ([`List::Nil`]) is considered to be falsy.
-    pub fn is_truthy(&self) -> bool {
-        !self.is_nil()
-    }
-
     pub fn span(&self) -> Option<Span> {
         match self {
-            Expr::Num(_, span)
+            Expr::Bool(_, span)
+            | Expr::Num(_, span)
             | Expr::Str(_, span)
             | Expr::Sym(_, span)
             | Expr::Proc(_, span)
@@ -67,6 +65,7 @@ impl Expr {
     /// Returns a copy of the expression with every span removed, recursively.
     pub(crate) fn without_spans(&self) -> Expr {
         match self {
+            Expr::Bool(value, _) => Expr::Bool(*value, None),
             Expr::Num(value, _) => Expr::Num(*value, None),
             Expr::Str(text, _) => Expr::Str(text.clone(), None),
             Expr::Sym(name, _) => Expr::Sym(name.clone(), None),
@@ -80,6 +79,7 @@ impl Expr {
 impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (Expr::Bool(lhs, _), Expr::Bool(rhs, _)) => lhs == rhs,
             (Expr::Num(lhs, _), Expr::Num(rhs, _)) => lhs == rhs,
             (Expr::Str(lhs, _), Expr::Str(rhs, _)) => lhs == rhs,
             (Expr::Sym(lhs, _), Expr::Sym(rhs, _)) => lhs == rhs,
@@ -110,6 +110,8 @@ fn write_escaped_str(f: &mut fmt::Formatter<'_>, text: &str) -> fmt::Result {
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Expr::Bool(true, _) => write!(f, "true"),
+            Expr::Bool(false, _) => write!(f, "false"),
             Expr::Num(value, _) => write!(f, "{}", value),
             Expr::Str(text, _) => write_escaped_str(f, text),
             Expr::Sym(name, _) => write!(f, "{}", name),
@@ -162,13 +164,10 @@ impl From<f64> for Expr {
     }
 }
 
+/// Converts a Rust `bool` into a Rusche boolean: `true` / `false`.
 impl From<bool> for Expr {
     fn from(value: bool) -> Self {
-        if value {
-            Expr::Num(1.0, None)
-        } else {
-            NIL
-        }
+        Expr::Bool(value, None)
     }
 }
 
@@ -237,6 +236,7 @@ mod tests {
             func: |_, _, _| Ok(NIL),
         };
         let spanned = [
+            Expr::Bool(true, span),
             Expr::Num(1.0, span),
             Expr::Str("s".into(), span),
             Expr::Sym("x".into(), span),
@@ -304,7 +304,13 @@ mod tests {
 
     #[test]
     fn test_expr_from_bool() {
-        assert_eq!(Expr::from(true), num(1));
-        assert_eq!(Expr::from(false), NIL);
+        assert_eq!(Expr::from(true), Expr::Bool(true, None));
+        assert_eq!(Expr::from(false), Expr::Bool(false, None));
+    }
+
+    #[test]
+    fn test_display_bool() {
+        assert_eq!(format!("{}", Expr::from(true)), "true");
+        assert_eq!(format!("{}", Expr::from(false)), "false");
     }
 }

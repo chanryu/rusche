@@ -186,7 +186,11 @@ where
             }
         }
 
-        Ok(Some(Token::Sym(name, span)))
+        match name.as_str() {
+            "true" => Ok(Some(Token::Bool(true, span))),
+            "false" => Ok(Some(Token::Bool(false, span))),
+            _ => Ok(Some(Token::Sym(name, span))),
+        }
     }
 }
 
@@ -335,6 +339,16 @@ mod tests {
         let tokens = tokenize("`(a,b ,@c)", None).unwrap();
         let texts: Vec<String> = tokens.iter().map(|t| t.to_string()).collect();
         assert_eq!(texts, ["`", "(", "a", ",", "b", ",@", "c", ")"]);
+    }
+
+    #[test]
+    fn test_boolean_literals() {
+        let tokens = tokenize("true false true? #t", None).unwrap();
+        assert_eq!(tokens[0], Token::Bool(true, tokens[0].span()));
+        assert_eq!(tokens[1], Token::Bool(false, tokens[1].span()));
+        // Related names that are not exact `true`/`false` remain symbols.
+        assert_eq!(tokens[2], Token::Sym("true?".into(), tokens[2].span()));
+        assert_eq!(tokens[3], Token::Sym("#t".into(), tokens[3].span()));
     }
 
     #[test]
