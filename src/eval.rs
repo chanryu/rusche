@@ -9,12 +9,39 @@ use std::{
 use crate::{
     builtin::load_builtin,
     env::Env,
+    error::Error,
     expr::{Expr, NIL},
+    lexer::tokenize,
     list::{Cons, List},
+    parser::Parser,
     prelude::load_prelude,
     proc::Proc,
     span::Span,
 };
+
+/// Tokenizes, parses, and evaluates every top-level expression in `src` in `context`.
+///
+/// Returns the value of the last expression, or [`NIL`] if `src` is empty.
+/// When `strip_spans` is true, spans are removed from each parsed expression before
+/// evaluation (used by the prelude so errors attribute to the call site).
+pub fn eval_source(src: &str, context: &EvalContext, strip_spans: bool) -> Result<Expr, Error> {
+    let tokens = tokenize(src, None)?;
+    let mut parser = Parser::with_tokens(tokens);
+    let mut last = NIL;
+    loop {
+        match parser.parse()? {
+            None => return Ok(last),
+            Some(expr) => {
+                let expr = if strip_spans {
+                    expr.without_spans()
+                } else {
+                    expr
+                };
+                last = eval(&expr, context)?;
+            }
+        }
+    }
+}
 
 /// The default maximum number of nested procedure calls. See [`Evaluator::set_max_call_depth`].
 ///
@@ -59,6 +86,8 @@ impl From<String> for EvalError {
         }
     }
 }
+
+impl std::error::Error for EvalError {}
 
 pub type EvalResult = Result<Expr, EvalError>;
 
@@ -474,6 +503,17 @@ impl Evaluator {
         result
     }
 
+    /// Tokenizes, parses, and evaluates every top-level expression in `src`.
+    ///
+    /// Returns the value of the last expression, or [`NIL`] if `src` is empty.
+    /// Lex, parse, and evaluation failures are reported as a unified
+    /// [`crate::error::Error`].
+    pub fn eval_str(&self, src: &str) -> Result<Expr, Error> {
+        let result = eval_source(src, self.context(), false)?;
+        self.maybe_collect_garbage(Some(&result));
+        Ok(result)
+    }
+
     /// Count the number of unreachable environments in the evaluator.
     /// This function is useful for monitoring memory usage and can be used
     /// to determin when to trigger garbage collection.
@@ -576,7 +616,7 @@ impl Drop for Evaluator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{expr::intern, lexer::tokenize, parser::Parser};
+    use crate::{error::Error, expr::intern, lexer::tokenize, parser::Parser};
 
     /// Evaluates every top-level form in `src` and returns the last result.
     fn eval_all(evaluator: &Evaluator, src: &str) -> Expr {
@@ -728,6 +768,27 @@ mod tests {
         let closure = held.borrow()[0].clone();
         evaluator.root_env().define("counter", closure);
         assert!(evaluator.eval(&parse_one("(counter)")).is_err());
+    }
+
+    #[test]
+    fn test_eval_str() {
+        let evaluator = Evaluator::with_prelude();
+        assert_eq!(evaluator.eval_str("").unwrap(), NIL);
+        assert_eq!(evaluator.eval_str("(+ 1 2)").unwrap(), Expr::from(3));
+        assert_eq!(
+            evaluator
+                .eval_str("(define x 1) (set! x (+ x 1)) x")
+                .unwrap(),
+            Expr::from(2)
+        );
+        assert!(matches!(
+            evaluator.eval_str("(+ 1"),
+            Err(Error::Parse(crate::parser::ParseError::IncompleteExpr(_)))
+        ));
+        assert!(matches!(
+            evaluator.eval_str("\"unterminated"),
+            Err(Error::Lex(crate::lexer::LexError::IncompleteString(_)))
+        ));
     }
 
     fn parse_one(src: &str) -> Expr {

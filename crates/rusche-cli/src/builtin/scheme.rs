@@ -1,4 +1,4 @@
-use rusche::{tokenize, Evaluator, Parser};
+use rusche::Evaluator;
 
 /// Scheme-style names for the core procedures, so scripts written for `rusche-cli` read like
 /// Scheme. These are plain aliases defined in the root environment; the core language keeps
@@ -24,11 +24,7 @@ const SCHEME_ALIASES: &str = r#"
 "#;
 
 pub fn load_scheme_aliases(evaluator: &Evaluator) {
-    let tokens = tokenize(SCHEME_ALIASES, None).expect("scheme aliases should tokenize");
-    let mut parser = Parser::with_tokens(tokens);
-    while let Some(expr) = parser.parse().expect("scheme aliases should parse") {
-        evaluator
-            .eval(&expr)
-            .expect("scheme aliases should evaluate");
-    }
+    evaluator
+        .eval_str(SCHEME_ALIASES)
+        .expect("scheme aliases should evaluate");
 }

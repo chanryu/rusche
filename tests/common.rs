@@ -1,7 +1,5 @@
 use rusche::{
-    eval::{eval, EvalContext, Evaluator},
-    lexer::tokenize,
-    parser::Parser,
+    eval::{eval_source, EvalContext, Evaluator},
 };
 
 pub trait EvalToStr {
@@ -10,17 +8,7 @@ pub trait EvalToStr {
 
 impl EvalToStr for EvalContext {
     fn eval_to_str(&self, src: &str) -> String {
-        let tokens = tokenize(src, None)
-            .unwrap_or_else(|_| panic!("Failed to tokenize: {}", src));
-        let mut parser = Parser::with_tokens(tokens);
-        let Some(expr) = parser
-            .parse()
-            .unwrap_or_else(|_| panic!("Failed to parse an expression: {}", src))
-        else {
-            panic!("No expression parsed from: {}", src);
-        };
-
-        match eval(&expr, self) {
+        match eval_source(src, self, false) {
             Ok(result) => result.to_string(),
             Err(error) => format!("Err: {error}"),
         }
@@ -29,6 +17,9 @@ impl EvalToStr for EvalContext {
 
 impl EvalToStr for Evaluator {
     fn eval_to_str(&self, src: &str) -> String {
-        self.context().eval_to_str(src)
+        match self.eval_str(src) {
+            Ok(result) => result.to_string(),
+            Err(error) => format!("Err: {error}"),
+        }
     }
 }

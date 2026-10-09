@@ -1,8 +1,4 @@
-use crate::{
-    eval::{eval, EvalContext},
-    lexer::tokenize,
-    parser::{ParseError, Parser},
-};
+use crate::eval::{eval_source, EvalContext};
 
 const PRELUDE_SYMBOLS: [&str; 3] = [
     // #t
@@ -202,32 +198,22 @@ pub fn load_prelude(context: &EvalContext) {
 }
 
 fn eval_src(src: &str, context: &EvalContext) {
-    let tokens =
-        tokenize(src, None).unwrap_or_else(|_| panic!("Prelude tokniization failed: {}", src));
-
-    let mut parser = Parser::with_tokens(tokens);
-
-    loop {
-        match parser.parse() {
-            Ok(None) => {
-                break; // we're done!
-            }
-            Ok(Some(expr)) => {
-                // Prelude source locations are meaningless to users; strip them so errors
-                // raised inside prelude code are attributed to the user's call site instead.
-                let expr = expr.without_spans();
-                let _ = eval(&expr, context)
-                    .unwrap_or_else(|_| panic!("Prelude evaluation failed: {}", src));
-            }
-            Err(ParseError::IncompleteExpr(_)) => {
+    // Prelude source locations are meaningless to users; strip them so errors
+    // raised inside prelude code are attributed to the user's call site instead.
+    if let Err(error) = eval_source(src, context, true) {
+        use crate::error::Error;
+        match error {
+            Error::Lex(_) => panic!("Prelude tokniization failed: {}", src),
+            Error::Parse(crate::parser::ParseError::IncompleteExpr(_)) => {
                 panic!("Prelude parse failure - incomplete expression: {}", src);
             }
-            Err(ParseError::UnexpectedToken(token)) => {
+            Error::Parse(crate::parser::ParseError::UnexpectedToken(token)) => {
                 panic!(
                     "Prelude parse failure - unexpected token \"{}\": {}",
                     token, src
                 );
             }
+            Error::Eval(_) => panic!("Prelude evaluation failed: {}", src),
         }
     }
 }

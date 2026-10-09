@@ -24,6 +24,7 @@ mod prelude;
 mod macros;
 
 pub mod env;
+pub mod error;
 pub mod eval;
 pub mod expr;
 pub mod lexer;
@@ -36,9 +37,10 @@ pub mod utils;
 
 // Re-export public APIs
 pub use env::Env;
+pub use error::Error;
 pub use eval::{
-    eval, EvalContext, EvalError, EvalResult, Evaluator, ForeignTracer, DEFAULT_GC_THRESHOLD,
-    DEFAULT_MAX_CALL_DEPTH,
+    eval, eval_source, EvalContext, EvalError, EvalResult, Evaluator, ForeignTracer,
+    DEFAULT_GC_THRESHOLD, DEFAULT_MAX_CALL_DEPTH,
 };
 pub use expr::{intern, Expr, Foreign, NIL};
 pub use lexer::{tokenize, LexError, Lexer};

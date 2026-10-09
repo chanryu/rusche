@@ -4,12 +4,34 @@ use crate::macros::list;
 use crate::span::Span;
 use crate::token::Token;
 use std::collections::VecDeque;
+use std::error::Error as StdError;
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
     IncompleteExpr(Token),
     UnexpectedToken(Token),
 }
+
+impl ParseError {
+    /// Returns the source span associated with this error.
+    pub fn span(&self) -> Span {
+        match self {
+            ParseError::IncompleteExpr(token) | ParseError::UnexpectedToken(token) => token.span(),
+        }
+    }
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParseError::IncompleteExpr(_) => write!(f, "incomplete expression"),
+            ParseError::UnexpectedToken(token) => write!(f, "unexpected token: \"{token}\""),
+        }
+    }
+}
+
+impl StdError for ParseError {}
 
 type ParseResult = Result<Option<Expr>, ParseError>;
 
