@@ -441,5 +441,5 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 
 ## See also
 
-- [`rusche-cli`](rusche-cli.md) — example host extras (I/O, `vec`, Scheme aliases)
+- [`rusche-cli`](rusche-cli.md) — example host: running the interpreter, the REPL, I/O, `vec`, and Scheme aliases
 - [Embedding tutorials](tutorials/embedding.md) — using the core crate from Rust
