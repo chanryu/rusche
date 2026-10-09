@@ -1,5 +1,7 @@
 use crate::span::{Loc, Span};
 use crate::token::Token;
+use std::error::Error as StdError;
+use std::fmt;
 use std::iter::{Iterator, Peekable};
 
 const TOKEN_DELIMITERS: &str = " \t\r\n()'`,;\"";
@@ -9,6 +11,26 @@ pub enum LexError {
     IncompleteString(Span),
     InvalidNumber(Span),
 }
+
+impl LexError {
+    /// Returns the source span associated with this error.
+    pub fn span(&self) -> Span {
+        match self {
+            LexError::IncompleteString(span) | LexError::InvalidNumber(span) => *span,
+        }
+    }
+}
+
+impl fmt::Display for LexError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LexError::IncompleteString(_) => write!(f, "incomplete string"),
+            LexError::InvalidNumber(_) => write!(f, "invalid number"),
+        }
+    }
+}
+
+impl StdError for LexError {}
 
 type LexResult = Result<Option<Token>, LexError>;
 

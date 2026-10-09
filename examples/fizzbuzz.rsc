@@ -1,3 +1,4 @@
+#!/usr/bin/env rusche-cli
 (define (fizzbuzz n)
     (define (div? n m) (= (modulo n m) 0))
     (cond ((div? n 15) "FizzBuzz")

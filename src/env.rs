@@ -128,6 +128,23 @@ impl Env {
         }
     }
 
+    /// Returns the names bound in this environment and all ancestor environments.
+    ///
+    /// Names from ancestor environments appear first; names defined in this environment
+    /// appear last. Duplicates are possible if a name is shadowed.
+    pub fn names(&self) -> Vec<String> {
+        let mut names = Vec::new();
+        let mut env = self;
+        loop {
+            names.extend(env.vars.borrow().keys().cloned());
+            let Some(base) = &env.base else {
+                break;
+            };
+            env = base;
+        }
+        names
+    }
+
     /// A convience fucntion to define a native procedure in the current environment.
     /// This is a shorthand for `define(name, Expr::Proc(Proc::Native { ... }))`.
     pub fn define_native_proc(&self, name: &str, func: NativeFunc) {
@@ -213,10 +230,10 @@ mod tests {
     #[test]
     fn test_update() {
         let env = Env::root(Weak::new());
-        assert_eq!(env.update("name", 1), false);
+        assert!(!env.update("name", 1));
 
         env.define("name", 0);
-        assert_eq!(env.update("name", 1), true);
+        assert!(env.update("name", 1));
     }
 
     #[test]
@@ -235,8 +252,8 @@ mod tests {
         base.define("one", 1);
         derived.define("two", 2);
 
-        assert_eq!(derived.update("one", "uno"), true);
-        assert_eq!(derived.update("two", "dos"), true);
+        assert!(derived.update("one", "uno"));
+        assert!(derived.update("two", "dos"));
 
         assert_eq!(base.vars.borrow().get("one"), Some(&"uno".into()));
         assert_eq!(derived.vars.borrow().get("one"), None);

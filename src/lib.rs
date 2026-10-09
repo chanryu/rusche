@@ -11,7 +11,7 @@
 //!
 //! The [language reference](https://github.com/chanryu/rusche/blob/main/docs/language-reference.md)
 //! documents the **core language** (built-ins and prelude). The example host
-//! [rusche-cli](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli) adds I/O, a
+//! [rusche-cli](https://github.com/chanryu/rusche/tree/main/crates/rusche-cli) adds I/O, a
 //! vector type, and Scheme-style aliases — see
 //! [rusche-cli.md](https://github.com/chanryu/rusche/blob/main/docs/rusche-cli.md).
 //! Example `*.rsc` scripts target that host, not a bare evaluator.
@@ -24,6 +24,7 @@ mod prelude;
 mod macros;
 
 pub mod env;
+pub mod error;
 pub mod eval;
 pub mod expr;
 pub mod lexer;
@@ -36,9 +37,10 @@ pub mod utils;
 
 // Re-export public APIs
 pub use env::Env;
+pub use error::Error;
 pub use eval::{
-    eval, EvalContext, EvalError, EvalResult, Evaluator, ForeignTracer, DEFAULT_GC_THRESHOLD,
-    DEFAULT_MAX_CALL_DEPTH,
+    eval, eval_source, EvalContext, EvalError, EvalResult, Evaluator, ForeignTracer,
+    DEFAULT_GC_THRESHOLD, DEFAULT_MAX_CALL_DEPTH,
 };
 pub use expr::{intern, Expr, Foreign, NIL};
 pub use lexer::{tokenize, LexError, Lexer};

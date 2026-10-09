@@ -7,7 +7,7 @@ construct and operate on it — as [`rusche-cli`](../rusche-cli.md) does for `ve
 
 A small runnable example lives in
 [`examples/tutorial-foreign`](../../examples/tutorial-foreign/main.rs). The fuller
-vector API is in [`examples/rusche-cli/builtin/vec.rs`](../../examples/rusche-cli/builtin/vec.rs).
+vector API is in [`crates/rusche-cli/src/builtin/vec.rs`](../../crates/rusche-cli/src/builtin/vec.rs).
 
 ## What `Foreign` is
 
@@ -164,7 +164,7 @@ inside the foreign object can have its environment collected; calling it later
 fails.
 
 The vector builtins in
-[`vec.rs`](../../examples/rusche-cli/builtin/vec.rs) show the complete pattern:
+[`vec.rs`](../../crates/rusche-cli/src/builtin/vec.rs) show the complete pattern:
 create, push, get, and a tracer over every stored `Expr`.
 
 ## Borrowing and re-entrancy
@@ -178,4 +178,4 @@ first, then borrow briefly to mutate, as `point_move` does above.
 
 - [How to embed the Rusche interpreter](embedding.md)
 - [How to write a native function](native-functions.md)
-- Full vector wrapper: [`examples/rusche-cli/builtin/vec.rs`](../../examples/rusche-cli/builtin/vec.rs)
+- Full vector wrapper: [`crates/rusche-cli/src/builtin/vec.rs`](../../crates/rusche-cli/src/builtin/vec.rs)

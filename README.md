@@ -76,7 +76,7 @@ For a standalone REPL and file runner built on the library, see [`rusche-cli`](#
   demand with `Evaluator::collect_garbage`. Reachability starts from the root environment and
   the value `eval` just returned. If your host stores `Expr` values inside a `Foreign` object,
   register a tracer with `Evaluator::register_foreign_tracer` so the collector can see them
-  (see `vec.rs` in `rusche-cli`).
+  (see `crates/rusche-cli/src/builtin/vec.rs`).
 
 ### Core language
 
@@ -108,17 +108,20 @@ The core language is everything available from `Evaluator::default()` (built-ins
 
 ### `rusche-cli` (example host)
 
-[`rusche-cli`](https://github.com/chanryu/rusche/tree/main/examples/rusche-cli/) is a sample interpreter built on the library. It is **not** part of the core language. On top of `Evaluator::with_prelude()`, it adds:
+[`rusche-cli`](https://github.com/chanryu/rusche/tree/main/crates/rusche-cli/) is a sample interpreter built on the library. It is **not** part of the core language. On top of `Evaluator::with_prelude()`, it adds:
 
-- I/O: `display`, `newline`, `read`
+- I/O: `display`, `write`, `newline`, `read`, `exit`, `load`
+- System helpers: `getenv`, `clock`, `random`, `command-line`
 - A `vec` foreign type
 - Scheme-style aliases (`number?`, `modulo`, `string-append`, `string->number`, …)
+- A REPL with history, multi-line editing, and meta-commands (`,help`, `,load`, …)
 
 The `*.rsc` scripts under [`examples/`](https://github.com/chanryu/rusche/tree/main/examples) are written for this host (for example [fizzbuzz.rsc](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsc) uses `display` and `modulo`). See [`docs/rusche-cli.md`](docs/rusche-cli.md).
 
 ```bash
-cargo run --example rusche-cli
-cargo run --example rusche-cli -- examples/fizzbuzz.rsc
+cargo run -p rusche-cli
+cargo run -p rusche-cli -- examples/fizzbuzz.rsc
+cargo install --path crates/rusche-cli
 ```
 
 ## Documentation

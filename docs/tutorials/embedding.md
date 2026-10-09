@@ -28,9 +28,40 @@ let evaluator = Evaluator::with_prelude();
 // same as Evaluator::default()
 ```
 
-## Evaluate one expression
+## Evaluate source with `eval_str`
 
-The usual pipeline is tokenize → parse → evaluate:
+The usual host path is `Evaluator::eval_str`, which tokenizes, parses every
+top-level form, evaluates each one, and returns the last value (or `()` if the
+source is empty). Lex, parse, and eval failures share the unified
+[`Error`](https://docs.rs/rusche/latest/rusche/enum.Error.html) type:
+
+```rust
+use rusche::{Evaluator, Expr};
+
+let evaluator = Evaluator::default();
+let result = evaluator.eval_str("(+ 1 (% 9 2))").unwrap();
+assert_eq!(result, Expr::from(2));
+```
+
+A file or buffer can hold several top-level forms:
+
+```rust
+use rusche::Evaluator;
+
+fn eval_script(evaluator: &Evaluator, source: &str) -> Result<(), rusche::Error> {
+    evaluator.eval_str(source)?;
+    Ok(())
+}
+```
+
+`Error` implements `Display` and `std::error::Error`, and exposes `span()` for
+diagnostics. The [`rusche-cli`](../../crates/rusche-cli/src/main.rs) host prints
+those spans against the original source lines.
+
+### Lower-level pipeline
+
+When you need incremental parsing (for example a multi-line REPL), use the
+pieces underneath `eval_str`:
 
 ```rust
 use rusche::{tokenize, Evaluator, Expr, Parser};
@@ -54,42 +85,6 @@ assert_eq!(result, Expr::from(2));
 - `Evaluator::eval` runs the expression in the root context and may trigger
   automatic garbage collection afterward.
 
-## Evaluate a multi-expression script
-
-A file or buffer can hold several top-level forms. Keep calling `parse` until it
-returns `Ok(None)`, and handle lex, parse, and eval errors separately:
-
-```rust
-use rusche::{tokenize, Evaluator, LexError, ParseError, Parser};
-
-fn eval_script(evaluator: &Evaluator, source: &str) -> Result<(), String> {
-    let tokens = tokenize(source, None).map_err(|e| match e {
-        LexError::InvalidNumber(span) => format!("invalid number at {span}"),
-        LexError::IncompleteString(span) => format!("incomplete string at {span}"),
-    })?;
-
-    let mut parser = Parser::with_tokens(tokens);
-    loop {
-        match parser.parse() {
-            Ok(None) => return Ok(()),
-            Ok(Some(expr)) => {
-                evaluator.eval(&expr).map_err(|e| e.message)?;
-            }
-            Err(ParseError::IncompleteExpr(token)) => {
-                return Err(format!("incomplete expression starting at {}", token.span()));
-            }
-            Err(ParseError::UnexpectedToken(token)) => {
-                return Err(format!("unexpected token at {}", token.span()));
-            }
-        }
-    }
-}
-```
-
-`EvalError` carries a `message` and an optional `Span`. The
-[`rusche-cli`](../../examples/rusche-cli/main.rs) example prints those spans
-against the original source lines.
-
 ## Exchange values with the host
 
 ### Define host values into the environment
@@ -98,14 +93,14 @@ Use `root_env().define` to inject numbers, strings, or other `Expr` values befor
 running script code:
 
 ```rust
-use rusche::{tokenize, Evaluator, Expr, Parser};
+use rusche::{Evaluator, Expr};
 
 let evaluator = Evaluator::default();
 evaluator.root_env().define("greeting", Expr::from("hello"));
 
-let tokens = tokenize("(str-append greeting \" world\")", None).unwrap();
-let expr = Parser::with_tokens(tokens).parse().unwrap().unwrap();
-let result = evaluator.eval(&expr).unwrap();
+let result = evaluator
+    .eval_str("(str-append greeting \" world\")")
+    .unwrap();
 
 assert_eq!(result, Expr::from("hello world"));
 ```
@@ -159,5 +154,5 @@ register a tracer so the collector can see them — covered in
 
 - [How to write a native function](native-functions.md)
 - [How to write a foreign object wrapper](foreign.md)
-- Standalone REPL and file runner: [`examples/rusche-cli`](../../examples/rusche-cli/)
+- Standalone REPL and file runner: [`crates/rusche-cli`](../../crates/rusche-cli/)
 - Language surface: [language reference](../language-reference.md)

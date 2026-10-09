@@ -316,7 +316,7 @@ mod tests {
             name: None,
             formal_args: formal_args(&["a", "b", "c"]),
             body: Rc::new(list!(1, 2, 3, 4)),
-            outer_context: EvalContext::derive_from(&context),
+            outer_context: EvalContext::derive_from(context),
         };
         assert_ne!(closure, closure_context_diff);
     }
@@ -435,8 +435,8 @@ mod tests {
             .starts_with("proc/macro:m:"));
 
         // code coverage workaround (#[coverage(off)] is unstable)
-        native_fn_1("", &list!(), &context).unwrap();
-        native_fn_2("", &list!(), &context).unwrap();
+        native_fn_1("", &list!(), context).unwrap();
+        native_fn_2("", &list!(), context).unwrap();
     }
 
     fn eval_str(evaluator: &Evaluator, src: &str) -> EvalResult {
