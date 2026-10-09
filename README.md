@@ -20,16 +20,17 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
 - Garbage collection
 - Tail-call optimization, plus a call-depth limit so runaway recursion is an error rather than a stack overflow
 - Interoperability with the hosting Rust application via user-defined (a.k.a. native) functions and the `Foreign` data type
-- `Span` support for informative error messages, for example:
+- Structured errors with source spans, optional help, and a call trace, for example:
   ```
-  repl:01❯ (define plus
-  ....:02❯     (lambda (x 7)   ;; 7 should be y
-  ....:03❯         (+ x y)))
+  repl❯ (define plus
+  ....❯     (lambda (x 7)   ;; 7 should be y
+  ....❯         (+ x y)))
 
-  error: 7 is not a symbol.
+  error: `7` is not a symbol
+    --> <repl>:2:16
     1| (define plus
     2|     (lambda (x 7)
-     |                ^        ;; Thanks to `Span`, we can show exactly where the error originates
+     |                ^
   ```
 
 ## Usage
@@ -98,7 +99,7 @@ The core language is everything available from `Evaluator::default()` (built-ins
 
 - **Booleans.** Literals are `true`/`false`. Conditions must be booleans; `'()` is just a value. Predicates return `true` or `false`. `#t`/`#f` exist only as `rusche-cli` aliases.
 - **Equality.** `eq?` compares structurally and `=` is an alias for it.
-- **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`, and a lone `.` is a syntax error. Lists are immutable and shared.
+- **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
 - **Names.** Type checks end in `?` (`num?`, `str?`); same-type ops use a type prefix (`num-add`, `str-append`); conversions use `type1->type2` (`num->str`). Scheme spellings are host aliases, not core.

@@ -266,6 +266,19 @@ mod tests {
     }
 
     #[test]
+    fn test_display_foreign_and_list_iter_from() {
+        use std::rc::Rc;
+        let foreign = Expr::Foreign(Rc::new(1_i32));
+        let text = format!("{foreign}");
+        assert!(text.starts_with("<foreign: "), "{text}");
+        assert!(text.ends_with('>'), "{text}");
+
+        let list = list!(1, 2, 3);
+        let from_iter: Expr = list.iter().into();
+        assert_eq!(from_iter, list!(1, 2, 3).into());
+    }
+
+    #[test]
     fn test_display_sym() {
         assert_eq!(format!("{}", intern("sym")), "sym");
     }

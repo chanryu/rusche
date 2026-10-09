@@ -58,18 +58,20 @@ fn ok_script_exits_zero() {
 fn runtime_error_goes_to_stderr_and_exits_one() {
     let out = run(&[script("runtime_error.rsc").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1));
-    assert_eq!(stdout(&out), "hi");
+    // display without newline is followed by ensure_newline before the diagnostic
+    assert_eq!(stdout(&out), "hi\n");
     let err = stderr(&out);
-    assert!(err.contains("error:"));
-    assert!(err.contains("car:"));
-    assert!(err.contains("^"));
+    assert!(err.contains("error:"), "{err}");
+    assert!(err.contains("car:"), "{err}");
+    assert!(err.contains("^"), "{err}");
+    assert!(err.contains("-->"), "{err}");
 }
 
 #[test]
 fn lex_error_exits_one() {
     let out = run(&[script("lex_error.rsc").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("incomplete string"));
+    assert!(stderr(&out).contains("unterminated string literal"));
     assert!(stdout(&out).is_empty());
 }
 
@@ -77,7 +79,11 @@ fn lex_error_exits_one() {
 fn incomplete_expression_exits_one() {
     let out = run(&[script("incomplete.rsc").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("incomplete expression"));
+    let err = stderr(&out);
+    assert!(
+        err.contains("unclosed") || err.contains("incomplete"),
+        "{err}"
+    );
 }
 
 #[test]
@@ -150,7 +156,7 @@ fn dash_means_stdin() {
 fn no_prelude_hides_plus() {
     let out = run(&["--no-prelude", "-e", "(+ 1 2)"], "");
     assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("Undefined symbol") || stderr(&out).contains("+"));
+    assert!(stderr(&out).contains("undefined symbol") || stderr(&out).contains("+"));
 }
 
 #[test]
@@ -231,14 +237,22 @@ fn load_builtin() {
 fn newline_rejects_extra_args() {
     let out = run(&["-e", "(newline 1)"], "");
     assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("expects no arguments"));
+    assert!(
+        stderr(&out).contains("expected 0 arguments"),
+        "{}",
+        stderr(&out)
+    );
 }
 
 #[test]
 fn vec_make_rejects_extra_args() {
     let out = run(&["-e", "(vec-make 1)"], "");
     assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("expects no arguments"));
+    assert!(
+        stderr(&out).contains("expected 0 arguments"),
+        "{}",
+        stderr(&out)
+    );
 }
 
 #[test]
@@ -261,6 +275,211 @@ fn example_backwards() {
     let out = run(&[example("backwards.rsc").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert_eq!(stdout(&out), "tres\ndos\nuno\n");
+}
+
+#[test]
+fn depth_limit_exits_one_not_abort() {
+    let dir = tempfile_dir();
+    let path = dir.join("depth.rsc");
+    std::fs::write(
+        &path,
+        "(define (inf n) (+ 1 (inf n)))\n(inf 0)\n",
+    )
+    .unwrap();
+    let out = run(&[path.to_str().unwrap()], "");
+    assert_eq!(out.status.code(), Some(1), "stderr={}", stderr(&out));
+    assert!(
+        stderr(&out).contains("maximum call depth"),
+        "{}",
+        stderr(&out)
+    );
+}
+
+#[test]
+fn arity_error_snapshot() {
+    let out = run(&["-e", "(car (list 1) (list 2))"], "");
+    assert_eq!(out.status.code(), Some(1));
+    let err = stderr(&out);
+    assert!(err.contains("car: expected 1 argument, got 2"), "{err}");
+    assert!(err.contains("--> <eval>:"), "{err}");
+}
+
+#[test]
+fn load_nested_prints_inner_source() {
+    let dir = tempfile_dir();
+    let inner = dir.join("inner.rsc");
+    std::fs::write(&inner, "(display \"in\")\n(car 99)\n").unwrap();
+    let expr = format!("(load \"{}\")", inner.display());
+    let out = run(&["-e", &expr], "");
+    assert_eq!(out.status.code(), Some(1));
+    let err = stderr(&out);
+    assert!(err.contains("car:"), "{err}");
+    assert!(err.contains("inner.rsc"), "{err}");
+    assert!(err.contains("failed"), "{err}");
+}
+
+#[test]
+fn call_trace_is_printed() {
+    let dir = tempfile_dir();
+    let path = dir.join("deep.rsc");
+    // Non-final `begin` forms keep each closure on the stack; tail calls would replace frames.
+    std::fs::write(
+        &path,
+        "(define (a x) (begin (b x) 0))\n(define (b x) (begin (c x) 0))\n(define (c x) (car x))\n(a 42)\n",
+    )
+    .unwrap();
+    let out = run(&[path.to_str().unwrap()], "");
+    assert_eq!(out.status.code(), Some(1));
+    let err = stderr(&out);
+    assert!(err.contains("in `c`") || err.contains("in `car`"), "{err}");
+    assert!(err.contains("in `b`"), "{err}");
+    assert!(err.contains("in `a`"), "{err}");
+}
+
+#[test]
+fn sys_builtins_and_arity() {
+    let out = run(
+        &[
+            "-e",
+            r#"(begin
+                (display (num? (clock)))
+                (newline)
+                (display (num? (random)))
+                (newline)
+                (display (null? (cdr (command-line))))
+                (newline)
+                (display (str? (or-else (getenv "PATH") "")))
+                (newline))"#,
+        ],
+        "",
+    );
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    let printed = stdout(&out);
+    assert!(printed.lines().any(|l| l == "true"), "{printed}");
+
+    let out = run(&["-e", "(clock 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("expected 0 arguments"));
+
+    let out = run(&["-e", "(random 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("expected 0 arguments"));
+
+    let out = run(&["-e", "(command-line 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("expected 0 arguments"));
+
+    let out = run(&["-e", "(getenv 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("expected a string"));
+
+    let out = run(&["-e", "(getenv \"__RUSCHE_NO_SUCH_VAR__\")"], "");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out).trim(), "false");
+}
+
+#[test]
+fn vec_error_paths() {
+    let out = run(
+        &[
+            "-e",
+            r#"(begin
+                (define v (vec 1 2))
+                (display (vec-get v 0))
+                (newline)
+                (display (vec-length v))
+                (newline)
+                (display (vec->list v))
+                (newline)
+                (display (vec? (list->vec '(a b))))
+                (newline)
+                (vec-push v 3)
+                (display (vec-pop v))
+                (newline))"#,
+        ],
+        "",
+    );
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+
+    let out = run(&["-e", "(vec-pop (vec-make))"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("vector is empty"), "{}", stderr(&out));
+
+    let out = run(&["-e", "(vec-get (vec 1) 9)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("out-of-bounds"), "{}", stderr(&out));
+
+    let out = run(&["-e", "(vec-set! (vec 1) -1 0)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        stderr(&out).contains("zero or positive"),
+        "{}",
+        stderr(&out)
+    );
+
+    let out = run(&["-e", "(vec-get 1 0)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("vector") || stderr(&out).contains("foreign"), "{}", stderr(&out));
+
+    let out = run(&["-e", "(list->vec 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("list"), "{}", stderr(&out));
+}
+
+#[test]
+fn load_and_exit_error_paths() {
+    let out = run(&["-e", "(load 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("string path"), "{}", stderr(&out));
+
+    let out = run(&["-e", "(load \"/tmp/rusche-definitely-missing-xyz.rsc\")"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("failed to read"), "{}", stderr(&out));
+
+    let out = run(&["-e", "(exit 999)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("0-255"), "{}", stderr(&out));
+}
+
+#[test]
+fn let_shape_error_and_help_on_if() {
+    let out = run(&["-e", "(let (x 1) x)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("let:"), "{}", stderr(&out));
+    assert!(stderr(&out).contains("binding"), "{}", stderr(&out));
+
+    let out = run(&["-e", "(if 1 'a 'b)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    let err = stderr(&out);
+    assert!(err.contains("expected `true` or `false`"), "{err}");
+    assert!(err.contains("help:"), "{err}");
+}
+
+#[test]
+fn dangling_paren_and_invalid_number_messages() {
+    let out = run(&["-e", ")"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        stderr(&out).contains("no matching"),
+        "{}",
+        stderr(&out)
+    );
+
+    let out = run(&["-e", "(+ 1 23abc)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        stderr(&out).contains("invalid number literal"),
+        "{}",
+        stderr(&out)
+    );
+}
+
+#[test]
+fn interleaved_display_gets_newline_before_error() {
+    let out = run(&["-e", "(begin (display \"hi\") (car 1))"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(stdout(&out), "hi\n");
+    assert!(stderr(&out).contains("error:"));
 }
 
 fn tempfile_dir() -> PathBuf {

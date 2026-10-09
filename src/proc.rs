@@ -91,6 +91,23 @@ impl Proc {
         }
     }
 
+    /// Short name used in call traces and diagnostics.
+    pub(crate) fn display_name(&self) -> String {
+        match self {
+            Proc::Closure { name, .. } => name.clone().unwrap_or_else(|| "unnamed".into()),
+            Proc::Macro { name, .. } => name.clone().unwrap_or_else(|| "unnamed".into()),
+            Proc::Native { name, .. } => name.clone(),
+        }
+    }
+
+    pub(crate) fn frame_kind(&self) -> crate::eval::FrameKind {
+        match self {
+            Proc::Closure { .. } => crate::eval::FrameKind::Closure,
+            Proc::Macro { .. } => crate::eval::FrameKind::Macro,
+            Proc::Native { .. } => crate::eval::FrameKind::Native,
+        }
+    }
+
     pub fn fingerprint(&self) -> String {
         let mut hasher = DefaultHasher::new();
         match self {
@@ -178,11 +195,12 @@ fn bind_args(
     mut value: impl FnMut(&Expr) -> EvalResult,
 ) -> Result<(), EvalError> {
     let mut actual_args = actual_args.iter();
+    let expected = formal_args.names.len();
 
-    for name in &formal_args.names {
-        let expr = actual_args
-            .next()
-            .ok_or_else(|| EvalError::from(format!("{proc_name}: too few args")))?;
+    for (index, name) in formal_args.names.iter().enumerate() {
+        let expr = actual_args.next().ok_or_else(|| {
+            crate::utils::arity_error(proc_name, expected..=expected, index)
+        })?;
         env.define(name, value(expr)?);
     }
 
@@ -192,7 +210,12 @@ fn bind_args(
             env.define(rest, List::from(values));
         }
         None if actual_args.next().is_some() => {
-            return Err(EvalError::from(format!("{proc_name}: too many args")));
+            let got = expected + 1 + actual_args.count();
+            return Err(crate::utils::arity_error(
+                proc_name,
+                expected..=expected,
+                got,
+            ));
         }
         None => {}
     }
@@ -259,7 +282,7 @@ fn apply_macro(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{eval::Evaluator, macros::list};
+    use crate::{eval::Evaluator, expr::intern, macros::list};
 
     fn formal_args(names: &[&str]) -> Rc<FormalArgs> {
         Rc::new(FormalArgs {
@@ -488,5 +511,29 @@ mod tests {
                    (bad)";
         assert!(eval_str(&evaluator, src).is_err());
         assert!(eval_str(&evaluator, "w").is_err());
+    }
+
+    #[test]
+    fn test_unnamed_macro_display_name_and_rest_args() {
+        let evaluator = Evaluator::with_builtin();
+        let context = evaluator.context();
+
+        let unnamed = Proc::Macro {
+            name: None,
+            formal_args: Rc::new(FormalArgs {
+                names: vec!["x".into()],
+                rest: Some("rest".into()),
+            }),
+            body: Rc::new(list!(intern("x"))),
+        };
+        assert_eq!(unnamed.display_name(), "unnamed");
+        assert_eq!(unnamed.frame_kind(), crate::eval::FrameKind::Macro);
+
+        // Rest parameters collect remaining arguments.
+        assert_eq!(
+            eval_str(&evaluator, "((lambda (a *rest) rest) 1 2 3)"),
+            Ok(list!(2, 3).into())
+        );
+        let _ = context.env.lookup("num-add");
     }
 }

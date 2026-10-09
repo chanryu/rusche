@@ -1,5 +1,5 @@
 use crate::{
-    eval::{eval, EvalContext, EvalError, EvalResult},
+    eval::{eval, ErrorKind, EvalContext, EvalError, EvalResult},
     expr::Expr,
     list::List,
     utils::{eval_into_int, eval_into_str, get_2_or_3_args, get_exact_1_arg, get_exact_2_args},
@@ -19,11 +19,12 @@ pub fn append(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     for expr in args {
         match eval(expr, context)? {
             Expr::Str(text, _) => result += &text,
-            _ => {
-                return Err(EvalError {
-                    message: format!("{proc_name}: `{expr}` does not evaluate to a string."),
-                    span: expr.span(),
-                })
+            value => {
+                return Err(EvalError::new(
+                    ErrorKind::Type,
+                    format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a string"),
+                )
+                .with_span(expr.span()));
             }
         }
     }
@@ -41,13 +42,13 @@ pub fn compare(proc_name: &str, args: &List, context: &EvalContext) -> EvalResul
 
 pub fn length(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
-    if let Expr::Str(text, _) = eval(expr, context)? {
-        Ok(Expr::from(text.chars().count() as i32))
-    } else {
-        Err(EvalError {
-            message: format!("{proc_name}: `{expr}` does not evaluate to a string."),
-            span: expr.span(),
-        })
+    match eval(expr, context)? {
+        Expr::Str(text, _) => Ok(Expr::from(text.chars().count() as i32)),
+        value => Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a string"),
+        )
+        .with_span(expr.span())),
     }
 }
 

@@ -20,14 +20,29 @@ impl ParseError {
             ParseError::IncompleteExpr(token) | ParseError::UnexpectedToken(token) => token.span(),
         }
     }
+
+    /// Bare message text without a leading span.
+    pub fn message(&self) -> String {
+        match self {
+            ParseError::IncompleteExpr(token) => match token {
+                Token::OpenParen(_) => "unexpected end of input: unclosed `(`".into(),
+                Token::Quote(_) => "unexpected end of input after `'`".into(),
+                Token::Quasiquote(_) => "unexpected end of input after `` ` ``".into(),
+                Token::Unquote(_) => "unexpected end of input after `,`".into(),
+                Token::UnquoteSplicing(_) => "unexpected end of input after `,@`".into(),
+                _ => "incomplete expression".into(),
+            },
+            ParseError::UnexpectedToken(token) => match token {
+                Token::CloseParen(_) => "unexpected `)` with no matching `(`".into(),
+                other => format!("unexpected token: `{other}`"),
+            },
+        }
+    }
 }
 
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ParseError::IncompleteExpr(_) => write!(f, "incomplete expression"),
-            ParseError::UnexpectedToken(token) => write!(f, "unexpected token: \"{token}\""),
-        }
+        write!(f, "{}: {}", self.span(), self.message())
     }
 }
 
@@ -337,5 +352,38 @@ mod tests {
         let parsed_expr = parser.parse().unwrap().unwrap();
         let expected_expr = list!(intern("unquote-splicing"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
+    }
+
+    #[test]
+    fn test_incomplete_quote_forms_report_token_messages() {
+        use crate::span::Loc;
+
+        for (tokens, needle) in [
+            (vec![Token::Quote(Loc::default())], "after `'`"),
+            (vec![Token::Quasiquote(Loc::default())], "after `` ` ``"),
+            (vec![Token::Unquote(Loc::default())], "after `,`"),
+            (
+                vec![Token::UnquoteSplicing(Loc::default())],
+                "after `,@`",
+            ),
+        ] {
+            let mut parser = Parser::with_tokens(tokens);
+            let err = parser.parse().unwrap_err();
+            assert!(
+                matches!(err, ParseError::IncompleteExpr(_)),
+                "{err:?}"
+            );
+            assert!(err.message().contains(needle), "{} vs {needle}", err.message());
+            assert!(err.to_string().contains(needle));
+        }
+    }
+
+    #[test]
+    fn test_unexpected_close_paren_message() {
+        use crate::span::Loc;
+
+        let mut parser = Parser::with_tokens(vec![Token::CloseParen(Loc::default())]);
+        let err = parser.parse().unwrap_err();
+        assert_eq!(err.message(), "unexpected `)` with no matching `(`");
     }
 }

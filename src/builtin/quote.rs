@@ -1,4 +1,4 @@
-use crate::eval::{eval, EvalContext, EvalError, EvalResult};
+use crate::eval::{eval, ErrorKind, EvalContext, EvalError, EvalResult};
 use crate::expr::{intern, Expr, NIL};
 use crate::list::List;
 use crate::utils::get_exact_1_arg;
@@ -18,9 +18,10 @@ pub fn quasiquote(proc_name: &str, args: &List, context: &EvalContext) -> EvalRe
     if exprs.len() == 1 {
         Ok(exprs.remove(0))
     } else {
-        Err(EvalError::from(format!(
-            "{proc_name}: expects only 1 argument"
-        )))
+        Err(EvalError::new(
+            ErrorKind::Arity,
+            format!("{proc_name}: expected 1 argument, got {}", exprs.len()),
+        ))
     }
 }
 
@@ -46,20 +47,22 @@ fn quasiquote_expr(
     match car_name {
         Some(QUASIQUOTE) => {
             let Some(cadr) = cons.cadr() else {
-                return Err(EvalError {
-                    message: format!("{QUASIQUOTE}: missing argument"),
-                    span: expr.span(),
-                });
+                return Err(EvalError::new(
+                    ErrorKind::Arity,
+                    format!("{QUASIQUOTE}: missing argument"),
+                )
+                .with_span(expr.span()));
             };
             let processed = expect_one(quasiquote_expr(cadr, context, level + 1)?, QUASIQUOTE)?;
             exprs.push(Expr::from(vec![intern(QUASIQUOTE), processed]));
         }
         Some(UNQUOTE) => {
             let Some(cadr) = cons.cadr() else {
-                return Err(EvalError {
-                    message: format!("{UNQUOTE}: missing argument"),
-                    span: expr.span(),
-                });
+                return Err(EvalError::new(
+                    ErrorKind::Arity,
+                    format!("{UNQUOTE}: missing argument"),
+                )
+                .with_span(expr.span()));
             };
             if level == 1 {
                 exprs.push(eval(cadr, context)?);
@@ -70,10 +73,11 @@ fn quasiquote_expr(
         }
         Some(UNQUOTE_SPLICING) => {
             let Some(cadr) = cons.cadr() else {
-                return Err(EvalError {
-                    message: format!("{UNQUOTE_SPLICING}: argument missing"),
-                    span: expr.span(),
-                });
+                return Err(EvalError::new(
+                    ErrorKind::Arity,
+                    format!("{UNQUOTE_SPLICING}: missing argument"),
+                )
+                .with_span(expr.span()));
             };
             if level == 1 {
                 match eval(cadr, context)? {
@@ -81,13 +85,14 @@ fn quasiquote_expr(
                         // TODO: implement consuming `into_iter()`
                         exprs.extend(list.iter().cloned());
                     }
-                    _ => {
-                        return Err(EvalError {
-                            message: format!(
-                                "{UNQUOTE_SPLICING}: `{cadr}` does not evaluate to a list"
+                    value => {
+                        return Err(EvalError::new(
+                            ErrorKind::Type,
+                            format!(
+                                "{UNQUOTE_SPLICING}: `{cadr}` evaluated to `{value}`, expected a list"
                             ),
-                            span: cadr.span(),
-                        });
+                        )
+                        .with_span(cadr.span()));
                     }
                 }
             } else {
@@ -112,7 +117,10 @@ fn expect_one(mut exprs: Vec<Expr>, form: &str) -> Result<Expr, EvalError> {
     if exprs.len() == 1 {
         Ok(exprs.remove(0))
     } else {
-        Err(EvalError::from(format!("{form}: expects only 1 argument")))
+        Err(EvalError::new(
+            ErrorKind::Arity,
+            format!("{form}: expected 1 argument, got {}", exprs.len()),
+        ))
     }
 }
 
@@ -243,6 +251,75 @@ mod tests {
             Ok(list!(
                 intern(QUASIQUOTE),
                 list!(intern("a"), list!(intern(UNQUOTE), 3))
+            )
+            .into())
+        );
+    }
+
+    #[test]
+    fn test_nested_quasiquote_missing_arguments() {
+        setup_native_proc_test!(quasiquote);
+
+        // `` -- nested quasiquote with no argument: (quasiquote (quasiquote))
+        let err = quasiquote(list!(list!(intern(QUASIQUOTE)))).unwrap_err();
+        assert!(err.message.contains("quasiquote: missing argument"));
+
+        // ``(,(unquote)) -- nested unquote with no argument
+        let err = quasiquote(list!(list!(
+            intern(QUASIQUOTE),
+            list!(intern(UNQUOTE))
+        )))
+        .unwrap_err();
+        assert!(err.message.contains("unquote: missing argument"));
+
+        // ``(,(unquote-splicing)) -- nested splicing with no argument
+        let err = quasiquote(list!(list!(
+            intern(QUASIQUOTE),
+            list!(intern(UNQUOTE_SPLICING))
+        )))
+        .unwrap_err();
+        assert!(err.message.contains("unquote-splicing: missing argument"));
+    }
+
+    #[test]
+    fn test_nested_unquote_splicing_preserves_form() {
+        setup_native_proc_test!(quasiquote);
+
+        // ``(,@'(1 2)) => (quasiquote (unquote-splicing (quote (1 2))))
+        let result = quasiquote(list!(list!(
+            intern(QUASIQUOTE),
+            list!(
+                intern(UNQUOTE_SPLICING),
+                list!(intern(QUOTE), list!(1, 2))
+            )
+        )));
+        assert_eq!(
+            result,
+            Ok(list!(
+                intern(QUASIQUOTE),
+                list!(
+                    intern(UNQUOTE_SPLICING),
+                    list!(intern(QUOTE), list!(1, 2))
+                )
+            )
+            .into())
+        );
+    }
+
+    #[test]
+    fn test_nested_unquote_preserves_form() {
+        setup_native_proc_test!(quasiquote);
+
+        // ``(,x) => (quasiquote (unquote x))
+        let result = quasiquote(list!(list!(
+            intern(QUASIQUOTE),
+            list!(intern(UNQUOTE), intern("x"))
+        )));
+        assert_eq!(
+            result,
+            Ok(list!(
+                intern(QUASIQUOTE),
+                list!(intern(UNQUOTE), intern("x"))
             )
             .into())
         );

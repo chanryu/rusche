@@ -9,33 +9,30 @@ const TOKEN_DELIMITERS: &str = " \t\r\n()'`,;\"";
 #[derive(Debug, PartialEq)]
 pub enum LexError {
     IncompleteString(Span),
-    InvalidNumber(Span),
-    /// A lone `.`, which would be dotted-pair syntax in Scheme. Rusche has no dotted pairs,
-    /// so it is rejected here rather than silently read as a symbol.
-    UnexpectedDot(Span),
+    /// The span covers the invalid token; the string is the raw text that failed to parse.
+    InvalidNumber(String, Span),
 }
 
 impl LexError {
     /// Returns the source span associated with this error.
     pub fn span(&self) -> Span {
         match self {
-            LexError::IncompleteString(span)
-            | LexError::InvalidNumber(span)
-            | LexError::UnexpectedDot(span) => *span,
+            LexError::IncompleteString(span) | LexError::InvalidNumber(_, span) => *span,
+        }
+    }
+
+    /// Bare message text without a leading span.
+    pub fn message(&self) -> String {
+        match self {
+            LexError::IncompleteString(_) => "unterminated string literal".into(),
+            LexError::InvalidNumber(text, _) => format!("invalid number literal `{text}`"),
         }
     }
 }
 
 impl fmt::Display for LexError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            LexError::IncompleteString(_) => write!(f, "incomplete string"),
-            LexError::InvalidNumber(_) => write!(f, "invalid number"),
-            LexError::UnexpectedDot(_) => write!(
-                f,
-                "unexpected `.` -- dotted pairs are not supported; use `*name` for a rest parameter"
-            ),
-        }
+        write!(f, "{}: {}", self.span(), self.message())
     }
 }
 
@@ -157,10 +154,15 @@ where
         let sign = if first_char == '-' { -1.0 } else { 1.0 };
         let span = begin_loc.span_to(self.loc);
 
+        let display = if first_char == '+' || first_char == '-' {
+            format!("{first_char}{digits}")
+        } else {
+            digits.clone()
+        };
         digits
             .parse::<f64>()
             .map(|value| Some(Token::Num(value * sign, span)))
-            .map_err(|_| LexError::InvalidNumber(span))
+            .map_err(|_| LexError::InvalidNumber(display, span))
     }
 
     fn read_symbol(&mut self, first_char: char, begin_loc: Loc) -> LexResult {
@@ -173,13 +175,9 @@ where
 
         let span = Span::new(begin_loc, self.loc);
 
-        if name == "." {
-            return Err(LexError::UnexpectedDot(span));
-        }
-
         // Numbers without a leading digit (`.5`, `-.5`, `+.5`) reach here because they start
         // like a symbol. Only treat the text as a number if it looks like one, so that symbols
-        // such as `-inf` or `...` stay symbols.
+        // such as `.`, `...`, or `-inf` stay symbols.
         if looks_like_fraction(&name) {
             if let Ok(value) = name.parse::<f64>() {
                 return Ok(Some(Token::Num(value, span)));
@@ -273,10 +271,15 @@ mod tests {
 
         assert_parse_string!(r#""valid string""#, "valid string");
         assert_parse_string!(r#""an escaped\" string""#, "an escaped\" string");
+        assert_parse_string!(r#""a\nb\tc\rd""#, "a\nb\tc\rd");
         assert_parse_string!(
             r#""incomplete string"#,
             LexError::IncompleteString(Span::new(Loc::new(0, 0), Loc::new(0, 18)))
         );
+
+        let err = LexError::InvalidNumber("23abc".into(), Span::new(Loc::new(0, 0), Loc::new(0, 5)));
+        assert_eq!(err.message(), "invalid number literal `23abc`");
+        assert!(err.to_string().contains("23abc"));
     }
 
     #[test]
@@ -307,30 +310,20 @@ mod tests {
 
         // things that merely start with a sign or dot remain symbols
         // (`.5x` looks like a fraction but does not parse as one, so it stays a symbol too)
-        for text in ["-", "+", "...", "-inf", "-x", ".foo", ".5x", "-.5.5"] {
+        for text in [".", "-", "+", "...", "-inf", "-x", ".foo", ".5x", "-.5.5"] {
             let token = Lexer::new(text.chars(), Loc::default())
                 .get_token()
                 .unwrap()
                 .unwrap();
             assert_eq!(token, Token::Sym(text.into(), token.span()), "{text}");
         }
-    }
 
-    #[test]
-    fn test_lone_dot_is_an_error() {
-        // `(a . b)` is dotted-pair syntax, which Rusche does not support.
+        // A lone `.` is an ordinary symbol, so Scheme-style dotted lists just parse as lists.
+        let tokens = tokenize("(a . b)", None).unwrap();
         assert_eq!(
-            tokenize("(a . b)", None),
-            Err(LexError::UnexpectedDot(Span::new(
-                Loc::new(0, 3),
-                Loc::new(0, 4)
-            )))
+            tokens.iter().map(|t| t.to_string()).collect::<Vec<_>>(),
+            ["(", "a", ".", "b", ")"]
         );
-        assert!(tokenize(".", None).is_err());
-        assert!(tokenize("(.)", None).is_err());
-        assert!(tokenize("'(1 . 2)", None).is_err());
-
-        // ... but `.` is still fine inside numbers and other symbols
         assert!(tokenize("(.5 1.5 ... .foo a.b)", None).is_ok());
     }
 

@@ -39,8 +39,8 @@ pub mod utils;
 pub use env::Env;
 pub use error::Error;
 pub use eval::{
-    eval, eval_source, EvalContext, EvalError, EvalResult, Evaluator, ForeignTracer,
-    DEFAULT_GC_THRESHOLD, DEFAULT_MAX_CALL_DEPTH,
+    eval, eval_source, ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, ForeignTracer,
+    Frame, FrameKind, DEFAULT_GC_THRESHOLD, DEFAULT_MAX_CALL_DEPTH,
 };
 pub use expr::{intern, Expr, Foreign, NIL};
 pub use lexer::{tokenize, LexError, Lexer};
@@ -49,4 +49,6 @@ pub use parser::{ParseError, Parser};
 pub use proc::{FormalArgs, NativeFunc, Proc};
 pub use span::{Loc, Span};
 pub use token::Token;
-pub use utils::{eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args};
+pub use utils::{
+    arity_error, eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args,
+};

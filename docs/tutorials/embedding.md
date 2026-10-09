@@ -54,9 +54,11 @@ fn eval_script(evaluator: &Evaluator, source: &str) -> Result<(), rusche::Error>
 }
 ```
 
-`Error` implements `Display` and `std::error::Error`, and exposes `span()` for
-diagnostics. The [`rusche-cli`](../../crates/rusche-cli/src/main.rs) host prints
-those spans against the original source lines.
+`Error` implements `Display` and `std::error::Error`. Use `message()` for the
+bare text (without a leading span), `span()` for the source location, `help()`
+for an optional hint, and `trace()` for the call stack collected while
+unwinding. The [`rusche-cli`](../../crates/rusche-cli/src/main.rs) host prints
+those against the original source lines.
 
 ### Lower-level pipeline
 

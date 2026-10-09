@@ -56,9 +56,12 @@ fn eval_into_point(
 ) -> Result<Rc<PointCell>, EvalError> {
     eval_into_foreign(proc_name, expr, context)?
         .downcast::<PointCell>()
-        .map_err(|_| EvalError {
-            message: format!("{proc_name}: `{expr}` does not evaluate to a point."),
-            span: expr.span(),
+        .map_err(|_| {
+            EvalError::new(
+                rusche::ErrorKind::Type,
+                format!("{proc_name}: `{expr}` does not evaluate to a point"),
+            )
+            .with_span(expr.span())
         })
 }
 ```
@@ -91,9 +94,12 @@ fn eval_into_point(
 ) -> Result<Rc<PointCell>, EvalError> {
     eval_into_foreign(proc_name, expr, context)?
         .downcast::<PointCell>()
-        .map_err(|_| EvalError {
-            message: format!("{proc_name}: `{expr}` does not evaluate to a point."),
-            span: expr.span(),
+        .map_err(|_| {
+            EvalError::new(
+                rusche::ErrorKind::Type,
+                format!("{proc_name}: `{expr}` does not evaluate to a point"),
+            )
+            .with_span(expr.span())
         })
 }
 

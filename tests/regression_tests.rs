@@ -41,7 +41,7 @@ fn deep_recursion_is_an_error_not_a_crash() {
     assert_eq!(e.eval_to_str("(count 10)"), "10");
 
     let err = e.eval_to_str("(count 1000)");
-    assert!(err.contains("Maximum call depth (100) exceeded"), "{err}");
+    assert!(err.contains("maximum call depth (100) exceeded"), "{err}");
 
     // the depth counter is restored after the error
     assert_eq!(e.eval_to_str("(count 10)"), "10");
@@ -261,11 +261,11 @@ fn defined_lambdas_are_named() {
     let e = Evaluator::with_prelude();
     let _ = e.eval_to_str("(defun plus (x y) (+ x y))");
     let err = e.eval_to_str("(plus 1)");
-    assert!(err.contains("plus: too few args"), "{err}");
+    assert!(err.contains("plus: expected 2 arguments, got 1"), "{err}");
 
     let _ = e.eval_to_str("(define minus (lambda (x y) (- x y)))");
     let err = e.eval_to_str("(minus 1 2 3)");
-    assert!(err.contains("minus: too many args"), "{err}");
+    assert!(err.contains("minus: expected 2 arguments, got 3"), "{err}");
 
     // lambdas and macros now carry a span
     let lambda = eval_all(&e, "(lambda (x) x)").unwrap();

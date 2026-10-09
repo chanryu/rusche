@@ -282,4 +282,16 @@ mod tests {
         original.define("one", 1);
         assert_eq!(cloned.lookup("one"), Some(num(1)));
     }
+
+    #[test]
+    fn test_names_walks_ancestors() {
+        let base = Env::root(Weak::new());
+        base.define("a", 1);
+        let derived = Env::derive_from(&base);
+        derived.define("b", 2);
+
+        let names = derived.names();
+        assert!(names.contains(&"a".to_string()));
+        assert!(names.contains(&"b".to_string()));
+    }
 }

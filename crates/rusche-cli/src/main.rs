@@ -11,8 +11,12 @@ use rusche::{tokenize, Evaluator, Loc, ParseError, Parser, Span};
 
 use builtin::{load_io_procs, load_scheme_aliases, load_sys_procs, load_vec_procs};
 use cli::{parse_args, usage, Input, Options};
-use diagnostics::print_error;
+use diagnostics::{
+    print_eval_error, print_lex_error, print_parse_error, print_pipeline_error,
+};
 use repl::run_repl;
+
+const EVAL_STACK_SIZE: usize = 256 * 1024 * 1024;
 
 fn main() -> ExitCode {
     let mut argv = std::env::args();
@@ -49,6 +53,26 @@ fn main() -> ExitCode {
     command_line.extend(opts.script_args.iter().cloned());
     host::set_command_line(command_line);
 
+    // Evaluate on a large-stack thread so DEFAULT_MAX_CALL_DEPTH can fire as an error
+    // instead of aborting with a stack overflow on debug builds.
+    let opts_for_thread = opts;
+    let result = std::thread::Builder::new()
+        .name("rusche-eval".into())
+        .stack_size(EVAL_STACK_SIZE)
+        .spawn(move || run_with_options(opts_for_thread))
+        .expect("failed to spawn evaluation thread")
+        .join();
+
+    match result {
+        Ok(code) => code,
+        Err(_) => {
+            eprintln!("error: evaluation thread panicked");
+            ExitCode::from(1)
+        }
+    }
+}
+
+fn run_with_options(opts: Options) -> ExitCode {
     let evaluator = build_evaluator(&opts);
 
     match opts.input {
@@ -62,7 +86,7 @@ fn main() -> ExitCode {
                     eprintln!("Failed to read stdin: {e}");
                     return ExitCode::from(2);
                 }
-                match run_source(&evaluator, &text) {
+                match run_source(&evaluator, &text, "<stdin>") {
                     Ok(()) => ExitCode::SUCCESS,
                     Err(()) => ExitCode::from(1),
                 }
@@ -74,16 +98,19 @@ fn main() -> ExitCode {
                 eprintln!("Failed to read stdin: {e}");
                 return ExitCode::from(2);
             }
-            match run_source(&evaluator, &text) {
+            match run_source(&evaluator, &text, "<stdin>") {
                 Ok(()) => ExitCode::SUCCESS,
                 Err(()) => ExitCode::from(1),
             }
         }
         Input::File(path) => match std::fs::read_to_string(&path) {
-            Ok(text) => match run_source(&evaluator, &text) {
-                Ok(()) => ExitCode::SUCCESS,
-                Err(()) => ExitCode::from(1),
-            },
+            Ok(text) => {
+                let name = path.display().to_string();
+                match run_source(&evaluator, &text, &name) {
+                    Ok(()) => ExitCode::SUCCESS,
+                    Err(()) => ExitCode::from(1),
+                }
+            }
             Err(e) => {
                 eprintln!("Failed to read file at \"{}\": {e}", path.display());
                 ExitCode::from(2)
@@ -97,7 +124,7 @@ fn main() -> ExitCode {
                 ExitCode::SUCCESS
             }
             Err(error) => {
-                print_error(&error, &expr, error.span());
+                print_pipeline_error(&error, &expr, "<eval>");
                 ExitCode::from(1)
             }
         },
@@ -128,12 +155,12 @@ fn build_evaluator(opts: &Options) -> Evaluator {
     evaluator
 }
 
-fn run_source(evaluator: &Evaluator, text: &str) -> Result<(), ()> {
+fn run_source(evaluator: &Evaluator, text: &str, source_name: &str) -> Result<(), ()> {
     let (body, loc) = strip_shebang(text);
     let tokens = match tokenize(body, Some(loc)) {
         Ok(tokens) => tokens,
         Err(error) => {
-            print_error(&error, text, Some(error.span()));
+            print_lex_error(&error, text, source_name);
             return Err(());
         }
     };
@@ -145,7 +172,7 @@ fn run_source(evaluator: &Evaluator, text: &str) -> Result<(), ()> {
             Ok(Some(expr)) => match evaluator.eval(&expr) {
                 Ok(_) => {}
                 Err(e) => {
-                    print_error(&e.message, text, e.span);
+                    print_eval_error(&e, text, source_name);
                     return Err(());
                 }
             },
@@ -161,11 +188,11 @@ fn run_source(evaluator: &Evaluator, text: &str) -> Result<(), ()> {
                 } else {
                     Some(error.span())
                 };
-                print_error(&error, text, span);
+                print_parse_error(&error, text, source_name, span);
                 return Err(());
             }
             Err(error) => {
-                print_error(&error, text, Some(error.span()));
+                print_parse_error(&error, text, source_name, None);
                 return Err(());
             }
         }
@@ -181,5 +208,55 @@ fn strip_shebang(text: &str) -> (&str, Loc) {
         }
     } else {
         (text, Loc::default())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cli::{Input, Options};
+
+    fn default_opts() -> Options {
+        Options {
+            input: Input::Repl,
+            script_args: Vec::new(),
+            max_call_depth: None,
+            gc_threshold: None,
+            no_prelude: false,
+            no_color: true,
+            help: false,
+            version: false,
+        }
+    }
+
+    #[test]
+    fn strip_shebang_variants() {
+        assert_eq!(
+            strip_shebang("#!/bin/sh\n(+ 1 2)"),
+            ("(+ 1 2)", Loc::new(1, 0))
+        );
+        assert_eq!(strip_shebang("#!only"), ("", Loc::new(1, 0)));
+        assert_eq!(strip_shebang("(+ 1)"), ("(+ 1)", Loc::default()));
+    }
+
+    #[test]
+    fn build_evaluator_and_run_source_paths() {
+        colored::control::set_override(false);
+
+        let mut opts = default_opts();
+        opts.no_prelude = true;
+        opts.max_call_depth = Some(8);
+        opts.gc_threshold = Some(None);
+        let evaluator = build_evaluator(&opts);
+        assert!(evaluator.eval_str("(+ 1 2)").is_err());
+
+        let mut opts = default_opts();
+        opts.gc_threshold = Some(Some(50));
+        let evaluator = build_evaluator(&opts);
+        assert!(run_source(&evaluator, "#!/usr/bin/env rusche\n1\n", "<t>").is_ok());
+        assert!(run_source(&evaluator, "(car 1)", "<t>").is_err());
+        assert!(run_source(&evaluator, "\"unterminated", "<t>").is_err());
+        assert!(run_source(&evaluator, "(", "<t>").is_err());
+        assert!(run_source(&evaluator, ")", "<t>").is_err());
     }
 }

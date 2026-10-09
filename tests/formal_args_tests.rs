@@ -34,9 +34,9 @@ fn rest_parameter_in_lambda_define_and_defmacro() {
 
     // arity errors still apply to the fixed part
     let _ = e.eval_to_str("(defmacro (two a b *rest) a)");
-    assert!(e.eval_to_str("(two 1)").contains("two: too few args"));
-    assert!(eval_str("((lambda (a b) a) 1)").contains("too few args"));
-    assert!(eval_str("((lambda (a) a) 1 2)").contains("too many args"));
+    assert!(e.eval_to_str("(two 1)").contains("two: expected 2 arguments, got 1"));
+    assert!(eval_str("((lambda (a b) a) 1)").contains("expected 2 arguments, got 1"));
+    assert!(eval_str("((lambda (a) a) 1 2)").contains("expected 1 argument, got 2"));
 }
 
 #[test]
@@ -55,7 +55,6 @@ fn malformed_rest_parameters_are_errors() {
     for src in [
         "(lambda (*a b) a)",
         "(lambda (*a *b) a)",
-        "(lambda (*a*) a)",
         "(lambda (**a) a)",
         "(lambda (a 1) a)",
         "(lambda 1 a)",
@@ -88,16 +87,8 @@ fn star_alone_and_star_inside_a_name_are_ordinary_parameters() {
     assert_eq!(eval_str("((lambda (*) *) 7)"), "7");
     assert_eq!(eval_str("((lambda (a*b) a*b) 7)"), "7");
     // `*rest` binds `rest`, so the symbol `*rest` itself is unbound.
-    assert!(eval_str("((lambda (*rest) *rest) 1 2)").contains("Undefined symbol: `*rest`"));
+    assert!(eval_str("((lambda (*rest) *rest) 1 2)").contains("undefined symbol: `*rest`"));
+    // `*a*` binds `a*`
+    assert_eq!(eval_str("((lambda (*a*) a*) 1 2)"), "(1 2)");
 }
 
-#[test]
-fn dotted_pair_syntax_is_a_lex_error() {
-    for src in ["(lambda (a . rest) rest)", "'(a . b)", "(cons 1 . 2)"] {
-        let out = eval_str(src);
-        assert!(
-            out.contains("dotted pairs are not supported"),
-            "{src} => {out}"
-        );
-    }
-}

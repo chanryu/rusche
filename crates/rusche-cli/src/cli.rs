@@ -183,4 +183,49 @@ mod tests {
             Err(ParseCliError::UnknownFlag(_))
         ));
     }
+
+    #[test]
+    fn test_stdin_gc_threshold_and_error_display() {
+        let opts = parse_args(args(&["-", "extra"])).unwrap();
+        assert_eq!(opts.input, Input::Stdin);
+        assert_eq!(opts.script_args, vec!["extra".to_string()]);
+
+        let opts = parse_args(args(&["--gc-threshold", "12"])).unwrap();
+        assert_eq!(opts.gc_threshold, Some(Some(12)));
+
+        let opts = parse_args(args(&["-h", "-V"])).unwrap();
+        assert!(opts.help);
+        assert!(opts.version);
+
+        assert_eq!(
+            ParseCliError::MissingValue("--eval").to_string(),
+            "missing value for --eval"
+        );
+        assert_eq!(
+            ParseCliError::InvalidValue {
+                flag: "--max-call-depth",
+                value: "x".into(),
+            }
+            .to_string(),
+            "invalid value for --max-call-depth: x"
+        );
+        assert_eq!(
+            ParseCliError::UnknownFlag("--bogus".into()).to_string(),
+            "unknown option: --bogus"
+        );
+
+        assert!(matches!(
+            parse_args(args(&["-e"])),
+            Err(ParseCliError::MissingValue("--eval"))
+        ));
+        assert!(matches!(
+            parse_args(args(&["--max-call-depth", "nope"])),
+            Err(ParseCliError::InvalidValue { .. })
+        ));
+        assert!(matches!(
+            parse_args(args(&["--gc-threshold", "nope"])),
+            Err(ParseCliError::InvalidValue { .. })
+        ));
+        assert!(!usage().is_empty());
+    }
 }

@@ -71,8 +71,11 @@ Return any `Expr`. Convenience conversions include:
 - "nothing found": return `false` (so callers can use `or-else` or compare with `eq?`)
 - side effects with no useful value: `NIL` (the empty list)
 
-On failure, return `Err(EvalError { message, span })`. Prefer the offending
-argument's `span()` so host error printers can underline the right token.
+On failure, return an [`EvalError`](https://docs.rs/rusche/latest/rusche/struct.EvalError.html)
+built with `EvalError::new(ErrorKind::…, message).with_span(…)`. Prefer the
+offending argument's `span()` so host error printers can underline the right
+token. Use `ErrorKind` values such as `Arity`, `Type`, `InvalidForm`, or `Other`
+so hosts and tests can match without parsing message text.
 
 ## Worked example: `clamp`
 
