@@ -135,7 +135,7 @@ The core language is everything available from `Evaluator::default()` (built-ins
 
 - I/O: `display`, `write`, `newline`, `read`, `exit`, `load`
 - System helpers: `getenv`, `clock`, `random`, `command-line`
-- A `vec` foreign type
+- `vec` and `dict` foreign types
 - Scheme-style aliases (`number?`, `modulo`, `string-append`, `string->number`, …)
 - A REPL with history, multi-line editing, and meta-commands (`,help`, `,load`, …)
 
@@ -150,7 +150,7 @@ cargo install --path crates/rusche-cli
 ## Documentation
 
 - [Language reference](docs/language-reference.md) -- core special forms and built-ins (crate only)
-- [`rusche-cli`](docs/rusche-cli.md) -- running the example interpreter: options, the REPL, I/O, `vec`, and Scheme aliases
+- [`rusche-cli`](docs/rusche-cli.md) -- running the example interpreter: options, the REPL, I/O, `vec`, `dict`, and Scheme aliases
 - [API documentation on docs.rs](https://docs.rs/rusche/latest/rusche/) -- embedding Rusche in a Rust application
 - Tutorials for host applications:
   - [Embedding the interpreter](docs/tutorials/embedding.md)

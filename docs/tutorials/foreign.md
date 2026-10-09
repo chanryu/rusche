@@ -171,7 +171,9 @@ fails.
 
 The vector builtins in
 [`vec.rs`](../../crates/rusche-cli/src/builtin/vec.rs) show the complete pattern:
-create, push, get, and a tracer over every stored `Expr`.
+create, push, get, and a tracer over every stored `Expr`. The dict builtins in
+[`dict.rs`](../../crates/rusche-cli/src/builtin/dict.rs) show a Foreign type whose
+keys are a separate Rust enum (not `Expr`), with a tracer over values only.
 
 ## Borrowing and re-entrancy
 
