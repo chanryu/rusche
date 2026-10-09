@@ -14,7 +14,8 @@ use crate::env::Env;
 
 pub fn load_builtin(env: &Rc<Env>) {
     // special forms and evaluator ops
-    // (`quote`, `quasiquote`, `if`, `eval`, and `apply` are handled by the evaluator itself.)
+    // (`quote`, `quasiquote`, `begin`, `if`, `eval`, and `apply` are handled by the evaluator
+    // itself; see `eval::form`.)
     env.define_native_proc("define", special::define);
     env.define_native_proc("defmacro", special::defmacro);
     env.define_native_proc("eq?", special::eq);

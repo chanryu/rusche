@@ -65,7 +65,7 @@ Non-tail procedure calls are capped by the host's `max_call_depth` (default 1000
 
 ### Primitives
 
-The following forms and procedures are implemented in Rust -- most as native procedures bound in the root environment; `quote`, `quasiquote`, `if`, `eval`, and `apply` directly by the evaluator.
+The following forms and procedures are implemented in Rust -- most as native procedures bound in the root environment; `quote`, `quasiquote`, `begin`, `if`, `eval`, and `apply` directly by the evaluator.
 
 #### `atom?`
   Evaluates to true (`1`) if a given expression is an atom, i.e. anything but a non-empty list. Otherwise, false (`()`).
@@ -82,6 +82,13 @@ The following forms and procedures are implemented in Rust -- most as native pro
   ```scheme
   (apply + '(1 2 3))      ; 6
   (apply car '((1 2 3)))  ; 1
+  ```
+
+#### `begin`
+  Evaluates its arguments in order and returns the value of the last one. `begin` does not create a new scope, so a `define` inside it binds in the enclosing environment. `(begin)` is `()`.
+  ```scheme
+  (begin (define x 1) (set! x (+ x 1)) x)  ; 2
+  x                                        ; 2
   ```
 
 #### `car`
@@ -228,7 +235,7 @@ The following forms and procedures are implemented in Rust -- most as native pro
 
 The following forms and procedures are implemented in Rusche itself. Please check [prelude.rs](../src/prelude.rs) to see how they are actually implemented.
 
-Macros: `and`, `begin`, `cond` (with `else`), `defun`, `let`, `let*`, `or`, `while`
+Macros: `and`, `cond` (with `else`), `defun`, `let`, `let*`, `or`, `while`
 
 Procedures: `append`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `map`, `member`, `not`, `null?`, `reverse`, `<`, `>`, `<=`, `>=`, `abs`, `min`, `max`
 

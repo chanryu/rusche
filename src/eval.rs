@@ -238,19 +238,25 @@ pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
     }
 }
 
-const IF: &str = "if";
-const EVAL: &str = "eval";
-const APPLY: &str = "apply";
+/// The forms that [`eval_form`] handles itself instead of looking them up as procedures.
+///
+/// `quote` and `quasiquote` must see their arguments unevaluated; the others evaluate
+/// something in tail position and must hand it back to the [`eval`] loop. These names cannot
+/// be shadowed by definitions.
+mod form {
+    pub use crate::builtin::quote::{QUASIQUOTE, QUOTE};
+    pub const IF: &str = "if";
+    pub const EVAL: &str = "eval";
+    pub const APPLY: &str = "apply";
+    pub const BEGIN: &str = "begin";
+}
 
 /// Reduces a single form `(car . cdr)` by one step.
-///
-/// `quote`, `quasiquote`, `if`, `eval`, and `apply` are handled here rather than as native
-/// procedures: the first two because they must see their arguments unevaluated, the others
-/// because they evaluate something in tail position and must hand it back to the [`eval`] loop.
 fn eval_form(cons: &Cons, context: &EvalContext, frame: &mut CallFrame) -> Result<Step, EvalError> {
-    use crate::builtin::quote::{quasiquote, quote, QUASIQUOTE, QUOTE};
+    use crate::builtin::quote::{quasiquote, quote};
     use crate::builtin::special::apply_form;
     use crate::utils::{get_2_or_3_args, get_exact_1_arg};
+    use form::*;
 
     let args = &cons.cdr;
 
@@ -258,6 +264,16 @@ fn eval_form(cons: &Cons, context: &EvalContext, frame: &mut CallFrame) -> Resul
         match name.as_str() {
             QUOTE => return quote(name, args, context).map(Step::Value),
             QUASIQUOTE => return quasiquote(name, args, context).map(Step::Value),
+            BEGIN => {
+                let mut iter = args.iter().peekable();
+                while let Some(expr) = iter.next() {
+                    if iter.peek().is_none() {
+                        return Ok(Step::Eval(expr.clone(), context.clone()));
+                    }
+                    eval(expr, context)?;
+                }
+                return Ok(Step::Value(NIL));
+            }
             IF => {
                 let (condition, then_clause, else_clause) = get_2_or_3_args(name, args)?;
                 let branch = if eval(condition, context)?.is_truthy() {
@@ -632,6 +648,38 @@ mod tests {
         let err = evaluator.eval(&parse_one("(g 0)")).unwrap_err();
         assert!(err.message.contains("Maximum call depth"), "{err}");
         assert!(!evaluator.context.is_in_proc());
+    }
+
+    #[test]
+    fn test_begin_form() {
+        let evaluator = Evaluator::with_prelude();
+
+        assert_eq!(evaluator.eval(&parse_one("(begin)")), Ok(NIL));
+        assert_eq!(evaluator.eval(&parse_one("(begin 1 2 3)")), Ok(3.into()));
+
+        // No new scope: definitions land in the enclosing environment.
+        assert_eq!(
+            evaluator.eval(&parse_one("(begin (define x 1) (set! x (+ x 1)) x)")),
+            Ok(2.into())
+        );
+        assert_eq!(evaluator.eval(&parse_one("x")), Ok(2.into()));
+
+        // An error in a non-final form stops evaluation.
+        assert!(evaluator
+            .eval(&parse_one("(begin (car '()) (define y 1))"))
+            .is_err());
+        assert!(evaluator.eval(&parse_one("y")).is_err());
+
+        // The last form is in tail position.
+        evaluator.set_max_call_depth(50);
+        eval_all(
+            &evaluator,
+            "(define (loop n) (begin n (if (= n 0) 'done (loop (- n 1)))))",
+        );
+        assert_eq!(
+            evaluator.eval(&parse_one("(loop 10000)")),
+            Ok(intern("done"))
+        );
     }
 
     #[test]
