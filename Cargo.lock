@@ -222,6 +222,7 @@ name = "rusche-cli"
 version = "0.4.0"
 dependencies = [
  "colored",
+ "rand",
  "rusche",
  "rustyline",
 ]

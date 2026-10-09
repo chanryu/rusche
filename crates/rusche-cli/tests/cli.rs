@@ -14,9 +14,7 @@ fn workspace_root() -> PathBuf {
 }
 
 fn script(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/scripts")
-        .join(name)
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/scripts").join(name)
 }
 
 fn example(name: &str) -> PathBuf {
@@ -92,9 +90,9 @@ fn tab_caret_aligns_with_tab_padding() {
     let out = run(&[script("tabs.rsc").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1));
     let err = stderr(&out);
+    // The caret line should contain a literal tab before the carets (column after the tab).
     assert!(
-        err.lines()
-            .any(|line| line.contains('\t') && line.contains('^')),
+        err.lines().any(|line| line.contains('\t') && line.contains('^')),
         "expected tab-padded caret line, got:\n{err}"
     );
 }
@@ -104,49 +102,6 @@ fn missing_file_exits_two() {
     let out = run(&["/tmp/rusche-cli-definitely-missing.rsc"], "");
     assert_eq!(out.status.code(), Some(2));
     assert!(stderr(&out).contains("Failed to read file"));
-}
-
-#[test]
-fn newline_rejects_extra_args() {
-    let dir = std::env::temp_dir().join(format!("rusche-cli-nl-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let path = dir.join("nl.rsc");
-    std::fs::write(&path, "(newline 1)\n").unwrap();
-    let out = run(&[path.to_str().unwrap()], "");
-    assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("expects no arguments"));
-}
-
-#[test]
-fn vec_make_rejects_extra_args() {
-    let dir = std::env::temp_dir().join(format!("rusche-cli-vm-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let path = dir.join("vm.rsc");
-    std::fs::write(&path, "(vec-make 1)\n").unwrap();
-    let out = run(&[path.to_str().unwrap()], "");
-    assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("expects no arguments"));
-}
-
-#[test]
-fn example_counter() {
-    let out = run(&[example("counter.rsc").to_str().unwrap()], "");
-    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
-    assert_eq!(stdout(&out), "1\n2\n3\n");
-}
-
-#[test]
-fn example_fizzbuzz() {
-    let out = run(&[example("fizzbuzz.rsc").to_str().unwrap()], "15\n");
-    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
-    assert!(stdout(&out).contains("FizzBuzz"));
-}
-
-#[test]
-fn example_backwards() {
-    let out = run(&[example("backwards.rsc").to_str().unwrap()], "");
-    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
-    assert_eq!(stdout(&out), "tres\ndos\nuno\n");
 }
 
 #[test]
@@ -207,15 +162,9 @@ fn command_line_builtin() {
 
 #[test]
 fn command_line_with_script_args() {
-    let dir = std::env::temp_dir().join(format!(
-        "rusche-cli-args-{}-{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-    ));
-    std::fs::create_dir_all(&dir).unwrap();
+    // Hand-rolled parser: after FILE, remaining args are script args.
+    // Use -e via a tiny temp approach: run with a file that prints command-line.
+    let dir = tempfile_dir();
     let path = dir.join("args.rsc");
     std::fs::write(&path, "(display (command-line)) (newline)\n").unwrap();
     let out = run(&[path.to_str().unwrap(), "alpha", "beta"], "");
@@ -223,4 +172,96 @@ fn command_line_with_script_args() {
     let printed = stdout(&out);
     assert!(printed.contains("alpha"));
     assert!(printed.contains("beta"));
+}
+
+#[test]
+fn vec_and_write_builtins() {
+    let out = run(
+        &[
+            "-e",
+            r#"(begin
+                (define v (vec 1 2 3))
+                (display (vec-length v))
+                (newline)
+                (vec-set! v 1 9)
+                (display (vec-get v 1))
+                (newline)
+                (write "hi")
+                (newline)
+                (display (vec? v))
+                (newline))"#,
+        ],
+        "",
+    );
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out), "3\n9\n\"hi\"\n1\n");
+}
+
+#[test]
+fn exit_builtin() {
+    let out = run(&["-e", "(exit 7)"], "");
+    assert_eq!(out.status.code(), Some(7));
+}
+
+#[test]
+fn load_builtin() {
+    let dir = tempfile_dir();
+    let loaded = dir.join("loaded.rsc");
+    std::fs::write(&loaded, "(define loaded-value 99)\n").unwrap();
+    let expr = format!(
+        "(begin (load \"{}\") (display loaded-value) (newline))",
+        loaded.display()
+    );
+    let out = run(&["-e", &expr], "");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out), "99\n");
+}
+
+#[test]
+fn newline_rejects_extra_args() {
+    let out = run(&["-e", "(newline 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("expects no arguments"));
+}
+
+#[test]
+fn vec_make_rejects_extra_args() {
+    let out = run(&["-e", "(vec-make 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("expects no arguments"));
+}
+
+#[test]
+fn example_counter() {
+    let out = run(&[example("counter.rsc").to_str().unwrap()], "");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out), "1\n2\n3\n");
+}
+
+#[test]
+fn example_fizzbuzz() {
+    let out = run(&[example("fizzbuzz.rsc").to_str().unwrap()], "15\n");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert!(stdout(&out).contains("FizzBuzz"));
+    assert!(stdout(&out).contains("Enter a number"));
+}
+
+#[test]
+fn example_backwards() {
+    let out = run(&[example("backwards.rsc").to_str().unwrap()], "");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out), "tres\ndos\nuno\n");
+}
+
+fn tempfile_dir() -> PathBuf {
+    let dir = std::env::temp_dir().join(format!(
+        "rusche-cli-test-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
 }
