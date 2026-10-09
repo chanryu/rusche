@@ -127,7 +127,7 @@ cargo install --path crates/rusche-cli
 ## Documentation
 
 - [Language reference](docs/language-reference.md) -- core special forms and built-ins (crate only)
-- [`rusche-cli` extras](docs/rusche-cli.md) -- I/O, `vec`, and Scheme aliases provided by the example host
+- [`rusche-cli`](docs/rusche-cli.md) -- running the example interpreter: options, the REPL, I/O, `vec`, and Scheme aliases
 - [API documentation on docs.rs](https://docs.rs/rusche/latest/rusche/) -- embedding Rusche in a Rust application
 - Tutorials for host applications:
   - [Embedding the interpreter](docs/tutorials/embedding.md)
