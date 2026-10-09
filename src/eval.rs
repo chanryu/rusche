@@ -9,7 +9,7 @@ use std::{
 use crate::{
     builtin::load_builtin,
     env::Env,
-    expr::Expr,
+    expr::{Expr, NIL},
     list::{Cons, List},
     prelude::load_prelude,
     proc::Proc,
@@ -126,10 +126,62 @@ impl EvalContext {
     }
 }
 
+/// What the evaluator does after reducing a form.
+///
+/// A form either produces a value, or -- when its result is the result of evaluating another
+/// expression (a closure body, a macro expansion, an `if` branch) -- it hands that expression
+/// back so that [`eval`] can loop on it instead of recursing. Looping is what makes tail calls
+/// run in constant stack space; nothing about it leaks into [`Expr`].
+pub(crate) enum Step {
+    Value(Expr),
+    Eval(Expr, EvalContext),
+}
+
+/// The procedure call that the [`eval`] loop is currently inside of, if any.
+///
+/// A tail call replaces the frame instead of nesting a new one, which is why tail calls do not
+/// count towards the call depth limit. The frame is popped however the loop exits.
+struct CallFrame {
+    context: EvalContext,
+    active: bool,
+}
+
+impl CallFrame {
+    fn new(context: &EvalContext) -> Self {
+        Self {
+            context: context.clone(),
+            active: false,
+        }
+    }
+
+    fn replace(&mut self, proc: &Proc) -> Result<(), EvalError> {
+        self.leave();
+        self.context.push_call(proc)?;
+        self.active = true;
+        Ok(())
+    }
+
+    fn leave(&mut self) {
+        if self.active {
+            self.context.pop_call();
+            self.active = false;
+        }
+    }
+}
+
+impl Drop for CallFrame {
+    fn drop(&mut self) {
+        self.leave();
+    }
+}
+
 /// Evaluates an expression in the given context.
 ///
-/// This function serves as the entry point for evaluating an expression.
-/// It delegates the actual evaluation to the `eval_internal` function, specifying that the evaluation is not in a tail position.
+/// Evaluation runs in a loop: whenever a form reduces to another expression in tail position
+/// (the last expression of a closure body, a macro expansion, or the selected branch of `if`),
+/// the loop continues with that expression instead of recursing. Only non-tail positions --
+/// procedure arguments, `if` conditions, non-final body expressions -- recurse on the Rust
+/// stack, so tail-recursive procedures run in constant space.
 ///
 /// # Arguments
 ///
@@ -140,98 +192,133 @@ impl EvalContext {
 ///
 /// Returns an `EvalResult`, which is typically a `Result` containing either the evaluated expression or an error.
 pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
-    eval_internal(expr, context, /*is_tail*/ false)
-}
+    let mut expr = expr.clone();
+    let mut context = context.clone();
+    let mut frame = CallFrame::new(&context);
 
-/// Evaluates an expression in the given context, denoting that the evaluation is in a tail position.
-///
-/// This function serves as the entry point for evaluating an expression with tail call optimization.
-/// It delegates the actual evaluation to the `eval_internal` function, specifying that the evaluation is in a tail position.
-///
-/// # Arguments
-///
-/// * `expr` - A reference to the expression to be evaluated.
-/// * `context` - A reference to the evaluation context, which includes the environment and other necessary state.
-///
-/// # Returns
-///
-/// Returns an `EvalResult`, which is typically a `Result` containing either the evaluated expression or an error.
-pub fn eval_tail(expr: &Expr, context: &EvalContext) -> EvalResult {
-    eval_internal(expr, context, /*is_tail*/ true)
-}
+    // The innermost known source location among the forms this loop has gone through. Errors
+    // raised without a span (typically by native procedures, or by code without source
+    // information such as the prelude) are reported at that location.
+    let mut span_hint: Option<Span> = None;
 
-fn eval_internal(expr: &Expr, context: &EvalContext, is_tail: bool) -> EvalResult {
-    match expr {
-        Expr::Sym(name, span) => match context.env.lookup(name) {
-            Some(expr) => Ok(expr.clone()),
-            None => Err(EvalError {
-                message: format!("Undefined symbol: `{}`", name),
-                span: *span,
-            }),
-        },
-        Expr::List(List::Cons(cons), _) => {
-            use crate::builtin::quote::{quasiquote, quote, QUASIQUOTE, QUOTE};
+    loop {
+        let cons = match &expr {
+            Expr::Sym(name, span) => {
+                return context.env.lookup(name).ok_or_else(|| EvalError {
+                    message: format!("Undefined symbol: `{}`", name),
+                    span: *span,
+                });
+            }
+            Expr::List(List::Cons(cons), _) => cons.clone(),
+            _ => return Ok(expr),
+        };
 
-            let result = match &cons.car {
-                Expr::Sym(text, _) if text == QUOTE => quote(text, &cons.cdr, context),
-                Expr::Sym(text, _) if text == QUASIQUOTE => quasiquote(text, &cons.cdr, context),
-                _ => eval_s_expr(cons, context, is_tail),
-            };
+        // Prefer the span of the argument list; fall back to the span of the whole form.
+        if let Some(span) = cons.cdr.span().or_else(|| expr.span()) {
+            span_hint = Some(span);
+        }
 
-            match result {
-                Err(EvalError {
+        match eval_form(&cons, &context, &mut frame) {
+            Ok(Step::Value(value)) => return Ok(value),
+            Ok(Step::Eval(next_expr, next_context)) => {
+                expr = next_expr;
+                context = next_context;
+            }
+            Err(EvalError {
+                message,
+                span: None,
+            }) => {
+                return Err(EvalError {
                     message,
-                    span: None,
-                }) => {
-                    // If the result is an error without a span, let's try to provide a span.
-                    // First, let's check if we can get a span from arguments list. If not, we'll
-                    // use the span of the expression itself.
-                    let span = if let Some(span) = cons.cdr.span() {
-                        Some(span)
-                    } else {
-                        expr.span()
-                    };
-                    Err(EvalError { message, span })
+                    span: span_hint,
+                });
+            }
+            Err(err) => return Err(err),
+        }
+    }
+}
+
+/// The forms that [`eval_form`] handles itself instead of looking them up as procedures.
+///
+/// `quote` and `quasiquote` must see their arguments unevaluated; the others evaluate
+/// something in tail position and must hand it back to the [`eval`] loop. These names cannot
+/// be shadowed by definitions.
+mod form {
+    pub use crate::builtin::quote::{QUASIQUOTE, QUOTE};
+    pub const IF: &str = "if";
+    pub const EVAL: &str = "eval";
+    pub const APPLY: &str = "apply";
+    pub const BEGIN: &str = "begin";
+}
+
+/// Reduces a single form `(car . cdr)` by one step.
+fn eval_form(cons: &Cons, context: &EvalContext, frame: &mut CallFrame) -> Result<Step, EvalError> {
+    use crate::builtin::quote::{quasiquote, quote};
+    use crate::builtin::special::apply_form;
+    use crate::utils::{get_2_or_3_args, get_exact_1_arg};
+    use form::*;
+
+    let args = &cons.cdr;
+
+    if let Expr::Sym(name, _) = &cons.car {
+        match name.as_str() {
+            QUOTE => return quote(name, args, context).map(Step::Value),
+            QUASIQUOTE => return quasiquote(name, args, context).map(Step::Value),
+            BEGIN => {
+                let mut iter = args.iter().peekable();
+                while let Some(expr) = iter.next() {
+                    if iter.peek().is_none() {
+                        return Ok(Step::Eval(expr.clone(), context.clone()));
+                    }
+                    eval(expr, context)?;
                 }
-                _ => result,
+                return Ok(Step::Value(NIL));
             }
+            IF => {
+                let (condition, then_clause, else_clause) = get_2_or_3_args(name, args)?;
+                let branch = if eval(condition, context)?.is_truthy() {
+                    then_clause
+                } else if let Some(else_clause) = else_clause {
+                    else_clause
+                } else {
+                    return Ok(Step::Value(NIL));
+                };
+                return Ok(Step::Eval(branch.clone(), context.clone()));
+            }
+            EVAL => {
+                let expr = get_exact_1_arg(name, args)?;
+                return Ok(Step::Eval(eval(expr, context)?, context.clone()));
+            }
+            APPLY => {
+                return Ok(Step::Eval(
+                    apply_form(name, args, context)?,
+                    context.clone(),
+                ));
+            }
+            _ => {}
         }
-        _ => Ok(expr.clone()),
     }
+
+    let Expr::Proc(proc, _) = eval(&cons.car, context)? else {
+        return Err(EvalError {
+            message: format!("`{}` does not evaluate to a callable.", cons.car),
+            span: cons.car.span(),
+        });
+    };
+
+    frame.replace(&proc)?;
+    proc.apply(args, context)
 }
 
-fn eval_s_expr(s_expr: &Cons, context: &EvalContext, is_tail: bool) -> EvalResult {
-    if let Expr::Proc(proc, _) = eval(&s_expr.car, context)? {
-        let args = &s_expr.cdr;
-
-        if is_tail && context.is_in_proc() {
-            Ok(Expr::TailCall {
-                proc: proc.clone(),
-                args: args.clone(),
-                context: context.clone(),
-            })
-        } else {
-            let mut res = proc.invoke(args, context)?;
-            while let Expr::TailCall {
-                proc,
-                args,
-                context,
-            } = &res
-            {
-                res = proc.invoke(args, context)?;
-            }
-            Ok(res)
-        }
-    } else {
-        Err(EvalError {
-            message: format!("`{}` does not evaluate to a callable.", s_expr.car),
-            span: s_expr.car.span(),
-        })
-    }
-}
-
-/// The struct that encapsulates the evaluation environment, tail-call optimization context, and garbage collection.
-/// It also maintains the evaluation context and provides utility functions to facilitate the evaluation process.
+/// The struct that owns the root environment and evaluation context, enforces the call depth
+/// limit, and performs garbage collection.
+///
+/// # Call depth and tail calls
+///
+/// Evaluation is iterative in tail position (see [`eval`]), so tail-recursive procedures run
+/// in constant stack space and do not count towards the call depth limit. Non-tail calls --
+/// procedure arguments, `if` conditions, non-final `begin`/body expressions, and anything a
+/// native procedure evaluates -- nest, and are capped by [`Evaluator::set_max_call_depth`].
 ///
 /// # Garbage collection
 ///
@@ -489,7 +576,7 @@ impl Drop for Evaluator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{lexer::tokenize, parser::Parser};
+    use crate::{expr::intern, lexer::tokenize, parser::Parser};
 
     /// Evaluates every top-level form in `src` and returns the last result.
     fn eval_all(evaluator: &Evaluator, src: &str) -> Expr {
@@ -531,42 +618,93 @@ mod tests {
     }
 
     #[test]
-    fn test_gc_marks_through_pending_tail_call() {
+    fn test_tail_calls_run_in_constant_depth() {
+        let evaluator = Evaluator::with_prelude();
+        evaluator.set_max_call_depth(50);
+
+        // Tail calls through a closure body, `if`, `eval`, and a macro expansion all replace
+        // the current call frame instead of nesting a new one.
+        let src = "(define (loop n) (if (= n 0) 'done (loop (- n 1))))
+                   (define (loop-eval n) (if (= n 0) 'done (eval (list 'loop-eval (- n 1)))))
+                   (defmacro (my-if c a b) `(if ,c ,a ,b))
+                   (define (loop-macro n) (my-if (= n 0) 'done (loop-macro (- n 1))))";
+        eval_all(&evaluator, src);
+
+        for name in ["loop", "loop-eval", "loop-macro"] {
+            let result = evaluator.eval(&parse_one(&format!("({name} 10000)")));
+            assert_eq!(result, Ok(intern("done")), "{name}");
+        }
+        assert!(!evaluator.context.is_in_proc());
+    }
+
+    #[test]
+    fn test_call_depth_is_restored_after_error() {
         let evaluator = Evaluator::with_prelude();
 
-        let src = "(define (make-counter) (define n 0) (lambda () (set! n (+ n 1)) n))
-                   (make-counter)";
-        let counter_in_args = eval_all(&evaluator, src);
-        let Expr::Proc(callee, _) = eval_all(&evaluator, "(make-counter)") else {
-            panic!("expected a closure");
-        };
+        // An error deep inside nested non-tail calls must unwind every frame.
+        eval_all(
+            &evaluator,
+            "(define (f n) (if (= n 0) (car '()) (+ 1 (f (- n 1)))))",
+        );
+        assert!(evaluator.eval(&parse_one("(f 20)")).is_err());
+        assert!(!evaluator.context.is_in_proc());
 
-        // A pending tail call references a procedure, its arguments, and the context it
-        // will run in. All three must survive a collection.
-        let context = EvalContext::derive_from(&evaluator.context);
-        context.env.define("kept", 7);
-        let tail_call = Expr::TailCall {
-            proc: callee.clone(),
-            args: List::from(vec![counter_in_args.clone()]),
-            context: context.clone(),
-        };
-        evaluator.root_env().define("pending", tail_call);
+        // Exceeding the limit is reported as an error, and the frames are unwound too.
+        evaluator.set_max_call_depth(10);
+        eval_all(&evaluator, "(define (g n) (+ 1 (g n)))");
+        let err = evaluator.eval(&parse_one("(g 0)")).unwrap_err();
+        assert!(err.message.contains("Maximum call depth"), "{err}");
+        assert!(!evaluator.context.is_in_proc());
+    }
 
-        evaluator.collect_garbage();
+    #[test]
+    fn test_begin_form() {
+        let evaluator = Evaluator::with_prelude();
 
-        assert_eq!(context.env.lookup("kept"), Some(Expr::from(7)));
-        evaluator
-            .root_env()
-            .define("callee", Expr::Proc(callee, None));
-        evaluator.root_env().define("counter", counter_in_args);
+        assert_eq!(evaluator.eval(&parse_one("(begin)")), Ok(NIL));
+        assert_eq!(evaluator.eval(&parse_one("(begin 1 2 3)")), Ok(3.into()));
+
+        // No new scope: definitions land in the enclosing environment.
         assert_eq!(
-            evaluator.eval(&parse_one("(callee)")).unwrap(),
-            Expr::from(1)
+            evaluator.eval(&parse_one("(begin (define x 1) (set! x (+ x 1)) x)")),
+            Ok(2.into())
+        );
+        assert_eq!(evaluator.eval(&parse_one("x")), Ok(2.into()));
+
+        // An error in a non-final form stops evaluation.
+        assert!(evaluator
+            .eval(&parse_one("(begin (car '()) (define y 1))"))
+            .is_err());
+        assert!(evaluator.eval(&parse_one("y")).is_err());
+
+        // The last form is in tail position.
+        evaluator.set_max_call_depth(50);
+        eval_all(
+            &evaluator,
+            "(define (loop n) (begin n (if (= n 0) 'done (loop (- n 1)))))",
         );
         assert_eq!(
-            evaluator.eval(&parse_one("(counter)")).unwrap(),
-            Expr::from(1)
+            evaluator.eval(&parse_one("(loop 10000)")),
+            Ok(intern("done"))
         );
+    }
+
+    #[test]
+    fn test_if_and_eval_forms() {
+        let evaluator = Evaluator::with_prelude();
+
+        assert_eq!(evaluator.eval(&parse_one("(if 1 'a 'b)")), Ok(intern("a")));
+        assert_eq!(
+            evaluator.eval(&parse_one("(if '() 'a 'b)")),
+            Ok(intern("b"))
+        );
+        assert_eq!(evaluator.eval(&parse_one("(if '() 'a)")), Ok(NIL));
+        assert!(evaluator.eval(&parse_one("(if 1)")).is_err());
+        assert!(evaluator.eval(&parse_one("(if 1 2 3 4)")).is_err());
+
+        assert_eq!(evaluator.eval(&parse_one("(eval '(+ 1 2))")), Ok(3.into()));
+        assert!(evaluator.eval(&parse_one("(eval)")).is_err());
+        assert!(evaluator.eval(&parse_one("(eval 1 2)")).is_err());
     }
 
     #[test]

@@ -176,12 +176,25 @@ fn apply_does_not_reevaluate_arguments() {
 fn apply_passes_values_to_macros() {
     // Macros must see the value itself, not a `(quote ...)` wrapper.
     let e = Evaluator::with_prelude();
-    let result = eval_all(
-        &e,
-        "(defmacro (m x) `(list 'got ,x)) (apply m (list 42))",
-    )
-    .unwrap();
+    let result = eval_all(&e, "(defmacro (m x) `(list 'got ,x)) (apply m (list 42))").unwrap();
     assert_eq!(result.to_string(), "(got 42)");
+}
+
+// B20 -- `apply` in tail position must be a tail call, like a direct call is.
+#[test]
+fn apply_in_tail_position_does_not_consume_depth() {
+    let e = Evaluator::with_prelude();
+    e.set_max_call_depth(50);
+
+    let _ = e.eval_to_str("(define (f n) (if (= n 0) 'done (apply f (list (- n 1)))))");
+    assert_eq!(e.eval_to_str("(f 10000)"), "done");
+
+    // variadic prelude comparisons recurse through `apply`
+    let args = (0..500)
+        .map(|i| i.to_string())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert_eq!(e.eval_to_str(&format!("(< {args})")), "1");
 }
 
 // B9 -- covered by `test_cxxr` in prelude_tests.rs; `let` must still work after the swap.

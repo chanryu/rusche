@@ -112,9 +112,7 @@ fn expect_one(mut exprs: Vec<Expr>, form: &str) -> Result<Expr, EvalError> {
     if exprs.len() == 1 {
         Ok(exprs.remove(0))
     } else {
-        Err(EvalError::from(format!(
-            "{form}: expects only 1 argument"
-        )))
+        Err(EvalError::from(format!("{form}: expects only 1 argument")))
     }
 }
 
@@ -242,7 +240,11 @@ mod tests {
         )));
         assert_eq!(
             result,
-            Ok(list!(intern(QUASIQUOTE), list!(intern("a"), list!(intern(UNQUOTE), 3))).into())
+            Ok(list!(
+                intern(QUASIQUOTE),
+                list!(intern("a"), list!(intern(UNQUOTE), 3))
+            )
+            .into())
         );
     }
 }

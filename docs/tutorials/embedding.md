@@ -14,7 +14,7 @@ Rusche exposes three constructors on [`Evaluator`](https://docs.rs/rusche/latest
 
 | Constructor | Contents |
 | --- | --- |
-| `Evaluator::new()` | Empty root environment — no primitives |
+| `Evaluator::new()` | Empty root environment — only the evaluator forms (`quote`, `quasiquote`, `begin`, `if`, `eval`, `apply`) |
 | `Evaluator::with_builtin()` | Core native procedures (`num-add`, `car`, `lambda`, …) |
 | `Evaluator::with_prelude()` / `Evaluator::default()` | Built-ins plus the prelude (`+`, `%`, `let`, `while`, `#t`, `#f`, …) |
 
@@ -129,7 +129,6 @@ fn describe(expr: &Expr) -> String {
         Expr::List(list, _) => format!("list {list}"),
         Expr::Proc(proc, _) => format!("procedure <{}>", proc.fingerprint()),
         Expr::Foreign(object) => format!("foreign {:p}", object),
-        Expr::TailCall { .. } => unreachable!("TailCall is internal"),
     }
 }
 ```
@@ -143,7 +142,9 @@ type system.
 - **Call depth.** Non-tail calls are capped by `Evaluator::max_call_depth()`
   (default `DEFAULT_MAX_CALL_DEPTH`). Exceeding it is an error instead of a Rust
   stack overflow. Adjust with `set_max_call_depth` for the thread you evaluate on.
-  Tail calls do not count.
+  Tail calls do not count (see [Tail Calls](../language-reference.md#tail-calls)).
+  A native procedure counts as one level while it runs, and anything it
+  evaluates with `eval` nests inside it.
 - **Garbage collection.** After a top-level `eval`, the evaluator may collect
   unreachable environments once their count reaches `gc_threshold()` (default
   `DEFAULT_GC_THRESHOLD`; pass `None` to `set_gc_threshold` to disable). Call

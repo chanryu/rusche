@@ -121,6 +121,12 @@ cargo run --example tutorial-native
 closure. Shared or mutable host data belongs in a [`Foreign`](foreign.md) object
 that native procedures create and update.
 
+A native returns a finished value, so anything it evaluates with `eval` is a
+nested call: it counts towards the call depth and is never a tail call. If you
+need a control-flow form whose body stays in tail position (a `when`, a custom
+loop, …), write it as a `defmacro` in Rusche that expands to `if`/`begin`, and
+load it the way the prelude does, instead of implementing it as a native.
+
 ## Next steps
 
 - [How to write a foreign object wrapper](foreign.md)

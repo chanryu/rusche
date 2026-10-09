@@ -2,7 +2,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::rc::Rc;
 
 use crate::env::Env;
-use crate::eval::{eval, eval_tail, EvalContext, EvalError, EvalResult};
+use crate::eval::{eval, EvalContext, EvalError, EvalResult, Step};
 use crate::expr::{Expr, NIL};
 use crate::list::List;
 
@@ -48,15 +48,19 @@ pub enum Proc {
 }
 
 impl Proc {
-    pub(crate) fn invoke(&self, args: &List, context: &EvalContext) -> EvalResult {
-        context.push_call(self)?;
-        let result = match self {
+    /// Applies the procedure to the unevaluated `args`.
+    ///
+    /// Natives produce a value directly. Closures and macros evaluate everything but their
+    /// final expression and hand that expression back as [`Step::Eval`], so that the caller --
+    /// the [`eval`] loop -- can continue with it in tail position.
+    pub(crate) fn apply(&self, args: &List, context: &EvalContext) -> Result<Step, EvalError> {
+        match self {
             Proc::Closure {
                 name,
                 formal_args,
                 body,
                 outer_context,
-            } => eval_closure(
+            } => apply_closure(
                 name.as_deref(),
                 formal_args,
                 body,
@@ -68,11 +72,9 @@ impl Proc {
                 name,
                 formal_args,
                 body,
-            } => eval_macro(name.as_deref(), formal_args, body, args, context),
-            Proc::Native { name, func } => func(name, args, context),
-        };
-        context.pop_call();
-        result
+            } => apply_macro(name.as_deref(), formal_args, body, args, context),
+            Proc::Native { name, func } => func(name, args, context).map(Step::Value),
+        }
     }
 
     pub(crate) fn badge(&self) -> String {
@@ -198,14 +200,14 @@ fn bind_args(
     Ok(())
 }
 
-fn eval_closure(
+fn apply_closure(
     closure_name: Option<&str>,
     formal_args: &FormalArgs,
     body: &List,
     outer_context: &EvalContext,
     actual_args: &List,
     context: &EvalContext,
-) -> EvalResult {
+) -> Result<Step, EvalError> {
     let closure_name = closure_name.unwrap_or("unnamed-closure");
     let closure_context = EvalContext::derive_from(outer_context);
     bind_args(
@@ -219,21 +221,20 @@ fn eval_closure(
     let mut iter = body.iter().peekable();
     while let Some(expr) = iter.next() {
         if iter.peek().is_none() {
-            return eval_tail(expr, &closure_context);
-        } else {
-            eval(expr, &closure_context)?;
+            return Ok(Step::Eval(expr.clone(), closure_context));
         }
+        eval(expr, &closure_context)?;
     }
-    Ok(NIL)
+    Ok(Step::Value(NIL))
 }
 
-fn eval_macro(
+fn apply_macro(
     macro_name: Option<&str>,
     formal_args: &FormalArgs,
     body: &List,
     actual_args: &List,
     context: &EvalContext,
-) -> EvalResult {
+) -> Result<Step, EvalError> {
     let macro_name = macro_name.unwrap_or("unnamed-macro");
     let macro_context = EvalContext::derive_from(context);
     bind_args(
@@ -248,12 +249,11 @@ fn eval_macro(
     while let Some(expr) = iter.next() {
         let expanded_expr = eval(expr, &macro_context)?;
         if iter.peek().is_none() {
-            return eval_tail(&expanded_expr, context);
-        } else {
-            eval(&expanded_expr, context)?;
+            return Ok(Step::Eval(expanded_expr, context.clone()));
         }
+        eval(&expanded_expr, context)?;
     }
-    Ok(NIL)
+    Ok(Step::Value(NIL))
 }
 
 #[cfg(test)]
@@ -413,8 +413,80 @@ mod tests {
         assert_eq!(native1.fingerprint(), native1_1.fingerprint());
         assert_ne!(native1.fingerprint(), native2.fingerprint());
 
+        let macro_ = |names: &[&str], body: List| Proc::Macro {
+            name: Some("m".into()),
+            formal_args: formal_args(names),
+            body: Rc::new(body),
+        };
+        assert_eq!(
+            macro_(&["x"], list!(1)).fingerprint(),
+            macro_(&["x"], list!(1)).fingerprint()
+        );
+        assert_ne!(
+            macro_(&["x"], list!(1)).fingerprint(),
+            macro_(&["y"], list!(1)).fingerprint()
+        );
+        assert_ne!(
+            macro_(&["x"], list!(1)).fingerprint(),
+            macro_(&["x"], list!(2)).fingerprint()
+        );
+        assert!(macro_(&["x"], list!(1))
+            .fingerprint()
+            .starts_with("proc/macro:m:"));
+
         // code coverage workaround (#[coverage(off)] is unstable)
         native_fn_1("", &list!(), &context).unwrap();
         native_fn_2("", &list!(), &context).unwrap();
+    }
+
+    fn eval_str(evaluator: &Evaluator, src: &str) -> EvalResult {
+        use crate::{lexer::tokenize, parser::Parser};
+
+        let mut parser = Parser::with_tokens(tokenize(src, None).unwrap());
+        let mut last = Ok(NIL);
+        while let Some(expr) = parser.parse().unwrap() {
+            last = evaluator.eval(&expr);
+        }
+        last
+    }
+
+    #[test]
+    fn test_apply_closure_body() {
+        let evaluator = Evaluator::with_builtin();
+
+        // An empty body evaluates to ().
+        assert_eq!(eval_str(&evaluator, "((lambda ()))"), Ok(NIL));
+
+        // Every body expression runs; the last one is the result.
+        let src = "(define x 0)
+                   ((lambda () (set! x (num-add x 1)) (set! x (num-add x 1)) x))";
+        assert_eq!(eval_str(&evaluator, src), Ok(2.into()));
+
+        // An error in a non-final body expression stops evaluation.
+        let src = "(define y 0)
+                   ((lambda () (car '()) (set! y 1)))";
+        assert!(eval_str(&evaluator, src).is_err());
+        assert_eq!(eval_str(&evaluator, "y"), Ok(0.into()));
+    }
+
+    #[test]
+    fn test_apply_macro_body() {
+        let evaluator = Evaluator::with_builtin();
+
+        // An empty body expands to nothing and evaluates to ().
+        assert_eq!(eval_str(&evaluator, "(defmacro (empty)) (empty)"), Ok(NIL));
+
+        // Each body form is expanded and then evaluated in the caller's environment; the
+        // expansion of the last one is the result.
+        let src = "(defmacro (m) '(define z 41) '(num-add z 1))
+                   (m)";
+        assert_eq!(eval_str(&evaluator, src), Ok(42.into()));
+        assert_eq!(eval_str(&evaluator, "z"), Ok(41.into()));
+
+        // An error in a non-final expansion stops evaluation.
+        let src = "(defmacro (bad) '(car '()) '(define w 1))
+                   (bad)";
+        assert!(eval_str(&evaluator, src).is_err());
+        assert!(eval_str(&evaluator, "w").is_err());
     }
 }

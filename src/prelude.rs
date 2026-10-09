@@ -19,12 +19,7 @@ const PRELUDE_SYMBOLS: [&str; 3] = [
     "#,
 ];
 
-const PRELUDE_MACROS: [&str; 8] = [
-    // begin
-    r#"
-    (defmacro (begin . exprs)
-        `((lambda () ,@exprs)))
-    "#,
+const PRELUDE_MACROS: [&str; 7] = [
     // cond
     r#"
     (defmacro (cond . clauses)

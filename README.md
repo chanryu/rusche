@@ -68,7 +68,8 @@ For a standalone REPL and file runner built on the library, see [`rusche-cli`](#
 - **Call depth.** Evaluation fails with an error (instead of overflowing the Rust stack) once
   more than `Evaluator::max_call_depth()` procedure calls are active. The default is tuned for
   the main thread of a debug build; adjust it with `Evaluator::set_max_call_depth` to match the
-  stack size of the thread you evaluate on. Tail calls do not count towards the limit.
+  stack size of the thread you evaluate on. Tail calls do not count towards the limit; see
+  [Tail Calls](docs/language-reference.md#tail-calls) for which positions are tail positions.
 - **Garbage collection.** Environments captured by closures form reference cycles, so the
   evaluator collects them: automatically after a top-level `Evaluator::eval` once the number of
   live environments reaches `Evaluator::gc_threshold()` (set it to `None` to disable), or on
@@ -102,6 +103,7 @@ The core language is everything available from `Evaluator::default()` (built-ins
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
 - **Names.** Type checks end in `?` (`num?`, `str?`); same-type ops use a type prefix (`num-add`, `str-append`); conversions use `type1->type2` (`num->str`). Scheme spellings are host aliases, not core.
 - **Small surface.** `if` without an else branch and `define` return `()`; there is no named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
+- **`apply` and `eval` are syntax.** Like `if` and `begin`, they are recognised by the evaluator rather than bound as procedures, so they cannot be passed as values.
 - **Rest parameters** do use Scheme syntax: `(define (f a . rest) ...)` and `(lambda args ...)`.
 
 ### `rusche-cli` (example host)

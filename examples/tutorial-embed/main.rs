@@ -32,7 +32,12 @@ fn main() {
     .unwrap();
     assert_eq!(
         evaluator
-            .eval(&Parser::with_tokens(tokenize("n", None).unwrap()).parse().unwrap().unwrap())
+            .eval(
+                &Parser::with_tokens(tokenize("n", None).unwrap())
+                    .parse()
+                    .unwrap()
+                    .unwrap()
+            )
             .unwrap(),
         Expr::from(2)
     );
@@ -54,7 +59,10 @@ fn eval_script(evaluator: &Evaluator, source: &str) -> Result<(), String> {
                 evaluator.eval(&expr).map_err(|e| e.message)?;
             }
             Err(ParseError::IncompleteExpr(token)) => {
-                return Err(format!("incomplete expression starting at {}", token.span()));
+                return Err(format!(
+                    "incomplete expression starting at {}",
+                    token.span()
+                ));
             }
             Err(ParseError::UnexpectedToken(token)) => {
                 return Err(format!("unexpected token at {}", token.span()));
@@ -71,6 +79,5 @@ fn describe(expr: &Expr) -> String {
         Expr::List(list, _) => format!("list {list}"),
         Expr::Proc(proc, _) => format!("procedure <{}>", proc.fingerprint()),
         Expr::Foreign(object) => format!("foreign {:p}", object),
-        Expr::TailCall { .. } => unreachable!("TailCall is internal"),
     }
 }
