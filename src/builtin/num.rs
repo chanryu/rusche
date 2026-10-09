@@ -215,5 +215,4 @@ mod tests {
         // (< 2 1) => #f
         assert_eq!(less(list!(2, 1)), Ok(false.into()));
     }
-
 }

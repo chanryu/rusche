@@ -176,11 +176,7 @@ fn apply_does_not_reevaluate_arguments() {
 fn apply_passes_values_to_macros() {
     // Macros must see the value itself, not a `(quote ...)` wrapper.
     let e = Evaluator::with_prelude();
-    let result = eval_all(
-        &e,
-        "(defmacro (m x) `(list 'got ,x)) (apply m (list 42))",
-    )
-    .unwrap();
+    let result = eval_all(&e, "(defmacro (m x) `(list 'got ,x)) (apply m (list 42))").unwrap();
     assert_eq!(result.to_string(), "(got 42)");
 }
 
