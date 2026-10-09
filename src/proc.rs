@@ -12,7 +12,7 @@ pub type NativeFunc = fn(proc_name: &str, args: &List, context: &EvalContext) ->
 /// The formal parameters of a closure or macro.
 ///
 /// `names` are bound positionally. `rest`, if present, is bound to a list of every remaining
-/// argument -- it comes from `(a b . rest)` or from a bare symbol such as `(lambda args ...)`.
+/// argument -- it comes from a `*`-prefixed last parameter such as `(a b *rest)`.
 #[derive(Clone, Debug, Default, PartialEq, Hash)]
 pub struct FormalArgs {
     pub names: Vec<String>,

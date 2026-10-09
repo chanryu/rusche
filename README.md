@@ -14,7 +14,7 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
 ## Features
 
 - Minimalistic library with zero dependencies
-- Lambdas and closures, with Scheme-style rest parameters (`(define (f a . rest) ...)`, `(lambda args ...)`)
+- Lambdas and closures, with splat-style rest parameters (`(define (f a *rest) ...)`, `(lambda (*args) ...)`)
 - Lexical scopes and binding
 - Macros using special forms like quasiquote (`` ` ``), unquote (`,`), unquote-splicing (`,@`)
 - Garbage collection
@@ -98,13 +98,13 @@ The core language is everything available from `Evaluator::default()` (built-ins
 
 - **Truthiness.** `'()` is the only false value; `#t` is `1` and `#f` is `'()`. There is no boolean type, and predicates return `1` or `()`.
 - **Equality.** `eq?` compares structurally and `=` is an alias for it.
-- **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. Lists are immutable and shared.
+- **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`, and a lone `.` is a syntax error. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
 - **Names.** Type checks end in `?` (`num?`, `str?`); same-type ops use a type prefix (`num-add`, `str-append`); conversions use `type1->type2` (`num->str`). Scheme spellings are host aliases, not core.
 - **Small surface.** `if` without an else branch and `define` return `()`; there is no named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
 - **`apply` and `eval` are syntax.** Like `if` and `begin`, they are recognised by the evaluator rather than bound as procedures, so they cannot be passed as values.
-- **Rest parameters** do use Scheme syntax: `(define (f a . rest) ...)` and `(lambda args ...)`.
+- **Rest parameters** are spelled with a `*` prefix, as in Ruby or Python, instead of Scheme's dotted syntax: `(define (f a *rest) ...)` and `(lambda (*args) ...)`. The parameter list is always a list.
 
 ### `rusche-cli` (example host)
 

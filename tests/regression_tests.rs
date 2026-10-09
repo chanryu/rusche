@@ -216,9 +216,9 @@ fn set_on_undefined_variable_is_an_error() {
 // B12 -- a rest parameter that is not last silently dropped the later parameters.
 #[test]
 fn rest_parameter_must_be_last() {
-    let err = eval_str("(define (f . a b) b)");
+    let err = eval_str("(define (f *a b) b)");
     assert!(err.contains("after the rest parameter"), "{err}");
-    assert_eq!(eval_str("((lambda (a . rest) rest) 1 2 3)"), "(2 3)");
+    assert_eq!(eval_str("((lambda (a *rest) rest) 1 2 3)"), "(2 3)");
 }
 
 // B13 -- `while` leaked a `loop` binding into the enclosing scope.

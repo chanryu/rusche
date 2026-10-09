@@ -51,14 +51,18 @@ Rusche doesn't have a dedicated data type for boolean values. The empty list `()
 
 ## Procedure Parameters
 
-Parameter lists use Scheme syntax. A rest parameter, written after a dot, receives every remaining argument as a list; a bare symbol in place of the list receives all arguments.
+A parameter list is a list of symbols. The last one may be a *rest parameter*, written with a `*` prefix like Ruby's or Python's splat: `*rest` binds the symbol `rest` to a list of every remaining argument.
 
 ```scheme
-(define (f a b) ...)            ; exactly two arguments
-(define (f a . rest) ...)       ; one or more; `rest` is a list of the others
-(lambda args ...)               ; any number; `args` is a list of all of them
-(defmacro (m form . forms) ...) ; same syntax for macros
+(define (f a b) ...)           ; exactly two arguments
+(define (f a *rest) ...)       ; one or more; `rest` is a list of the others
+(lambda (*args) ...)           ; any number; `args` is a list of all of them
+(defmacro (m form *forms) ...) ; same syntax for macros
 ```
+
+The rest parameter must be last and there can be only one. A lone `*` is an ordinary parameter name (so `(lambda (*) ...)` shadows multiplication), and a `*` elsewhere in a name is not special. A name after the `*` may not itself start or end with `*`, so the Lisp earmuff convention `*name*` cannot be mistaken for a rest parameter.
+
+Unlike Scheme, there is no dotted syntax -- `(f a . rest)` and `(lambda args ...)` are errors.
 
 ## Tail Calls
 
@@ -142,19 +146,19 @@ The following forms and procedures are implemented in Rust. Most are native proc
   You can also create a named procedure using define.
   ```scheme
   (define (add a b) (+ a b))
-  (define (sum . numbers) (apply + numbers))
+  (define (sum *numbers) (apply + numbers))
   (sum 1 2 3)      ; 6
   ```
 
 #### `defmacro`
   Defines a macro. Arguments are passed unevaluated; the body produces a form that is then evaluated in the caller's environment.
   ```scheme
-  (defmacro (unless condition . body)
+  (defmacro (unless condition *body)
     `(if ,condition () (begin ,@body)))
 
   (unless (= 1 2) 'ok)  ; ok
   ```
-  Both `(defmacro (name . params) body)` and `(defmacro name params body)` are accepted.
+  Both `(defmacro (name params...) body)` and `(defmacro name (params...) body)` are accepted.
 
 #### `eq?`, `=`
   Compares two values structurally. `=` is an alias for `eq?`.
@@ -192,8 +196,8 @@ The following forms and procedures are implemented in Rust. Most are native proc
   ```scheme
   (define add (lambda (x y) (+ x y)))
   (add 2 3)                          ; 5
-  ((lambda (a . rest) rest) 1 2 3)   ; (2 3)
-  ((lambda args args) 1 2 3)         ; (1 2 3)
+  ((lambda (a *rest) rest) 1 2 3)    ; (2 3)
+  ((lambda (*args) args) 1 2 3)      ; (1 2 3)
   ```
 
 #### `proc?`
@@ -420,13 +424,13 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 
 - **Truthiness.** `()` is the only false value; `#t` is `1` and `#f` is `()`. There is no boolean type.
 - **Equality.** `eq?` compares structurally and `=` is an alias for it.
-- **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. Lists are immutable and shared.
+- **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`, and a lone `.` is a syntax error. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
 - **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Same-type operations use a type prefix (`num-add`, `str-append`). Conversions use `type1->type2` (`num->str`, `str->num`). Scheme spellings are a [`rusche-cli`](rusche-cli.md#scheme-style-aliases) convenience, not part of the core.
 - **Small surface.** `if` without an else branch and `define` return `()`; there is no named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
 - **`apply` and `eval` are syntax.** In Scheme they are procedures; in Rusche they are evaluator forms like `if`, so they cannot be passed as values or rebound. `(begin)` with no arguments is allowed and returns `()`.
-- **Rest parameters** do use Scheme syntax: `(define (f a . rest) ...)` and `(lambda args ...)`.
+- **Rest parameters** are spelled with a `*` prefix instead of Scheme's dotted syntax: `(define (f a *rest) ...)` and `(lambda (*args) ...)`. See [Procedure Parameters](#procedure-parameters).
 
 ## See also
 

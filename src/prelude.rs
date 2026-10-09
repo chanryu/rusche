@@ -18,7 +18,7 @@ const PRELUDE_SYMBOLS: [&str; 3] = [
 const PRELUDE_MACROS: [&str; 7] = [
     // cond
     r#"
-    (defmacro (cond . clauses)
+    (defmacro (cond *clauses)
         (if (null? clauses)
             #f                                          ; No more clauses, return #f by default
             (let ((clause (car clauses)))
@@ -30,19 +30,19 @@ const PRELUDE_MACROS: [&str; 7] = [
     "#,
     // defun
     r#"
-    (defmacro (defun name args . body)
+    (defmacro (defun name args *body)
         `(define ,name (lambda ,args ,@body)))
     "#,
     // let
     r#"
-    (defmacro (let bindings . body)
+    (defmacro (let bindings *body)
         `((lambda ,(map car bindings) ; Get the list of variable names
              ,@body)                  ; The body of the let becomes the lambda's body
           ,@(map cadr bindings)))     ; Apply the values to the lambda
     "#,
     // let*
     r#"
-    (defmacro (let* bindings . body)
+    (defmacro (let* bindings *body)
         (if (null? bindings)
             `(begin ,@body)
             (let ((binding (car bindings)))
@@ -51,7 +51,7 @@ const PRELUDE_MACROS: [&str; 7] = [
     "#,
     // while -- the helper `loop` is scoped inside a lambda so it does not leak into the caller
     r#"
-    (defmacro (while condition . body)
+    (defmacro (while condition *body)
         `((lambda ()
             (define (loop)
                 (if ,condition (begin ,@body (loop))))
@@ -59,14 +59,14 @@ const PRELUDE_MACROS: [&str; 7] = [
     "#,
     // and -- short-circuits, returns the last operand or #f
     r#"
-    (defmacro (and . args)
+    (defmacro (and *args)
         (cond ((null? args) #t)
               ((null? (cdr args)) (car args))
               (else `(if ,(car args) (and ,@(cdr args)) #f))))
     "#,
     // or -- short-circuits, returns the first truthy operand or #f
     r#"
-    (defmacro (or . args)
+    (defmacro (or *args)
         (cond ((null? args) #f)
               ((null? (cdr args)) (car args))
               (else `((lambda (or-value)
@@ -95,7 +95,7 @@ const PRELUDE_FUNCS: [&str; 14] = [
     "#,
     // list -- a procedure so it can be passed to map/apply
     r#"
-    (define (list . args) args)
+    (define (list *args) args)
     "#,
     // reverse -- tail-recursive so long lists do not hit the call depth limit
     r#"
@@ -164,23 +164,23 @@ const PRELUDE_FUNCS: [&str; 14] = [
     "#,
     // numeric operations
     r#"
-    (define (< a b . rest)
+    (define (< a b *rest)
         (if (num-less a b)
             (if (null? rest) #t (apply < (cons b rest)))
             #f))
-    (define (<= a b . rest)
+    (define (<= a b *rest)
         (if (or (num-less a b) (= a b))
             (if (null? rest) #t (apply <= (cons b rest)))
             #f))
-    (define (> a b . rest)
+    (define (> a b *rest)
         (apply < (reverse (cons a (cons b rest)))))
-    (define (>= a b . rest)
+    (define (>= a b *rest)
         (apply <= (reverse (cons a (cons b rest)))))
     (define (abs x)
         (if (< x 0) (- x) x))
-    (define (min a . rest)
+    (define (min a *rest)
         (fold (lambda (acc x) (if (< x acc) x acc)) a rest))
-    (define (max a . rest)
+    (define (max a *rest)
         (fold (lambda (acc x) (if (< acc x) x acc)) a rest))
     "#,
 ];

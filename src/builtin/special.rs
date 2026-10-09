@@ -287,8 +287,11 @@ mod tests {
         // (defmacro) -> Err
         assert!(defmacro(list!()).is_err());
 
-        // (defmacro x args ()) -> Ok, `args` receives every argument
-        assert!(defmacro(list!(intern("x"), intern("args"), list!())).is_ok());
+        // (defmacro x (*args) ()) -> Ok, `args` receives every argument
+        assert!(defmacro(list!(intern("x"), list!(intern("*args")), list!())).is_ok());
+
+        // (defmacro x args ()) -> Err, a bare symbol is not a parameter list
+        assert!(defmacro(list!(intern("x"), intern("args"), list!())).is_err());
 
         // (defmacro x 1 ()) -> Err
         assert!(defmacro(list!(intern("x"), 1, list!())).is_err());
