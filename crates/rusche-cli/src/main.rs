@@ -1,42 +1,133 @@
 mod builtin;
+mod cli;
 mod diagnostics;
+mod host;
 mod repl;
 
+use std::io::{self, IsTerminal, Read};
 use std::process::ExitCode;
 
 use rusche::{tokenize, Evaluator, Loc, ParseError, Parser, Span};
 
-use builtin::{load_io_procs, load_scheme_aliases, load_vec_procs};
+use builtin::{load_io_procs, load_scheme_aliases, load_sys_procs, load_vec_procs};
+use cli::{parse_args, usage, Input, Options};
 use diagnostics::print_error;
 use repl::run_repl;
 
 fn main() -> ExitCode {
-    let mut args = std::env::args().skip(1); // skip the program name
+    let mut argv = std::env::args();
+    let program = argv.next().unwrap_or_else(|| "rusche-cli".into());
 
-    let evaluator = Evaluator::with_prelude();
+    let opts = match parse_args(argv) {
+        Ok(opts) => opts,
+        Err(error) => {
+            eprintln!("error: {error}");
+            eprint!("{}", usage());
+            return ExitCode::from(2);
+        }
+    };
 
-    load_io_procs(evaluator.context());
-    load_vec_procs(&evaluator);
-    load_scheme_aliases(&evaluator);
+    if opts.help {
+        print!("{}", usage());
+        return ExitCode::SUCCESS;
+    }
+    if opts.version {
+        println!("rusche-cli {}", env!("CARGO_PKG_VERSION"));
+        return ExitCode::SUCCESS;
+    }
 
-    if let Some(path) = args.next() {
-        match std::fs::read_to_string(&path) {
+    if opts.no_color {
+        colored::control::set_override(false);
+    }
+
+    let mut command_line = vec![program];
+    match &opts.input {
+        Input::File(path) => command_line.push(path.display().to_string()),
+        Input::Stdin => command_line.push("-".into()),
+        Input::Eval(_) | Input::Repl => {}
+    }
+    command_line.extend(opts.script_args.iter().cloned());
+    host::set_command_line(command_line);
+
+    let evaluator = build_evaluator(&opts);
+
+    match opts.input {
+        Input::Repl => {
+            if io::stdin().is_terminal() {
+                run_repl(evaluator);
+                ExitCode::SUCCESS
+            } else {
+                let mut text = String::new();
+                if let Err(e) = io::stdin().read_to_string(&mut text) {
+                    eprintln!("Failed to read stdin: {e}");
+                    return ExitCode::from(2);
+                }
+                match run_source(&evaluator, &text) {
+                    Ok(()) => ExitCode::SUCCESS,
+                    Err(()) => ExitCode::from(1),
+                }
+            }
+        }
+        Input::Stdin => {
+            let mut text = String::new();
+            if let Err(e) = io::stdin().read_to_string(&mut text) {
+                eprintln!("Failed to read stdin: {e}");
+                return ExitCode::from(2);
+            }
+            match run_source(&evaluator, &text) {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(()) => ExitCode::from(1),
+            }
+        }
+        Input::File(path) => match std::fs::read_to_string(&path) {
             Ok(text) => match run_source(&evaluator, &text) {
                 Ok(()) => ExitCode::SUCCESS,
                 Err(()) => ExitCode::from(1),
             },
             Err(e) => {
-                eprintln!("Failed to read file at \"{path}\": {e}");
+                eprintln!("Failed to read file at \"{}\": {e}", path.display());
                 ExitCode::from(2)
             }
-        }
-    } else {
-        run_repl(evaluator);
-        ExitCode::SUCCESS
+        },
+        Input::Eval(expr) => match evaluator.eval_str(&expr) {
+            Ok(result) => {
+                if !result.is_nil() {
+                    println!("{}", result);
+                }
+                ExitCode::SUCCESS
+            }
+            Err(error) => {
+                print_error(&error, &expr, error.span());
+                ExitCode::from(1)
+            }
+        },
     }
 }
 
-/// Exit codes for script evaluation: `Ok` on success, `Err` on lex/parse/eval failure.
+fn build_evaluator(opts: &Options) -> Evaluator {
+    let evaluator = if opts.no_prelude {
+        Evaluator::with_builtin()
+    } else {
+        Evaluator::with_prelude()
+    };
+
+    if let Some(depth) = opts.max_call_depth {
+        evaluator.set_max_call_depth(depth);
+    }
+    if let Some(threshold) = opts.gc_threshold {
+        evaluator.set_gc_threshold(threshold);
+    }
+
+    load_io_procs(evaluator.context());
+    load_sys_procs(evaluator.context());
+    load_vec_procs(&evaluator);
+    // Scheme aliases reference prelude helpers (`not`, `assoc`, `=`, …).
+    if !opts.no_prelude {
+        load_scheme_aliases(&evaluator);
+    }
+    evaluator
+}
+
 fn run_source(evaluator: &Evaluator, text: &str) -> Result<(), ()> {
     let (body, loc) = strip_shebang(text);
     let tokens = match tokenize(body, Some(loc)) {

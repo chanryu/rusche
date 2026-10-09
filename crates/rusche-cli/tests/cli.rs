@@ -148,3 +148,79 @@ fn example_backwards() {
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert_eq!(stdout(&out), "tres\ndos\nuno\n");
 }
+
+#[test]
+fn help_and_version() {
+    let help = run(&["--help"], "");
+    assert_eq!(help.status.code(), Some(0));
+    assert!(stdout(&help).contains("Usage: rusche-cli"));
+
+    let version = run(&["--version"], "");
+    assert_eq!(version.status.code(), Some(0));
+    assert!(stdout(&version).contains("rusche-cli"));
+}
+
+#[test]
+fn eval_flag() {
+    let out = run(&["-e", "(+ 1 2)"], "");
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(stdout(&out).trim(), "3");
+}
+
+#[test]
+fn unknown_flag_exits_two() {
+    let out = run(&["--not-a-real-flag"], "");
+    assert_eq!(out.status.code(), Some(2));
+    assert!(stderr(&out).contains("unknown option"));
+}
+
+#[test]
+fn stdin_script() {
+    let out = run(&[], "(display \"from-stdin\") (newline)\n");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out), "from-stdin\n");
+}
+
+#[test]
+fn dash_means_stdin() {
+    let out = run(&["-"], "(display 42) (newline)\n");
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(stdout(&out), "42\n");
+}
+
+#[test]
+fn no_prelude_hides_plus() {
+    let out = run(&["--no-prelude", "-e", "(+ 1 2)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("Undefined symbol") || stderr(&out).contains("+"));
+}
+
+#[test]
+fn command_line_builtin() {
+    let out = run(
+        &["-e", "(begin (display (car (command-line))) (newline))"],
+        "",
+    );
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert!(stdout(&out).contains("rusche-cli"));
+}
+
+#[test]
+fn command_line_with_script_args() {
+    let dir = std::env::temp_dir().join(format!(
+        "rusche-cli-args-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("args.rsc");
+    std::fs::write(&path, "(display (command-line)) (newline)\n").unwrap();
+    let out = run(&[path.to_str().unwrap(), "alpha", "beta"], "");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    let printed = stdout(&out);
+    assert!(printed.contains("alpha"));
+    assert!(printed.contains("beta"));
+}
