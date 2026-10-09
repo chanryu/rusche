@@ -892,6 +892,17 @@ mod tests {
     }
 
     #[test]
+    fn test_default_evaluator_and_if_without_else() {
+        let evaluator = Evaluator::default();
+        assert_eq!(evaluator.eval_str("(if false 1)").unwrap(), NIL);
+        assert_eq!(evaluator.eval_str("(if true 2)").unwrap(), Expr::from(2));
+        assert_eq!(
+            evaluator.eval_str("(eval '(+ 1 2))").unwrap(),
+            Expr::from(3)
+        );
+    }
+
+    #[test]
     fn test_error_kinds_and_trace() {
         let evaluator = Evaluator::with_prelude();
 

@@ -34,3 +34,26 @@ pub fn ensure_newline() {
         set_at_column_zero(true);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn note_output_tracks_column_and_ignores_empty() {
+        set_at_column_zero(true);
+        note_output("");
+        assert!(at_column_zero());
+
+        note_output("hi");
+        assert!(!at_column_zero());
+        ensure_newline();
+        assert!(at_column_zero());
+
+        note_output("line\n");
+        assert!(at_column_zero());
+
+        set_command_line(vec!["rusche".into(), "a".into()]);
+        assert_eq!(command_line(), vec!["rusche".to_string(), "a".to_string()]);
+    }
+}

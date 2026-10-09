@@ -187,3 +187,77 @@ fn print_help_and_trace(diag: &Diagnostic<'_>) {
         eprintln!("  {} {}", "=".blue().bold(), line.dimmed());
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusche::{ErrorKind, FrameKind, Loc};
+
+    fn span(begin_line: usize, begin_col: usize, end_line: usize, end_col: usize) -> Span {
+        Span::new(
+            Loc::new(begin_line, begin_col),
+            Loc::new(end_line, end_col),
+        )
+    }
+
+    #[test]
+    fn prints_without_span_and_with_out_of_range_span() {
+        colored::control::set_override(false);
+        print_error(&Diagnostic {
+            source_name: "<test>",
+            src: "x",
+            message: "no span".into(),
+            span: None,
+            help: Some("hint"),
+            trace: &[Frame {
+                name: "f".into(),
+                kind: FrameKind::Native,
+                call_site: None,
+            }],
+        });
+
+        print_error(&Diagnostic {
+            source_name: "<test>",
+            src: "x",
+            message: "bad span".into(),
+            span: Some(span(5, 0, 5, 1)),
+            help: None,
+            trace: &[],
+        });
+    }
+
+    #[test]
+    fn prints_multiline_span_with_ellipsis() {
+        colored::control::set_override(false);
+        let src = "a\nb\nc\nd\ne\nf\ng\n";
+        print_error(&Diagnostic {
+            source_name: "<test>",
+            src,
+            message: "wide".into(),
+            span: Some(span(0, 0, 6, 1)),
+            help: None,
+            trace: &[Frame {
+                name: "g".into(),
+                kind: FrameKind::Closure,
+                call_site: Some(span(1, 0, 1, 1)),
+            }],
+        });
+    }
+
+    #[test]
+    fn pipeline_and_typed_error_printers() {
+        colored::control::set_override(false);
+        let src = "(car 1)";
+        let eval_err = EvalError::new(ErrorKind::Type, "type").with_span(Some(span(0, 1, 0, 4)));
+        print_eval_error(&eval_err, src, "<eval>");
+
+        let lex = LexError::IncompleteString(span(0, 0, 0, 3));
+        print_lex_error(&lex, "\"ab", "<lex>");
+
+        let parse = ParseError::UnexpectedToken(rusche::Token::CloseParen(Loc::new(0, 0)));
+        print_parse_error(&parse, ")", "<parse>", None);
+
+        let pipeline: Error = eval_err.into();
+        print_pipeline_error(&pipeline, src, "<pipe>");
+    }
+}

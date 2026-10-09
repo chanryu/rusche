@@ -284,10 +284,15 @@ mod tests {
 
         assert_parse_string!(r#""valid string""#, "valid string");
         assert_parse_string!(r#""an escaped\" string""#, "an escaped\" string");
+        assert_parse_string!(r#""a\nb\tc\rd""#, "a\nb\tc\rd");
         assert_parse_string!(
             r#""incomplete string"#,
             LexError::IncompleteString(Span::new(Loc::new(0, 0), Loc::new(0, 18)))
         );
+
+        let err = LexError::InvalidNumber("23abc".into(), Span::new(Loc::new(0, 0), Loc::new(0, 5)));
+        assert_eq!(err.message(), "invalid number literal `23abc`");
+        assert!(err.to_string().contains("23abc"));
     }
 
     #[test]

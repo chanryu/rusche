@@ -123,3 +123,59 @@ fn load(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusche::Evaluator;
+    use std::io::Write;
+
+    fn with_io() -> Evaluator {
+        let evaluator = Evaluator::with_builtin();
+        load_io_procs(evaluator.context());
+        evaluator
+    }
+
+    fn eval_err(evaluator: &Evaluator, src: &str) -> String {
+        match evaluator.eval_str(src) {
+            Ok(v) => panic!("expected error, got {v}"),
+            Err(e) => e.message(),
+        }
+    }
+
+    #[test]
+    fn display_write_newline_and_load_errors() {
+        colored::control::set_override(false);
+        let e = with_io();
+
+        assert!(e.eval_str(r#"(display "hi" 1)"#).is_ok());
+        assert!(e.eval_str(r#"(write "hi" 1)"#).is_ok());
+        assert!(e.eval_str("(newline)").is_ok());
+        assert!(eval_err(&e, "(newline 1)").contains("expected 0"));
+
+        assert!(eval_err(&e, "(load 1)").contains("string path"));
+        assert!(eval_err(&e, r#"(load "/tmp/rusche-missing-xyz.rsc")"#).contains("failed to read"));
+
+        let dir = std::env::temp_dir().join(format!(
+            "rusche-io-test-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let bad = dir.join("bad.rsc");
+        {
+            let mut f = std::fs::File::create(&bad).unwrap();
+            writeln!(f, "(car 1)").unwrap();
+        }
+        let src = format!(r#"(load "{}")"#, bad.display());
+        let err = eval_err(&e, &src);
+        assert!(err.contains("failed"), "{err}");
+        assert!(eval_err(&e, "(exit 999)").contains("0-255"));
+        assert!(eval_err(&e, r#"(exit "no")"#).contains("0-255"));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

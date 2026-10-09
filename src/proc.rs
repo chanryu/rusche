@@ -282,7 +282,7 @@ fn apply_macro(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{eval::Evaluator, macros::list};
+    use crate::{eval::Evaluator, expr::intern, macros::list};
 
     fn formal_args(names: &[&str]) -> Rc<FormalArgs> {
         Rc::new(FormalArgs {
@@ -511,5 +511,29 @@ mod tests {
                    (bad)";
         assert!(eval_str(&evaluator, src).is_err());
         assert!(eval_str(&evaluator, "w").is_err());
+    }
+
+    #[test]
+    fn test_unnamed_macro_display_name_and_rest_args() {
+        let evaluator = Evaluator::with_builtin();
+        let context = evaluator.context();
+
+        let unnamed = Proc::Macro {
+            name: None,
+            formal_args: Rc::new(FormalArgs {
+                names: vec!["x".into()],
+                rest: Some("rest".into()),
+            }),
+            body: Rc::new(list!(intern("x"))),
+        };
+        assert_eq!(unnamed.display_name(), "unnamed");
+        assert_eq!(unnamed.frame_kind(), crate::eval::FrameKind::Macro);
+
+        // Rest parameters collect remaining arguments.
+        assert_eq!(
+            eval_str(&evaluator, "((lambda (a *rest) rest) 1 2 3)"),
+            Ok(list!(2, 3).into())
+        );
+        let _ = context.env.lookup("num-add");
     }
 }

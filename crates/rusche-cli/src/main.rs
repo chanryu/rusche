@@ -210,3 +210,53 @@ fn strip_shebang(text: &str) -> (&str, Loc) {
         (text, Loc::default())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cli::{Input, Options};
+
+    fn default_opts() -> Options {
+        Options {
+            input: Input::Repl,
+            script_args: Vec::new(),
+            max_call_depth: None,
+            gc_threshold: None,
+            no_prelude: false,
+            no_color: true,
+            help: false,
+            version: false,
+        }
+    }
+
+    #[test]
+    fn strip_shebang_variants() {
+        assert_eq!(
+            strip_shebang("#!/bin/sh\n(+ 1 2)"),
+            ("(+ 1 2)", Loc::new(1, 0))
+        );
+        assert_eq!(strip_shebang("#!only"), ("", Loc::new(1, 0)));
+        assert_eq!(strip_shebang("(+ 1)"), ("(+ 1)", Loc::default()));
+    }
+
+    #[test]
+    fn build_evaluator_and_run_source_paths() {
+        colored::control::set_override(false);
+
+        let mut opts = default_opts();
+        opts.no_prelude = true;
+        opts.max_call_depth = Some(8);
+        opts.gc_threshold = Some(None);
+        let evaluator = build_evaluator(&opts);
+        assert!(evaluator.eval_str("(+ 1 2)").is_err());
+
+        let mut opts = default_opts();
+        opts.gc_threshold = Some(Some(50));
+        let evaluator = build_evaluator(&opts);
+        assert!(run_source(&evaluator, "#!/usr/bin/env rusche\n1\n", "<t>").is_ok());
+        assert!(run_source(&evaluator, "(car 1)", "<t>").is_err());
+        assert!(run_source(&evaluator, "\"unterminated", "<t>").is_err());
+        assert!(run_source(&evaluator, "(", "<t>").is_err());
+        assert!(run_source(&evaluator, ")", "<t>").is_err());
+    }
+}

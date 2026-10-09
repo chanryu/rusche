@@ -180,3 +180,100 @@ fn list_to_vec(proc_name: &str, args: &List, context: &EvalContext) -> EvalResul
     let items: Vec<Expr> = list.iter().cloned().collect();
     Ok(Expr::Foreign(Rc::new(RefCell::new(items))))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusche::Evaluator;
+
+    fn with_vec() -> Evaluator {
+        let evaluator = Evaluator::with_builtin();
+        load_vec_procs(&evaluator);
+        evaluator
+    }
+
+    fn eval_ok(evaluator: &Evaluator, src: &str) -> String {
+        match evaluator.eval_str(src) {
+            Ok(v) => v.to_string(),
+            Err(e) => panic!("{src}: {e}"),
+        }
+    }
+
+    fn eval_err(evaluator: &Evaluator, src: &str) -> String {
+        match evaluator.eval_str(src) {
+            Ok(v) => panic!("expected error, got {v}"),
+            Err(e) => e.message(),
+        }
+    }
+
+    #[test]
+    fn vec_round_trip_and_predicates() {
+        let e = with_vec();
+        assert_eq!(eval_ok(&e, "(vec-length (vec-make))"), "0");
+        assert_eq!(eval_ok(&e, "(vec-length (vec 1 2 3))"), "3");
+        assert_eq!(eval_ok(&e, "(vec? (vec 1))"), "true");
+        assert_eq!(eval_ok(&e, "(vec? 1)"), "false");
+        assert_eq!(eval_ok(&e, "(vec->list (vec 1 2))"), "(1 2)");
+        assert_eq!(eval_ok(&e, "(vec? (list->vec '(a b)))"), "true");
+    }
+
+    #[test]
+    fn vec_mutation_and_errors() {
+        let e = with_vec();
+        assert_eq!(
+            eval_ok(
+                &e,
+                "(begin
+                   (define v (vec 1 2))
+                   (vec-push v 3)
+                   (define last (vec-pop v))
+                   (vec-set! v 0 9)
+                   (cons last (cons (vec-get v 0) (cons (vec-length v) ()))))"
+            ),
+            "(3 9 2)"
+        );
+
+        assert!(eval_err(&e, "(vec-make 1)").contains("expected 0"));
+        assert!(eval_err(&e, "(vec-pop (vec-make))").contains("empty"));
+        assert!(eval_err(&e, "(vec-get (vec 1) 9)").contains("out-of-bounds"));
+        assert!(eval_err(&e, "(vec-get (vec 1) -1)").contains("zero or positive"));
+        assert!(eval_err(&e, "(vec-set! (vec 1) 9 0)").contains("out-of-bounds"));
+        assert!(eval_err(&e, "(vec-set! (vec 1) -1 0)").contains("zero or positive"));
+        let msg = eval_err(&e, "(vec-get 1 0)");
+        assert!(
+            msg.contains("vector") || msg.contains("foreign"),
+            "{msg}"
+        );
+        assert!(eval_err(&e, "(list->vec 1)").contains("list"));
+        assert!(eval_err(&e, "(vec-set!)").contains("expected 3"));
+        assert!(eval_err(&e, "(vec-set! (vec 1))").contains("expected 3"));
+        assert!(eval_err(&e, "(vec-set! (vec 1) 0)").contains("expected 3"));
+        assert!(eval_err(&e, "(vec-set! (vec 1) 0 1 2)").contains("expected 3"));
+    }
+
+    #[test]
+    fn vec_foreign_tracer_keeps_closures_alive() {
+        let e = Evaluator::with_prelude();
+        load_vec_procs(&e);
+        e.set_gc_threshold(None);
+        eval_ok(
+            &e,
+            "(define (make-counter)
+               (define n 0)
+               (lambda () (set! n (+ n 1)) n))
+             (define v (vec (make-counter)))",
+        );
+        e.collect_garbage();
+        assert_eq!(eval_ok(&e, "((vec-get v 0))"), "1");
+    }
+
+    #[test]
+    fn wrong_foreign_type_is_rejected() {
+        let e = with_vec();
+        e.root_env()
+            .define("box", Expr::Foreign(Rc::new(1_i32)));
+        assert_eq!(eval_ok(&e, "(vec? box)"), "false");
+        let msg = eval_err(&e, "(vec-length box)");
+        assert!(msg.contains("vector"), "{msg}");
+    }
+}

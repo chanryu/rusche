@@ -336,6 +336,152 @@ fn call_trace_is_printed() {
     assert!(err.contains("in `a`"), "{err}");
 }
 
+#[test]
+fn sys_builtins_and_arity() {
+    let out = run(
+        &[
+            "-e",
+            r#"(begin
+                (display (num? (clock)))
+                (newline)
+                (display (num? (random)))
+                (newline)
+                (display (null? (cdr (command-line))))
+                (newline)
+                (display (str? (or-else (getenv "PATH") "")))
+                (newline))"#,
+        ],
+        "",
+    );
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    let printed = stdout(&out);
+    assert!(printed.lines().any(|l| l == "true"), "{printed}");
+
+    let out = run(&["-e", "(clock 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("expected 0 arguments"));
+
+    let out = run(&["-e", "(random 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("expected 0 arguments"));
+
+    let out = run(&["-e", "(command-line 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("expected 0 arguments"));
+
+    let out = run(&["-e", "(getenv 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("expected a string"));
+
+    let out = run(&["-e", "(getenv \"__RUSCHE_NO_SUCH_VAR__\")"], "");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out).trim(), "false");
+}
+
+#[test]
+fn vec_error_paths() {
+    let out = run(
+        &[
+            "-e",
+            r#"(begin
+                (define v (vec 1 2))
+                (display (vec-get v 0))
+                (newline)
+                (display (vec-length v))
+                (newline)
+                (display (vec->list v))
+                (newline)
+                (display (vec? (list->vec '(a b))))
+                (newline)
+                (vec-push v 3)
+                (display (vec-pop v))
+                (newline))"#,
+        ],
+        "",
+    );
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+
+    let out = run(&["-e", "(vec-pop (vec-make))"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("vector is empty"), "{}", stderr(&out));
+
+    let out = run(&["-e", "(vec-get (vec 1) 9)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("out-of-bounds"), "{}", stderr(&out));
+
+    let out = run(&["-e", "(vec-set! (vec 1) -1 0)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        stderr(&out).contains("zero or positive"),
+        "{}",
+        stderr(&out)
+    );
+
+    let out = run(&["-e", "(vec-get 1 0)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("vector") || stderr(&out).contains("foreign"), "{}", stderr(&out));
+
+    let out = run(&["-e", "(list->vec 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("list"), "{}", stderr(&out));
+}
+
+#[test]
+fn load_and_exit_error_paths() {
+    let out = run(&["-e", "(load 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("string path"), "{}", stderr(&out));
+
+    let out = run(&["-e", "(load \"/tmp/rusche-definitely-missing-xyz.rsc\")"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("failed to read"), "{}", stderr(&out));
+
+    let out = run(&["-e", "(exit 999)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("0-255"), "{}", stderr(&out));
+}
+
+#[test]
+fn let_shape_error_and_help_on_if() {
+    let out = run(&["-e", "(let (x 1) x)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("let:"), "{}", stderr(&out));
+    assert!(stderr(&out).contains("binding"), "{}", stderr(&out));
+
+    let out = run(&["-e", "(if 1 'a 'b)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    let err = stderr(&out);
+    assert!(err.contains("expected `true` or `false`"), "{err}");
+    assert!(err.contains("help:"), "{err}");
+}
+
+#[test]
+fn dangling_paren_and_invalid_number_messages() {
+    let out = run(&["-e", ")"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        stderr(&out).contains("no matching"),
+        "{}",
+        stderr(&out)
+    );
+
+    let out = run(&["-e", "(+ 1 23abc)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        stderr(&out).contains("invalid number literal"),
+        "{}",
+        stderr(&out)
+    );
+}
+
+#[test]
+fn interleaved_display_gets_newline_before_error() {
+    let out = run(&["-e", "(begin (display \"hi\") (car 1))"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(stdout(&out), "hi\n");
+    assert!(stderr(&out).contains("error:"));
+}
+
 fn tempfile_dir() -> PathBuf {
     let dir = std::env::temp_dir().join(format!(
         "rusche-cli-test-{}-{}",

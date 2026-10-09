@@ -255,4 +255,73 @@ mod tests {
             .into())
         );
     }
+
+    #[test]
+    fn test_nested_quasiquote_missing_arguments() {
+        setup_native_proc_test!(quasiquote);
+
+        // `` -- nested quasiquote with no argument: (quasiquote (quasiquote))
+        let err = quasiquote(list!(list!(intern(QUASIQUOTE)))).unwrap_err();
+        assert!(err.message.contains("quasiquote: missing argument"));
+
+        // ``(,(unquote)) -- nested unquote with no argument
+        let err = quasiquote(list!(list!(
+            intern(QUASIQUOTE),
+            list!(intern(UNQUOTE))
+        )))
+        .unwrap_err();
+        assert!(err.message.contains("unquote: missing argument"));
+
+        // ``(,(unquote-splicing)) -- nested splicing with no argument
+        let err = quasiquote(list!(list!(
+            intern(QUASIQUOTE),
+            list!(intern(UNQUOTE_SPLICING))
+        )))
+        .unwrap_err();
+        assert!(err.message.contains("unquote-splicing: missing argument"));
+    }
+
+    #[test]
+    fn test_nested_unquote_splicing_preserves_form() {
+        setup_native_proc_test!(quasiquote);
+
+        // ``(,@'(1 2)) => (quasiquote (unquote-splicing (quote (1 2))))
+        let result = quasiquote(list!(list!(
+            intern(QUASIQUOTE),
+            list!(
+                intern(UNQUOTE_SPLICING),
+                list!(intern(QUOTE), list!(1, 2))
+            )
+        )));
+        assert_eq!(
+            result,
+            Ok(list!(
+                intern(QUASIQUOTE),
+                list!(
+                    intern(UNQUOTE_SPLICING),
+                    list!(intern(QUOTE), list!(1, 2))
+                )
+            )
+            .into())
+        );
+    }
+
+    #[test]
+    fn test_nested_unquote_preserves_form() {
+        setup_native_proc_test!(quasiquote);
+
+        // ``(,x) => (quasiquote (unquote x))
+        let result = quasiquote(list!(list!(
+            intern(QUASIQUOTE),
+            list!(intern(UNQUOTE), intern("x"))
+        )));
+        assert_eq!(
+            result,
+            Ok(list!(
+                intern(QUASIQUOTE),
+                list!(intern(UNQUOTE), intern("x"))
+            )
+            .into())
+        );
+    }
 }

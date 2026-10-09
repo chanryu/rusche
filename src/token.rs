@@ -39,12 +39,17 @@ pub enum Token {
 impl Token {
     pub fn span(&self) -> Span {
         match self {
+            // 1-letter tokens
             Token::OpenParen(loc)
             | Token::CloseParen(loc)
             | Token::Quote(loc)
             | Token::Quasiquote(loc)
             | Token::Unquote(loc) => Span::new(*loc, loc.with_column_offset(1)),
+
+            // 2-letter tokens
             Token::UnquoteSplicing(loc) => Span::new(*loc, loc.with_column_offset(2)),
+
+            // multi-letter tokens
             Token::Num(_, span)
             | Token::Bool(_, span)
             | Token::Str(_, span)

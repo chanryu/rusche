@@ -353,4 +353,37 @@ mod tests {
         let expected_expr = list!(intern("unquote-splicing"), 1).into();
         assert_eq!(parsed_expr, expected_expr);
     }
+
+    #[test]
+    fn test_incomplete_quote_forms_report_token_messages() {
+        use crate::span::Loc;
+
+        for (tokens, needle) in [
+            (vec![Token::Quote(Loc::default())], "after `'`"),
+            (vec![Token::Quasiquote(Loc::default())], "after `` ` ``"),
+            (vec![Token::Unquote(Loc::default())], "after `,`"),
+            (
+                vec![Token::UnquoteSplicing(Loc::default())],
+                "after `,@`",
+            ),
+        ] {
+            let mut parser = Parser::with_tokens(tokens);
+            let err = parser.parse().unwrap_err();
+            assert!(
+                matches!(err, ParseError::IncompleteExpr(_)),
+                "{err:?}"
+            );
+            assert!(err.message().contains(needle), "{} vs {needle}", err.message());
+            assert!(err.to_string().contains(needle));
+        }
+    }
+
+    #[test]
+    fn test_unexpected_close_paren_message() {
+        use crate::span::Loc;
+
+        let mut parser = Parser::with_tokens(vec![Token::CloseParen(Loc::default())]);
+        let err = parser.parse().unwrap_err();
+        assert_eq!(err.message(), "unexpected `)` with no matching `(`");
+    }
 }

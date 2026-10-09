@@ -365,11 +365,15 @@ mod tests {
 
         let err = error(list!("bad", 42)).unwrap_err();
         assert_eq!(err.message, "bad 42");
+        assert_eq!(err.kind, ErrorKind::User);
 
         let err = error(list!("only")).unwrap_err();
         assert_eq!(err.message, "only");
 
         assert!(error(list!()).is_err());
+
+        // Propagate evaluation failures from arguments.
+        assert!(error(list!(intern("undefined-for-error"))).is_err());
     }
 
     #[test]
@@ -397,8 +401,53 @@ mod tests {
             )),
             Ok(num(1))
         );
-        assert!(apply(list!(1, list!(intern("quote"), list!()))).is_err());
-        assert!(apply(list!(intern("+"), 1)).is_err());
+        let err = apply(list!(1, list!(intern("quote"), list!()))).unwrap_err();
+        assert_eq!(err.kind, ErrorKind::Type);
+        assert!(err.message.contains("expected a procedure"));
+        let err = apply(list!(intern("+"), 1)).unwrap_err();
+        assert_eq!(err.kind, ErrorKind::Type);
+        assert!(err.message.contains("expected a list"));
         assert!(apply(list!(intern("+"))).is_err());
+    }
+
+    #[test]
+    fn test_defmacro_and_lambda_error_forms() {
+        let evaluator = crate::eval::Evaluator::new();
+        let context = evaluator.context();
+        let defmacro = |args| defmacro("defmacro", &args, context);
+        let lambda = |args| lambda("lambda", &args, context);
+
+        // (defmacro (1 a) ()) -- name must be a symbol
+        let err = defmacro(list!(list!(1, intern("a")), list!())).unwrap_err();
+        assert_eq!(err.kind, ErrorKind::InvalidForm);
+        assert!(err.message.contains("macro name"));
+
+        // (defmacro 1 ...) -- invalid head
+        let err = defmacro(list!(1, list!(), list!())).unwrap_err();
+        assert_eq!(err.kind, ErrorKind::InvalidForm);
+
+        // (lambda) -- missing formals
+        let err = lambda(list!()).unwrap_err();
+        assert_eq!(err.kind, ErrorKind::InvalidForm);
+        assert!(err.message.contains("formal arguments"));
+    }
+
+    #[test]
+    fn test_define_names_anonymous_lambda() {
+        let evaluator = crate::eval::Evaluator::with_builtin();
+        let context = evaluator.context();
+        let define = |args| define("define", &args, context);
+
+        assert!(define(list!(
+            intern("f"),
+            list!(intern("lambda"), list!(intern("x")), intern("x"))
+        ))
+        .is_ok());
+        let Expr::Proc(crate::proc::Proc::Closure { name, .. }, _) =
+            context.env.lookup("f").unwrap()
+        else {
+            panic!("expected closure");
+        };
+        assert_eq!(name.as_deref(), Some("f"));
     }
 }
