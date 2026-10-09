@@ -19,15 +19,21 @@ fn display(_: &str, args: &List, context: &EvalContext) -> EvalResult {
     Ok(NIL)
 }
 
-fn newline(_: &str, _: &List, _: &EvalContext) -> EvalResult {
+fn newline(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
+    if !args.is_nil() {
+        return Err(EvalError::from(format!(
+            "{proc_name} expects no arguments."
+        )));
+    }
     println!();
     Ok(NIL)
 }
 
 fn read(_: &str, _: &List, _: &EvalContext) -> EvalResult {
     let mut input = String::new();
-    if let Err(error) = std::io::stdin().read_line(&mut input) {
-        return Err(EvalError::from(format!("Error reading input: {}", error)));
+    match std::io::stdin().read_line(&mut input) {
+        Ok(0) => Ok(NIL),
+        Ok(_) => Ok(input.trim_end_matches(['\r', '\n']).to_string().into()),
+        Err(error) => Err(EvalError::from(format!("Error reading input: {}", error))),
     }
-    Ok(input.trim().to_string().into())
 }

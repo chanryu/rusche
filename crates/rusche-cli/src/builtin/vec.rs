@@ -40,7 +40,12 @@ fn is_vec(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     Ok(eval_into_vec(proc_name, arg, context).is_ok().into())
 }
 
-fn vec_make(_: &str, _: &List, _: &EvalContext) -> EvalResult {
+fn vec_make(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
+    if !args.is_nil() {
+        return Err(EvalError::from(format!(
+            "{proc_name} expects no arguments."
+        )));
+    }
     Ok(Expr::Foreign(Rc::new(RefCell::new(Vec::<Expr>::new()))))
 }
 

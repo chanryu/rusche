@@ -1,8 +1,8 @@
 use colored::Colorize;
-use rusche::{tokenize, Evaluator, LexError, Loc, ParseError, Parser};
+use rusche::{tokenize, Evaluator, ParseError, Parser};
 use rustyline::{error::ReadlineError, DefaultEditor};
 
-use crate::print_error;
+use crate::diagnostics::print_error;
 
 pub fn run_repl(evaluator: Evaluator) {
     print_logo();
@@ -25,21 +25,14 @@ pub fn run_repl(evaluator: Evaluator) {
         match rl.readline(&prompt) {
             Ok(text) => {
                 let _ = rl.add_history_entry(text.as_str());
-                let loc = Some(Loc::new(line, 0));
+                let loc = Some(rusche::Loc::new(line, 0));
                 let res = tokenize(&text, loc);
 
                 match res {
                     Ok(tokens) => parser.add_tokens(tokens),
                     Err(err) => {
                         let error_src = src.clone() + &text;
-                        match err {
-                            LexError::InvalidNumber(span) => {
-                                print_error("invalid number", &error_src, Some(span))
-                            }
-                            LexError::IncompleteString(span) => {
-                                print_error("incomplete string", &error_src, Some(span))
-                            }
-                        }
+                        print_error(&err, &error_src, Some(err.span()));
                         continue;
                     }
                 }
@@ -62,13 +55,9 @@ pub fn run_repl(evaluator: Evaluator) {
                             }
                         },
                         Err(ParseError::IncompleteExpr(_)) => break,
-                        Err(ParseError::UnexpectedToken(token)) => {
+                        Err(error) => {
                             parser.reset();
-                            print_error(
-                                &format!("unexpected token: \"{token}\""),
-                                &src,
-                                Some(token.span()),
-                            );
+                            print_error(&error, &src, Some(error.span()));
                             consumed_lines = src.lines().count();
                         }
                     }

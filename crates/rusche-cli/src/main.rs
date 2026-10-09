@@ -1,13 +1,16 @@
 mod builtin;
+mod diagnostics;
 mod repl;
 
-use colored::Colorize;
-use rusche::{tokenize, Evaluator, LexError, Loc, ParseError, Parser, Span};
+use std::process::ExitCode;
+
+use rusche::{tokenize, Evaluator, Loc, ParseError, Parser, Span};
 
 use builtin::{load_io_procs, load_scheme_aliases, load_vec_procs};
+use diagnostics::print_error;
 use repl::run_repl;
 
-fn main() {
+fn main() -> ExitCode {
     let mut args = std::env::args().skip(1); // skip the program name
 
     let evaluator = Evaluator::with_prelude();
@@ -17,109 +20,75 @@ fn main() {
     load_scheme_aliases(&evaluator);
 
     if let Some(path) = args.next() {
-        run_file(evaluator, &path);
-    } else {
-        run_repl(evaluator);
-    }
-}
-
-fn run_file(evaluator: Evaluator, path: &str) {
-    match std::fs::read_to_string(path) {
-        Ok(text) => {
-            let tokens = match tokenize(&text, None) {
-                Ok(tokens) => tokens,
-                Err(error) => match error {
-                    LexError::InvalidNumber(span) => {
-                        print_error("invalid number", &text, Some(span));
-                        return;
-                    }
-                    LexError::IncompleteString(span) => {
-                        print_error("incomplete string", &text, Some(span));
-                        return;
-                    }
-                },
-            };
-
-            let mut parser = Parser::with_tokens(tokens);
-            loop {
-                match parser.parse() {
-                    Ok(None) => {
-                        break;
-                    }
-                    Ok(Some(expr)) => match evaluator.eval(&expr) {
-                        Ok(_) => {}
-                        Err(e) => {
-                            print_error(&e.message, &text, e.span);
-                            break;
-                        }
-                    },
-                    Err(ParseError::IncompleteExpr(token)) => {
-                        let begin_loc = token.span().begin;
-                        let end_loc =
-                            Loc::new(text.lines().count() - 1, text.lines().last().unwrap().len());
-                        print_error(
-                            "incomplete expression",
-                            &text,
-                            Some(Span::new(begin_loc, end_loc)),
-                        );
-                        break;
-                    }
-                    Err(ParseError::UnexpectedToken(token)) => {
-                        print_error(
-                            &format!("unexpected token: \"{token}\""),
-                            &text,
-                            Some(token.span()),
-                        );
-                        break;
-                    }
-                }
+        match std::fs::read_to_string(&path) {
+            Ok(text) => match run_source(&evaluator, &text) {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(()) => ExitCode::from(1),
+            },
+            Err(e) => {
+                eprintln!("Failed to read file at \"{path}\": {e}");
+                ExitCode::from(2)
             }
         }
-        Err(e) => eprintln!("Failed to read file at \"{path}\": {e}"),
+    } else {
+        run_repl(evaluator);
+        ExitCode::SUCCESS
     }
 }
 
-fn print_error(message: &str, src: &str, span: Option<Span>) {
-    let lines: Vec<&str> = src.lines().collect();
-
-    println!("{}: {}", "error".red(), message);
-
-    let Some(span) = span else { return };
-
-    if span.end.line < lines.len() {
-        let print_line =
-            |line| println!("{}{}", format!("{:>3}| ", line + 1).dimmed(), lines[line]);
-        if span.begin.line >= 2 {
-            print_line(span.begin.line - 2);
+/// Exit codes for script evaluation: `Ok` on success, `Err` on lex/parse/eval failure.
+fn run_source(evaluator: &Evaluator, text: &str) -> Result<(), ()> {
+    let (body, loc) = strip_shebang(text);
+    let tokens = match tokenize(body, Some(loc)) {
+        Ok(tokens) => tokens,
+        Err(error) => {
+            print_error(&error, text, Some(error.span()));
+            return Err(());
         }
-        if span.begin.line >= 1 {
-            print_line(span.begin.line - 1);
-        }
+    };
 
-        for (line, text) in lines
-            .iter()
-            .enumerate()
-            .take(span.end.line + 1)
-            .skip(span.begin.line)
-        {
-            print_line(line);
-
-            let begin_col = if line == span.begin.line {
-                span.begin.column
-            } else {
-                text.chars().take_while(|c| c.is_whitespace()).count()
-            };
-            let end_col = if line == span.end.line {
-                span.end.column
-            } else {
-                text.len()
-            };
-            println!(
-                "{}{}{}",
-                "   | ".dimmed(),
-                " ".repeat(begin_col),
-                "^".repeat(end_col - begin_col).red()
-            );
+    let mut parser = Parser::with_tokens(tokens);
+    loop {
+        match parser.parse() {
+            Ok(None) => return Ok(()),
+            Ok(Some(expr)) => match evaluator.eval(&expr) {
+                Ok(_) => {}
+                Err(e) => {
+                    print_error(&e.message, text, e.span);
+                    return Err(());
+                }
+            },
+            Err(error @ ParseError::IncompleteExpr(_)) => {
+                let begin_loc = error.span().begin;
+                let end_line = text.lines().count().saturating_sub(1);
+                let end_col = text.lines().last().map(|l| l.chars().count()).unwrap_or(0);
+                let span = if begin_loc.line < text.lines().count() {
+                    Some(Span::new(
+                        begin_loc,
+                        Loc::new(end_line, end_col.max(begin_loc.column + 1)),
+                    ))
+                } else {
+                    Some(error.span())
+                };
+                print_error(&error, text, span);
+                return Err(());
+            }
+            Err(error) => {
+                print_error(&error, text, Some(error.span()));
+                return Err(());
+            }
         }
+    }
+}
+
+fn strip_shebang(text: &str) -> (&str, Loc) {
+    if text.starts_with("#!") {
+        if let Some(pos) = text.find('\n') {
+            (&text[pos + 1..], Loc::new(1, 0))
+        } else {
+            ("", Loc::new(1, 0))
+        }
+    } else {
+        (text, Loc::default())
     }
 }
