@@ -1,9 +1,5 @@
 # Rusche Language Reference
 
-> This file is the source of truth for the **core language**. Prefer updating it
-> here when behaviour changes; the [GitHub wiki page](https://github.com/chanryu/rusche/wiki/Rusche-Language-Reference)
-> can then be refreshed from this document.
-
 ## Scope
 
 This reference covers only what the `rusche` crate provides:
