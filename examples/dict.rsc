@@ -7,17 +7,17 @@
 
 (define counts (dict-make))
 
-(define (tally w)
+(defun tally (w)
     (dict-set! counts w (+ (dict-get counts w 0) 1)))
 
-(define (tally-all lst)
+(defun tally-all (lst)
     (if (null? lst)
         ()
         (begin
             (tally (car lst))
             (tally-all (cdr lst)))))
 
-(define (print-counts pairs)
+(defun print-counts (pairs)
     (if (null? pairs)
         ()
         (let ((pair (car pairs)))
