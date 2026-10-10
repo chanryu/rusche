@@ -113,7 +113,7 @@ impl Parser {
                     continue;
                 }
                 Token::CloseParen(_) => self.end_list(token)?,
-                Token::Sym(name, span) => Expr::Sym(name, Some(span)),
+                Token::Sym(name, span) => Expr::Sym(crate::symbol::Symbol::intern(name), Some(span)),
                 Token::Str(text, span) => Expr::Str(text, Some(span)),
                 Token::Num(value, span) => Expr::Num(value, Some(span)),
                 Token::Bool(value, span) => Expr::Bool(value, Some(span)),

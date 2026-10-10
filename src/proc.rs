@@ -2,9 +2,13 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::rc::Rc;
 
 use crate::env::Env;
-use crate::eval::{eval, EvalContext, EvalError, EvalResult, Step};
-use crate::expr::{Expr, NIL};
-use crate::list::List;
+use crate::eval::{
+    eval, EvalContext, EvalError, EvalResult, MacroCacheEntry, Step, MACRO_CACHE_CAP,
+};
+use crate::expr::{intern, Expr, NIL};
+use crate::list::{cons, Cons, List};
+use crate::span::Span;
+use crate::symbol::Symbol;
 
 /// The function signature for native procedures -- [`Proc::Native`].
 pub type NativeFunc = fn(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult;
@@ -15,20 +19,21 @@ pub type NativeFunc = fn(proc_name: &str, args: &List, context: &EvalContext) ->
 /// argument -- it comes from a `*`-prefixed last parameter such as `(a b *rest)`.
 #[derive(Clone, Debug, Default, PartialEq, Hash)]
 pub struct FormalArgs {
-    pub names: Vec<String>,
-    pub rest: Option<String>,
+    pub names: Vec<Symbol>,
+    pub rest: Option<Symbol>,
 }
 
 /// The enum that represents all procedure variants in the Rusche language.
 ///
 /// `formal_args` and `body` are reference-counted so that looking up or calling
-/// a procedure does not deep-copy its source.
+/// a procedure does not deep-copy its source. Names are `Rc<str>` so cloning a
+/// procedure (every call that looks one up) does not allocate.
 #[derive(Clone, Debug)]
 pub enum Proc {
     /// A user-defied producdure that captures outer environment.
     /// Closures can be created by the `lambda` form.
     Closure {
-        name: Option<String>,
+        name: Option<Rc<str>>,
         formal_args: Rc<FormalArgs>,
         body: Rc<List>,
         outer_context: EvalContext,
@@ -38,22 +43,31 @@ pub enum Proc {
     /// that convert certain Lisp forms into different forms before evaluating or compiling them.
     /// Macros can be created by the `defmacro` form.
     Macro {
-        name: Option<String>,
+        name: Option<Rc<str>>,
         formal_args: Rc<FormalArgs>,
         body: Rc<List>,
     },
 
     /// A native procedure that is implemented in Rust.
-    Native { name: String, func: NativeFunc },
+    Native { name: Rc<str>, func: NativeFunc },
 }
 
 impl Proc {
-    /// Applies the procedure to the unevaluated `args`.
+    /// Applies the procedure to the unevaluated arguments in `call.cdr`.
     ///
     /// Natives produce a value directly. Closures and macros evaluate everything but their
     /// final expression and hand that expression back as [`Step::Eval`], so that the caller --
     /// the [`eval`] loop -- can continue with it in tail position.
-    pub(crate) fn apply(&self, args: &List, context: &EvalContext) -> Result<Step, EvalError> {
+    ///
+    /// `call_site` is the span of the call form when it came from source; macros use it to
+    /// decide whether the expansion may be cached.
+    pub(crate) fn apply(
+        &self,
+        call: &Rc<Cons>,
+        call_site: Option<Span>,
+        context: &EvalContext,
+    ) -> Result<Step, EvalError> {
+        let args = &call.cdr;
         match self {
             Proc::Closure {
                 name,
@@ -72,8 +86,15 @@ impl Proc {
                 name,
                 formal_args,
                 body,
-            } => apply_macro(name.as_deref(), formal_args, body, args, context),
-            Proc::Native { name, func } => func(name, args, context).map(Step::Value),
+            } => apply_macro(
+                name.as_deref(),
+                formal_args,
+                body,
+                call,
+                call_site,
+                context,
+            ),
+            Proc::Native { name, func } => func(name.as_ref(), args, context).map(Step::Value),
         }
     }
 
@@ -92,10 +113,14 @@ impl Proc {
     }
 
     /// Short name used in call traces and diagnostics.
-    pub(crate) fn display_name(&self) -> String {
+    pub(crate) fn display_name(&self) -> Rc<str> {
         match self {
-            Proc::Closure { name, .. } => name.clone().unwrap_or_else(|| "unnamed".into()),
-            Proc::Macro { name, .. } => name.clone().unwrap_or_else(|| "unnamed".into()),
+            Proc::Closure { name, .. } => name
+                .clone()
+                .unwrap_or_else(|| Rc::from("unnamed")),
+            Proc::Macro { name, .. } => name
+                .clone()
+                .unwrap_or_else(|| Rc::from("unnamed")),
             Proc::Native { name, .. } => name.clone(),
         }
     }
@@ -201,13 +226,13 @@ fn bind_args(
         let expr = actual_args
             .next()
             .ok_or_else(|| crate::utils::arity_error(proc_name, expected..=expected, index))?;
-        env.define(name, value(expr)?);
+        env.define_sym(name.clone(), value(expr)?);
     }
 
     match &formal_args.rest {
         Some(rest) => {
             let values = actual_args.map(value).collect::<Result<Vec<_>, _>>()?;
-            env.define(rest, List::from(values));
+            env.define_sym(rest.clone(), List::from(values));
         }
         None if actual_args.next().is_some() => {
             let got = expected + 1 + actual_args.count();
@@ -254,29 +279,70 @@ fn apply_closure(
 fn apply_macro(
     macro_name: Option<&str>,
     formal_args: &FormalArgs,
-    body: &List,
-    actual_args: &List,
+    body: &Rc<List>,
+    call: &Rc<Cons>,
+    call_site: Option<Span>,
     context: &EvalContext,
 ) -> Result<Step, EvalError> {
+    // Only source-located call sites are cached; runtime-built forms (e.g. from `apply`)
+    // are not, so the cache stays bounded by the program's source size.
+    let cacheable = call_site.is_some();
+    let key = Rc::as_ptr(call);
+
+    if cacheable {
+        let cache = context.shared.macro_cache.borrow();
+        if let Some(entry) = cache.get(&key) {
+            if Rc::ptr_eq(&entry.body, body) {
+                return Ok(Step::Eval(entry.expansion.clone(), context.clone()));
+            }
+        }
+    }
+
     let macro_name = macro_name.unwrap_or("unnamed-macro");
     let macro_context = EvalContext::derive_from(context);
     bind_args(
         macro_name,
         formal_args,
-        actual_args,
+        &call.cdr,
         &macro_context.env,
         |expr| Ok(expr.clone()),
     )?;
 
-    let mut iter = body.iter().peekable();
-    while let Some(expr) = iter.next() {
-        let expanded_expr = eval(expr, &macro_context)?;
-        if iter.peek().is_none() {
-            return Ok(Step::Eval(expanded_expr, context.clone()));
-        }
-        eval(&expanded_expr, context)?;
+    let mut expansions = Vec::new();
+    for expr in body.iter() {
+        expansions.push(eval(expr, &macro_context)?);
     }
-    Ok(Step::Value(NIL))
+
+    let expansion = match expansions.len() {
+        0 => NIL,
+        1 => expansions.pop().unwrap(),
+        _ => {
+            // Multi-form bodies used to eval the first N-1 expansions for side effects and
+            // hand the last back as `Step::Eval`. Wrapping them in `begin` preserves that.
+            let mut list = List::Nil;
+            for form in expansions.into_iter().rev() {
+                list = cons(form, list);
+            }
+            cons(intern("begin"), list).into()
+        }
+    };
+
+    if cacheable {
+        let mut cache = context.shared.macro_cache.borrow_mut();
+        if cache.len() >= MACRO_CACHE_CAP {
+            cache.clear();
+        }
+        cache.insert(
+            key,
+            MacroCacheEntry {
+                keep_alive: call.clone(),
+                body: body.clone(),
+                expansion: expansion.clone(),
+            },
+        );
+    }
+
+    Ok(Step::Eval(expansion, context.clone()))
 }
 
 #[cfg(test)]
@@ -286,7 +352,7 @@ mod tests {
 
     fn formal_args(names: &[&str]) -> Rc<FormalArgs> {
         Rc::new(FormalArgs {
-            names: names.iter().map(|s| s.to_string()).collect(),
+            names: names.iter().copied().map(Symbol::intern).collect(),
             rest: None,
         })
     }
@@ -297,14 +363,14 @@ mod tests {
         let context = evaluator.context();
 
         let closure = Proc::Closure {
-            name: Some("closure".into()),
+            name: Some(Rc::from("closure")),
             formal_args: formal_args(&["a", "b"]),
             body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
 
         let closure_same = Proc::Closure {
-            name: Some("closure".into()),
+            name: Some(Rc::from("closure")),
             formal_args: formal_args(&["a", "b"]),
             body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
@@ -355,7 +421,7 @@ mod tests {
         }
 
         let native = |name: &str, func: NativeFunc| Proc::Native {
-            name: name.into(),
+            name: Rc::from(name),
             func,
         };
         assert_eq!(native("a", native_fn_1), native("a", native_fn_1));
@@ -363,7 +429,7 @@ mod tests {
         assert_ne!(native("a", native_fn_1), native("a", native_fn_2));
 
         let macro_ = |name: &str| Proc::Macro {
-            name: Some(name.into()),
+            name: Some(Rc::from(name)),
             formal_args: formal_args(&["x"]),
             body: Rc::new(list!(1)),
         };
@@ -375,7 +441,7 @@ mod tests {
 
         let evaluator = Evaluator::new();
         let closure = Proc::Closure {
-            name: Some("m".into()),
+            name: Some(Rc::from("m")),
             formal_args: formal_args(&["x"]),
             body: Rc::new(list!(1)),
             outer_context: evaluator.context().clone(),
@@ -394,19 +460,19 @@ mod tests {
         let context = evaluator.context();
 
         let closure1 = Proc::Closure {
-            name: Some("closure".into()),
+            name: Some(Rc::from("closure")),
             formal_args: formal_args(&["a", "b"]),
             body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
         let closure2 = Proc::Closure {
-            name: Some("closure".into()),
+            name: Some(Rc::from("closure")),
             formal_args: formal_args(&["a", "b"]),
             body: Rc::new(list!(1, 2, 3)),
             outer_context: context.clone(),
         };
         let closure3 = Proc::Closure {
-            name: Some("closure".into()),
+            name: Some(Rc::from("closure")),
             formal_args: formal_args(&["a"]),
             body: Rc::new(list!(1, 2)),
             outer_context: context.clone(),
@@ -422,22 +488,22 @@ mod tests {
         }
 
         let native1 = Proc::Native {
-            name: "native".into(),
+            name: Rc::from("native"),
             func: native_fn_1,
         };
         let native1_1 = Proc::Native {
-            name: "native".into(),
+            name: Rc::from("native"),
             func: native_fn_1,
         };
         let native2 = Proc::Native {
-            name: "native".into(),
+            name: Rc::from("native"),
             func: native_fn_2,
         };
         assert_eq!(native1.fingerprint(), native1_1.fingerprint());
         assert_ne!(native1.fingerprint(), native2.fingerprint());
 
         let macro_ = |names: &[&str], body: List| Proc::Macro {
-            name: Some("m".into()),
+            name: Some(Rc::from("m")),
             formal_args: formal_args(names),
             body: Rc::new(body),
         };
@@ -521,12 +587,12 @@ mod tests {
         let unnamed = Proc::Macro {
             name: None,
             formal_args: Rc::new(FormalArgs {
-                names: vec!["x".into()],
-                rest: Some("rest".into()),
+                names: vec![Symbol::intern("x")],
+                rest: Some(Symbol::intern("rest")),
             }),
             body: Rc::new(list!(intern("x"))),
         };
-        assert_eq!(unnamed.display_name(), "unnamed");
+        assert_eq!(&*unnamed.display_name(), "unnamed");
         assert_eq!(unnamed.frame_kind(), crate::eval::FrameKind::Macro);
 
         // Rest parameters collect remaining arguments.

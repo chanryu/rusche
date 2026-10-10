@@ -4,6 +4,7 @@ use crate::{
     list::{List, ListIter},
     proc::Proc,
     span::Span,
+    symbol::Symbol,
 };
 
 pub type Foreign = Rc<dyn Any>;
@@ -20,14 +21,16 @@ pub enum Expr {
     /// A string value.
     Str(String, Option<Span>),
 
-    /// A symbol value.
-    Sym(String, Option<Span>),
+    /// A symbol value (interned; see [`Symbol`]).
+    Sym(Symbol, Option<Span>),
 
     /// A procedure value. There are 3 types of procedures in Rusche:
     /// - [`Proc::Native`]: implemented in Rust
     /// - [`Proc::Closure`]: user-defined via `lambda` form
     /// - [`Proc::Macro`]: user-defined via `defmacro` form
-    Proc(Proc, Option<Span>),
+    ///
+    /// Stored behind `Rc` so looking up or passing a procedure is a refcount bump.
+    Proc(Rc<Proc>, Option<Span>),
 
     /// A list value. It can be either a cons cell or an empty list.
     List(List, Option<Span>),
@@ -69,7 +72,7 @@ impl Expr {
             Expr::Num(value, _) => Expr::Num(*value, None),
             Expr::Str(text, _) => Expr::Str(text.clone(), None),
             Expr::Sym(name, _) => Expr::Sym(name.clone(), None),
-            Expr::Proc(proc, _) => Expr::Proc(proc.clone(), None),
+            Expr::Proc(proc, _) => Expr::Proc(Rc::clone(proc), None),
             Expr::List(list, _) => Expr::List(list.without_spans(), None),
             Expr::Foreign(_) => self.clone(),
         }
@@ -171,21 +174,19 @@ impl From<bool> for Expr {
     }
 }
 
-/// Interns a string into an `Expr::Sym`.
-///
-/// This function takes a string and converts it into an `Expr::Sym`. The string is
-/// converted into an owned `String` and then wrapped in an `Expr::Sym` variant.
+/// Interns a string into an [`Expr::Sym`].
 ///
 /// # Examples
 ///
 /// ```
 /// use rusche::expr::{intern, Expr};
+/// use rusche::symbol::Symbol;
 ///
 /// let symbol = intern("foo");
-/// assert_eq!(symbol, Expr::Sym(String::from("foo"), None));
+/// assert_eq!(symbol, Expr::Sym(Symbol::intern("foo"), None));
 /// ```
-pub fn intern<T: Into<String>>(name: T) -> Expr {
-    Expr::Sym(name.into(), None)
+pub fn intern(name: impl AsRef<str>) -> Expr {
+    Expr::Sym(Symbol::intern(name), None)
 }
 
 #[cfg(test)]
@@ -194,6 +195,20 @@ pub mod test_utils {
 
     pub fn num<T: Into<f64>>(value: T) -> Expr {
         Expr::Num(value.into(), None)
+    }
+}
+
+#[cfg(test)]
+mod size_tests {
+    use super::Expr;
+
+    #[test]
+    fn expr_size_is_at_most_64_bytes() {
+        let size = std::mem::size_of::<Expr>();
+        assert!(
+            size <= 64,
+            "Expr is {size} bytes; keep it small so clones stay cheap"
+        );
     }
 }
 
@@ -231,10 +246,10 @@ mod tests {
         use crate::span::{Loc, Span};
 
         let span = Some(Span::new(Loc::new(1, 1), Loc::new(1, 2)));
-        let proc = Proc::Native {
+        let proc = Rc::new(Proc::Native {
             name: "noop".into(),
             func: |_, _, _| Ok(NIL),
-        };
+        });
         let spanned = [
             Expr::Bool(true, span),
             Expr::Num(1.0, span),

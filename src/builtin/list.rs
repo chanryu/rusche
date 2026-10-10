@@ -51,6 +51,24 @@ pub fn cons(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     }
 }
 
+pub fn is_null(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let expr = get_exact_1_arg(proc_name, args)?;
+    Ok(eval(expr, context)?.is_nil().into())
+}
+
+pub fn not(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let expr = get_exact_1_arg(proc_name, args)?;
+    match eval(expr, context)? {
+        Expr::Bool(value, _) => Ok((!value).into()),
+        value => Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected `true` or `false`"),
+        )
+        .with_span(expr.span())
+        .with_help("conditions must be booleans; use `(not (null? x))` to test for an empty list")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

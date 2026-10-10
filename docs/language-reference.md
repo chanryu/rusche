@@ -43,7 +43,7 @@ Rusche supports the following data types.
 
 ## Boolean Values
 
-`true` and `false` are the only boolean values. Predicates return `true` or `false`. Conditions in `if` (and therefore in prelude forms built on it: `cond`, `while`, `and`, `or`, `not`, `filter`) must evaluate to a boolean; any other type is an error. The empty list `()` is an ordinary value with no special role in conditions. Procedures that signal "absent" (for example `str->num`, `member`, `assoc`) return `false`. For a non-boolean default, use `(or-else expr default)`.
+`true` and `false` are the only boolean values. Predicates return `true` or `false`. Conditions in `if` (and therefore in `not` and in prelude forms built on `if`: `cond`, `while`, `and`, `or`, `filter`) must evaluate to a boolean; any other type is an error. The empty list `()` is an ordinary value with no special role in conditions. Procedures that signal "absent" (for example `str->num`, `member`, `assoc`) return `false`. For a non-boolean default, use `(or-else expr default)`.
 
 ## Procedure Parameters
 
@@ -137,6 +137,22 @@ The following forms and procedures are implemented in Rust. Most are native proc
   (cons 1 2)         ; error -- no dotted pairs
   ```
 
+#### `not`
+  Negates a boolean. The argument must evaluate to `true` or `false`.
+  ```scheme
+  (not true)   ; false
+  (not false)  ; true
+  (not '())    ; error
+  ```
+
+#### `null?`
+  Evaluates to `true` if the argument is the empty list `()`, otherwise `false`.
+  ```scheme
+  (null? '())      ; true
+  (null? '(1 2 3)) ; false
+  (null? false)    ; false
+  ```
+
 #### `define`
   Binds a value to a symbol in the current environment.
   ```scheme
@@ -158,6 +174,12 @@ The following forms and procedures are implemented in Rust. Most are native proc
   (unless (= 1 2) 'ok)  ; ok
   ```
   Both `(defmacro (name params...) body)` and `(defmacro name (params...) body)` are accepted.
+
+  A macro call at a source location is expanded once and the expansion is reused on later
+  evaluations of that same call form. A macro whose expansion depends on mutable global state
+  will therefore not see later changes at that call site. Forms built at runtime (for example
+  by `apply`) are not cached. Redefining a macro invalidates cached expansions that used the
+  old body.
 
 #### `eq?`, `=`
   Compares two values structurally. `=` is an alias for `eq?`.
@@ -259,7 +281,7 @@ The following forms and procedures are implemented in Rusche itself. Please chec
 
 Macros: `and`, `cond` (with `else`), `defun`, `let`, `let*`, `or`, `or-else`, `while`
 
-Procedures: `append`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `map`, `member`, `not`, `null?`, `reverse`, `<`, `>`, `<=`, `>=`, `abs`, `min`, `max`
+Procedures: `append`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `map`, `member`, `reverse`, `<`, `>`, `<=`, `>=`, `abs`, `min`, `max`
 
 `and` and `or` short-circuit and always return a boolean. Operands must be booleans.
 ```scheme

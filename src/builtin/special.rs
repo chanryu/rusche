@@ -63,7 +63,7 @@ pub(crate) fn apply_form(
         }
     };
 
-    let call_args = match &proc {
+    let call_args = match proc.as_ref() {
         Proc::Macro { .. } => arg_list,
         _ => arg_list.iter().map(quote_expr).collect::<Vec<_>>().into(),
     };
@@ -91,26 +91,29 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
             let value = match eval(expr, context)? {
                 // `(define f (lambda ...))` -- give the anonymous closure a name so that
                 // error messages can refer to it.
-                Expr::Proc(
+                Expr::Proc(proc, span) => match Rc::unwrap_or_clone(proc) {
                     Proc::Closure {
                         name: None,
                         formal_args,
                         body,
                         outer_context,
-                    },
-                    span,
-                ) => Expr::Proc(
-                    Proc::Closure {
-                        name: Some(name.clone()),
-                        formal_args,
-                        body,
-                        outer_context,
-                    },
-                    span,
-                ),
+                    } => {
+                        outer_context.env.ensure_registered();
+                        Expr::Proc(
+                            Rc::new(Proc::Closure {
+                                name: Some(name.as_rc().clone()),
+                                formal_args,
+                                body,
+                                outer_context,
+                            }),
+                            span,
+                        )
+                    }
+                    other => Expr::Proc(Rc::new(other), span),
+                },
                 value => value,
             };
-            context.env.define(name, value);
+            context.env.define_sym(name.clone(), value);
             Ok(NIL)
         }
         Some(Expr::List(List::Cons(cons), _)) => {
@@ -122,15 +125,16 @@ pub fn define(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
                 .with_span(cons.car.span()));
             };
 
-            context.env.define(
-                name,
+            context.env.ensure_registered();
+            context.env.define_sym(
+                name.clone(),
                 Expr::Proc(
-                    Proc::Closure {
-                        name: Some(name.to_string()),
+                    Rc::new(Proc::Closure {
+                        name: Some(name.as_rc().clone()),
                         formal_args: make_formal_args(&Expr::from(cons.cdr.clone()))?,
                         body: Rc::new(iter.into()),
                         outer_context: context.clone(),
-                    },
+                    }),
                     args.span(),
                 ),
             );
@@ -180,14 +184,14 @@ pub fn defmacro(proc_name: &str, args: &List, context: &EvalContext) -> EvalResu
         }
     };
 
-    context.env.define(
-        macro_name,
+    context.env.define_sym(
+        macro_name.clone(),
         Expr::Proc(
-            Proc::Macro {
-                name: Some(macro_name.clone()),
+            Rc::new(Proc::Macro {
+                name: Some(macro_name.as_rc().clone()),
                 formal_args,
                 body: Rc::new(iter.into()),
-            },
+            }),
             args.span(),
         ),
     );
@@ -212,13 +216,14 @@ pub fn lambda(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
         .with_span(args.span()));
     };
 
+    context.env.ensure_registered();
     Ok(Expr::Proc(
-        Proc::Closure {
+        Rc::new(Proc::Closure {
             name: None,
             formal_args: make_formal_args(expr)?,
             body: Rc::new(iter.into()),
             outer_context: context.clone(),
-        },
+        }),
         args.span(),
     ))
 }
@@ -235,7 +240,7 @@ pub fn set(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     };
 
     let value = eval(value_expr, context)?;
-    if !context.env.update(name, value) {
+    if !context.env.update_sym(name, value) {
         return Err(EvalError::new(
             ErrorKind::UndefinedSymbol,
             format!("{proc_name}: `{name}` is not defined"),
@@ -443,9 +448,10 @@ mod tests {
             list!(intern("lambda"), list!(intern("x")), intern("x"))
         ))
         .is_ok());
-        let Expr::Proc(crate::proc::Proc::Closure { name, .. }, _) =
-            context.env.lookup("f").unwrap()
-        else {
+        let Expr::Proc(proc, _) = context.env.lookup("f").unwrap() else {
+            panic!("expected closure");
+        };
+        let Proc::Closure { name, .. } = proc.as_ref() else {
             panic!("expected closure");
         };
         assert_eq!(name.as_deref(), Some("f"));

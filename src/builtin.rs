@@ -28,6 +28,8 @@ pub fn load_builtin(env: &Rc<Env>) {
     env.define_native_proc("car", list::car);
     env.define_native_proc("cdr", list::cdr);
     env.define_native_proc("cons", list::cons);
+    env.define_native_proc("null?", list::is_null);
+    env.define_native_proc("not", list::not);
 
     // num
     env.define_native_proc("num?", num::is_num);
