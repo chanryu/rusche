@@ -103,7 +103,7 @@ For a standalone REPL and file runner built on the library, see [`rusche-cli`](#
 
 ### Core language
 
-The core language is everything available from `Evaluator::default()` (built-ins plus the prelude). No I/O, no vectors, no Scheme name aliases — those are host concerns. Full detail: [language reference](docs/language-reference.md).
+The core language is everything available from `Evaluator::default()` (built-ins plus the prelude). No I/O, no vectors — those are host concerns. Full detail: [language reference](docs/language-reference.md).
 
 ```scheme
 (define (fizzbuzz n)
@@ -119,12 +119,12 @@ The core language is everything available from `Evaluator::default()` (built-ins
 
 #### Differences from Scheme
 
-- **Booleans.** Literals are `true`/`false`. Conditions must be booleans; `'()` is just a value. Predicates return `true` or `false`. `#t`/`#f` exist only as `rusche-cli` aliases.
+- **Booleans.** Literals are `true`/`false`; there is no `#t`/`#f`. Conditions must be booleans; `'()` is just a value. Predicates return `true` or `false`.
 - **Equality.** `eq?` compares structurally and `=` is an alias for it.
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
-- **Names.** Type checks end in `?` (`num?`, `str?`); same-type ops use a type prefix (`num-add`, `str-append`); conversions use `type1->type2` (`num->str`). Scheme spellings are host aliases, not core.
+- **Names.** Type checks end in `?` (`num?`, `str?`); same-type ops use a type prefix (`num-add`, `str-append`); conversions use `type1->type2` (`num->str`). There are no Scheme spellings such as `number?` or `string-append`.
 - **Small surface.** `if` without an else branch and `define` return `()`; there is no named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
 - **`apply` and `eval` are syntax.** Like `if` and `begin`, they are recognised by the evaluator rather than bound as procedures, so they cannot be passed as values.
 - **Rest parameters** are spelled with a `*` prefix, as in Ruby or Python, instead of Scheme's dotted syntax: `(define (f a *rest) ...)` and `(lambda (*args) ...)`. The parameter list is always a list.
@@ -136,10 +136,9 @@ The core language is everything available from `Evaluator::default()` (built-ins
 - I/O: `display`, `write`, `newline`, `read`, `exit`, `load`
 - System helpers: `getenv`, `clock`, `random`, `command-line`
 - `vec` and `dict` foreign types
-- Scheme-style aliases (`number?`, `modulo`, `string-append`, `string->number`, …)
 - A REPL with history, multi-line editing, and meta-commands (`,help`, `,load`, …)
 
-The `*.rsc` scripts under [`examples/`](https://github.com/chanryu/rusche/tree/main/examples) are written for this host (for example [fizzbuzz.rsc](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsc) uses `display` and `modulo`). See [`docs/rusche-cli.md`](docs/rusche-cli.md).
+The `*.rsc` scripts under [`examples/`](https://github.com/chanryu/rusche/tree/main/examples) are written for this host (for example [fizzbuzz.rsc](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsc) uses `display` and `read`). See [`docs/rusche-cli.md`](docs/rusche-cli.md).
 
 ```bash
 cargo run -p rusche-cli
@@ -150,7 +149,7 @@ cargo install --path crates/rusche-cli
 ## Documentation
 
 - [Language reference](docs/language-reference.md) -- core special forms and built-ins (crate only)
-- [`rusche-cli`](docs/rusche-cli.md) -- running the example interpreter: options, the REPL, I/O, `vec`, `dict`, and Scheme aliases
+- [`rusche-cli`](docs/rusche-cli.md) -- running the example interpreter: options, the REPL, I/O, `vec`, and `dict`
 - [API documentation on docs.rs](https://docs.rs/rusche/latest/rusche/) -- embedding Rusche in a Rust application
 - Tutorials for host applications:
   - [Embedding the interpreter](docs/tutorials/embedding.md)

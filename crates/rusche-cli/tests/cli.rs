@@ -246,13 +246,6 @@ fn dict_rejects_bad_key_and_odd_args() {
 }
 
 #[test]
-fn scheme_boolean_aliases() {
-    let out = run(&["-e", "(list #t #f (eq? #t true) (eq? #f false))"], "");
-    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
-    assert_eq!(stdout(&out).trim(), "(true false true true)");
-}
-
-#[test]
 fn exit_builtin() {
     let out = run(&["-e", "(exit 7)"], "");
     assert_eq!(out.status.code(), Some(7));

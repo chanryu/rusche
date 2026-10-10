@@ -20,11 +20,11 @@
 ;; Optional WIDTH and HEIGHT command-line arguments.
 ;; (command-line) is (program script-path args...), so skip the first two.
 (define args (cddr (command-line)))
-(define width (if (null? args) 72 (string->number (car args))))
-(define height (if (or (null? args) (null? (cdr args))) 24 (string->number (cadr args))))
+(define width (if (null? args) 72 (str->num (car args))))
+(define height (if (or (null? args) (null? (cdr args))) 24 (str->num (cadr args))))
 
 ;; Rusche has no `floor`; for x >= 0, x - (x mod 1) is the integer part.
-(define (floor x) (- x (modulo x 1)))
+(define (floor x) (- x (% x 1)))
 
 ;; Count iterations of z <- z^2 + c (starting at z = 0) until |z| > 2,
 ;; or return max-iter if the point stays bounded. Tail-recursive.
@@ -43,8 +43,8 @@
 ;; escape slowly, so every two iterations advance one shade and anything
 ;; slower than that (including the set itself) gets the last character.
 (define (shade n)
-  (let ((index (min (- (string-length palette) 1) (floor (/ n 2)))))
-    (substring palette index (+ index 1))))
+  (let ((index (min (- (str-length palette) 1) (floor (/ n 2)))))
+    (str-slice palette index (+ index 1))))
 
 (define dx (/ (- re-max re-min) width))
 (define dy (/ (- im-max im-min) height))
@@ -56,7 +56,7 @@
           (line ""))
       (while (< col width)
         (let ((cr (+ re-min (* col dx))))
-          (set! line (string-append line (shade (escape-count cr ci)))))
+          (set! line (str-append line (shade (escape-count cr ci)))))
         (set! col (+ col 1)))
       (display line)
       (newline))

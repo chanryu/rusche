@@ -9,10 +9,9 @@ This reference covers only what the `rusche` crate provides:
 - **Prelude** — macros and helpers loaded by `Evaluator::with_prelude()` / `Default`
 
 It does **not** document the example host [`rusche-cli`](rusche-cli.md). That
-application adds I/O (`display`, `read`, `newline`), a `vec` foreign type, and
-Scheme-style name aliases (`number?`, `modulo`, `string-append`, …). The
-`examples/*.rsc` scripts in this repository target `rusche-cli`, not a bare
-`Evaluator::default()`.
+application adds I/O (`display`, `read`, `newline`) and the `vec` and `dict`
+foreign types. The `examples/*.rsc` scripts in this repository target
+`rusche-cli`, not a bare `Evaluator::default()`.
 
 ## Overview
 
@@ -431,17 +430,17 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 
 ## Differences from Scheme
 
-- **Booleans.** Literals are `true`/`false` (not Scheme's `#t`/`#f`). Conditions must be booleans; `()` is just a value. `#t`/`#f` exist only as [`rusche-cli`](rusche-cli.md#scheme-style-aliases) aliases.
+- **Booleans.** Literals are `true`/`false` (not Scheme's `#t`/`#f`). Conditions must be booleans; `()` is just a value.
 - **Equality.** `eq?` compares structurally and `=` is an alias for it.
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. A lone `.` is an ordinary symbol. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
-- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Same-type operations use a type prefix (`num-add`, `str-append`). Conversions use `type1->type2` (`num->str`, `str->num`). Scheme spellings are a [`rusche-cli`](rusche-cli.md#scheme-style-aliases) convenience, not part of the core.
+- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Same-type operations use a type prefix (`num-add`, `str-append`). Conversions use `type1->type2` (`num->str`, `str->num`). There are no Scheme spellings such as `number?`, `modulo`, or `string-append`.
 - **Small surface.** `if` without an else branch and `define` return `()`; there is no named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
 - **`apply` and `eval` are syntax.** In Scheme they are procedures; in Rusche they are evaluator forms like `if`, so they cannot be passed as values or rebound. `(begin)` with no arguments is allowed and returns `()`.
 - **Rest parameters** are spelled with a `*` prefix instead of Scheme's dotted syntax: `(define (f a *rest) ...)` and `(lambda (*args) ...)`. See [Procedure Parameters](#procedure-parameters).
 
 ## See also
 
-- [`rusche-cli`](rusche-cli.md) — example host: running the interpreter, the REPL, I/O, `vec`, and Scheme aliases
+- [`rusche-cli`](rusche-cli.md) — example host: running the interpreter, the REPL, I/O, `vec`, and `dict`
 - [Embedding tutorials](tutorials/embedding.md) — using the core crate from Rust

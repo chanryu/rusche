@@ -1,7 +1,7 @@
 # `rusche-cli`
 
 [`rusche-cli`](../crates/rusche-cli) is an example host, not part of the core
-`rusche` crate: a REPL and file runner, plus I/O, `vec`, `dict`, and Scheme aliases.
+`rusche` crate: a REPL and file runner, plus I/O, `vec`, and `dict`.
 The [language reference](language-reference.md) documents only the core language.
 
 ## Installation
@@ -22,7 +22,6 @@ cargo run -p rusche-cli -- examples/fizzbuzz.rsc
 | System | [`builtin/sys.rs`](../crates/rusche-cli/src/builtin/sys.rs) | `getenv`, `clock`, `random`, `command-line` |
 | Vectors | [`builtin/vec.rs`](../crates/rusche-cli/src/builtin/vec.rs) | `vec?`, `vec-make`, `vec`, `vec-push`, `vec-pop`, `vec-get`, `vec-set!`, `vec-length`, `vec->list`, `list->vec` |
 | Dicts | [`builtin/dict.rs`](../crates/rusche-cli/src/builtin/dict.rs) | `dict?`, `dict-make`, `dict`, `dict-get`, `dict-set!`, `dict-has?`, `dict-remove!`, `dict-length`, `dict-keys`, `dict->list`, `list->dict` |
-| Scheme aliases | [`builtin/scheme.rs`](../crates/rusche-cli/src/builtin/scheme.rs) | `number?`, `modulo`, `string-append`, … Omitted with `--no-prelude` (they call prelude names). |
 
 I/O, system, vector, and dict procedures are always registered. Scripts under
 [`examples/*.rsc`](../examples) are written for this host.
@@ -78,7 +77,7 @@ is an empty program.
 | `--max-call-depth N` | Maximum call depth (default 1000). Tail calls do not count. See [Tail calls](language-reference.md#tail-calls). |
 | `--gc-threshold N` | Collect automatically once live environments reach `N` (default 10000). |
 | `--gc-threshold off` | Leave automatic collection off. `,gc` in the REPL still collects. |
-| `--no-prelude` | Built-ins plus I/O, system, `vec`, and `dict`. No prelude (`cond`, `let`, `+`, …) and no Scheme aliases. |
+| `--no-prelude` | Built-ins plus I/O, system, `vec`, and `dict`. No prelude (`cond`, `let`, `+`, …). |
 | `--no-color` | Turn off color in the banner, REPL values, meta-command help, and diagnostics. |
 
 ### Exit codes
@@ -164,10 +163,10 @@ Prints a newline. Takes no arguments.
 
 Reads one line from stdin and returns it as a string, with a trailing newline
 or carriage return removed. End of file returns `false`. The line is not parsed;
-use `string->number` or `str->num` for a number. Extra arguments are ignored.
+use `str->num` for a number. Extra arguments are ignored.
 
 ```scheme
-(define n (string->number (read)))
+(define n (str->num (read)))
 ```
 
 #### `exit`
@@ -206,8 +205,7 @@ Mutable, compared by identity, printed as `<foreign: 0x…>`. `vec-push` and
 `vec-set!` return `()`. An index is an integer ≥ 0; a negative index, a
 non-integer, an index past the end, or `vec-pop` of an empty vector is an
 error. A tracer keeps closures stored in a vector reachable. See the
-[foreign object tutorial](tutorials/foreign.md). `make-vector` is `vec-make`,
-called as `(make-vector)`.
+[foreign object tutorial](tutorials/foreign.md).
 
 ```scheme
 (define v (vec 10 20 30))
@@ -244,7 +242,7 @@ are rejected. `-0.0` and `0.0` are the same key; `NaN` is not a valid key.
 `dict-remove!` return `()`. A tracer keeps closures stored as values reachable.
 See the [foreign object tutorial](tutorials/foreign.md), and
 [`examples/dict.rsc`](../examples/dict.rsc) / [`examples/fibonacci.rsc`](../examples/fibonacci.rsc)
-for scripts that use it. There are no `hash-table-*` Scheme aliases.
+for scripts that use it.
 
 ```scheme
 (define d (dict "a" 1 "b" 2))
@@ -273,45 +271,6 @@ for scripts that use it. There are no `hash-table-*` Scheme aliases.
 | `dict-keys` | List of keys, in map order. |
 | `dict->list` | List of two-element lists `((k v) ...)`, in map order. |
 | `list->dict` | New dict from a list of two-element lists. Later duplicates win. |
-
-## Scheme-style aliases
-
-Familiar spellings bound in the root environment. Skipped with `--no-prelude`.
-Copy [`scheme.rs`](../crates/rusche-cli/src/builtin/scheme.rs) to use them from
-another host; the core library does not define them.
-
-| Alias | Core / host name |
-| --- | --- |
-| `#t` | `true` |
-| `#f` | `false` |
-| `number?` | `num?` |
-| `modulo` | `%` |
-| `string->number` | `str->num` |
-| `number->string` | `num->str` |
-| `string?` | `str?` |
-| `string-append` | `str-append` |
-| `string-compare` | `str-compare` |
-| `string-length` | `str-length` |
-| `substring` | `str-slice` |
-| `string=?` | `(lambda (a b) (= (string-compare a b) 0))` |
-| `symbol?` | `sym?` |
-| `procedure?` | `proc?` |
-| `symbol->string` | `sym->str` |
-| `string->symbol` | `str->sym` |
-| `pair?` | `(lambda (x) (not (atom? x)))` |
-| `vector?` | `vec?` |
-| `make-vector` | `vec-make` |
-| `vector-length` | `vec-length` |
-| `vector-ref` | `vec-get` |
-| `vector-set!` | `vec-set!` |
-| `list-ref` | zero-based `car` / `cdr` walk |
-| `assq` | `assoc` |
-
-`#t` and `#f` are bindings, so `'#t` is the symbol and either name can be
-rebound. `substring` is [`str-slice`](language-reference.md#str-slice).
-`pair?` is false for `()`. `list-ref` past the end fails as `car` of `()`.
-There is no `vector`, `vector->list`, or `list->vector` alias.
-There are no `hash-table-*` aliases for `dict`.
 
 ## Examples
 
