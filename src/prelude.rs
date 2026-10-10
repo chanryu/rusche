@@ -1,7 +1,7 @@
 use crate::eval::{eval_source, EvalContext};
 
 const PRELUDE_SYMBOLS: [&str; 1] = [
-    // numeric operation aliases
+    // Short names for `num-*` natives.
     r#"
     (define + num-add)
     (define - num-subtract)
@@ -358,21 +358,21 @@ const PRELUDE_FUNCS: [&str; 15] = [
         (if (or (num-less b a) (= a b))
             (if (null? rest) true (apply >= (cons b rest)))
             false))
-    (define (abs x)
+    (define (num-abs x)
         (if (< x 0) (- x) x))
-    (define (min a *rest)
+    (define (num-min a *rest)
         (fold (lambda (acc x) (if (< x acc) x acc)) a rest))
-    (define (max a *rest)
+    (define (num-max a *rest)
         (fold (lambda (acc x) (if (< acc x) x acc)) a rest))
-    (define (truncate x) (- x (% x 1)))
-    (define (floor x)
-        (let ((t (truncate x)))
+    (define (num-truncate x) (- x (% x 1)))
+    (define (num-floor x)
+        (let ((t (num-truncate x)))
             (if (or (>= x 0) (= x t)) t (- t 1))))
-    (define (ceil x)
-        (let ((t (truncate x)))
+    (define (num-ceil x)
+        (let ((t (num-truncate x)))
             (if (or (<= x 0) (= x t)) t (+ t 1))))
-    (define (round x)
-        (if (< x 0) (ceil (- x 0.5)) (floor (+ x 0.5))))
+    (define (num-round x)
+        (if (< x 0) (num-ceil (- x 0.5)) (num-floor (+ x 0.5))))
     "#,
     // string <-> list of 1-character strings (no separate char type)
     r#"
@@ -384,8 +384,26 @@ const PRELUDE_FUNCS: [&str; 15] = [
         (loop 0 '()))
     (define (list->str lst)
         (if (null? lst) "" (apply str-append lst)))
+    (define (str-repeat s n)
+        (if (or (< n 0) (not (= n (num-truncate n))))
+            (error "str-repeat: count must be a non-negative integer, got" n)
+            (begin
+                (define (loop i acc)
+                    (if (= i n) acc (loop (+ i 1) (str-append acc s))))
+                (loop 0 ""))))
     "#,
 ];
+
+/// Short names for prelude-defined `num-*` helpers (loaded after those helpers).
+const PRELUDE_NUM_ALIASES: [&str; 1] = [r#"
+    (define abs num-abs)
+    (define min num-min)
+    (define max num-max)
+    (define truncate num-truncate)
+    (define floor num-floor)
+    (define ceil num-ceil)
+    (define round num-round)
+    "#];
 
 pub fn load_prelude(context: &EvalContext) {
     for src in PRELUDE_SYMBOLS {
@@ -395,6 +413,9 @@ pub fn load_prelude(context: &EvalContext) {
         eval_src(src, context);
     }
     for src in PRELUDE_FUNCS {
+        eval_src(src, context);
+    }
+    for src in PRELUDE_NUM_ALIASES {
         eval_src(src, context);
     }
 }

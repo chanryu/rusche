@@ -49,6 +49,15 @@ pub fn load_builtin(env: &Rc<Env>) {
     env.define_native_proc("str-compare", str::compare);
     env.define_native_proc("str-length", str::length);
     env.define_native_proc("str-slice", str::slice);
+    env.define_native_proc("str-find", str::find);
+    env.define_native_proc("str-split", str::split);
+    env.define_native_proc("str-trim", str::trim);
+    env.define_native_proc("str-trim-left", str::trim_left);
+    env.define_native_proc("str-trim-right", str::trim_right);
+    env.define_native_proc("str-upcase", str::upcase);
+    env.define_native_proc("str-downcase", str::downcase);
+    env.define_native_proc("str-replace", str::replace);
+    env.define_native_proc("str-join", str::join);
 
     // sym
     env.define_native_proc("sym?", sym::is_sym);

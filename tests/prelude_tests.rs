@@ -184,6 +184,9 @@ fn test_abs_min_max() {
     assert_eq!(eval_str("(min 3 1 2)"), "1");
     assert_eq!(eval_str("(max 3)"), "3");
     assert_eq!(eval_str("(max 3 1 2)"), "3");
+    assert_eq!(eval_str("(eq? abs num-abs)"), "true");
+    assert_eq!(eval_str("(eq? min num-min)"), "true");
+    assert_eq!(eval_str("(eq? max num-max)"), "true");
 }
 
 #[test]
@@ -288,6 +291,10 @@ fn test_floor_ceil_truncate_round() {
     assert_eq!(eval_str("(ceil -3.2)"), "-3");
     assert_eq!(eval_str("(round 3.5)"), "4");
     assert_eq!(eval_str("(round -3.5)"), "-4");
+    assert_eq!(eval_str("(eq? floor num-floor)"), "true");
+    assert_eq!(eval_str("(eq? ceil num-ceil)"), "true");
+    assert_eq!(eval_str("(eq? truncate num-truncate)"), "true");
+    assert_eq!(eval_str("(eq? round num-round)"), "true");
 }
 
 #[test]
@@ -306,6 +313,23 @@ fn test_str_list_conversion() {
     assert_eq!(eval_str("(str->list \"ab\")"), "(\"a\" \"b\")");
     assert_eq!(eval_str("(list->str '(\"a\" \"b\" \"c\"))"), "\"abc\"");
     assert_eq!(eval_str("(list->str '())"), "\"\"");
+}
+
+#[test]
+fn test_str_repeat_and_natives() {
+    assert_eq!(eval_str("(str-repeat \"ab\" 3)"), "\"ababab\"");
+    assert_eq!(eval_str("(str-repeat \"x\" 0)"), "\"\"");
+    assert!(eval_str("(str-repeat \"x\" -1)").starts_with("Err:"));
+    assert!(eval_str("(str-repeat \"x\" 1.5)").starts_with("Err:"));
+
+    assert_eq!(eval_str("(str-find \"hello\" \"ll\")"), "2");
+    assert_eq!(eval_str("(str-find \"hello\" \"x\")"), "false");
+    assert_eq!(eval_str("(str-split \"a,b\" \",\")"), "(\"a\" \"b\")");
+    assert_eq!(eval_str("(str-join '(\"a\" \"b\") \"-\")"), "\"a-b\"");
+    assert_eq!(eval_str("(str-replace \"a-b\" \"-\" \"_\")"), "\"a_b\"");
+    assert_eq!(eval_str("(str-trim \"  hi  \")"), "\"hi\"");
+    assert_eq!(eval_str("(str-upcase \"Hi\")"), "\"HI\"");
+    assert_eq!(eval_str("(str-downcase \"Hi\")"), "\"hi\"");
 }
 
 #[test]

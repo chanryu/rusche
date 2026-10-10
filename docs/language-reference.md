@@ -273,9 +273,9 @@ The following forms and procedures are implemented in Rusche itself. Please chec
 
 Macros: `and`, `case`, `cond` (with `else`), `define-record`, `defun`, `let` (including named `let` and list destructuring), `let*`, `letrec`, `or`, `or-else`, `unless`, `when`, `while`
 
-Procedures: `append`, `assoc`, `caar`, `cadr`, `caddr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `list-ref`, `list->str`, `map`, `member`, `not`, `reverse`, `str->list`, `<`, `>`, `<=`, `>=`, `abs`, `ceil`, `floor`, `min`, `max`, `round`, `truncate`
+Procedures: `append`, `assoc`, `caar`, `cadr`, `caddr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `list-ref`, `list->str`, `map`, `member`, `not`, `reverse`, `str->list`, `str-repeat`, `<`, `>`, `<=`, `>=`, `abs`, `ceil`, `floor`, `min`, `max`, `round`, `truncate`
 
-Arithmetic aliases (`+`, `-`, `*`, `/`, `%`, `sqrt`, `exp`, `log`, `expt`) are bound here to the corresponding `num-*` natives; see [Number functions](#number-functions).
+Numeric short names (`+`, `-`, `*`, `/`, `%`, `sqrt`, `exp`, `log`, `expt`, `abs`, `min`, `max`, `floor`, `ceil`, `truncate`, `round`) are aliases for the corresponding `num-*` bindings; see [Number functions](#number-functions). List and core names (`car`, `cons`, `lambda`, …) stay unprefixed.
 
 `and` and `or` short-circuit and always return a boolean. Operands must be booleans.
 ```scheme
@@ -342,10 +342,11 @@ List helpers (`append` takes exactly two lists):
 (member 'x '(a b c))                   ; false
 ```
 
-Strings as lists of 1-character strings (there is no separate character type):
+Strings as lists of 1-character strings (there is no separate character type), plus `str-repeat`:
 ```scheme
 (str->list "ab")              ; ("a" "b")
 (list->str '("a" "b" "c"))    ; "abc"
+(str-repeat "ab" 3)           ; "ababab"
 ```
 
 Numeric helpers and comparisons (comparisons take two or more arguments):
@@ -447,6 +448,28 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   (expt 2 10)   ; 1024
   ```
 
+#### `num-abs`, `abs`
+  Absolute value.
+  ```scheme
+  (abs -3)      ; 3
+  ```
+
+#### `num-min`, `min` / `num-max`, `max`
+  Minimum / maximum of one or more numbers.
+  ```scheme
+  (min 3 1 2)   ; 1
+  (max 3 1 2)   ; 3
+  ```
+
+#### `num-truncate`, `truncate` / `num-floor`, `floor` / `num-ceil`, `ceil` / `num-round`, `round`
+  Rounding toward zero, toward −∞, toward +∞, and half away from zero, respectively.
+  ```scheme
+  (truncate -3.7)  ; -3
+  (floor -3.7)     ; -4
+  (ceil 3.2)       ; 4
+  (round 3.5)      ; 4
+  ```
+
 ### String functions
 
 #### `str?`
@@ -485,6 +508,53 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   (str-slice "example" 1 -1) ; "xampl"
   ```
 
+#### `str-find`
+  Character index of the first occurrence of a substring, or `false` if absent. An empty search string yields `0`.
+  ```scheme
+  (str-find "hello" "ll")  ; 2
+  (str-find "hello" "x")   ; false
+  ```
+
+#### `str-split`
+  Splits a string on a delimiter into a list of strings. An empty delimiter splits into one-character strings.
+  ```scheme
+  (str-split "a,b,c" ",")  ; ("a" "b" "c")
+  (str-split "ab" "")      ; ("a" "b")
+  ```
+
+#### `str-join`
+  Joins a list of strings with a separator: `(str-join lst sep)`.
+  ```scheme
+  (str-join '("a" "b" "c") "-")  ; "a-b-c"
+  (str-join '() "-")             ; ""
+  ```
+
+#### `str-replace`
+  Replaces every non-overlapping occurrence of a substring. The search string must not be empty.
+  ```scheme
+  (str-replace "a-b-c" "-" "_")  ; "a_b_c"
+  ```
+
+#### `str-trim`, `str-trim-left`, `str-trim-right`
+  Strip Unicode whitespace from both ends, the start, or the end.
+  ```scheme
+  (str-trim "  hi  ")        ; "hi"
+  (str-trim-left "  hi  ")   ; "hi  "
+  (str-trim-right "  hi  ")  ; "  hi"
+  ```
+
+#### `str-upcase`, `str-downcase`
+  Unicode case conversion.
+  ```scheme
+  (str-upcase "Hi")    ; "HI"
+  (str-downcase "Hi")  ; "hi"
+  ```
+
+`str-repeat` is in the prelude: `(str-repeat s n)` repeats `s` a non-negative integer `n` times.
+```scheme
+(str-repeat "ab" 3)  ; "ababab"
+```
+
 ### Conversion functions
 
 #### `num->str`
@@ -520,7 +590,7 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. A lone `.` is an ordinary symbol. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
-- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Same-type operations use a type prefix (`num-add`, `str-append`). Conversions use `type1->type2` (`num->str`, `str->num`). There are no Scheme spellings such as `number?`, `modulo`, or `string-append`.
+- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Number and string operations use a type prefix (`num-add`, `str-append`), with short aliases in the prelude where useful (`+`, `sqrt`, `abs`, …). List and binding forms keep classic names (`car`, `cons`, `lambda`). Conversions use `type1->type2` (`num->str`, `str->num`). There are no Scheme spellings such as `number?`, `modulo`, or `string-append`.
 - **Small surface.** `if` without an else branch and `define` return `()`. There is no `do`. Characters, vectors, ports, and continuations are host concerns (the prelude offers macros such as `when` / `unless` / `case` / named `let` / `letrec` / `define-record`).
 - **`apply` and `eval` are syntax.** In Scheme they are procedures; in Rusche they are evaluator forms like `if`, so they cannot be passed as values or rebound. `(begin)` with no arguments is allowed and returns `()`.
 - **Rest parameters** are spelled with a `*` prefix instead of Scheme's dotted syntax: `(define (f a *rest) ...)` and `(lambda (*args) ...)`. See [Procedure Parameters](#procedure-parameters).
@@ -529,3 +599,4 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 
 - [`rusche-cli`](rusche-cli.md) — example host: running the interpreter, the REPL, I/O, `vec`, and `dict`
 - [Embedding tutorials](tutorials/embedding.md) — using the core crate from Rust
+- Example scripts: [`examples/strings.rsc`](../examples/strings.rsc) (string helpers), [`examples/points.rsc`](../examples/points.rsc) (`define-record`, math, `case` / `when`)
