@@ -23,9 +23,6 @@
 (define width (if (null? args) 72 (str->num (car args))))
 (define height (if (or (null? args) (null? (cdr args))) 24 (str->num (cadr args))))
 
-;; Rusche has no `floor`; for x >= 0, x - (x mod 1) is the integer part.
-(define (floor x) (- x (% x 1)))
-
 ;; Count iterations of z <- z^2 + c (starting at z = 0) until |z| > 2,
 ;; or return max-iter if the point stays bounded. Tail-recursive.
 (define (escape-count cr ci)

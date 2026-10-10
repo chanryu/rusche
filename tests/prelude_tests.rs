@@ -184,6 +184,9 @@ fn test_abs_min_max() {
     assert_eq!(eval_str("(min 3 1 2)"), "1");
     assert_eq!(eval_str("(max 3)"), "3");
     assert_eq!(eval_str("(max 3 1 2)"), "3");
+    assert_eq!(eval_str("(eq? abs num-abs)"), "true");
+    assert_eq!(eval_str("(eq? min num-min)"), "true");
+    assert_eq!(eval_str("(eq? max num-max)"), "true");
 }
 
 #[test]
@@ -220,4 +223,118 @@ fn test_bool_without_prelude() {
     assert_eq!(e.eval_to_str("(if true 1 2)"), "1");
     assert_eq!(e.eval_to_str("(if false 1 2)"), "2");
     assert_eq!(e.eval_to_str("(eq? 1 1)"), "true");
+}
+
+#[test]
+fn test_when_unless() {
+    assert_eq!(eval_str("(when true 1 2)"), "2");
+    assert_eq!(eval_str("(when false 1 2)"), "()");
+    assert_eq!(eval_str("(unless false 1 2)"), "2");
+    assert_eq!(eval_str("(unless true 1 2)"), "()");
+}
+
+#[test]
+fn test_case() {
+    assert_eq!(eval_str("(case 'b ((a) 1) ((b c) 2) (else 3))"), "2");
+    assert_eq!(eval_str("(case 'x ((a) 1) (else 9))"), "9");
+    assert_eq!(eval_str("(case 2 ((1) 'one) ((2 3) 'two) (else 'other))"), "two");
+}
+
+#[test]
+fn test_named_let_and_letrec() {
+    assert_eq!(
+        eval_str("(let loop ((n 3) (acc 0)) (if (= n 0) acc (loop (- n 1) (+ acc n))))"),
+        "6"
+    );
+    assert_eq!(
+        eval_str(
+            r#"
+            (letrec ((even? (lambda (n) (if (= n 0) true (odd? (- n 1)))))
+                     (odd? (lambda (n) (if (= n 0) false (even? (- n 1))))))
+              (list (even? 4) (odd? 4)))
+            "#
+        ),
+        "(true false)"
+    );
+}
+
+#[test]
+fn test_let_destructuring() {
+    assert_eq!(eval_str("(let (((a b) '(1 2))) (+ a b))"), "3");
+    assert_eq!(
+        eval_str("(let (((a b) '(10 20)) (c 1)) (+ a b c))"),
+        "31"
+    );
+}
+
+#[test]
+fn test_defrecord() {
+    assert_eq!(
+        eval_str(
+            r#"
+            (defrecord point (x y))
+            (define p (make-point 3 4))
+            (list (point? p) (point-x p) (point-y p) (point? 3))
+            "#
+        ),
+        "(true 3 4 false)"
+    );
+}
+
+#[test]
+fn test_floor_ceil_truncate_round() {
+    assert_eq!(eval_str("(truncate 3.7)"), "3");
+    assert_eq!(eval_str("(truncate -3.7)"), "-3");
+    assert_eq!(eval_str("(floor 3.7)"), "3");
+    assert_eq!(eval_str("(floor -3.7)"), "-4");
+    assert_eq!(eval_str("(ceil 3.2)"), "4");
+    assert_eq!(eval_str("(ceil -3.2)"), "-3");
+    assert_eq!(eval_str("(round 3.5)"), "4");
+    assert_eq!(eval_str("(round -3.5)"), "-4");
+    assert_eq!(eval_str("(eq? floor num-floor)"), "true");
+    assert_eq!(eval_str("(eq? ceil num-ceil)"), "true");
+    assert_eq!(eval_str("(eq? truncate num-truncate)"), "true");
+    assert_eq!(eval_str("(eq? round num-round)"), "true");
+}
+
+#[test]
+fn test_sqrt_exp_log_expt() {
+    assert_eq!(eval_str("(sqrt 9)"), "3");
+    assert_eq!(eval_str("(expt 2 10)"), "1024");
+    assert_eq!(eval_str("(log 1)"), "0");
+    assert_eq!(eval_str("(log 8 2)"), "3");
+    assert_eq!(eval_str("(exp 0)"), "1");
+    // Aliases and prefixed natives are the same binding.
+    assert_eq!(eval_str("(eq? sqrt num-sqrt)"), "true");
+}
+
+#[test]
+fn test_str_list_conversion() {
+    assert_eq!(eval_str("(str->list \"ab\")"), "(\"a\" \"b\")");
+    assert_eq!(eval_str("(list->str '(\"a\" \"b\" \"c\"))"), "\"abc\"");
+    assert_eq!(eval_str("(list->str '())"), "\"\"");
+}
+
+#[test]
+fn test_str_repeat_and_natives() {
+    assert_eq!(eval_str("(str-repeat \"ab\" 3)"), "\"ababab\"");
+    assert_eq!(eval_str("(str-repeat \"x\" 0)"), "\"\"");
+    assert!(eval_str("(str-repeat \"x\" -1)").starts_with("Err:"));
+    assert!(eval_str("(str-repeat \"x\" 1.5)").starts_with("Err:"));
+
+    assert_eq!(eval_str("(str-find \"hello\" \"ll\")"), "2");
+    assert_eq!(eval_str("(str-find \"hello\" \"x\")"), "false");
+    assert_eq!(eval_str("(str-split \"a,b\" \",\")"), "(\"a\" \"b\")");
+    assert_eq!(eval_str("(str-join '(\"a\" \"b\") \"-\")"), "\"a-b\"");
+    assert_eq!(eval_str("(str-replace \"a-b\" \"-\" \"_\")"), "\"a_b\"");
+    assert_eq!(eval_str("(str-trim \"  hi  \")"), "\"hi\"");
+    assert_eq!(eval_str("(str-upcase \"Hi\")"), "\"HI\"");
+    assert_eq!(eval_str("(str-downcase \"Hi\")"), "\"hi\"");
+}
+
+#[test]
+fn test_nth_and_caddr() {
+    assert_eq!(eval_str("(nth '(a b c) 0)"), "a");
+    assert_eq!(eval_str("(nth '(a b c) 2)"), "c");
+    assert_eq!(eval_str("(caddr '(1 2 3 4))"), "3");
 }

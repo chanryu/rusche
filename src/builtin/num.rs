@@ -1,5 +1,5 @@
 use crate::{
-    eval::{eval, EvalContext, EvalResult},
+    eval::{eval, ErrorKind, EvalContext, EvalError, EvalResult},
     expr::Expr,
     list::List,
     utils::{eval_into_num, get_exact_1_arg, get_exact_2_args},
@@ -75,6 +75,60 @@ fn logical_operation(
 
 pub fn less(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     logical_operation(proc_name, args, context, |lhs, rhs| lhs < rhs)
+}
+
+pub fn greater(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    logical_operation(proc_name, args, context, |lhs, rhs| lhs > rhs)
+}
+
+pub fn less_or_equal(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    logical_operation(proc_name, args, context, |lhs, rhs| lhs <= rhs)
+}
+
+pub fn greater_or_equal(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    logical_operation(proc_name, args, context, |lhs, rhs| lhs >= rhs)
+}
+
+fn unary_num(
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+    func: fn(f64) -> f64,
+) -> EvalResult {
+    let value = eval_into_num(proc_name, get_exact_1_arg(proc_name, args)?, context)?;
+    Ok(Expr::Num(func(value), None))
+}
+
+pub fn sqrt(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    unary_num(proc_name, args, context, f64::sqrt)
+}
+
+pub fn exp(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    unary_num(proc_name, args, context, f64::exp)
+}
+
+/// Natural logarithm of one argument, or log base `b` of `x` with two arguments.
+pub fn log(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    match args.len() {
+        1 => unary_num(proc_name, args, context, f64::ln),
+        2 => {
+            let (x, base) = get_exact_2_args(proc_name, args)?;
+            let x = eval_into_num(proc_name, x, context)?;
+            let base = eval_into_num(proc_name, base, context)?;
+            Ok(Expr::Num(x.log(base), None))
+        }
+        n => Err(EvalError::new(
+            ErrorKind::Arity,
+            format!("{proc_name}: expected 1 or 2 arguments, got {n}"),
+        )),
+    }
+}
+
+pub fn expt(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let (base, exp) = get_exact_2_args(proc_name, args)?;
+    let base = eval_into_num(proc_name, base, context)?;
+    let exp = eval_into_num(proc_name, exp, context)?;
+    Ok(Expr::Num(base.powf(exp), None))
 }
 
 #[cfg(test)]
@@ -215,5 +269,48 @@ mod tests {
 
         // (< 2 1) => false
         assert_eq!(less(list!(2, 1)), Ok(false.into()));
+    }
+
+    #[test]
+    fn test_greater_and_or_equal() {
+        let evaluator = Evaluator::new();
+        let context = evaluator.context();
+        let greater = |args| greater("", &args, context);
+        let less_or_equal = |args| less_or_equal("", &args, context);
+        let greater_or_equal = |args| greater_or_equal("", &args, context);
+
+        assert_eq!(greater(list!(2, 1)), Ok(true.into()));
+        assert_eq!(greater(list!(1, 1)), Ok(false.into()));
+        assert_eq!(less_or_equal(list!(1, 1)), Ok(true.into()));
+        assert_eq!(less_or_equal(list!(2, 1)), Ok(false.into()));
+        assert_eq!(greater_or_equal(list!(1, 1)), Ok(true.into()));
+        assert_eq!(greater_or_equal(list!(1, 2)), Ok(false.into()));
+    }
+
+    #[test]
+    fn test_sqrt_exp_log_expt() {
+        let evaluator = Evaluator::new();
+        let context = evaluator.context();
+        let sqrt = |args| sqrt("sqrt", &args, context);
+        let exp = |args| exp("exp", &args, context);
+        let log = |args| log("log", &args, context);
+        let expt = |args| expt("expt", &args, context);
+
+        assert_eq!(sqrt(list!(9)), Ok(num(3)));
+        assert_eq!(expt(list!(2, 10)), Ok(num(1024)));
+        assert_eq!(log(list!(1)), Ok(num(0)));
+        assert_eq!(log(list!(8, 2)), Ok(num(3)));
+
+        let e = exp(list!(1)).unwrap();
+        let Expr::Num(value, _) = e else {
+            panic!("expected number");
+        };
+        assert!((value - std::f64::consts::E).abs() < 1e-10);
+
+        assert!(sqrt(list!()).is_err());
+        assert!(sqrt(list!(1, 2)).is_err());
+        assert!(expt(list!(2)).is_err());
+        assert!(log(list!(1, 2, 3)).is_err());
+        assert!(sqrt(list!("9")).is_err());
     }
 }

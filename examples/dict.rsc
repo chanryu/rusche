@@ -5,7 +5,7 @@
 
 (define words '(the quick brown fox jumps over the lazy dog the fox))
 
-(define counts (dict-make))
+(define counts (dict))
 
 (define (tally w)
     (dict-set! counts w (+ (dict-get counts w 0) 1)))

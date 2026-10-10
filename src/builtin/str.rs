@@ -2,7 +2,10 @@ use crate::{
     eval::{eval, ErrorKind, EvalContext, EvalError, EvalResult},
     expr::Expr,
     list::List,
-    utils::{eval_into_int, eval_into_str, get_2_or_3_args, get_exact_1_arg, get_exact_2_args},
+    utils::{
+        eval_into_int, eval_into_str, get_2_or_3_args, get_exact_1_arg, get_exact_2_args,
+        get_exact_3_args,
+    },
 };
 
 pub fn is_str(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -82,6 +85,115 @@ pub fn slice(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult 
         text.chars().skip(beg).take(end - beg).collect(),
         None,
     ))
+}
+
+/// Character index of the first occurrence of `needle` in `haystack`, or `false`.
+pub fn find(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let (haystack_expr, needle_expr) = get_exact_2_args(proc_name, args)?;
+    let haystack = eval_into_str(proc_name, haystack_expr, context)?;
+    let needle = eval_into_str(proc_name, needle_expr, context)?;
+
+    if needle.is_empty() {
+        return Ok(Expr::from(0));
+    }
+
+    match haystack.find(&needle) {
+        Some(byte_idx) => Ok(Expr::from(haystack[..byte_idx].chars().count() as i32)),
+        None => Ok(Expr::from(false)),
+    }
+}
+
+/// Split `text` on `delim`. An empty delimiter splits into one-character strings.
+pub fn split(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let (text_expr, delim_expr) = get_exact_2_args(proc_name, args)?;
+    let text = eval_into_str(proc_name, text_expr, context)?;
+    let delim = eval_into_str(proc_name, delim_expr, context)?;
+
+    let parts: Vec<Expr> = if delim.is_empty() {
+        text.chars().map(|c| Expr::from(c.to_string())).collect()
+    } else {
+        text.split(&delim).map(Expr::from).collect()
+    };
+
+    Ok(Expr::List(List::from(parts), None))
+}
+
+pub fn trim(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let text = eval_into_str(proc_name, get_exact_1_arg(proc_name, args)?, context)?;
+    Ok(Expr::from(text.trim()))
+}
+
+pub fn trim_left(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let text = eval_into_str(proc_name, get_exact_1_arg(proc_name, args)?, context)?;
+    Ok(Expr::from(text.trim_start()))
+}
+
+pub fn trim_right(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let text = eval_into_str(proc_name, get_exact_1_arg(proc_name, args)?, context)?;
+    Ok(Expr::from(text.trim_end()))
+}
+
+pub fn upcase(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let text = eval_into_str(proc_name, get_exact_1_arg(proc_name, args)?, context)?;
+    Ok(Expr::from(text.to_uppercase()))
+}
+
+pub fn downcase(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let text = eval_into_str(proc_name, get_exact_1_arg(proc_name, args)?, context)?;
+    Ok(Expr::from(text.to_lowercase()))
+}
+
+/// Replace every non-overlapping occurrence of `from` with `to`. Empty `from` is an error.
+pub fn replace(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let (text_expr, from_expr, to_expr) = get_exact_3_args(proc_name, args)?;
+    let text = eval_into_str(proc_name, text_expr, context)?;
+    let from = eval_into_str(proc_name, from_expr, context)?;
+    let to = eval_into_str(proc_name, to_expr, context)?;
+
+    if from.is_empty() {
+        return Err(EvalError::new(
+            ErrorKind::Other,
+            format!("{proc_name}: search string must not be empty"),
+        )
+        .with_span(from_expr.span()));
+    }
+
+    Ok(Expr::from(text.replace(&from, &to)))
+}
+
+/// Join a list of strings with a separator: `(str-join lst sep)`.
+pub fn join(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let (lst_expr, sep_expr) = get_exact_2_args(proc_name, args)?;
+    let sep = eval_into_str(proc_name, sep_expr, context)?;
+
+    let Expr::List(list, _) = eval(lst_expr, context)? else {
+        return Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: `{lst_expr}` evaluated to a non-list"),
+        )
+        .with_span(lst_expr.span()));
+    };
+
+    let mut result = String::new();
+    for (i, item) in list.iter().enumerate() {
+        match item {
+            Expr::Str(text, _) => {
+                if i > 0 {
+                    result.push_str(&sep);
+                }
+                result.push_str(text);
+            }
+            value => {
+                return Err(EvalError::new(
+                    ErrorKind::Type,
+                    format!("{proc_name}: list element `{value}` is not a string"),
+                )
+                .with_span(item.span()));
+            }
+        }
+    }
+
+    Ok(Expr::from(result))
 }
 
 #[cfg(test)]
@@ -190,5 +302,66 @@ mod tests {
 
         // error: (str-slice "abcdef" 0.5 1)
         assert!(slice(list!("abcdef", 0.5, 1)).is_err());
+    }
+
+    #[test]
+    fn test_find_split_trim_case_replace_join() {
+        let evaluator = crate::eval::Evaluator::new();
+        let context = evaluator.context();
+        let find = |args| find("str-find", &args, context);
+        let split = |args| split("str-split", &args, context);
+        let trim = |args| trim("str-trim", &args, context);
+        let trim_left = |args| trim_left("str-trim-left", &args, context);
+        let trim_right = |args| trim_right("str-trim-right", &args, context);
+        let upcase = |args| upcase("str-upcase", &args, context);
+        let downcase = |args| downcase("str-downcase", &args, context);
+        let replace = |args| replace("str-replace", &args, context);
+        let join = |args| join("str-join", &args, context);
+
+        assert_eq!(find(list!("hello", "ll")), Ok(Expr::from(2)));
+        assert_eq!(find(list!("hello", "x")), Ok(Expr::from(false)));
+        assert_eq!(find(list!("hello", "")), Ok(Expr::from(0)));
+
+        assert_eq!(
+            split(list!("a,b,c", ",")),
+            Ok(Expr::List(
+                List::from(vec![
+                    Expr::from("a"),
+                    Expr::from("b"),
+                    Expr::from("c")
+                ]),
+                None
+            ))
+        );
+        assert_eq!(
+            split(list!("ab", "")),
+            Ok(Expr::List(
+                List::from(vec![Expr::from("a"), Expr::from("b")]),
+                None
+            ))
+        );
+
+        assert_eq!(trim(list!("  hi  ")), Ok(Expr::from("hi")));
+        assert_eq!(trim_left(list!("  hi  ")), Ok(Expr::from("hi  ")));
+        assert_eq!(trim_right(list!("  hi  ")), Ok(Expr::from("  hi")));
+
+        assert_eq!(upcase(list!("Hi")), Ok(Expr::from("HI")));
+        assert_eq!(downcase(list!("Hi")), Ok(Expr::from("hi")));
+
+        assert_eq!(
+            replace(list!("a-b-c", "-", "_")),
+            Ok(Expr::from("a_b_c"))
+        );
+        assert!(replace(list!("abc", "", "x")).is_err());
+
+        use crate::expr::intern;
+        assert_eq!(
+            join(list!(list!(intern("quote"), list!("a", "b", "c")), "-")),
+            Ok(Expr::from("a-b-c"))
+        );
+        assert_eq!(
+            join(list!(list!(intern("quote"), list!()), "-")),
+            Ok(Expr::from(""))
+        );
     }
 }

@@ -4,7 +4,7 @@
 ;;
 ;;   cargo run -p rusche-cli -- examples/fibonacci.rsc
 
-(define cache (dict-make))
+(define cache (dict))
 
 (define (fib n)
   (if (dict-has? cache n)

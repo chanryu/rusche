@@ -277,11 +277,11 @@ fn newline_rejects_extra_args() {
 }
 
 #[test]
-fn vec_make_rejects_extra_args() {
-    let out = run(&["-e", "(vec-make 1)"], "");
+fn dict_rejects_odd_args() {
+    let out = run(&["-e", "(dict 1)"], "");
     assert_eq!(out.status.code(), Some(1));
     assert!(
-        stderr(&out).contains("expected 0 arguments"),
+        stderr(&out).contains("even number"),
         "{}",
         stderr(&out)
     );
@@ -449,7 +449,7 @@ fn vec_error_paths() {
     );
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
 
-    let out = run(&["-e", "(vec-pop (vec-make))"], "");
+    let out = run(&["-e", "(vec-pop (vec))"], "");
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("vector is empty"), "{}", stderr(&out));
 

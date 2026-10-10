@@ -35,7 +35,7 @@ evaluator.root_env().define_native_proc("clamp", clamp);
 ```
 
 `define_native_proc` is shorthand for binding
-`Expr::Proc(Rc::new(Proc::Native { name, func }), None)`.
+`Expr::Proc(Rc::new(Proc::Native { name: Rc::from(name), func }), None)`.
 
 ## Evaluate arguments
 

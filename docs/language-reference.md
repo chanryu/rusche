@@ -271,9 +271,11 @@ The following forms and procedures are implemented in Rust. Most are native proc
 
 The following forms and procedures are implemented in Rusche itself. Please check [prelude.rs](../src/prelude.rs) to see how they are actually implemented.
 
-Macros: `and`, `cond` (with `else`), `defun`, `let`, `let*`, `or`, `or-else`, `while`
+Macros: `and`, `case`, `cond` (with `else`), `defrecord`, `defun`, `let` (including named `let` and list destructuring), `let*`, `letrec`, `or`, `or-else`, `unless`, `when`, `while`
 
-Procedures: `append`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `map`, `member`, `not`, `reverse`, `<`, `>`, `<=`, `>=`, `abs`, `min`, `max`
+Procedures: `append`, `assoc`, `caar`, `cadr`, `caddr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `nth`, `list->str`, `map`, `member`, `not`, `reverse`, `str->list`, `str-repeat`, `<`, `>`, `<=`, `>=`, `abs`, `ceil`, `floor`, `min`, `max`, `round`, `truncate`
+
+Numeric short names (`+`, `-`, `*`, `/`, `%`, `sqrt`, `exp`, `log`, `expt`, `abs`, `min`, `max`, `floor`, `ceil`, `truncate`, `round`) are aliases for the corresponding `num-*` bindings; see [Number functions](#number-functions). List and core names (`car`, `cons`, `lambda`, …) stay unprefixed.
 
 `and` and `or` short-circuit and always return a boolean. Operands must be booleans.
 ```scheme
@@ -281,6 +283,19 @@ Procedures: `append`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `filter`, `fold`,
 (and)                  ; true
 (or false true)        ; true
 (or)                   ; false
+```
+
+`when` / `unless` are one-armed conditionals; `case` matches a key against datum lists:
+```scheme
+(when true 'ok)                    ; ok
+(unless false 'ok)                 ; ok
+(case 'b ((a) 1) ((b c) 2) (else 3))  ; 2
+```
+
+`defun` is a shorthand for `(define name (lambda args body...))`:
+```scheme
+(defun add (a b) (+ a b))
+(add 2 3)  ; 5
 ```
 
 `or-else` returns the first argument unless it is `false`, in which case it returns the second:
@@ -297,18 +312,41 @@ Procedures: `append`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `filter`, `fold`,
 (apply car '((1 2 3)))  ; 1
 ```
 
-`let*` binds sequentially; each binding can use previous ones:
+`let*` binds sequentially; each binding can use previous ones. `let` also supports named `let`, `letrec`, and list destructuring:
 ```scheme
 (let* ((x 1) (y (+ x 2))) y)  ; 3
+(let loop ((n 3) (acc 0))
+  (if (= n 0) acc (loop (- n 1) (+ acc n))))  ; 6
+(let (((a b) '(1 2))) (+ a b))  ; 3
+(letrec ((even? (lambda (n) (if (= n 0) true (odd? (- n 1)))))
+         (odd? (lambda (n) (if (= n 0) false (even? (- n 1))))))
+  (even? 4))  ; true
 ```
 
-List helpers:
+`defrecord` builds a tagged-list record with a constructor, predicate, and field accessors:
+```scheme
+(defrecord point (x y))
+(define p (make-point 3 4))
+(point? p)    ; true
+(point-x p)   ; 3
+```
+
+List helpers (`append` takes exactly two lists):
 ```scheme
 (length '(a b c))                      ; 3
+(nth '(a b c) 1)                       ; b
+(append '(1 2) '(3 4))                 ; (1 2 3 4)
 (filter (lambda (x) (< x 3)) '(1 2 3)) ; (1 2)
 (fold + 0 '(1 2 3))                    ; 6
 (member 'b '(a b c))                   ; (b c)
 (member 'x '(a b c))                   ; false
+```
+
+Strings as lists of 1-character strings (there is no separate character type), plus `str-repeat`:
+```scheme
+(str->list "ab")              ; ("a" "b")
+(list->str '("a" "b" "c"))    ; "abc"
+(str-repeat "ab" 3)           ; "ababab"
 ```
 
 Numeric helpers and comparisons (comparisons take two or more arguments):
@@ -316,9 +354,16 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 (abs -3)           ; 3
 (min 3 1 2)        ; 1
 (max 3 1 2)        ; 3
+(floor -3.7)       ; -4
+(ceil 3.2)         ; 4
+(truncate -3.7)    ; -3
+(round 3.5)        ; 4
+(sqrt 9)           ; 3
+(expt 2 10)        ; 1024
 (< 1 2 3)          ; true
 (<= 1 1 2)         ; true
 (> 3 2 1)          ; true
+(>= 3 3 1)         ; true
 ```
 
 ### Number functions
@@ -361,19 +406,70 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   (% -7 2)      ; -1
   ```
 
-#### `num-less`, `<`
-  Compares two numbers, returns `true` if the first is less than the second, otherwise `false`.
+#### `num-less`, `num-greater`, `num-less-or-equal`, `num-greater-or-equal`
+  Two-argument numeric comparisons. The prelude wraps each as the multi-argument `<`, `>`, `<=`, and `>=` procedures.
   ```scheme
-  (< 3 5)       ; true
-  (< 10 5)      ; false
+  (num-less 3 5)             ; true
+  (num-greater 5 3)          ; true
+  (num-less-or-equal 3 3)    ; true
+  (num-greater-or-equal 3 2) ; true
   ```
 
-#### `>`
-  Compares numbers, returns `true` if each is greater than the next, otherwise `false`. Implemented in the prelude via `<` on the reversed arguments.
+#### `<`, `<=`, `>`, `>=`
+  Multi-argument numeric comparisons from the prelude. Each returns `true` when the relation holds between every consecutive pair, otherwise `false`.
   ```scheme
-  (> 5 3)       ; true
+  (< 1 2 3)     ; true
+  (<= 1 1 2)    ; true
   (> 3 2 1)     ; true
+  (>= 3 3 1)    ; true
   (> 2 4)       ; false
+  ```
+
+#### `num-sqrt`, `sqrt`
+  Square root.
+  ```scheme
+  (sqrt 9)      ; 3
+  ```
+
+#### `num-exp`, `exp`
+  Base-*e* exponential.
+  ```scheme
+  (exp 0)       ; 1
+  ```
+
+#### `num-log`, `log`
+  Natural logarithm with one argument, or logarithm in base `b` with two.
+  ```scheme
+  (log 1)       ; 0
+  (log 8 2)     ; 3
+  ```
+
+#### `num-expt`, `expt`
+  Exponentiation: `(expt base power)`.
+  ```scheme
+  (expt 2 10)   ; 1024
+  ```
+
+#### `num-abs`, `abs`
+  Absolute value.
+  ```scheme
+  (abs -3)      ; 3
+  ```
+
+#### `num-min`, `min` / `num-max`, `max`
+  Minimum / maximum of one or more numbers.
+  ```scheme
+  (min 3 1 2)   ; 1
+  (max 3 1 2)   ; 3
+  ```
+
+#### `num-truncate`, `truncate` / `num-floor`, `floor` / `num-ceil`, `ceil` / `num-round`, `round`
+  Rounding toward zero, toward −∞, toward +∞, and half away from zero, respectively.
+  ```scheme
+  (truncate -3.7)  ; -3
+  (floor -3.7)     ; -4
+  (ceil 3.2)       ; 4
+  (round 3.5)      ; 4
   ```
 
 ### String functions
@@ -414,6 +510,53 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   (str-slice "example" 1 -1) ; "xampl"
   ```
 
+#### `str-find`
+  Character index of the first occurrence of a substring, or `false` if absent. An empty search string yields `0`.
+  ```scheme
+  (str-find "hello" "ll")  ; 2
+  (str-find "hello" "x")   ; false
+  ```
+
+#### `str-split`
+  Splits a string on a delimiter into a list of strings. An empty delimiter splits into one-character strings.
+  ```scheme
+  (str-split "a,b,c" ",")  ; ("a" "b" "c")
+  (str-split "ab" "")      ; ("a" "b")
+  ```
+
+#### `str-join`
+  Joins a list of strings with a separator: `(str-join lst sep)`.
+  ```scheme
+  (str-join '("a" "b" "c") "-")  ; "a-b-c"
+  (str-join '() "-")             ; ""
+  ```
+
+#### `str-replace`
+  Replaces every non-overlapping occurrence of a substring. The search string must not be empty.
+  ```scheme
+  (str-replace "a-b-c" "-" "_")  ; "a_b_c"
+  ```
+
+#### `str-trim`, `str-trim-left`, `str-trim-right`
+  Strip Unicode whitespace from both ends, the start, or the end.
+  ```scheme
+  (str-trim "  hi  ")        ; "hi"
+  (str-trim-left "  hi  ")   ; "hi  "
+  (str-trim-right "  hi  ")  ; "  hi"
+  ```
+
+#### `str-upcase`, `str-downcase`
+  Unicode case conversion.
+  ```scheme
+  (str-upcase "Hi")    ; "HI"
+  (str-downcase "Hi")  ; "hi"
+  ```
+
+`str-repeat` is in the prelude: `(str-repeat s n)` repeats `s` a non-negative integer `n` times.
+```scheme
+(str-repeat "ab" 3)  ; "ababab"
+```
+
 ### Conversion functions
 
 #### `num->str`
@@ -449,8 +592,8 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. A lone `.` is an ordinary symbol. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
-- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Same-type operations use a type prefix (`num-add`, `str-append`). Conversions use `type1->type2` (`num->str`, `str->num`). There are no Scheme spellings such as `number?`, `modulo`, or `string-append`.
-- **Small surface.** `if` without an else branch and `define` return `()`; there is no named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
+- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Number and string operations use a type prefix (`num-add`, `str-append`, `num-less`), with short aliases or multi-arg wrappers in the prelude (`+`, `sqrt`, `<`, …). List and binding forms keep classic names (`car`, `cons`, `lambda`, `nth`). Conversions use `type1->type2` (`num->str`, `str->num`). There are no Scheme spellings such as `number?`, `modulo`, or `string-append`.
+- **Small surface.** `if` without an else branch and `define` return `()`. There is no `do`. Characters, vectors, ports, and continuations are host concerns (the prelude offers macros such as `when` / `unless` / `case` / named `let` / `letrec` / `defrecord`).
 - **`apply` and `eval` are syntax.** In Scheme they are procedures; in Rusche they are evaluator forms like `if`, so they cannot be passed as values or rebound. `(begin)` with no arguments is allowed and returns `()`.
 - **Rest parameters** are spelled with a `*` prefix instead of Scheme's dotted syntax: `(define (f a *rest) ...)` and `(lambda (*args) ...)`. See [Procedure Parameters](#procedure-parameters).
 
@@ -458,3 +601,4 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 
 - [`rusche-cli`](rusche-cli.md) — example host: running the interpreter, the REPL, I/O, `vec`, and `dict`
 - [Embedding tutorials](tutorials/embedding.md) — using the core crate from Rust
+- Example scripts: [`examples/strings.rsc`](../examples/strings.rsc) (string helpers), [`examples/points.rsc`](../examples/points.rsc) (`defrecord`, math, `case` / `when`)

@@ -20,8 +20,8 @@ cargo run -p rusche-cli -- examples/fizzbuzz.rsc
 | Core built-ins + prelude | `rusche` crate | [Language reference](language-reference.md). Built-ins always; prelude omitted with `--no-prelude`. |
 | I/O | [`builtin/io.rs`](../crates/rusche-cli/src/builtin/io.rs) | `display`, `write`, `newline`, `read`, `exit`, `load` |
 | System | [`builtin/sys.rs`](../crates/rusche-cli/src/builtin/sys.rs) | `getenv`, `clock`, `random`, `command-line` |
-| Vectors | [`builtin/vec.rs`](../crates/rusche-cli/src/builtin/vec.rs) | `vec?`, `vec-make`, `vec`, `vec-push`, `vec-pop`, `vec-get`, `vec-set!`, `vec-length`, `vec->list`, `list->vec` |
-| Dicts | [`builtin/dict.rs`](../crates/rusche-cli/src/builtin/dict.rs) | `dict?`, `dict-make`, `dict`, `dict-get`, `dict-set!`, `dict-has?`, `dict-remove!`, `dict-length`, `dict-keys`, `dict->list`, `list->dict` |
+| Vectors | [`builtin/vec.rs`](../crates/rusche-cli/src/builtin/vec.rs) | `vec?`, `vec`, `vec-push`, `vec-pop`, `vec-get`, `vec-set!`, `vec-length`, `vec->list`, `list->vec` |
+| Dicts | [`builtin/dict.rs`](../crates/rusche-cli/src/builtin/dict.rs) | `dict?`, `dict`, `dict-get`, `dict-set!`, `dict-has?`, `dict-remove!`, `dict-length`, `dict-keys`, `dict->list`, `list->dict` |
 
 I/O, system, vector, and dict procedures are always registered. Scripts under
 [`examples/*.rsc`](../examples) are written for this host.
@@ -222,8 +222,7 @@ error. A tracer keeps closures stored in a vector reachable. See the
 | Procedure | Behavior |
 | --- | --- |
 | `vec?` | `true` if the argument is a vector, otherwise `false`. |
-| `vec-make` | No arguments. A new empty vector. |
-| `vec` | A new vector of the arguments, in order. |
+| `vec` | A new vector of the arguments, in order. `(vec)` is empty. |
 | `vec-push` | Append a value. Returns `()`. |
 | `vec-pop` | Remove and return the last element. |
 | `vec-get` | Element at an index. |
@@ -261,8 +260,7 @@ for scripts that use it.
 | Procedure | Behavior |
 | --- | --- |
 | `dict?` | `true` if the argument is a dict, otherwise `false`. |
-| `dict-make` | No arguments. A new empty dict. |
-| `dict` | A new dict from flat key/value pairs. Odd argument count is an error. |
+| `dict` | A new dict from flat key/value pairs. `(dict)` is empty. Odd argument count is an error. |
 | `dict-get` | Value for a key, or an optional default (else `false`). The default is evaluated only when the key is absent. |
 | `dict-set!` | Insert or replace a key. Returns `()`. |
 | `dict-has?` | `true` if the key is present. |
@@ -283,10 +281,14 @@ for scripts that use it.
 | [`fibonacci.rsc`](../examples/fibonacci.rsc), [`fibonacci-tail-recursive.rsc`](../examples/fibonacci-tail-recursive.rsc) | Fibonacci, reading a number. The non-tail version memoizes with `dict`. |
 | [`fizzbuzz.rsc`](../examples/fizzbuzz.rsc) | FizzBuzz from stdin. Shebang. |
 | [`mandelbrot.rsc`](../examples/mandelbrot.rsc) | ASCII Mandelbrot. Optional width and height from `(command-line)`. Shebang. |
+| [`points.rsc`](../examples/points.rsc) | `defrecord`, list destructuring, named `let`, `case` / `when` / `unless`, `sqrt` / `expt`. Shebang. |
+| [`strings.rsc`](../examples/strings.rsc) | `str-find`, `str-split`, `str-join`, `str-replace`, trim/case, `str-repeat`, `str->list`. Shebang. |
 
 ```bash
 cargo run -p rusche-cli -- examples/fizzbuzz.rsc
 cargo run -p rusche-cli -- examples/mandelbrot.rsc 80 30
+cargo run -p rusche-cli -- examples/strings.rsc
+cargo run -p rusche-cli -- examples/points.rsc
 ```
 
 Rust projects under `examples/` belong to the embedding tutorials.
