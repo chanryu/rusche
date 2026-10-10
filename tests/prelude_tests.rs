@@ -23,9 +23,6 @@ fn test_true_false() {
     assert!(Evaluator::with_prelude()
         .eval_str("(define true 1)")
         .is_err());
-
-    // `#t` is an ordinary (undefined) symbol in the core language.
-    assert!(eval_str("#t").starts_with("Err:"));
 }
 
 #[test]

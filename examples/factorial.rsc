@@ -4,5 +4,5 @@
         (* n (factorial (- n 1)))))
 
 (display "Enter a number: ")
-(define n (string->number (read)))
+(define n (str->num (read)))
 (display "factorial(" n ") => " (factorial n)) (newline)

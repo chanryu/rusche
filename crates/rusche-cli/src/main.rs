@@ -9,9 +9,7 @@ use std::process::ExitCode;
 
 use rusche::{tokenize, Evaluator, Loc, ParseError, Parser, Span};
 
-use builtin::{
-    load_dict_procs, load_io_procs, load_scheme_aliases, load_sys_procs, load_vec_procs,
-};
+use builtin::{load_dict_procs, load_io_procs, load_sys_procs, load_vec_procs};
 use cli::{parse_args, usage, Input, Options};
 use diagnostics::{print_eval_error, print_lex_error, print_parse_error, print_pipeline_error};
 use repl::run_repl;
@@ -149,10 +147,6 @@ fn build_evaluator(opts: &Options) -> Evaluator {
     load_sys_procs(evaluator.context());
     load_vec_procs(&evaluator);
     load_dict_procs(&evaluator);
-    // Scheme aliases reference prelude helpers (`not`, `assoc`, `=`, …).
-    if !opts.no_prelude {
-        load_scheme_aliases(&evaluator);
-    }
     evaluator
 }
 
