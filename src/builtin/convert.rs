@@ -22,7 +22,7 @@ pub fn str_to_num(proc_name: &str, args: &List, context: &EvalContext) -> EvalRe
 pub fn sym_to_str(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let expr = get_exact_1_arg(proc_name, args)?;
     match eval(expr, context)? {
-        Expr::Sym(name, _) => Ok(Expr::Str(name, None)),
+        Expr::Sym(name, _) => Ok(Expr::Str(name.to_string(), None)),
         value => Err(EvalError::new(
             ErrorKind::Type,
             format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a symbol"),
@@ -33,7 +33,7 @@ pub fn sym_to_str(proc_name: &str, args: &List, context: &EvalContext) -> EvalRe
 
 pub fn str_to_sym(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let text = eval_into_str(proc_name, get_exact_1_arg(proc_name, args)?, context)?;
-    Ok(Expr::Sym(text, None))
+    Ok(Expr::Sym(crate::symbol::Symbol::intern(text), None))
 }
 
 #[cfg(test)]

@@ -75,7 +75,7 @@ impl Key {
                 Ok(Key::Num(NumKey(n)))
             }
             Expr::Str(s, _) => Ok(Key::Str(s.clone())),
-            Expr::Sym(s, _) => Ok(Key::Sym(s.clone())),
+            Expr::Sym(s, _) => Ok(Key::Sym(s.to_string())),
             _ => Err(EvalError::new(
                 ErrorKind::Type,
                 format!(

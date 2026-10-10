@@ -32,6 +32,7 @@ pub mod list;
 pub mod parser;
 pub mod proc;
 pub mod span;
+pub mod symbol;
 pub mod token;
 pub mod utils;
 
@@ -48,5 +49,6 @@ pub use list::{cons, Cons, List, ListIter};
 pub use parser::{ParseError, Parser};
 pub use proc::{FormalArgs, NativeFunc, Proc};
 pub use span::{Loc, Span};
+pub use symbol::Symbol;
 pub use token::Token;
 pub use utils::{arity_error, eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args};

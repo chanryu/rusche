@@ -90,10 +90,51 @@ pub enum FrameKind {
 /// non-tail call chain that was active when the error was raised.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Frame {
-    pub name: String,
+    pub name: Rc<str>,
     pub kind: FrameKind,
     /// Span of the call form that entered this procedure, when available.
     pub call_site: Option<Span>,
+}
+
+/// Cached macro expansion keyed by the address of the call-site [`Cons`].
+#[derive(Debug)]
+pub(crate) struct MacroCacheEntry {
+    /// Keeps the call-site cons alive so the pointer key cannot be reused (ABA).
+    #[allow(dead_code)]
+    pub(crate) keep_alive: Rc<Cons>,
+    /// Identity of the macro's body; a redefinition yields a different `Rc` and misses.
+    pub(crate) body: Rc<List>,
+    pub(crate) expansion: Expr,
+}
+
+/// Cap on cached expansions. On overflow the whole cache is cleared.
+pub(crate) const MACRO_CACHE_CAP: usize = 4096;
+
+/// Shared evaluator state cloned cheaply with every [`EvalContext`].
+///
+/// Collapsing call-depth, call-trace, and the macro cache into one `Rc` halves
+/// refcount traffic on every `Step::Eval`.
+#[derive(Debug)]
+pub(crate) struct Shared {
+    call_depth: Cell<usize>,
+    max_call_depth: Cell<usize>,
+    call_trace: RefCell<Vec<Frame>>,
+    pub(crate) macro_cache: RefCell<HashMap<*const Cons, MacroCacheEntry>>,
+}
+
+impl Shared {
+    fn new() -> Self {
+        Self {
+            call_depth: Cell::new(0),
+            max_call_depth: Cell::new(DEFAULT_MAX_CALL_DEPTH),
+            call_trace: RefCell::new(Vec::new()),
+            macro_cache: RefCell::new(HashMap::new()),
+        }
+    }
+
+    pub(crate) fn clear_macro_cache(&self) {
+        self.macro_cache.borrow_mut().clear();
+    }
 }
 
 /// The object that represents an expression evaluation error.
@@ -166,11 +207,7 @@ pub type EvalResult = Result<Expr, EvalError>;
 #[derive(Clone, Debug)]
 pub struct EvalContext {
     pub env: Rc<Env>,
-    call_depth: Rc<Cell<usize>>,
-    max_call_depth: Rc<Cell<usize>>,
-    /// Active call frames for error traces. Shared across derived contexts; tail calls
-    /// replace the top entry (via pop then push) so the stack stays constant-depth.
-    call_trace: Rc<RefCell<Vec<Frame>>>,
+    pub(crate) shared: Rc<Shared>,
 }
 
 impl EvalContext {
@@ -179,23 +216,21 @@ impl EvalContext {
     pub fn derive_from(base: &EvalContext) -> Self {
         Self {
             env: Env::derive_from(&base.env),
-            call_depth: base.call_depth.clone(),
-            max_call_depth: base.max_call_depth.clone(),
-            call_trace: base.call_trace.clone(),
+            shared: base.shared.clone(),
         }
     }
 
     pub(crate) fn push_call(&self, proc: &Proc, call_site: Option<Span>) -> Result<(), EvalError> {
-        let depth = self.call_depth.get();
-        let max_depth = self.max_call_depth.get();
+        let depth = self.shared.call_depth.get();
+        let max_depth = self.shared.max_call_depth.get();
         if depth >= max_depth {
             return Err(EvalError::new(
                 ErrorKind::CallDepth,
                 format!("maximum call depth ({max_depth}) exceeded"),
             ));
         }
-        self.call_depth.set(depth + 1);
-        self.call_trace.borrow_mut().push(Frame {
+        self.shared.call_depth.set(depth + 1);
+        self.shared.call_trace.borrow_mut().push(Frame {
             name: proc.display_name(),
             kind: proc.frame_kind(),
             call_site,
@@ -204,17 +239,19 @@ impl EvalContext {
     }
 
     pub(crate) fn pop_call(&self) {
-        self.call_depth.set(self.call_depth.get() - 1);
-        self.call_trace.borrow_mut().pop();
+        self.shared
+            .call_depth
+            .set(self.shared.call_depth.get() - 1);
+        self.shared.call_trace.borrow_mut().pop();
     }
 
     pub(crate) fn is_in_proc(&self) -> bool {
-        self.call_depth.get() > 0
+        self.shared.call_depth.get() > 0
     }
 
     /// Snapshot of the active call stack (outermost first) for attaching to errors.
     pub(crate) fn trace_snapshot(&self) -> Vec<Frame> {
-        self.call_trace.borrow().clone()
+        self.shared.call_trace.borrow().clone()
     }
 }
 
@@ -289,20 +326,35 @@ impl Drop for CallFrame {
 ///
 /// Returns an `EvalResult`, which is typically a `Result` containing either the evaluated expression or an error.
 pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
+    // Symbols and non-list atoms never enter the loop -- avoid cloning their payload.
+    match expr {
+        Expr::Sym(name, span) => {
+            return context.env.lookup_sym(name).ok_or_else(|| {
+                EvalError::new(
+                    ErrorKind::UndefinedSymbol,
+                    format!("undefined symbol: `{name}`"),
+                )
+                .with_span(*span)
+            });
+        }
+        Expr::List(List::Cons(_), _) => {}
+        _ => return Ok(expr.clone()),
+    }
+
     let mut expr = expr.clone();
     let mut context = context.clone();
     let mut frame = CallFrame::new(&context);
 
-    // The innermost known source location among the forms this loop has gone through. Errors
-    // raised without a span (typically by native procedures, or by code without source
-    // information such as the prelude) are reported at that location. Prefer the whole call
-    // form so arity errors highlight `(two 1)` rather than only the argument list.
-    let mut span_hint: Option<Span> = None;
+    // Persist the last known user location across `Step::Eval` into span-less expansions
+    // (prelude macros). Prefer the whole call form; walk the argument list only on error.
+    let mut form_span_hint: Option<Span> = None;
+    // Innermost cons whose `cdr.span()` is used only if we still have no form-level hint.
+    let mut cons_for_span: Option<Rc<Cons>> = None;
 
     loop {
         let cons = match &expr {
             Expr::Sym(name, span) => {
-                return context.env.lookup(name).ok_or_else(|| {
+                return context.env.lookup_sym(name).ok_or_else(|| {
                     EvalError::new(
                         ErrorKind::UndefinedSymbol,
                         format!("undefined symbol: `{name}`"),
@@ -314,8 +366,11 @@ pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
             _ => return Ok(expr),
         };
 
-        if let Some(span) = expr.span().or_else(|| cons.cdr.span()) {
-            span_hint = Some(span);
+        if let Some(span) = expr.span() {
+            form_span_hint = Some(span);
+            cons_for_span = None;
+        } else if form_span_hint.is_none() {
+            cons_for_span = Some(cons.clone());
         }
 
         match eval_form(&cons, &context, &mut frame, expr.span()) {
@@ -326,7 +381,8 @@ pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
             }
             Err(mut err) => {
                 if err.span.is_none() {
-                    err.span = span_hint;
+                    err.span = form_span_hint
+                        .or_else(|| cons_for_span.as_ref().and_then(|c| c.cdr.span()));
                 }
                 // Attach the active call stack once, at the outermost eval that still has
                 // frames. Nested eval() calls see a non-empty shared stack and leave it alone.
@@ -350,16 +406,45 @@ pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
 /// something in tail position and must hand it back to the [`eval`] loop. These names cannot
 /// be shadowed by definitions.
 mod form {
+    use crate::symbol::Symbol;
+
     pub use crate::builtin::quote::{QUASIQUOTE, QUOTE};
     pub const IF: &str = "if";
     pub const EVAL: &str = "eval";
     pub const APPLY: &str = "apply";
     pub const BEGIN: &str = "begin";
+
+    /// Cached interned keywords for pointer comparison in the eval hot path.
+    pub struct Keywords {
+        pub quote: Symbol,
+        pub quasiquote: Symbol,
+        pub begin: Symbol,
+        pub if_: Symbol,
+        pub eval: Symbol,
+        pub apply: Symbol,
+    }
+
+    impl Keywords {
+        fn new() -> Self {
+            Self {
+                quote: Symbol::intern(QUOTE),
+                quasiquote: Symbol::intern(QUASIQUOTE),
+                begin: Symbol::intern(BEGIN),
+                if_: Symbol::intern(IF),
+                eval: Symbol::intern(EVAL),
+                apply: Symbol::intern(APPLY),
+            }
+        }
+    }
+
+    thread_local! {
+        pub static KEYWORDS: Keywords = Keywords::new();
+    }
 }
 
 /// Reduces a single form `(car . cdr)` by one step.
 fn eval_form(
-    cons: &Cons,
+    cons: &Rc<Cons>,
     context: &EvalContext,
     frame: &mut CallFrame,
     call_site: Option<Span>,
@@ -372,10 +457,14 @@ fn eval_form(
     let args = &cons.cdr;
 
     if let Expr::Sym(name, _) = &cons.car {
-        match name.as_str() {
-            QUOTE => return quote(name, args, context).map(Step::Value),
-            QUASIQUOTE => return quasiquote(name, args, context).map(Step::Value),
-            BEGIN => {
+        return KEYWORDS.with(|kw| {
+            if name == &kw.quote {
+                return quote(name.as_str(), args, context).map(Step::Value);
+            }
+            if name == &kw.quasiquote {
+                return quasiquote(name.as_str(), args, context).map(Step::Value);
+            }
+            if name == &kw.begin {
                 let mut iter = args.iter().peekable();
                 while let Some(expr) = iter.next() {
                     if iter.peek().is_none() {
@@ -385,8 +474,8 @@ fn eval_form(
                 }
                 return Ok(Step::Value(NIL));
             }
-            IF => {
-                let (condition, then_clause, else_clause) = get_2_or_3_args(name, args)?;
+            if name == &kw.if_ {
+                let (condition, then_clause, else_clause) = get_2_or_3_args(name.as_str(), args)?;
                 let cond_value = eval(condition, context)?;
                 let Expr::Bool(is_true, _) = cond_value else {
                     return Err(EvalError::new(
@@ -407,18 +496,29 @@ fn eval_form(
                 };
                 return Ok(Step::Eval(branch.clone(), context.clone()));
             }
-            EVAL => {
-                let expr = get_exact_1_arg(name, args)?;
+            if name == &kw.eval {
+                let expr = get_exact_1_arg(name.as_str(), args)?;
                 return Ok(Step::Eval(eval(expr, context)?, context.clone()));
             }
-            APPLY => {
+            if name == &kw.apply {
                 return Ok(Step::Eval(
-                    apply_form(name, args, context)?,
+                    apply_form(name.as_str(), args, context)?,
                     context.clone(),
                 ));
             }
-            _ => {}
-        }
+
+            // Not a special form -- fall through to ordinary procedure call.
+            let Expr::Proc(proc, _) = eval(&cons.car, context)? else {
+                return Err(EvalError::new(
+                    ErrorKind::NotCallable,
+                    format!("`{}` does not evaluate to a callable", cons.car),
+                )
+                .with_span(cons.car.span()));
+            };
+
+            frame.replace(&proc, call_site)?;
+            proc.apply(cons, call_site, context)
+        });
     }
 
     let Expr::Proc(proc, _) = eval(&cons.car, context)? else {
@@ -430,7 +530,7 @@ fn eval_form(
     };
 
     frame.replace(&proc, call_site)?;
-    proc.apply(args, context)
+    proc.apply(cons, call_site, context)
 }
 
 /// The struct that owns the root environment and evaluation context, enforces the call depth
@@ -486,9 +586,7 @@ impl Evaluator {
             all_envs,
             context: EvalContext {
                 env: root_env,
-                call_depth: Rc::new(Cell::new(0)),
-                max_call_depth: Rc::new(Cell::new(DEFAULT_MAX_CALL_DEPTH)),
-                call_trace: Rc::new(RefCell::new(Vec::new())),
+                shared: Rc::new(Shared::new()),
             },
             foreign_tracers: RefCell::new(HashMap::new()),
             gc_threshold: Cell::new(Some(DEFAULT_GC_THRESHOLD)),
@@ -499,7 +597,7 @@ impl Evaluator {
     /// Returns the maximum number of nested procedure calls allowed before evaluation fails
     /// with an error instead of overflowing the Rust stack.
     pub fn max_call_depth(&self) -> usize {
-        self.context.max_call_depth.get()
+        self.context.shared.max_call_depth.get()
     }
 
     /// Sets the maximum number of nested procedure calls. Defaults to
@@ -509,7 +607,7 @@ impl Evaluator {
     /// active; tail calls do not accumulate. Pick a value that fits the stack of the thread you
     /// evaluate on -- roughly 6 KiB per level in debug builds and 2 KiB in release builds.
     pub fn set_max_call_depth(&self, depth: usize) {
-        self.context.max_call_depth.set(depth);
+        self.context.shared.max_call_depth.set(depth);
     }
 
     /// Returns the garbage collection threshold, or `None` if automatic collection is disabled.
@@ -629,6 +727,8 @@ impl Evaluator {
     /// breaks the reference cycles between environments and the closures they hold.
     /// See the [type-level documentation](Evaluator#garbage-collection) for what counts as
     /// reachable.
+    ///
+    /// Also clears the macro-expansion cache, which may retain call-site cons cells.
     pub fn collect_garbage(&self) {
         self.collect_garbage_with_roots(&[]);
     }
@@ -664,6 +764,7 @@ impl Evaluator {
     }
 
     fn collect_garbage_with_roots(&self, extra_roots: &[&Expr]) {
+        self.context.shared.clear_macro_cache();
         self.gc_mark(extra_roots);
 
         // GC sweep
@@ -949,7 +1050,7 @@ mod tests {
         );
         let err = evaluator.eval(&parse_one("(a 42)")).unwrap_err();
         assert_eq!(err.kind, ErrorKind::Type);
-        let names: Vec<_> = err.trace().iter().map(|f| f.name.as_str()).collect();
+        let names: Vec<_> = err.trace().iter().map(|f| f.name.as_ref()).collect();
         assert!(names.contains(&"a"), "{names:?}");
         assert!(names.contains(&"b") || names.contains(&"car"), "{names:?}");
     }

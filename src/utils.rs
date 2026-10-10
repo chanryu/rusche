@@ -259,7 +259,7 @@ pub fn make_formal_args(expr: &Expr) -> Result<Rc<FormalArgs>, EvalError> {
             .with_span(extra.span()));
         }
 
-        formal_args.rest = Some(rest.to_string());
+        formal_args.rest = Some(crate::symbol::Symbol::intern(rest));
     }
 
     Ok(Rc::new(formal_args))
@@ -549,8 +549,12 @@ mod tests {
     #[test]
     fn test_make_formal_args() {
         let formal = |names: &[&str], rest: Option<&str>| FormalArgs {
-            names: names.iter().map(|s| s.to_string()).collect(),
-            rest: rest.map(str::to_string),
+            names: names
+                .iter()
+                .copied()
+                .map(crate::symbol::Symbol::intern)
+                .collect(),
+            rest: rest.map(crate::symbol::Symbol::intern),
         };
 
         // (a b)

@@ -101,7 +101,7 @@ const PRELUDE_MACROS: [&str; 8] = [
     "#,
 ];
 
-const PRELUDE_FUNCS: [&str; 14] = [
+const PRELUDE_FUNCS: [&str; 13] = [
     // = (eq? alias)
     "(define = eq?)",
     // caar, cadr, cdar, cddr
@@ -114,10 +114,6 @@ const PRELUDE_FUNCS: [&str; 14] = [
     // not
     r#"
     (define (not x) (if x false true))
-    "#,
-    // null?
-    r#"
-    (define (null? e) (eq? e '()))
     "#,
     // list -- a procedure so it can be passed to map/apply
     r#"
@@ -199,9 +195,13 @@ const PRELUDE_FUNCS: [&str; 14] = [
             (if (null? rest) true (apply <= (cons b rest)))
             false))
     (define (> a b *rest)
-        (apply < (reverse (cons a (cons b rest)))))
+        (if (num-less b a)
+            (if (null? rest) true (apply > (cons b rest)))
+            false))
     (define (>= a b *rest)
-        (apply <= (reverse (cons a (cons b rest)))))
+        (if (or (num-less b a) (= a b))
+            (if (null? rest) true (apply >= (cons b rest)))
+            false))
     (define (abs x)
         (if (< x 0) (- x) x))
     (define (min a *rest)

@@ -22,10 +22,11 @@ fn binary_operation(
     func: fn(lhs: f64, rhs: f64) -> f64,
 ) -> EvalResult {
     let mut result = identity;
+    let len = args.len();
 
     for (index, arg) in args.iter().enumerate() {
         let value = eval_into_num(proc_name, arg, context)?;
-        if index == 0 && args.len() > 1 && !is_associative {
+        if index == 0 && len > 1 && !is_associative {
             result = value;
         } else {
             result = func(result, value);

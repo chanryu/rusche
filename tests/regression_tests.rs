@@ -328,3 +328,64 @@ fn prelude_list_functions_handle_long_lists() {
     );
     assert_eq!(e.eval_to_str("(car (reverse (append big '(-1))))"), "-1");
 }
+
+// Macro expansion cache: a source call site expands once; redefinition invalidates;
+// `apply`'d macros still expand each time; errors keep the call-site span.
+#[test]
+fn macro_expansion_is_cached_per_call_site() {
+    let e = Evaluator::with_prelude();
+    let src = r#"
+        (define count 0)
+        (defmacro (tick)
+          (set! count (+ count 1))
+          count)
+        (define (run) (tick))
+    "#;
+    eval_all(&e, src).unwrap();
+    assert_eq!(e.eval_to_str("(run)"), "1");
+    assert_eq!(e.eval_to_str("(run)"), "1"); // cached -- count does not bump again
+    assert_eq!(e.eval_to_str("count"), "1");
+}
+
+#[test]
+fn macro_redefinition_invalidates_cache() {
+    let e = Evaluator::with_prelude();
+    let src = r#"
+        (defmacro (m) 1)
+        (define (run) (m))
+    "#;
+    eval_all(&e, src).unwrap();
+    assert_eq!(e.eval_to_str("(run)"), "1");
+    eval_all(&e, "(defmacro (m) 2)").unwrap();
+    assert_eq!(e.eval_to_str("(run)"), "2");
+}
+
+#[test]
+fn apply_macro_is_not_cached() {
+    let e = Evaluator::with_prelude();
+    let src = r#"
+        (define count 0)
+        (defmacro (tick) (set! count (+ count 1)) count)
+    "#;
+    eval_all(&e, src).unwrap();
+    assert_eq!(e.eval_to_str("(apply tick '())"), "1");
+    assert_eq!(e.eval_to_str("(apply tick '())"), "2");
+}
+
+#[test]
+fn macro_expansion_error_keeps_call_site_span() {
+    let e = Evaluator::with_prelude();
+    // Prelude-stripped body so the error has no body span; the evaluator fills it from
+    // the call-site span hint / call trace.
+    let src = r#"
+        (defmacro (boom x) (car x))
+        (boom 1)
+    "#;
+    let err = eval_all(&e, src).unwrap_err();
+    assert!(err.span.is_some(), "error should have a span");
+    let names: Vec<_> = err.trace().iter().map(|f| f.name.as_ref()).collect();
+    assert!(
+        names.contains(&"boom"),
+        "trace should include the macro call: {names:?}"
+    );
+}

@@ -147,7 +147,7 @@ mod tests {
         assert_eq!(wrapped.message(), "plain");
         assert_eq!(wrapped.to_string(), "plain");
         assert_eq!(wrapped.trace().len(), 1);
-        assert_eq!(wrapped.trace()[0].name, "f");
+        assert_eq!(&*wrapped.trace()[0].name, "f");
 
         let from_string = EvalError::from("via From".to_string());
         assert_eq!(from_string.kind, ErrorKind::Other);

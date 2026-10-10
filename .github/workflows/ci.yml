@@ -21,6 +21,8 @@ jobs:
               run: cargo build --verbose --workspace --examples
             - name: Run Clippy
               run: cargo clippy --workspace --all-targets -- -D warnings
+            - name: Compile benchmarks
+              run: cargo bench --no-run
             - name: Run tests and generate coverage report
               run: cargo llvm-cov --workspace --lcov --output-path lcov.info
             - name: Upload coverage to Codecov

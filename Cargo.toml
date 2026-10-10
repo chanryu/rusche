@@ -18,7 +18,12 @@ resolver = "2"
 [dependencies]
 
 [dev-dependencies]
+criterion = "0.5"
 rand = "0.8"
+
+[[bench]]
+name = "eval"
+harness = false
 
 [lib]
 name = "rusche"

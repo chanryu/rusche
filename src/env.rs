@@ -5,6 +5,97 @@ use std::rc::{Rc, Weak};
 use crate::eval::ForeignTracers;
 use crate::expr::Expr;
 use crate::proc::{NativeFunc, Proc};
+use crate::symbol::Symbol;
+
+/// Storage for bindings. The root environment uses a hash map (many builtins); derived
+/// frames use a small vector because they typically hold only a few locals.
+#[derive(Debug)]
+enum Vars {
+    Map(HashMap<Symbol, Expr>),
+    Flat(Vec<(Symbol, Expr)>),
+}
+
+impl Vars {
+    fn define(&mut self, name: Symbol, expr: Expr) {
+        match self {
+            Vars::Map(map) => {
+                map.insert(name, expr);
+            }
+            Vars::Flat(flat) => {
+                if let Some((_, slot)) = flat.iter_mut().find(|(k, _)| k == &name) {
+                    *slot = expr;
+                } else {
+                    flat.push((name, expr));
+                }
+            }
+        }
+    }
+
+    fn update(&mut self, name: &Symbol, expr: Expr) -> bool {
+        match self {
+            Vars::Map(map) => {
+                if let Some(slot) = map.get_mut(name) {
+                    *slot = expr;
+                    true
+                } else {
+                    false
+                }
+            }
+            Vars::Flat(flat) => {
+                if let Some((_, slot)) = flat.iter_mut().find(|(k, _)| k == name) {
+                    *slot = expr;
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
+    fn lookup(&self, name: &Symbol) -> Option<Expr> {
+        match self {
+            Vars::Map(map) => map.get(name).cloned(),
+            Vars::Flat(flat) => flat
+                .iter()
+                .find(|(k, _)| k == name)
+                .map(|(_, v)| v.clone()),
+        }
+    }
+
+    fn names(&self) -> Vec<String> {
+        match self {
+            Vars::Map(map) => map.keys().map(|k| k.to_string()).collect(),
+            Vars::Flat(flat) => flat.iter().map(|(k, _)| k.to_string()).collect(),
+        }
+    }
+
+    fn values(&self) -> Vec<Expr> {
+        match self {
+            Vars::Map(map) => map.values().cloned().collect(),
+            Vars::Flat(flat) => flat.iter().map(|(_, v)| v.clone()).collect(),
+        }
+    }
+
+    fn clear(&mut self) {
+        match self {
+            Vars::Map(map) => map.clear(),
+            Vars::Flat(flat) => flat.clear(),
+        }
+    }
+
+    #[cfg(test)]
+    fn get(&self, name: &str) -> Option<Expr> {
+        self.lookup(&Symbol::intern(name))
+    }
+
+    #[cfg(test)]
+    fn len(&self) -> usize {
+        match self {
+            Vars::Map(map) => map.len(),
+            Vars::Flat(flat) => flat.len(),
+        }
+    }
+}
 
 /// `Env` object stores variable bindings and manages scope for expression evaluation.
 ///
@@ -14,41 +105,55 @@ use crate::proc::{NativeFunc, Proc};
 #[derive(Debug)]
 pub struct Env {
     base: Option<Rc<Env>>,
-    vars: RefCell<HashMap<String, Expr>>,
+    vars: RefCell<Vars>,
     all_envs: Weak<RefCell<Vec<Weak<Env>>>>,
     is_reachable: Cell<bool>,
+    /// Whether this env is in the GC registry. Derived frames register lazily when a
+    /// closure or macro captures them -- most call frames never need it.
+    registered: Cell<bool>,
 }
 
 impl Env {
     pub(crate) fn root(all_envs: Weak<RefCell<Vec<Weak<Env>>>>) -> Rc<Self> {
         Rc::new(Self {
             base: None,
-            vars: RefCell::new(HashMap::new()),
+            vars: RefCell::new(Vars::Map(HashMap::new())),
             all_envs,
             is_reachable: Cell::new(false),
+            registered: Cell::new(true), // root is always registered by Evaluator::new
         })
     }
 
     pub(crate) fn derive_from(base: &Rc<Env>) -> Rc<Self> {
-        let derived_env = Rc::new(Self {
+        Rc::new(Self {
             base: Some(base.clone()),
-            vars: RefCell::new(HashMap::new()),
+            vars: RefCell::new(Vars::Flat(Vec::new())),
             all_envs: base.all_envs.clone(),
             is_reachable: Cell::new(false),
-        });
+            registered: Cell::new(false),
+        })
+    }
 
-        if let Some(all_envs) = base.all_envs.upgrade() {
-            let mut all_envs = all_envs.borrow_mut();
-            // Drop registry entries for environments that reference counting has already
-            // freed. Doing this only when the vector is full keeps the cost amortised O(1)
-            // while preventing unbounded growth in long-running loops.
-            if all_envs.len() == all_envs.capacity() {
-                all_envs.retain(|env| env.strong_count() > 0);
-            }
-            all_envs.push(Rc::downgrade(&derived_env));
+    /// Registers this environment with the garbage collector if it is not already.
+    ///
+    /// Call this when a closure or macro captures the environment, forming a potential
+    /// reference cycle that ordinary `Rc` dropping cannot break.
+    pub(crate) fn ensure_registered(self: &Rc<Self>) {
+        if self.registered.get() {
+            return;
         }
-
-        derived_env
+        let Some(all_envs) = self.all_envs.upgrade() else {
+            return;
+        };
+        let mut all_envs = all_envs.borrow_mut();
+        // Drop registry entries for environments that reference counting has already
+        // freed. Doing this only when the vector is full keeps the cost amortised O(1)
+        // while preventing unbounded growth in long-running loops.
+        if all_envs.len() == all_envs.capacity() {
+            all_envs.retain(|env| env.strong_count() > 0);
+        }
+        all_envs.push(Rc::downgrade(self));
+        self.registered.set(true);
     }
 
     /// Defines a new variable binding in the current environment.
@@ -64,11 +169,16 @@ impl Env {
     ///
     /// * `name` - The name of the variable to define.
     /// * `expr` - The expression to bind to the variable. This can be any type that implements the `Into<Expr>` trait.
-    pub fn define<IntoExpr>(&self, name: &str, expr: IntoExpr)
+    pub fn define<IntoExpr>(&self, name: impl AsRef<str>, expr: IntoExpr)
     where
         IntoExpr: Into<Expr>,
     {
-        self.vars.borrow_mut().insert(name.into(), expr.into());
+        self.define_sym(Symbol::intern(name), expr.into());
+    }
+
+    /// Defines a binding using an already-interned [`Symbol`].
+    pub fn define_sym(&self, name: Symbol, expr: impl Into<Expr>) {
+        self.vars.borrow_mut().define(name, expr.into());
     }
 
     /// Updates a variable binding in the environment.
@@ -86,14 +196,19 @@ impl Env {
     /// # Returns
     ///
     /// Returns `true` if the variable was successfully updated, `false` otherwise.
-    pub fn update<IntoExpr>(&self, name: &str, expr: IntoExpr) -> bool
+    pub fn update<IntoExpr>(&self, name: impl AsRef<str>, expr: IntoExpr) -> bool
     where
         IntoExpr: Into<Expr>,
     {
+        self.update_sym(&Symbol::intern(name), expr.into())
+    }
+
+    /// Updates a binding using an already-interned [`Symbol`].
+    pub fn update_sym(&self, name: &Symbol, expr: impl Into<Expr>) -> bool {
+        let expr = expr.into();
         let mut env = self;
         loop {
-            if let Some(value) = env.vars.borrow_mut().get_mut(name) {
-                *value = expr.into();
+            if env.vars.borrow_mut().update(name, expr.clone()) {
                 return true;
             }
             let Some(base) = &env.base else {
@@ -115,11 +230,16 @@ impl Env {
     /// # Returns
     ///
     /// Returns an `Option` containing the expression bound to the variable if found, or `None` if not found.
-    pub fn lookup(&self, name: &str) -> Option<Expr> {
+    pub fn lookup(&self, name: impl AsRef<str>) -> Option<Expr> {
+        self.lookup_sym(&Symbol::intern(name))
+    }
+
+    /// Looks up a binding using an already-interned [`Symbol`].
+    pub fn lookup_sym(&self, name: &Symbol) -> Option<Expr> {
         let mut env = self;
         loop {
-            if let Some(value) = env.vars.borrow().get(name) {
-                return Some(value.clone());
+            if let Some(value) = env.vars.borrow().lookup(name) {
+                return Some(value);
             }
             let Some(base) = &env.base else {
                 return None;
@@ -136,7 +256,7 @@ impl Env {
         let mut names = Vec::new();
         let mut env = self;
         loop {
-            names.extend(env.vars.borrow().keys().cloned());
+            names.extend(env.vars.borrow().names());
             let Some(base) = &env.base else {
                 break;
             };
@@ -151,10 +271,10 @@ impl Env {
         self.define(
             name,
             Expr::Proc(
-                Proc::Native {
-                    name: name.to_owned(),
+                Rc::new(Proc::Native {
+                    name: Rc::from(name),
                     func,
-                },
+                }),
                 None,
             ),
         );
@@ -174,17 +294,16 @@ impl Env {
 
         self.is_reachable.set(true);
 
-        self.vars
-            .borrow()
-            .values()
-            .for_each(|expr| Self::gc_mark_expr(expr, tracers));
+        for expr in self.vars.borrow().values() {
+            Self::gc_mark_expr(&expr, tracers);
+        }
     }
 
     /// Marks every environment reachable from `expr`: closures captured directly, inside
     /// lists, or inside foreign objects with a registered tracer.
     pub(crate) fn gc_mark_expr(expr: &Expr, tracers: &ForeignTracers) {
         match expr {
-            Expr::Proc(proc, _) => Self::gc_mark_proc(proc, tracers),
+            Expr::Proc(proc, _) => Self::gc_mark_proc(proc.as_ref(), tracers),
             Expr::List(list, _) => list
                 .iter()
                 .for_each(|expr| Self::gc_mark_expr(expr, tracers)),
@@ -224,7 +343,7 @@ mod tests {
         let env = Env::root(Weak::new());
         assert_eq!(env.vars.borrow().len(), 0);
         env.define("one", 1);
-        assert_eq!(env.vars.borrow().get("one"), Some(&num(1)));
+        assert_eq!(env.vars.borrow().get("one"), Some(num(1)));
     }
 
     #[test]
@@ -255,9 +374,9 @@ mod tests {
         assert!(derived.update("one", "uno"));
         assert!(derived.update("two", "dos"));
 
-        assert_eq!(base.vars.borrow().get("one"), Some(&"uno".into()));
+        assert_eq!(base.vars.borrow().get("one"), Some("uno".into()));
         assert_eq!(derived.vars.borrow().get("one"), None);
-        assert_eq!(derived.vars.borrow().get("two"), Some(&"dos".into()));
+        assert_eq!(derived.vars.borrow().get("two"), Some("dos".into()));
     }
 
     #[test]

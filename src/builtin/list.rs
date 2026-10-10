@@ -51,6 +51,11 @@ pub fn cons(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     }
 }
 
+pub fn is_null(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let expr = get_exact_1_arg(proc_name, args)?;
+    Ok(eval(expr, context)?.is_nil().into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
