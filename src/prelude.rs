@@ -101,7 +101,7 @@ const PRELUDE_MACROS: [&str; 8] = [
     "#,
 ];
 
-const PRELUDE_FUNCS: [&str; 12] = [
+const PRELUDE_FUNCS: [&str; 13] = [
     // = (eq? alias)
     "(define = eq?)",
     // caar, cadr, cdar, cddr
@@ -110,6 +110,10 @@ const PRELUDE_FUNCS: [&str; 12] = [
     (define (cadr lst) (car (cdr lst)))
     (define (cdar lst) (cdr (car lst)))
     (define (cddr lst) (cdr (cdr lst)))
+    "#,
+    // not -- defined via `if` so that remains the sole boolean-taking form
+    r#"
+    (define (not x) (if x false true))
     "#,
     // list -- a procedure so it can be passed to map/apply
     r#"

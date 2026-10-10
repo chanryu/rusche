@@ -43,7 +43,7 @@ Rusche supports the following data types.
 
 ## Boolean Values
 
-`true` and `false` are the only boolean values. Predicates return `true` or `false`. Conditions in `if` (and therefore in `not` and in prelude forms built on `if`: `cond`, `while`, `and`, `or`, `filter`) must evaluate to a boolean; any other type is an error. The empty list `()` is an ordinary value with no special role in conditions. Procedures that signal "absent" (for example `str->num`, `member`, `assoc`) return `false`. For a non-boolean default, use `(or-else expr default)`.
+`true` and `false` are the only boolean values. Predicates return `true` or `false`. Conditions in `if` (and therefore in prelude forms built on it: `cond`, `while`, `and`, `or`, `not`, `filter`) must evaluate to a boolean; any other type is an error. The empty list `()` is an ordinary value with no special role in conditions. Procedures that signal "absent" (for example `str->num`, `member`, `assoc`) return `false`. For a non-boolean default, use `(or-else expr default)`.
 
 ## Procedure Parameters
 
@@ -135,14 +135,6 @@ The following forms and procedures are implemented in Rust. Most are native proc
   (cons '(1 2) '(3)) ; ((1 2) 3)
   (cons 1 '())       ; (1)
   (cons 1 2)         ; error -- no dotted pairs
-  ```
-
-#### `not`
-  Negates a boolean. The argument must evaluate to `true` or `false`.
-  ```scheme
-  (not true)   ; false
-  (not false)  ; true
-  (not '())    ; error
   ```
 
 #### `null?`
@@ -281,7 +273,7 @@ The following forms and procedures are implemented in Rusche itself. Please chec
 
 Macros: `and`, `cond` (with `else`), `defun`, `let`, `let*`, `or`, `or-else`, `while`
 
-Procedures: `append`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `map`, `member`, `reverse`, `<`, `>`, `<=`, `>=`, `abs`, `min`, `max`
+Procedures: `append`, `assoc`, `caar`, `cadr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `map`, `member`, `not`, `reverse`, `<`, `>`, `<=`, `>=`, `abs`, `min`, `max`
 
 `and` and `or` short-circuit and always return a boolean. Operands must be booleans.
 ```scheme
