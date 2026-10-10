@@ -265,11 +265,7 @@ mod tests {
         assert!(err.message.contains("quasiquote: missing argument"));
 
         // ``(,(unquote)) -- nested unquote with no argument
-        let err = quasiquote(list!(list!(
-            intern(QUASIQUOTE),
-            list!(intern(UNQUOTE))
-        )))
-        .unwrap_err();
+        let err = quasiquote(list!(list!(intern(QUASIQUOTE), list!(intern(UNQUOTE))))).unwrap_err();
         assert!(err.message.contains("unquote: missing argument"));
 
         // ``(,(unquote-splicing)) -- nested splicing with no argument
@@ -288,19 +284,13 @@ mod tests {
         // ``(,@'(1 2)) => (quasiquote (unquote-splicing (quote (1 2))))
         let result = quasiquote(list!(list!(
             intern(QUASIQUOTE),
-            list!(
-                intern(UNQUOTE_SPLICING),
-                list!(intern(QUOTE), list!(1, 2))
-            )
+            list!(intern(UNQUOTE_SPLICING), list!(intern(QUOTE), list!(1, 2)))
         )));
         assert_eq!(
             result,
             Ok(list!(
                 intern(QUASIQUOTE),
-                list!(
-                    intern(UNQUOTE_SPLICING),
-                    list!(intern(QUOTE), list!(1, 2))
-                )
+                list!(intern(UNQUOTE_SPLICING), list!(intern(QUOTE), list!(1, 2)))
             )
             .into())
         );
@@ -317,11 +307,7 @@ mod tests {
         )));
         assert_eq!(
             result,
-            Ok(list!(
-                intern(QUASIQUOTE),
-                list!(intern(UNQUOTE), intern("x"))
-            )
-            .into())
+            Ok(list!(intern(QUASIQUOTE), list!(intern(UNQUOTE), intern("x"))).into())
         );
     }
 }

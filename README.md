@@ -20,17 +20,22 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
 - Garbage collection
 - Tail-call optimization, plus a call-depth limit so runaway recursion is an error rather than a stack overflow
 - Interoperability with the hosting Rust application via user-defined (a.k.a. native) functions and the `Foreign` data type
-- Structured errors with source spans, optional help, and a call trace, for example:
-  ```
-  repl❯ (define plus
-  ....❯     (lambda (x 7)   ;; 7 should be y
-  ....❯         (+ x y)))
+- Structured errors with source spans, optional help, and a call trace. Given `first.rsc`:
+  ```scheme
+  (define (first-or-zero lst)
+      (if lst (car lst) 0))   ;; `()` is not false in Rusche
 
-  error: `7` is not a symbol
-    --> <repl>:2:16
-    1| (define plus
-    2|     (lambda (x 7)
-     |                ^
+  (first-or-zero (list))
+  ```
+  `rusche-cli` reports:
+  ```
+  error: `lst` evaluated to `()`, expected `true` or `false`
+    --> first.rsc:2:9
+    1| (define (first-or-zero lst)
+    2|     (if lst (car lst) 0))   ;; `()` is not false in Rusche
+     |         ^^^
+    = help: conditions must be booleans; use `(not (null? x))` to test for an empty list
+    = in `first-or-zero`, called at first.rsc:4:1
   ```
 
 ## Usage
@@ -38,29 +43,46 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
 ### Implementing or embedding Rusche interpreter
 
 ```rust
-use rusche::{tokenize, Evaluator, Expr, Parser};
+use rusche::{
+    utils::{eval_into_num, get_exact_1_arg},
+    EvalContext, EvalResult, Evaluator, Expr, List,
+};
 
-let source = "(+ 1 (% 9 2))"; // 1 + (9 % 2) = 1 + 1 = 2
+// A native function: Rust code that scripts can call. Arguments arrive
+// unevaluated; the helpers in `rusche::utils` evaluate and type-check them.
+fn sqrt(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let arg = get_exact_1_arg(proc_name, args)?;
+    let n = eval_into_num(proc_name, arg, context)?;
+    Ok(Expr::from(n.sqrt()))
+}
 
-// Tokenize source
-let tokens = tokenize(source, None).unwrap();
+fn main() {
+    // Built-ins plus the prelude (`+`, `*`, `map`, `let`, ...)
+    let evaluator = Evaluator::default();
 
-// Create Parser with the tokens
-let mut parser = Parser::with_tokens(tokens);
+    // Expose host functionality to scripts
+    evaluator.root_env().define_native_proc("sqrt", sqrt);
 
-// Parse tokens into an expression
-let expr = parser.parse().unwrap().unwrap();
+    // Tokenize, parse, and evaluate every top-level form; the last value is returned
+    let result = evaluator
+        .eval_str(
+            r#"
+            (define (hypot a b) (sqrt (+ (* a a) (* b b))))
+            (map (lambda (p) (apply hypot p)) '((3 4) (5 12)))
+            "#,
+        )
+        .unwrap();
 
-// Create Evaluator with the built-in primitives and the prelude
-let evaluator = Evaluator::default();
+    println!("{result}"); // (5 13)
+    assert_eq!(result, evaluator.eval_str("'(5 13)").unwrap());
 
-// Evaluate the parsed expression
-let result = evaluator.eval(&expr);
-
-assert_eq!(result, Ok(Expr::from(2)));
-
-println!("{}", result.unwrap()); // this prints out 2
+    // Lex, parse, and eval failures share one `Error` type with a source span
+    let err = evaluator.eval_str("(sqrt \"nine\")").unwrap_err();
+    println!("{err}"); // 1:7-12: sqrt: `"nine"` evaluated to `"nine"`, expected a number
+}
 ```
+
+This is [`examples/readme-demo`](examples/readme-demo/main.rs); run it with `cargo run --example readme-demo`. `Evaluator::eval_str` covers most hosts; for incremental parsing (e.g. a multi-line REPL) use `tokenize`, `Parser`, and `Evaluator::eval` directly, as shown in the [embedding tutorial](docs/tutorials/embedding.md#lower-level-pipeline). Use `root_env().define` to inject plain values and `Foreign` for Rust objects (see the [tutorials](#documentation)).
 
 For a standalone REPL and file runner built on the library, see [`rusche-cli`](#rusche-cli-example-host) below.
 
@@ -113,7 +135,7 @@ The core language is everything available from `Evaluator::default()` (built-ins
 
 - I/O: `display`, `write`, `newline`, `read`, `exit`, `load`
 - System helpers: `getenv`, `clock`, `random`, `command-line`
-- A `vec` foreign type
+- `vec` and `dict` foreign types
 - Scheme-style aliases (`number?`, `modulo`, `string-append`, `string->number`, …)
 - A REPL with history, multi-line editing, and meta-commands (`,help`, `,load`, …)
 
@@ -128,7 +150,7 @@ cargo install --path crates/rusche-cli
 ## Documentation
 
 - [Language reference](docs/language-reference.md) -- core special forms and built-ins (crate only)
-- [`rusche-cli`](docs/rusche-cli.md) -- running the example interpreter: options, the REPL, I/O, `vec`, and Scheme aliases
+- [`rusche-cli`](docs/rusche-cli.md) -- running the example interpreter: options, the REPL, I/O, `vec`, `dict`, and Scheme aliases
 - [API documentation on docs.rs](https://docs.rs/rusche/latest/rusche/) -- embedding Rusche in a Rust application
 - Tutorials for host applications:
   - [Embedding the interpreter](docs/tutorials/embedding.md)

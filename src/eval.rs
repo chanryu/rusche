@@ -303,8 +303,11 @@ pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
         let cons = match &expr {
             Expr::Sym(name, span) => {
                 return context.env.lookup(name).ok_or_else(|| {
-                    EvalError::new(ErrorKind::UndefinedSymbol, format!("undefined symbol: `{name}`"))
-                        .with_span(*span)
+                    EvalError::new(
+                        ErrorKind::UndefinedSymbol,
+                        format!("undefined symbol: `{name}`"),
+                    )
+                    .with_span(*span)
                 });
             }
             Expr::List(List::Cons(cons), _) => cons.clone(),
@@ -907,26 +910,36 @@ mod tests {
         let evaluator = Evaluator::with_prelude();
 
         let err = evaluator.eval_str("undefined-sym").unwrap_err();
-        let Error::Eval(e) = err else { panic!("expected eval error") };
+        let Error::Eval(e) = err else {
+            panic!("expected eval error")
+        };
         assert_eq!(e.kind, ErrorKind::UndefinedSymbol);
         assert!(e.message().contains("undefined symbol"));
 
         let err = evaluator.eval_str("(1 2)").unwrap_err();
-        let Error::Eval(e) = err else { panic!("expected eval error") };
+        let Error::Eval(e) = err else {
+            panic!("expected eval error")
+        };
         assert_eq!(e.kind, ErrorKind::NotCallable);
 
         let err = evaluator.eval_str("(car 1 2)").unwrap_err();
-        let Error::Eval(e) = err else { panic!("expected eval error") };
+        let Error::Eval(e) = err else {
+            panic!("expected eval error")
+        };
         assert_eq!(e.kind, ErrorKind::Arity);
         assert!(e.message().contains("expected 1 argument, got 2"));
 
         let err = evaluator.eval_str("(car 1)").unwrap_err();
-        let Error::Eval(e) = err else { panic!("expected eval error") };
+        let Error::Eval(e) = err else {
+            panic!("expected eval error")
+        };
         assert_eq!(e.kind, ErrorKind::Type);
         assert!(e.message().contains("evaluated to `1`"));
 
         let err = evaluator.eval_str("(error \"boom\" 1)").unwrap_err();
-        let Error::Eval(e) = err else { panic!("expected eval error") };
+        let Error::Eval(e) = err else {
+            panic!("expected eval error")
+        };
         assert_eq!(e.kind, ErrorKind::User);
         assert_eq!(e.message(), "boom 1");
 

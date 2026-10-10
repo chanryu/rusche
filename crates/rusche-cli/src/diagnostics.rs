@@ -43,11 +43,7 @@ pub fn print_error(diag: &Diagnostic<'_>) {
     eprintln!("  {} {}", "-->".blue().bold(), loc);
 
     let print_line = |line: usize| {
-        eprintln!(
-            "{}{}",
-            format!("{:>3}| ", line + 1).dimmed(),
-            lines[line]
-        );
+        eprintln!("{}{}", format!("{:>3}| ", line + 1).dimmed(), lines[line]);
     };
 
     // Context lines before the span.
@@ -169,7 +165,11 @@ pub fn print_parse_error(error: &ParseError, src: &str, source_name: &str, span:
 
 fn print_help_and_trace(diag: &Diagnostic<'_>) {
     if let Some(help) = diag.help {
-        eprintln!("  {} {}", "=".blue().bold(), format!("help: {help}").dimmed());
+        eprintln!(
+            "  {} {}",
+            "=".blue().bold(),
+            format!("help: {help}").dimmed()
+        );
     }
 
     for frame in diag.trace {
@@ -194,10 +194,7 @@ mod tests {
     use rusche::{ErrorKind, FrameKind, Loc};
 
     fn span(begin_line: usize, begin_col: usize, end_line: usize, end_col: usize) -> Span {
-        Span::new(
-            Loc::new(begin_line, begin_col),
-            Loc::new(end_line, end_col),
-        )
+        Span::new(Loc::new(begin_line, begin_col), Loc::new(end_line, end_col))
     }
 
     #[test]

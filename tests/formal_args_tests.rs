@@ -34,7 +34,9 @@ fn rest_parameter_in_lambda_define_and_defmacro() {
 
     // arity errors still apply to the fixed part
     let _ = e.eval_to_str("(defmacro (two a b *rest) a)");
-    assert!(e.eval_to_str("(two 1)").contains("two: expected 2 arguments, got 1"));
+    assert!(e
+        .eval_to_str("(two 1)")
+        .contains("two: expected 2 arguments, got 1"));
     assert!(eval_str("((lambda (a b) a) 1)").contains("expected 2 arguments, got 1"));
     assert!(eval_str("((lambda (a) a) 1 2)").contains("expected 1 argument, got 2"));
 }
@@ -91,4 +93,3 @@ fn star_alone_and_star_inside_a_name_are_ordinary_parameters() {
     // `*a*` binds `a*`
     assert_eq!(eval_str("((lambda (*a*) a*) 1 2)"), "(1 2)");
 }
-

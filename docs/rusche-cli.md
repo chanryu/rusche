@@ -1,7 +1,7 @@
 # `rusche-cli`
 
 [`rusche-cli`](../crates/rusche-cli) is an example host, not part of the core
-`rusche` crate: a REPL and file runner, plus I/O, `vec`, and Scheme aliases.
+`rusche` crate: a REPL and file runner, plus I/O, `vec`, `dict`, and Scheme aliases.
 The [language reference](language-reference.md) documents only the core language.
 
 ## Installation
@@ -21,9 +21,10 @@ cargo run -p rusche-cli -- examples/fizzbuzz.rsc
 | I/O | [`builtin/io.rs`](../crates/rusche-cli/src/builtin/io.rs) | `display`, `write`, `newline`, `read`, `exit`, `load` |
 | System | [`builtin/sys.rs`](../crates/rusche-cli/src/builtin/sys.rs) | `getenv`, `clock`, `random`, `command-line` |
 | Vectors | [`builtin/vec.rs`](../crates/rusche-cli/src/builtin/vec.rs) | `vec?`, `vec-make`, `vec`, `vec-push`, `vec-pop`, `vec-get`, `vec-set!`, `vec-length`, `vec->list`, `list->vec` |
+| Dicts | [`builtin/dict.rs`](../crates/rusche-cli/src/builtin/dict.rs) | `dict?`, `dict-make`, `dict`, `dict-get`, `dict-set!`, `dict-has?`, `dict-remove!`, `dict-length`, `dict-keys`, `dict->list`, `list->dict` |
 | Scheme aliases | [`builtin/scheme.rs`](../crates/rusche-cli/src/builtin/scheme.rs) | `number?`, `modulo`, `string-append`, … Omitted with `--no-prelude` (they call prelude names). |
 
-I/O, system, and vector procedures are always registered. Scripts under
+I/O, system, vector, and dict procedures are always registered. Scripts under
 [`examples/*.rsc`](../examples) are written for this host.
 
 ## Running
@@ -77,7 +78,7 @@ is an empty program.
 | `--max-call-depth N` | Maximum call depth (default 1000). Tail calls do not count. See [Tail calls](language-reference.md#tail-calls). |
 | `--gc-threshold N` | Collect automatically once live environments reach `N` (default 10000). |
 | `--gc-threshold off` | Leave automatic collection off. `,gc` in the REPL still collects. |
-| `--no-prelude` | Built-ins plus I/O, system, and `vec`. No prelude (`cond`, `let`, `+`, …) and no Scheme aliases. |
+| `--no-prelude` | Built-ins plus I/O, system, `vec`, and `dict`. No prelude (`cond`, `let`, `+`, …) and no Scheme aliases. |
 | `--no-color` | Turn off color in the banner, REPL values, meta-command help, and diagnostics. |
 
 ### Exit codes
@@ -233,6 +234,46 @@ called as `(make-vector)`.
 | `vec->list` | List of the elements, in order. |
 | `list->vec` | New vector from a list. |
 
+## Dicts
+
+A [`Foreign`](tutorials/foreign.md) wrapper around `RefCell<BTreeMap<Key, Expr>>`.
+Mutable, compared by identity, printed as `<foreign: 0x…>`. Keys may be
+booleans, numbers, strings, or symbols; lists, procedures, and foreign values
+are rejected. `-0.0` and `0.0` are the same key; `NaN` is not a valid key.
+`dict-keys` and `dict->list` use a deterministic key order. `dict-set!` and
+`dict-remove!` return `()`. A tracer keeps closures stored as values reachable.
+See the [foreign object tutorial](tutorials/foreign.md), and
+[`examples/dict.rsc`](../examples/dict.rsc) / [`examples/fibonacci.rsc`](../examples/fibonacci.rsc)
+for scripts that use it. There are no `hash-table-*` Scheme aliases.
+
+```scheme
+(define d (dict "a" 1 "b" 2))
+(dict-set! d "c" 3)
+(dict-get d "a")           ; 1
+(dict-get d "missing" 0)   ; 0
+(dict-has? d "b")          ; true
+(dict-remove! d "b")
+(dict-length d)            ; 2
+(dict-keys d)              ; ("a" "c")
+(dict->list d)             ; (("a" 1) ("c" 3))
+(dict? d)                  ; true
+(list->dict '((x 10) (y 20)))
+```
+
+| Procedure | Behavior |
+| --- | --- |
+| `dict?` | `true` if the argument is a dict, otherwise `false`. |
+| `dict-make` | No arguments. A new empty dict. |
+| `dict` | A new dict from flat key/value pairs. Odd argument count is an error. |
+| `dict-get` | Value for a key, or an optional default (else `false`). The default is evaluated only when the key is absent. |
+| `dict-set!` | Insert or replace a key. Returns `()`. |
+| `dict-has?` | `true` if the key is present. |
+| `dict-remove!` | Remove a key if present. Returns `()`. |
+| `dict-length` | Number of entries. |
+| `dict-keys` | List of keys, in map order. |
+| `dict->list` | List of two-element lists `((k v) ...)`, in map order. |
+| `list->dict` | New dict from a list of two-element lists. Later duplicates win. |
+
 ## Scheme-style aliases
 
 Familiar spellings bound in the root environment. Skipped with `--no-prelude`.
@@ -270,6 +311,7 @@ another host; the core library does not define them.
 rebound. `substring` is [`str-slice`](language-reference.md#str-slice).
 `pair?` is false for `()`. `list-ref` past the end fails as `car` of `()`.
 There is no `vector`, `vector->list`, or `list->vector` alias.
+There are no `hash-table-*` aliases for `dict`.
 
 ## Examples
 
@@ -277,8 +319,9 @@ There is no `vector`, `vector->list`, or `list->vector` alias.
 | --- | --- |
 | [`backwards.rsc`](../examples/backwards.rsc) | A macro that reverses a sequence of forms. |
 | [`counter.rsc`](../examples/counter.rsc) | A closure that counts with `set!`. |
+| [`dict.rsc`](../examples/dict.rsc) | Word frequencies with `dict`. Shebang. |
 | [`factorial.rsc`](../examples/factorial.rsc), [`factorial-tail-recursive.rsc`](../examples/factorial-tail-recursive.rsc) | Factorial, reading a number. |
-| [`fibonacci.rsc`](../examples/fibonacci.rsc), [`fibonacci-tail-recursive.rsc`](../examples/fibonacci-tail-recursive.rsc) | Fibonacci, reading a number. |
+| [`fibonacci.rsc`](../examples/fibonacci.rsc), [`fibonacci-tail-recursive.rsc`](../examples/fibonacci-tail-recursive.rsc) | Fibonacci, reading a number. The non-tail version memoizes with `dict`. |
 | [`fizzbuzz.rsc`](../examples/fizzbuzz.rsc) | FizzBuzz from stdin. Shebang. |
 | [`mandelbrot.rsc`](../examples/mandelbrot.rsc) | ASCII Mandelbrot. Optional width and height from `(command-line)`. Shebang. |
 

@@ -198,9 +198,9 @@ fn bind_args(
     let expected = formal_args.names.len();
 
     for (index, name) in formal_args.names.iter().enumerate() {
-        let expr = actual_args.next().ok_or_else(|| {
-            crate::utils::arity_error(proc_name, expected..=expected, index)
-        })?;
+        let expr = actual_args
+            .next()
+            .ok_or_else(|| crate::utils::arity_error(proc_name, expected..=expected, index))?;
         env.define(name, value(expr)?);
     }
 

@@ -207,6 +207,45 @@ fn vec_and_write_builtins() {
 }
 
 #[test]
+fn dict_builtins() {
+    let out = run(
+        &[
+            "-e",
+            r#"(begin
+                (define d (dict "a" 1 "b" 2))
+                (display (dict-length d))
+                (newline)
+                (dict-set! d "c" 3)
+                (display (dict-get d "a"))
+                (newline)
+                (display (dict-get d "missing" 0))
+                (newline)
+                (display (dict->list d))
+                (newline)
+                (display (dict? d))
+                (newline))"#,
+        ],
+        "",
+    );
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(
+        stdout(&out),
+        "2\n1\n0\n((\"a\" 1) (\"b\" 2) (\"c\" 3))\ntrue\n"
+    );
+}
+
+#[test]
+fn dict_rejects_bad_key_and_odd_args() {
+    let out = run(&["-e", "(dict-get (dict) '(1))"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("dict key"), "{}", stderr(&out));
+
+    let out = run(&["-e", "(dict 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("even number"), "{}", stderr(&out));
+}
+
+#[test]
 fn scheme_boolean_aliases() {
     let out = run(&["-e", "(list #t #f (eq? #t true) (eq? #f false))"], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
@@ -278,14 +317,30 @@ fn example_backwards() {
 }
 
 #[test]
+fn example_dict() {
+    let out = run(&[example("dict.rsc").to_str().unwrap()], "");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    let s = stdout(&out);
+    assert!(s.contains("the: 3"), "{s}");
+    assert!(s.contains("fox: 2"), "{s}");
+    assert!(s.contains("unique: 8"), "{s}");
+    assert!(s.contains("has fox? true"), "{s}");
+}
+
+#[test]
+fn example_fibonacci_memoized() {
+    let out = run(&[example("fibonacci.rsc").to_str().unwrap()], "10\n");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    let s = stdout(&out);
+    assert!(s.contains("fib(10) => 55"), "{s}");
+    assert!(s.contains("cache entries: 11"), "{s}");
+}
+
+#[test]
 fn depth_limit_exits_one_not_abort() {
     let dir = tempfile_dir();
     let path = dir.join("depth.rsc");
-    std::fs::write(
-        &path,
-        "(define (inf n) (+ 1 (inf n)))\n(inf 0)\n",
-    )
-    .unwrap();
+    std::fs::write(&path, "(define (inf n) (+ 1 (inf n)))\n(inf 0)\n").unwrap();
     let out = run(&[path.to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1), "stderr={}", stderr(&out));
     assert!(
@@ -419,7 +474,11 @@ fn vec_error_paths() {
 
     let out = run(&["-e", "(vec-get 1 0)"], "");
     assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("vector") || stderr(&out).contains("foreign"), "{}", stderr(&out));
+    assert!(
+        stderr(&out).contains("vector") || stderr(&out).contains("foreign"),
+        "{}",
+        stderr(&out)
+    );
 
     let out = run(&["-e", "(list->vec 1)"], "");
     assert_eq!(out.status.code(), Some(1));
@@ -432,7 +491,10 @@ fn load_and_exit_error_paths() {
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("string path"), "{}", stderr(&out));
 
-    let out = run(&["-e", "(load \"/tmp/rusche-definitely-missing-xyz.rsc\")"], "");
+    let out = run(
+        &["-e", "(load \"/tmp/rusche-definitely-missing-xyz.rsc\")"],
+        "",
+    );
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("failed to read"), "{}", stderr(&out));
 
@@ -459,11 +521,7 @@ fn let_shape_error_and_help_on_if() {
 fn dangling_paren_and_invalid_number_messages() {
     let out = run(&["-e", ")"], "");
     assert_eq!(out.status.code(), Some(1));
-    assert!(
-        stderr(&out).contains("no matching"),
-        "{}",
-        stderr(&out)
-    );
+    assert!(stderr(&out).contains("no matching"), "{}", stderr(&out));
 
     let out = run(&["-e", "(+ 1 23abc)"], "");
     assert_eq!(out.status.code(), Some(1));

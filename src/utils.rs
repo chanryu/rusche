@@ -150,7 +150,9 @@ pub fn get_exact_3_args<'a>(
 
     match (arg1, arg2, arg3, arg4) {
         (Some(arg1), Some(arg2), Some(arg3), None) => Ok((arg1, arg2, arg3)),
-        (Some(_), Some(_), Some(_), Some(_)) => Err(arity_error(proc_name, 3..=3, 4 + iter.count())),
+        (Some(_), Some(_), Some(_), Some(_)) => {
+            Err(arity_error(proc_name, 3..=3, 4 + iter.count()))
+        }
         _ => {
             let got = [arg1, arg2, arg3].iter().filter(|a| a.is_some()).count();
             Err(arity_error(proc_name, 3..=3, got))
@@ -198,7 +200,9 @@ pub fn get_2_or_3_args<'a>(
 
     match (arg1, arg2, arg3, arg4) {
         (Some(arg1), Some(arg2), arg3, None) => Ok((arg1, arg2, arg3)),
-        (Some(_), Some(_), Some(_), Some(_)) => Err(arity_error(proc_name, 2..=3, 4 + iter.count())),
+        (Some(_), Some(_), Some(_), Some(_)) => {
+            Err(arity_error(proc_name, 2..=3, 4 + iter.count()))
+        }
         _ => {
             let got = [arg1, arg2].iter().filter(|a| a.is_some()).count();
             Err(arity_error(proc_name, 2..=3, got))
