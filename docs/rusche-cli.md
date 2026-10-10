@@ -19,7 +19,7 @@ cargo run -p rusche-cli -- examples/fizzbuzz.rsc
 | --- | --- | --- |
 | Core built-ins + prelude | `rusche` crate | [Language reference](language-reference.md). Built-ins always; prelude omitted with `--no-prelude`. |
 | I/O | [`builtin/io.rs`](../crates/rusche-cli/src/builtin/io.rs) | `display`, `write`, `newline`, `read`, `exit`, `load` |
-| System | [`builtin/sys.rs`](../crates/rusche-cli/src/builtin/sys.rs) | `sys-getenv`, `sys-clock`, `sys-random`, `command-line` |
+| System | [`builtin/sys.rs`](../crates/rusche-cli/src/builtin/sys.rs) | `getenv`, `clock`, `random`, `command-line` |
 | Vectors | [`builtin/vec.rs`](../crates/rusche-cli/src/builtin/vec.rs) | `vec?`, `vec`, `vec-push`, `vec-pop`, `vec-get`, `vec-set!`, `vec-length`, `vec->list`, `list->vec` |
 | Dicts | [`builtin/dict.rs`](../crates/rusche-cli/src/builtin/dict.rs) | `dict?`, `dict`, `dict-get`, `dict-set!`, `dict-has?`, `dict-remove!`, `dict-length`, `dict-keys`, `dict->list`, `list->dict` |
 
@@ -193,9 +193,9 @@ then reports a terse `load: "path" failed` error at the `(load ...)` call site.
 
 | Procedure | Behavior |
 | --- | --- |
-| `sys-getenv` | One string name. The value, or `false` if unset or not Unicode. |
-| `sys-clock` | No arguments. Seconds since the Unix epoch, or `0` if the clock is earlier. |
-| `sys-random` | No arguments. Uniform number in `[0, 1)`. No seed. |
+| `getenv` | One string name. The value, or `false` if unset or not Unicode. |
+| `clock` | No arguments. Seconds since the Unix epoch, or `0` if the clock is earlier. |
+| `random` | No arguments. Uniform number in `[0, 1)`. No seed. |
 | `command-line` | No arguments. The list in [Running](#running). |
 
 ## Vectors

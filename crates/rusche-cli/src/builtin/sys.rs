@@ -8,9 +8,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::host;
 
 pub fn load_sys_procs(context: &EvalContext) {
-    context.env.define_native_proc("sys-getenv", getenv);
-    context.env.define_native_proc("sys-clock", clock);
-    context.env.define_native_proc("sys-random", random);
+    context.env.define_native_proc("getenv", getenv);
+    context.env.define_native_proc("clock", clock);
+    context.env.define_native_proc("random", random);
     context.env.define_native_proc("command-line", command_line);
 }
 

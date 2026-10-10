@@ -134,7 +134,7 @@ The core language is everything available from `Evaluator::default()` (built-ins
 [`rusche-cli`](https://github.com/chanryu/rusche/tree/main/crates/rusche-cli/) is a sample interpreter built on the library. It is **not** part of the core language. On top of `Evaluator::with_prelude()`, it adds:
 
 - I/O: `display`, `write`, `newline`, `read`, `exit`, `load`
-- System helpers: `sys-getenv`, `sys-clock`, `sys-random`, `command-line`
+- System helpers: `getenv`, `clock`, `random`, `command-line`
 - `vec` and `dict` foreign types
 - A REPL with history, multi-line editing, and meta-commands (`,help`, `,load`, …)
 
