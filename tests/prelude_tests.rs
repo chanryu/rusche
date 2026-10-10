@@ -268,11 +268,11 @@ fn test_let_destructuring() {
 }
 
 #[test]
-fn test_define_record() {
+fn test_defrecord() {
     assert_eq!(
         eval_str(
             r#"
-            (define-record point (x y))
+            (defrecord point (x y))
             (define p (make-point 3 4))
             (list (point? p) (point-x p) (point-y p) (point? 3))
             "#

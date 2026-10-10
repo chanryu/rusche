@@ -189,22 +189,22 @@ const PRELUDE_MACROS: [&str; 13] = [
                                           ,@(cdr clause))))))
                           clauses))))
     "#,
-    // define-record -- (define-record point (x y)) => make-point, point?, point-x, point-y
+    // defrecord -- (defrecord point (x y)) => make-point, point?, point-x, point-y
     r#"
-    (defmacro (define-record name fields)
+    (defmacro (defrecord name fields)
         (begin
             (if (sym? name)
                 true
-                (error "define-record: name must be a symbol, got" name))
+                (error "defrecord: name must be a symbol, got" name))
             (if (null? fields)
-                (error "define-record: fields must be a non-empty list, got" fields)
+                (error "defrecord: fields must be a non-empty list, got" fields)
                 (if (atom? fields)
-                    (error "define-record: fields must be a non-empty list, got" fields)
+                    (error "defrecord: fields must be a non-empty list, got" fields)
                     true))
             (map (lambda (f)
                     (if (sym? f)
                         true
-                        (error "define-record: field must be a symbol, got" f)))
+                        (error "defrecord: field must be a symbol, got" f)))
                  fields)
             (define name-str (sym->str name))
             (define maker (str->sym (str-append "make-" name-str)))
@@ -270,7 +270,7 @@ const PRELUDE_FUNCS: [&str; 15] = [
     r#"
     (define (list *args) args)
     "#,
-    // list-ref -- 0-based; used by define-record accessors
+    // list-ref -- 0-based; used by defrecord accessors
     r#"
     (define (list-ref lst n)
         (if (= n 0) (car lst) (list-ref (cdr lst) (- n 1))))

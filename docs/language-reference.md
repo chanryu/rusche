@@ -271,7 +271,7 @@ The following forms and procedures are implemented in Rust. Most are native proc
 
 The following forms and procedures are implemented in Rusche itself. Please check [prelude.rs](../src/prelude.rs) to see how they are actually implemented.
 
-Macros: `and`, `case`, `cond` (with `else`), `define-record`, `defun`, `let` (including named `let` and list destructuring), `let*`, `letrec`, `or`, `or-else`, `unless`, `when`, `while`
+Macros: `and`, `case`, `cond` (with `else`), `defrecord`, `defun`, `let` (including named `let` and list destructuring), `let*`, `letrec`, `or`, `or-else`, `unless`, `when`, `while`
 
 Procedures: `append`, `assoc`, `caar`, `cadr`, `caddr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `list-ref`, `list->str`, `map`, `member`, `not`, `reverse`, `str->list`, `str-repeat`, `<`, `>`, `<=`, `>=`, `abs`, `ceil`, `floor`, `min`, `max`, `round`, `truncate`
 
@@ -323,9 +323,9 @@ Numeric short names (`+`, `-`, `*`, `/`, `%`, `sqrt`, `exp`, `log`, `expt`, `abs
   (even? 4))  ; true
 ```
 
-`define-record` builds a tagged-list record with a constructor, predicate, and field accessors:
+`defrecord` builds a tagged-list record with a constructor, predicate, and field accessors:
 ```scheme
-(define-record point (x y))
+(defrecord point (x y))
 (define p (make-point 3 4))
 (point? p)    ; true
 (point-x p)   ; 3
@@ -591,7 +591,7 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
 - **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Number and string operations use a type prefix (`num-add`, `str-append`), with short aliases in the prelude where useful (`+`, `sqrt`, `abs`, …). List and binding forms keep classic names (`car`, `cons`, `lambda`). Conversions use `type1->type2` (`num->str`, `str->num`). There are no Scheme spellings such as `number?`, `modulo`, or `string-append`.
-- **Small surface.** `if` without an else branch and `define` return `()`. There is no `do`. Characters, vectors, ports, and continuations are host concerns (the prelude offers macros such as `when` / `unless` / `case` / named `let` / `letrec` / `define-record`).
+- **Small surface.** `if` without an else branch and `define` return `()`. There is no `do`. Characters, vectors, ports, and continuations are host concerns (the prelude offers macros such as `when` / `unless` / `case` / named `let` / `letrec` / `defrecord`).
 - **`apply` and `eval` are syntax.** In Scheme they are procedures; in Rusche they are evaluator forms like `if`, so they cannot be passed as values or rebound. `(begin)` with no arguments is allowed and returns `()`.
 - **Rest parameters** are spelled with a `*` prefix instead of Scheme's dotted syntax: `(define (f a *rest) ...)` and `(lambda (*args) ...)`. See [Procedure Parameters](#procedure-parameters).
 
@@ -599,4 +599,4 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 
 - [`rusche-cli`](rusche-cli.md) — example host: running the interpreter, the REPL, I/O, `vec`, and `dict`
 - [Embedding tutorials](tutorials/embedding.md) — using the core crate from Rust
-- Example scripts: [`examples/strings.rsc`](../examples/strings.rsc) (string helpers), [`examples/points.rsc`](../examples/points.rsc) (`define-record`, math, `case` / `when`)
+- Example scripts: [`examples/strings.rsc`](../examples/strings.rsc) (string helpers), [`examples/points.rsc`](../examples/points.rsc) (`defrecord`, math, `case` / `when`)

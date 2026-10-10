@@ -3,7 +3,7 @@
 ;;
 ;;   cargo run -p rusche-cli -- examples/points.rsc
 
-(define-record point (x y))
+(defrecord point (x y))
 
 (defun point-dist (a b)
     (let (((ax ay) (list (point-x a) (point-y a)))
