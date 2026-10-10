@@ -111,7 +111,7 @@ const PRELUDE_FUNCS: [&str; 13] = [
     (define (cdar lst) (cdr (car lst)))
     (define (cddr lst) (cdr (cdr lst)))
     "#,
-    // not -- defined via `if` so that remains the sole boolean-taking form
+    // not
     r#"
     (define (not x) (if x false true))
     "#,
