@@ -333,8 +333,8 @@ fn test_str_repeat_and_natives() {
 }
 
 #[test]
-fn test_list_ref_and_caddr() {
-    assert_eq!(eval_str("(list-ref '(a b c) 0)"), "a");
-    assert_eq!(eval_str("(list-ref '(a b c) 2)"), "c");
+fn test_nth_and_caddr() {
+    assert_eq!(eval_str("(nth '(a b c) 0)"), "a");
+    assert_eq!(eval_str("(nth '(a b c) 2)"), "c");
     assert_eq!(eval_str("(caddr '(1 2 3 4))"), "3");
 }

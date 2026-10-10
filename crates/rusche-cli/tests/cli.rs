@@ -277,11 +277,11 @@ fn newline_rejects_extra_args() {
 }
 
 #[test]
-fn vec_make_rejects_extra_args() {
-    let out = run(&["-e", "(vec-make 1)"], "");
+fn dict_rejects_odd_args() {
+    let out = run(&["-e", "(dict 1)"], "");
     assert_eq!(out.status.code(), Some(1));
     assert!(
-        stderr(&out).contains("expected 0 arguments"),
+        stderr(&out).contains("even number"),
         "{}",
         stderr(&out)
     );
@@ -390,13 +390,13 @@ fn sys_builtins_and_arity() {
         &[
             "-e",
             r#"(begin
-                (display (num? (clock)))
+                (display (num? (sys-clock)))
                 (newline)
-                (display (num? (random)))
+                (display (num? (sys-random)))
                 (newline)
                 (display (null? (cdr (command-line))))
                 (newline)
-                (display (str? (or-else (getenv "PATH") "")))
+                (display (str? (or-else (sys-getenv "PATH") "")))
                 (newline))"#,
         ],
         "",
@@ -405,11 +405,11 @@ fn sys_builtins_and_arity() {
     let printed = stdout(&out);
     assert!(printed.lines().any(|l| l == "true"), "{printed}");
 
-    let out = run(&["-e", "(clock 1)"], "");
+    let out = run(&["-e", "(sys-clock 1)"], "");
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("expected 0 arguments"));
 
-    let out = run(&["-e", "(random 1)"], "");
+    let out = run(&["-e", "(sys-random 1)"], "");
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("expected 0 arguments"));
 
@@ -417,11 +417,11 @@ fn sys_builtins_and_arity() {
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("expected 0 arguments"));
 
-    let out = run(&["-e", "(getenv 1)"], "");
+    let out = run(&["-e", "(sys-getenv 1)"], "");
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("expected a string"));
 
-    let out = run(&["-e", "(getenv \"__RUSCHE_NO_SUCH_VAR__\")"], "");
+    let out = run(&["-e", "(sys-getenv \"__RUSCHE_NO_SUCH_VAR__\")"], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert_eq!(stdout(&out).trim(), "false");
 }
@@ -449,7 +449,7 @@ fn vec_error_paths() {
     );
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
 
-    let out = run(&["-e", "(vec-pop (vec-make))"], "");
+    let out = run(&["-e", "(vec-pop (vec))"], "");
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("vector is empty"), "{}", stderr(&out));
 

@@ -8,7 +8,6 @@ use std::{cell::RefCell, rc::Rc};
 pub fn load_vec_procs(evaluator: &Evaluator) {
     let env = evaluator.root_env();
     env.define_native_proc("vec?", is_vec);
-    env.define_native_proc("vec-make", vec_make);
     env.define_native_proc("vec", vec);
     env.define_native_proc("vec-push", vec_push);
     env.define_native_proc("vec-pop", vec_pop);
@@ -46,13 +45,6 @@ fn eval_into_vec(
 fn is_vec(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let arg = get_exact_1_arg(proc_name, args)?;
     Ok(eval_into_vec(proc_name, arg, context).is_ok().into())
-}
-
-fn vec_make(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
-    if !args.is_nil() {
-        return Err(arity_error(proc_name, 0..=0, args.len()));
-    }
-    Ok(Expr::Foreign(Rc::new(RefCell::new(Vec::<Expr>::new()))))
 }
 
 fn vec(_: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -211,7 +203,7 @@ mod tests {
     #[test]
     fn vec_round_trip_and_predicates() {
         let e = with_vec();
-        assert_eq!(eval_ok(&e, "(vec-length (vec-make))"), "0");
+        assert_eq!(eval_ok(&e, "(vec-length (vec))"), "0");
         assert_eq!(eval_ok(&e, "(vec-length (vec 1 2 3))"), "3");
         assert_eq!(eval_ok(&e, "(vec? (vec 1))"), "true");
         assert_eq!(eval_ok(&e, "(vec? 1)"), "false");
@@ -235,8 +227,7 @@ mod tests {
             "(3 9 2)"
         );
 
-        assert!(eval_err(&e, "(vec-make 1)").contains("expected 0"));
-        assert!(eval_err(&e, "(vec-pop (vec-make))").contains("empty"));
+        assert!(eval_err(&e, "(vec-pop (vec))").contains("empty"));
         assert!(eval_err(&e, "(vec-get (vec 1) 9)").contains("out-of-bounds"));
         assert!(eval_err(&e, "(vec-get (vec 1) -1)").contains("zero or positive"));
         assert!(eval_err(&e, "(vec-set! (vec 1) 9 0)").contains("out-of-bounds"));

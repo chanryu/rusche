@@ -214,7 +214,7 @@ const PRELUDE_MACROS: [&str; 13] = [
                     '()
                     (cons
                         `(define (,(str->sym (str-append name-str "-" (sym->str (car fields)))) obj)
-                            (list-ref obj ,n))
+                            (nth obj ,n))
                         (accessors (cdr fields) (+ n 1)))))
             `(begin
                 (define (,maker ,@fields) (list (quote ,name) ,@fields))
@@ -270,10 +270,10 @@ const PRELUDE_FUNCS: [&str; 15] = [
     r#"
     (define (list *args) args)
     "#,
-    // list-ref -- 0-based; used by defrecord accessors
+    // nth -- 0-based; used by defrecord accessors
     r#"
-    (define (list-ref lst n)
-        (if (= n 0) (car lst) (list-ref (cdr lst) (- n 1))))
+    (define (nth lst n)
+        (if (= n 0) (car lst) (nth (cdr lst) (- n 1))))
     "#,
     // reverse -- tail-recursive so long lists do not hit the call depth limit
     r#"
@@ -347,15 +347,15 @@ const PRELUDE_FUNCS: [&str; 15] = [
             (if (null? rest) true (apply < (cons b rest)))
             false))
     (define (<= a b *rest)
-        (if (or (num-less a b) (= a b))
+        (if (num-less-or-equal a b)
             (if (null? rest) true (apply <= (cons b rest)))
             false))
     (define (> a b *rest)
-        (if (num-less b a)
+        (if (num-greater a b)
             (if (null? rest) true (apply > (cons b rest)))
             false))
     (define (>= a b *rest)
-        (if (or (num-less b a) (= a b))
+        (if (num-greater-or-equal a b)
             (if (null? rest) true (apply >= (cons b rest)))
             false))
     (define (num-abs x)

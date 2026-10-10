@@ -273,7 +273,7 @@ The following forms and procedures are implemented in Rusche itself. Please chec
 
 Macros: `and`, `case`, `cond` (with `else`), `defrecord`, `defun`, `let` (including named `let` and list destructuring), `let*`, `letrec`, `or`, `or-else`, `unless`, `when`, `while`
 
-Procedures: `append`, `assoc`, `caar`, `cadr`, `caddr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `list-ref`, `list->str`, `map`, `member`, `not`, `reverse`, `str->list`, `str-repeat`, `<`, `>`, `<=`, `>=`, `abs`, `ceil`, `floor`, `min`, `max`, `round`, `truncate`
+Procedures: `append`, `assoc`, `caar`, `cadr`, `caddr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `nth`, `list->str`, `map`, `member`, `not`, `reverse`, `str->list`, `str-repeat`, `<`, `>`, `<=`, `>=`, `abs`, `ceil`, `floor`, `min`, `max`, `round`, `truncate`
 
 Numeric short names (`+`, `-`, `*`, `/`, `%`, `sqrt`, `exp`, `log`, `expt`, `abs`, `min`, `max`, `floor`, `ceil`, `truncate`, `round`) are aliases for the corresponding `num-*` bindings; see [Number functions](#number-functions). List and core names (`car`, `cons`, `lambda`, …) stay unprefixed.
 
@@ -334,7 +334,7 @@ Numeric short names (`+`, `-`, `*`, `/`, `%`, `sqrt`, `exp`, `log`, `expt`, `abs
 List helpers (`append` takes exactly two lists):
 ```scheme
 (length '(a b c))                      ; 3
-(list-ref '(a b c) 1)                  ; b
+(nth '(a b c) 1)                       ; b
 (append '(1 2) '(3 4))                 ; (1 2 3 4)
 (filter (lambda (x) (< x 3)) '(1 2 3)) ; (1 2)
 (fold + 0 '(1 2 3))                    ; 6
@@ -406,11 +406,13 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   (% -7 2)      ; -1
   ```
 
-#### `num-less`
-  Two-argument numeric less-than. The prelude wraps this as the multi-argument `<`, `<=`, `>`, and `>=` procedures.
+#### `num-less`, `num-greater`, `num-less-or-equal`, `num-greater-or-equal`
+  Two-argument numeric comparisons. The prelude wraps each as the multi-argument `<`, `>`, `<=`, and `>=` procedures.
   ```scheme
-  (num-less 3 5)   ; true
-  (num-less 10 5)  ; false
+  (num-less 3 5)             ; true
+  (num-greater 5 3)          ; true
+  (num-less-or-equal 3 3)    ; true
+  (num-greater-or-equal 3 2) ; true
   ```
 
 #### `<`, `<=`, `>`, `>=`
@@ -590,7 +592,7 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. A lone `.` is an ordinary symbol. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
-- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Number and string operations use a type prefix (`num-add`, `str-append`), with short aliases in the prelude where useful (`+`, `sqrt`, `abs`, …). List and binding forms keep classic names (`car`, `cons`, `lambda`). Conversions use `type1->type2` (`num->str`, `str->num`). There are no Scheme spellings such as `number?`, `modulo`, or `string-append`.
+- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Number and string operations use a type prefix (`num-add`, `str-append`, `num-less`), with short aliases or multi-arg wrappers in the prelude (`+`, `sqrt`, `<`, …). List and binding forms keep classic names (`car`, `cons`, `lambda`, `nth`). Conversions use `type1->type2` (`num->str`, `str->num`). There are no Scheme spellings such as `number?`, `modulo`, or `string-append`.
 - **Small surface.** `if` without an else branch and `define` return `()`. There is no `do`. Characters, vectors, ports, and continuations are host concerns (the prelude offers macros such as `when` / `unless` / `case` / named `let` / `letrec` / `defrecord`).
 - **`apply` and `eval` are syntax.** In Scheme they are procedures; in Rusche they are evaluator forms like `if`, so they cannot be passed as values or rebound. `(begin)` with no arguments is allowed and returns `()`.
 - **Rest parameters** are spelled with a `*` prefix instead of Scheme's dotted syntax: `(define (f a *rest) ...)` and `(lambda (*args) ...)`. See [Procedure Parameters](#procedure-parameters).

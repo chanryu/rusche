@@ -77,6 +77,18 @@ pub fn less(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     logical_operation(proc_name, args, context, |lhs, rhs| lhs < rhs)
 }
 
+pub fn greater(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    logical_operation(proc_name, args, context, |lhs, rhs| lhs > rhs)
+}
+
+pub fn less_or_equal(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    logical_operation(proc_name, args, context, |lhs, rhs| lhs <= rhs)
+}
+
+pub fn greater_or_equal(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    logical_operation(proc_name, args, context, |lhs, rhs| lhs >= rhs)
+}
+
 fn unary_num(
     proc_name: &str,
     args: &List,
@@ -257,6 +269,22 @@ mod tests {
 
         // (< 2 1) => false
         assert_eq!(less(list!(2, 1)), Ok(false.into()));
+    }
+
+    #[test]
+    fn test_greater_and_or_equal() {
+        let evaluator = Evaluator::new();
+        let context = evaluator.context();
+        let greater = |args| greater("", &args, context);
+        let less_or_equal = |args| less_or_equal("", &args, context);
+        let greater_or_equal = |args| greater_or_equal("", &args, context);
+
+        assert_eq!(greater(list!(2, 1)), Ok(true.into()));
+        assert_eq!(greater(list!(1, 1)), Ok(false.into()));
+        assert_eq!(less_or_equal(list!(1, 1)), Ok(true.into()));
+        assert_eq!(less_or_equal(list!(2, 1)), Ok(false.into()));
+        assert_eq!(greater_or_equal(list!(1, 1)), Ok(true.into()));
+        assert_eq!(greater_or_equal(list!(1, 2)), Ok(false.into()));
     }
 
     #[test]

@@ -19,9 +19,9 @@ cargo run -p rusche-cli -- examples/fizzbuzz.rsc
 | --- | --- | --- |
 | Core built-ins + prelude | `rusche` crate | [Language reference](language-reference.md). Built-ins always; prelude omitted with `--no-prelude`. |
 | I/O | [`builtin/io.rs`](../crates/rusche-cli/src/builtin/io.rs) | `display`, `write`, `newline`, `read`, `exit`, `load` |
-| System | [`builtin/sys.rs`](../crates/rusche-cli/src/builtin/sys.rs) | `getenv`, `clock`, `random`, `command-line` |
-| Vectors | [`builtin/vec.rs`](../crates/rusche-cli/src/builtin/vec.rs) | `vec?`, `vec-make`, `vec`, `vec-push`, `vec-pop`, `vec-get`, `vec-set!`, `vec-length`, `vec->list`, `list->vec` |
-| Dicts | [`builtin/dict.rs`](../crates/rusche-cli/src/builtin/dict.rs) | `dict?`, `dict-make`, `dict`, `dict-get`, `dict-set!`, `dict-has?`, `dict-remove!`, `dict-length`, `dict-keys`, `dict->list`, `list->dict` |
+| System | [`builtin/sys.rs`](../crates/rusche-cli/src/builtin/sys.rs) | `sys-getenv`, `sys-clock`, `sys-random`, `command-line` |
+| Vectors | [`builtin/vec.rs`](../crates/rusche-cli/src/builtin/vec.rs) | `vec?`, `vec`, `vec-push`, `vec-pop`, `vec-get`, `vec-set!`, `vec-length`, `vec->list`, `list->vec` |
+| Dicts | [`builtin/dict.rs`](../crates/rusche-cli/src/builtin/dict.rs) | `dict?`, `dict`, `dict-get`, `dict-set!`, `dict-has?`, `dict-remove!`, `dict-length`, `dict-keys`, `dict->list`, `list->dict` |
 
 I/O, system, vector, and dict procedures are always registered. Scripts under
 [`examples/*.rsc`](../examples) are written for this host.
@@ -193,9 +193,9 @@ then reports a terse `load: "path" failed` error at the `(load ...)` call site.
 
 | Procedure | Behavior |
 | --- | --- |
-| `getenv` | One string name. The value, or `false` if unset or not Unicode. |
-| `clock` | No arguments. Seconds since the Unix epoch, or `0` if the clock is earlier. |
-| `random` | No arguments. Uniform number in `[0, 1)`. No seed. |
+| `sys-getenv` | One string name. The value, or `false` if unset or not Unicode. |
+| `sys-clock` | No arguments. Seconds since the Unix epoch, or `0` if the clock is earlier. |
+| `sys-random` | No arguments. Uniform number in `[0, 1)`. No seed. |
 | `command-line` | No arguments. The list in [Running](#running). |
 
 ## Vectors
@@ -222,8 +222,7 @@ error. A tracer keeps closures stored in a vector reachable. See the
 | Procedure | Behavior |
 | --- | --- |
 | `vec?` | `true` if the argument is a vector, otherwise `false`. |
-| `vec-make` | No arguments. A new empty vector. |
-| `vec` | A new vector of the arguments, in order. |
+| `vec` | A new vector of the arguments, in order. `(vec)` is empty. |
 | `vec-push` | Append a value. Returns `()`. |
 | `vec-pop` | Remove and return the last element. |
 | `vec-get` | Element at an index. |
@@ -261,8 +260,7 @@ for scripts that use it.
 | Procedure | Behavior |
 | --- | --- |
 | `dict?` | `true` if the argument is a dict, otherwise `false`. |
-| `dict-make` | No arguments. A new empty dict. |
-| `dict` | A new dict from flat key/value pairs. Odd argument count is an error. |
+| `dict` | A new dict from flat key/value pairs. `(dict)` is empty. Odd argument count is an error. |
 | `dict-get` | Value for a key, or an optional default (else `false`). The default is evaluated only when the key is absent. |
 | `dict-set!` | Insert or replace a key. Returns `()`. |
 | `dict-has?` | `true` if the key is present. |

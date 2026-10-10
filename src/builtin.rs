@@ -38,6 +38,9 @@ pub fn load_builtin(env: &Rc<Env>) {
     env.define_native_proc("num-divide", num::divide);
     env.define_native_proc("num-modulo", num::modulo);
     env.define_native_proc("num-less", num::less);
+    env.define_native_proc("num-greater", num::greater);
+    env.define_native_proc("num-less-or-equal", num::less_or_equal);
+    env.define_native_proc("num-greater-or-equal", num::greater_or_equal);
     env.define_native_proc("num-sqrt", num::sqrt);
     env.define_native_proc("num-exp", num::exp);
     env.define_native_proc("num-log", num::log);

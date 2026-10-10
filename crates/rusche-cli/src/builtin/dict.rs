@@ -1,5 +1,5 @@
 use rusche::{
-    arity_error, cons, eval, eval_into_foreign, get_exact_1_arg, get_exact_2_args, intern,
+    cons, eval, eval_into_foreign, get_exact_1_arg, get_exact_2_args, intern,
     utils::{get_2_or_3_args, get_exact_3_args},
     ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, Expr, List, NIL,
 };
@@ -9,7 +9,6 @@ use std::{cell::RefCell, cmp::Ordering, collections::BTreeMap, rc::Rc};
 pub fn load_dict_procs(evaluator: &Evaluator) {
     let env = evaluator.root_env();
     env.define_native_proc("dict?", is_dict);
-    env.define_native_proc("dict-make", dict_make);
     env.define_native_proc("dict", dict);
     env.define_native_proc("dict-get", dict_get);
     env.define_native_proc("dict-set!", dict_set);
@@ -117,15 +116,6 @@ fn eval_into_dict(
 fn is_dict(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let arg = get_exact_1_arg(proc_name, args)?;
     Ok(eval_into_dict(proc_name, arg, context).is_ok().into())
-}
-
-fn dict_make(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
-    if !args.is_nil() {
-        return Err(arity_error(proc_name, 0..=0, args.len()));
-    }
-    Ok(Expr::Foreign(Rc::new(RefCell::new(
-        BTreeMap::<Key, Expr>::new(),
-    ))))
 }
 
 fn dict(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -297,7 +287,7 @@ mod tests {
     #[test]
     fn dict_round_trip_and_predicates() {
         let e = with_dict();
-        assert_eq!(eval_ok(&e, "(dict-length (dict-make))"), "0");
+        assert_eq!(eval_ok(&e, "(dict-length (dict))"), "0");
         assert_eq!(eval_ok(&e, "(dict-length (dict \"a\" 1 \"b\" 2))"), "2");
         assert_eq!(eval_ok(&e, "(dict? (dict \"a\" 1))"), "true");
         assert_eq!(eval_ok(&e, "(dict? 1)"), "false");
@@ -346,7 +336,7 @@ mod tests {
                    (define (boom)
                      (set! called (+ called 1))
                      99)
-                   (define d (dict-make))
+                   (define d (dict))
                    (define v (dict-get d \"k\" (boom)))
                    (cons v (cons called ())))"
             ),
@@ -373,7 +363,6 @@ mod tests {
             "(true false 9 1)"
         );
 
-        assert!(eval_err(&e, "(dict-make 1)").contains("expected 0"));
         assert!(eval_err(&e, "(dict 1)").contains("even number"));
         assert!(eval_err(&e, "(dict-get (dict) '(1))").contains("dict key"));
         assert!(eval_err(&e, "(dict-set! (dict) (lambda () 1) 0)").contains("dict key"));
