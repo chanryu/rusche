@@ -44,30 +44,30 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
 
 ```rust
 use rusche::{
-    utils::{eval_into_num, get_exact_1_arg},
+    utils::{eval_into_num, get_exact_2_args},
     EvalContext, EvalResult, Evaluator, Expr, List,
 };
 
 // A native function: Rust code that scripts can call. Arguments arrive
 // unevaluated; the helpers in `rusche::utils` evaluate and type-check them.
-fn sqrt(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let arg = get_exact_1_arg(proc_name, args)?;
-    let n = eval_into_num(proc_name, arg, context)?;
-    Ok(Expr::from(n.sqrt()))
+fn hypot(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let (a, b) = get_exact_2_args(proc_name, args)?;
+    let a = eval_into_num(proc_name, a, context)?;
+    let b = eval_into_num(proc_name, b, context)?;
+    Ok(Expr::from(a.hypot(b)))
 }
 
 fn main() {
-    // Built-ins plus the prelude (`+`, `*`, `map`, `let`, ...)
+    // Built-ins plus the prelude (`+`, `*`, `sqrt`, `map`, `let`, ...)
     let evaluator = Evaluator::default();
 
     // Expose host functionality to scripts
-    evaluator.root_env().define_native_proc("sqrt", sqrt);
+    evaluator.root_env().define_native_proc("hypot", hypot);
 
     // Tokenize, parse, and evaluate every top-level form; the last value is returned
     let result = evaluator
         .eval_str(
             r#"
-            (define (hypot a b) (sqrt (+ (* a a) (* b b))))
             (map (lambda (p) (apply hypot p)) '((3 4) (5 12)))
             "#,
         )
@@ -77,8 +77,8 @@ fn main() {
     assert_eq!(result, evaluator.eval_str("'(5 13)").unwrap());
 
     // Lex, parse, and eval failures share one `Error` type with a source span
-    let err = evaluator.eval_str("(sqrt \"nine\")").unwrap_err();
-    println!("{err}"); // 1:7-12: sqrt: `"nine"` evaluated to `"nine"`, expected a number
+    let err = evaluator.eval_str("(hypot \"nine\" 4)").unwrap_err();
+    println!("{err}"); // 1:8-13: hypot: `"nine"` evaluated to `"nine"`, expected a number
 }
 ```
 
@@ -124,8 +124,8 @@ The core language is everything available from `Evaluator::default()` (built-ins
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
-- **Names.** Type checks end in `?` (`num?`, `str?`); same-type ops use a type prefix (`num-add`, `str-append`); conversions use `type1->type2` (`num->str`). There are no Scheme spellings such as `number?` or `string-append`.
-- **Small surface.** `if` without an else branch and `define` return `()`. There is no `do`. Characters, vectors, ports, and continuations are host concerns (the prelude offers `when` / `unless` / `case` / named `let` as macros).
+- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`); same-type ops use a type prefix (`num-add`, `str-append`); conversions use `type1->type2` (`num->str`). There are no Scheme spellings such as `number?` or `string-append`.
+- **Small surface.** `if` without an else branch and `define` return `()`. There is no `do`. Characters, vectors, ports, and continuations are host concerns (the prelude offers macros such as `when` / `unless` / `case` / named `let` / `letrec` / `define-record`).
 - **`apply` and `eval` are syntax.** Like `if` and `begin`, they are recognised by the evaluator rather than bound as procedures, so they cannot be passed as values.
 - **Rest parameters** are spelled with a `*` prefix, as in Ruby or Python, instead of Scheme's dotted syntax: `(define (f a *rest) ...)` and `(lambda (*args) ...)`. The parameter list is always a list.
 

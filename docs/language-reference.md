@@ -275,6 +275,8 @@ Macros: `and`, `case`, `cond` (with `else`), `define-record`, `defun`, `let` (in
 
 Procedures: `append`, `assoc`, `caar`, `cadr`, `caddr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `list-ref`, `list->str`, `map`, `member`, `not`, `reverse`, `str->list`, `<`, `>`, `<=`, `>=`, `abs`, `ceil`, `floor`, `min`, `max`, `round`, `truncate`
 
+Arithmetic aliases (`+`, `-`, `*`, `/`, `%`, `sqrt`, `exp`, `log`, `expt`) are bound here to the corresponding `num-*` natives; see [Number functions](#number-functions).
+
 `and` and `or` short-circuit and always return a boolean. Operands must be booleans.
 ```scheme
 (and true true false)  ; false
@@ -288,6 +290,12 @@ Procedures: `append`, `assoc`, `caar`, `cadr`, `caddr`, `cdar`, `cddr`, `filter`
 (when true 'ok)                    ; ok
 (unless false 'ok)                 ; ok
 (case 'b ((a) 1) ((b c) 2) (else 3))  ; 2
+```
+
+`defun` is a shorthand for `(define name (lambda args body...))`:
+```scheme
+(defun add (a b) (+ a b))
+(add 2 3)  ; 5
 ```
 
 `or-else` returns the first argument unless it is `false`, in which case it returns the second:
@@ -323,10 +331,11 @@ Procedures: `append`, `assoc`, `caar`, `cadr`, `caddr`, `cdar`, `cddr`, `filter`
 (point-x p)   ; 3
 ```
 
-List helpers:
+List helpers (`append` takes exactly two lists):
 ```scheme
 (length '(a b c))                      ; 3
 (list-ref '(a b c) 1)                  ; b
+(append '(1 2) '(3 4))                 ; (1 2 3 4)
 (filter (lambda (x) (< x 3)) '(1 2 3)) ; (1 2)
 (fold + 0 '(1 2 3))                    ; 6
 (member 'b '(a b c))                   ; (b c)
@@ -348,9 +357,12 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 (ceil 3.2)         ; 4
 (truncate -3.7)    ; -3
 (round 3.5)        ; 4
+(sqrt 9)           ; 3
+(expt 2 10)        ; 1024
 (< 1 2 3)          ; true
 (<= 1 1 2)         ; true
 (> 3 2 1)          ; true
+(>= 3 3 1)         ; true
 ```
 
 ### Number functions
@@ -393,11 +405,21 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   (% -7 2)      ; -1
   ```
 
-#### `num-less`, `<`
-  Compares two numbers, returns `true` if the first is less than the second, otherwise `false`.
+#### `num-less`
+  Two-argument numeric less-than. The prelude wraps this as the multi-argument `<`, `<=`, `>`, and `>=` procedures.
   ```scheme
-  (< 3 5)       ; true
-  (< 10 5)      ; false
+  (num-less 3 5)   ; true
+  (num-less 10 5)  ; false
+  ```
+
+#### `<`, `<=`, `>`, `>=`
+  Multi-argument numeric comparisons from the prelude. Each returns `true` when the relation holds between every consecutive pair, otherwise `false`.
+  ```scheme
+  (< 1 2 3)     ; true
+  (<= 1 1 2)    ; true
+  (> 3 2 1)     ; true
+  (>= 3 3 1)    ; true
+  (> 2 4)       ; false
   ```
 
 #### `num-sqrt`, `sqrt`
@@ -423,14 +445,6 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   Exponentiation: `(expt base power)`.
   ```scheme
   (expt 2 10)   ; 1024
-  ```
-
-#### `>`
-  Compares numbers, returns `true` if each is greater than the next, otherwise `false`. Implemented in the prelude via `<` on the reversed arguments.
-  ```scheme
-  (> 5 3)       ; true
-  (> 3 2 1)     ; true
-  (> 2 4)       ; false
   ```
 
 ### String functions
@@ -507,7 +521,7 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
 - **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Same-type operations use a type prefix (`num-add`, `str-append`). Conversions use `type1->type2` (`num->str`, `str->num`). There are no Scheme spellings such as `number?`, `modulo`, or `string-append`.
-- **Small surface.** `if` without an else branch and `define` return `()`. There is no `do`. Characters, vectors, ports, and continuations are host concerns (the prelude offers `when` / `unless` / `case` / named `let` as macros).
+- **Small surface.** `if` without an else branch and `define` return `()`. There is no `do`. Characters, vectors, ports, and continuations are host concerns (the prelude offers macros such as `when` / `unless` / `case` / named `let` / `letrec` / `define-record`).
 - **`apply` and `eval` are syntax.** In Scheme they are procedures; in Rusche they are evaluator forms like `if`, so they cannot be passed as values or rebound. `(begin)` with no arguments is allowed and returns `()`.
 - **Rest parameters** are spelled with a `*` prefix instead of Scheme's dotted syntax: `(define (f a *rest) ...)` and `(lambda (*args) ...)`. See [Procedure Parameters](#procedure-parameters).
 

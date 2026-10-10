@@ -16,7 +16,7 @@ Rusche exposes three constructors on [`Evaluator`](https://docs.rs/rusche/latest
 | --- | --- |
 | `Evaluator::new()` | Empty root environment — only the evaluator forms (`quote`, `quasiquote`, `begin`, `if`, `eval`, `apply`) |
 | `Evaluator::with_builtin()` | Core native procedures (`num-add`, `car`, `lambda`, …) |
-| `Evaluator::with_prelude()` / `Evaluator::default()` | Built-ins plus the prelude (`+`, `%`, `let`, `while`, `and`, `or`, …) |
+| `Evaluator::with_prelude()` / `Evaluator::default()` | Built-ins plus the prelude (`+`, `sqrt`, `let`, `while`, `and`, `or`, …) |
 
 For scripting, start with `with_prelude()` (or `Default`). Use `new()` or
 `with_builtin()` when you want a smaller surface.
