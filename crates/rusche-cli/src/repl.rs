@@ -11,8 +11,8 @@ use rustyline::validate::{ValidationContext, ValidationResult, Validator};
 use rustyline::{Config, Context, Editor, Helper};
 
 use crate::diagnostics::{
-    print_eval_error, print_lex_error, print_parse_error, print_pipeline_error, Diagnostic,
-    print_error,
+    print_error, print_eval_error, print_lex_error, print_parse_error, print_pipeline_error,
+    Diagnostic,
 };
 use crate::host;
 

@@ -277,7 +277,8 @@ mod tests {
             LexError::IncompleteString(Span::new(Loc::new(0, 0), Loc::new(0, 18)))
         );
 
-        let err = LexError::InvalidNumber("23abc".into(), Span::new(Loc::new(0, 0), Loc::new(0, 5)));
+        let err =
+            LexError::InvalidNumber("23abc".into(), Span::new(Loc::new(0, 0), Loc::new(0, 5)));
         assert_eq!(err.message(), "invalid number literal `23abc`");
         assert!(err.to_string().contains("23abc"));
     }

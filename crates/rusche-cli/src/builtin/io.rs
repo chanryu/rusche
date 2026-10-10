@@ -115,11 +115,10 @@ fn load(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
             // Print the inner file's diagnostic with its own source, then return a terse error
             // so the caller's caret lands on the `(load ...)` form without embedding spans in prose.
             print_pipeline_error(&error, &text, &path);
-            Err(EvalError::new(
-                ErrorKind::Other,
-                format!("{proc_name}: \"{path}\" failed"),
+            Err(
+                EvalError::new(ErrorKind::Other, format!("{proc_name}: \"{path}\" failed"))
+                    .with_span(arg.span()),
             )
-            .with_span(arg.span()))
         }
     }
 }

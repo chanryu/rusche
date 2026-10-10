@@ -79,8 +79,10 @@ fn vec_pop(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     if let Some(item) = item {
         Ok(item)
     } else {
-        Err(EvalError::new(ErrorKind::Other, format!("{proc_name}: vector is empty"))
-            .with_span(vec_expr.span()))
+        Err(
+            EvalError::new(ErrorKind::Other, format!("{proc_name}: vector is empty"))
+                .with_span(vec_expr.span()),
+        )
     }
 }
 
@@ -240,10 +242,7 @@ mod tests {
         assert!(eval_err(&e, "(vec-set! (vec 1) 9 0)").contains("out-of-bounds"));
         assert!(eval_err(&e, "(vec-set! (vec 1) -1 0)").contains("zero or positive"));
         let msg = eval_err(&e, "(vec-get 1 0)");
-        assert!(
-            msg.contains("vector") || msg.contains("foreign"),
-            "{msg}"
-        );
+        assert!(msg.contains("vector") || msg.contains("foreign"), "{msg}");
         assert!(eval_err(&e, "(list->vec 1)").contains("list"));
         assert!(eval_err(&e, "(vec-set!)").contains("expected 3"));
         assert!(eval_err(&e, "(vec-set! (vec 1))").contains("expected 3"));
@@ -270,8 +269,7 @@ mod tests {
     #[test]
     fn wrong_foreign_type_is_rejected() {
         let e = with_vec();
-        e.root_env()
-            .define("box", Expr::Foreign(Rc::new(1_i32)));
+        e.root_env().define("box", Expr::Foreign(Rc::new(1_i32)));
         assert_eq!(eval_ok(&e, "(vec? box)"), "false");
         let msg = eval_err(&e, "(vec-length box)");
         assert!(msg.contains("vector"), "{msg}");

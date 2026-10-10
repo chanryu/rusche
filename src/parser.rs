@@ -362,18 +362,16 @@ mod tests {
             (vec![Token::Quote(Loc::default())], "after `'`"),
             (vec![Token::Quasiquote(Loc::default())], "after `` ` ``"),
             (vec![Token::Unquote(Loc::default())], "after `,`"),
-            (
-                vec![Token::UnquoteSplicing(Loc::default())],
-                "after `,@`",
-            ),
+            (vec![Token::UnquoteSplicing(Loc::default())], "after `,@`"),
         ] {
             let mut parser = Parser::with_tokens(tokens);
             let err = parser.parse().unwrap_err();
+            assert!(matches!(err, ParseError::IncompleteExpr(_)), "{err:?}");
             assert!(
-                matches!(err, ParseError::IncompleteExpr(_)),
-                "{err:?}"
+                err.message().contains(needle),
+                "{} vs {needle}",
+                err.message()
             );
-            assert!(err.message().contains(needle), "{} vs {needle}", err.message());
             assert!(err.to_string().contains(needle));
         }
     }
