@@ -8,6 +8,10 @@ const PRELUDE_SYMBOLS: [&str; 1] = [
     (define * num-multiply)
     (define / num-divide)
     (define % num-modulo)
+    (define sqrt num-sqrt)
+    (define exp num-exp)
+    (define log num-log)
+    (define expt num-expt)
     "#,
 ];
 

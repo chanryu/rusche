@@ -291,6 +291,17 @@ fn test_floor_ceil_truncate_round() {
 }
 
 #[test]
+fn test_sqrt_exp_log_expt() {
+    assert_eq!(eval_str("(sqrt 9)"), "3");
+    assert_eq!(eval_str("(expt 2 10)"), "1024");
+    assert_eq!(eval_str("(log 1)"), "0");
+    assert_eq!(eval_str("(log 8 2)"), "3");
+    assert_eq!(eval_str("(exp 0)"), "1");
+    // Aliases and prefixed natives are the same binding.
+    assert_eq!(eval_str("(eq? sqrt num-sqrt)"), "true");
+}
+
+#[test]
 fn test_str_list_conversion() {
     assert_eq!(eval_str("(str->list \"ab\")"), "(\"a\" \"b\")");
     assert_eq!(eval_str("(list->str '(\"a\" \"b\" \"c\"))"), "\"abc\"");

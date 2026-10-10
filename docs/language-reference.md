@@ -400,6 +400,31 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   (< 10 5)      ; false
   ```
 
+#### `num-sqrt`, `sqrt`
+  Square root.
+  ```scheme
+  (sqrt 9)      ; 3
+  ```
+
+#### `num-exp`, `exp`
+  Base-*e* exponential.
+  ```scheme
+  (exp 0)       ; 1
+  ```
+
+#### `num-log`, `log`
+  Natural logarithm with one argument, or logarithm in base `b` with two.
+  ```scheme
+  (log 1)       ; 0
+  (log 8 2)     ; 3
+  ```
+
+#### `num-expt`, `expt`
+  Exponentiation: `(expt base power)`.
+  ```scheme
+  (expt 2 10)   ; 1024
+  ```
+
 #### `>`
   Compares numbers, returns `true` if each is greater than the next, otherwise `false`. Implemented in the prelude via `<` on the reversed arguments.
   ```scheme
