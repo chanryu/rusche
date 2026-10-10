@@ -6,7 +6,7 @@
 
 (define cache (dict-make))
 
-(defun fib (n)
+(define (fib n)
   (if (dict-has? cache n)
       (dict-get cache n)
       (let ((result (if (< n 2)

@@ -1,6 +1,6 @@
 #!/usr/bin/env rusche-cli
-(defun fizzbuzz (n)
-    (defun div? (n m) (= (% n m) 0))
+(define (fizzbuzz n)
+    (define (div? n m) (= (% n m) 0))
     (cond ((div? n 15) "FizzBuzz")
           ((div? n 3) "Fizz")
           ((div? n 5) "Buzz")

@@ -24,7 +24,7 @@ fn main() {
     let result = evaluator
         .eval_str(
             r#"
-            (defun hypot (a b) (sqrt (+ (* a a) (* b b))))
+            (define (hypot a b) (sqrt (+ (* a a) (* b b))))
             (map (lambda (p) (apply hypot p)) '((3 4) (5 12)))
             "#,
         )

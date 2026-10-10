@@ -50,8 +50,8 @@ Rusche supports the following data types.
 A parameter list is a list of symbols. The last one may be a *rest parameter*, written with a `*` prefix like Ruby's or Python's splat: `*rest` binds the symbol `rest` to a list of every remaining argument.
 
 ```scheme
-(defun f (a b) ...)            ; exactly two arguments
-(defun f (a *rest) ...)        ; one or more; `rest` is a list of the others
+(define (f a b) ...)           ; exactly two arguments
+(define (f a *rest) ...)       ; one or more; `rest` is a list of the others
 (lambda (*args) ...)           ; any number; `args` is a list of all of them
 (defmacro (m form *forms) ...) ; same syntax for macros
 ```
@@ -66,14 +66,14 @@ parameter list such as `(lambda args ...)` is an error. A lone `.` is just a sym
 
 A call in tail position does not consume stack or call depth, so loops written as tail-recursive procedures run in constant space. The tail positions are:
 
-- the last expression of a `lambda` body (and so of `defun` procedures)
+- the last expression of a `lambda` body (and of `define`d procedures)
 - the last argument of `begin`
 - either branch of `if`
 - the expression that `eval` evaluates, and the call that `apply` makes
 - the expansion of a macro -- so tail position carries through prelude macros such as `cond`, `and`, `or`, `let`, `let*`, and `while`
 
 ```scheme
-(defun count-down (n)
+(define (count-down n)
   (if (= n 0) 'done (count-down (- n 1))))
 (count-down 1000000)  ; done -- no stack growth
 ```
@@ -142,11 +142,10 @@ The following forms and procedures are implemented in Rust. Most are native proc
   ```scheme
   (define x 42)    ; Binds 42 to the symbol 'x'
   ```
-  You can also create a named procedure using define. The prelude macro `defun` is the
-  usual spelling for this: `(defun name (params...) body...)`.
+  You can also create a named procedure using define.
   ```scheme
-  (define (add a b) (+ a b))     ; same as (defun add (a b) (+ a b))
-  (defun sum (*numbers) (apply + numbers))
+  (define (add a b) (+ a b))
+  (define (sum *numbers) (apply + numbers))
   (sum 1 2 3)      ; 6
   ```
 
@@ -439,7 +438,7 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 - **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Same-type operations use a type prefix (`num-add`, `str-append`). Conversions use `type1->type2` (`num->str`, `str->num`). There are no Scheme spellings such as `number?`, `modulo`, or `string-append`.
 - **Small surface.** `if` without an else branch and `define` return `()`; there is no named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
 - **`apply` and `eval` are syntax.** In Scheme they are procedures; in Rusche they are evaluator forms like `if`, so they cannot be passed as values or rebound. `(begin)` with no arguments is allowed and returns `()`.
-- **Rest parameters** are spelled with a `*` prefix instead of Scheme's dotted syntax: `(defun f (a *rest) ...)` and `(lambda (*args) ...)`. See [Procedure Parameters](#procedure-parameters).
+- **Rest parameters** are spelled with a `*` prefix instead of Scheme's dotted syntax: `(define (f a *rest) ...)` and `(lambda (*args) ...)`. See [Procedure Parameters](#procedure-parameters).
 
 ## See also
 

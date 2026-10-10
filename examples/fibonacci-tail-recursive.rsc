@@ -1,5 +1,5 @@
-(defun fib (n)
-  (defun fib-aux (n a b)
+(define (fib n)
+  (define (fib-aux n a b)
     (if (= n 0)
         a
         (fib-aux (- n 1) b (+ a b))))

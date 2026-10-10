@@ -1,5 +1,5 @@
-(defun factorial (n)
-    (defun factorial-aux (n acc)
+(define (factorial n)
+    (define (factorial-aux n acc)
         (if (= n 0)
             acc
             (factorial-aux (- n 1) (* n acc))))

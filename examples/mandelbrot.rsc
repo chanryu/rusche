@@ -24,12 +24,12 @@
 (define height (if (or (null? args) (null? (cdr args))) 24 (str->num (cadr args))))
 
 ;; Rusche has no `floor`; for x >= 0, x - (x mod 1) is the integer part.
-(defun floor (x) (- x (% x 1)))
+(define (floor x) (- x (% x 1)))
 
 ;; Count iterations of z <- z^2 + c (starting at z = 0) until |z| > 2,
 ;; or return max-iter if the point stays bounded. Tail-recursive.
-(defun escape-count (cr ci)
-  (defun iter (zr zi n)
+(define (escape-count cr ci)
+  (define (iter zr zi n)
     (let ((zr2 (* zr zr))
           (zi2 (* zi zi)))
       (cond ((= n max-iter) n)
@@ -42,7 +42,7 @@
 ;; Map an escape count onto a palette character. Points near the boundary
 ;; escape slowly, so every two iterations advance one shade and anything
 ;; slower than that (including the set itself) gets the last character.
-(defun shade (n)
+(define (shade n)
   (let ((index (min (- (str-length palette) 1) (floor (/ n 2)))))
     (str-slice palette index (+ index 1))))
 

@@ -14,7 +14,7 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
 ## Features
 
 - Minimalistic library with zero dependencies
-- Lambdas and closures, with splat-style rest parameters (`(defun f (a *rest) ...)`, `(lambda (*args) ...)`)
+- Lambdas and closures, with splat-style rest parameters (`(define (f a *rest) ...)`, `(lambda (*args) ...)`)
 - Lexical scopes and binding
 - Macros using special forms like quasiquote (`` ` ``), unquote (`,`), unquote-splicing (`,@`)
 - Garbage collection
@@ -22,7 +22,7 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
 - Interoperability with the hosting Rust application via user-defined (a.k.a. native) functions and the `Foreign` data type
 - Structured errors with source spans, optional help, and a call trace. Given `first.rsc`:
   ```scheme
-  (defun first-or-zero (lst)
+  (define (first-or-zero lst)
       (if lst (car lst) 0))   ;; `()` is not false in Rusche
 
   (first-or-zero (list))
@@ -31,7 +31,7 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
   ```
   error: `lst` evaluated to `()`, expected `true` or `false`
     --> first.rsc:2:9
-    1| (defun first-or-zero (lst)
+    1| (define (first-or-zero lst)
     2|     (if lst (car lst) 0))   ;; `()` is not false in Rusche
      |         ^^^
     = help: conditions must be booleans; use `(not (null? x))` to test for an empty list
@@ -67,7 +67,7 @@ fn main() {
     let result = evaluator
         .eval_str(
             r#"
-            (defun hypot (a b) (sqrt (+ (* a a) (* b b))))
+            (define (hypot a b) (sqrt (+ (* a a) (* b b))))
             (map (lambda (p) (apply hypot p)) '((3 4) (5 12)))
             "#,
         )
@@ -106,8 +106,8 @@ For a standalone REPL and file runner built on the library, see [`rusche-cli`](#
 The core language is everything available from `Evaluator::default()` (built-ins plus the prelude). No I/O, no vectors — those are host concerns. Full detail: [language reference](docs/language-reference.md).
 
 ```scheme
-(defun fizzbuzz (n)
-    (defun div? (n m) (= (% n m) 0))
+(define (fizzbuzz n)
+    (define (div? n m) (= (% n m) 0))
     (cond ((div? n 15) "FizzBuzz")
           ((div? n 3) "Fizz")
           ((div? n 5) "Buzz")
@@ -127,7 +127,7 @@ The core language is everything available from `Evaluator::default()` (built-ins
 - **Names.** Type checks end in `?` (`num?`, `str?`); same-type ops use a type prefix (`num-add`, `str-append`); conversions use `type1->type2` (`num->str`). There are no Scheme spellings such as `number?` or `string-append`.
 - **Small surface.** `if` without an else branch and `define` return `()`; there is no named `let`, `case`, `do`, `when`, or `unless`. No characters, vectors, ports, or continuations.
 - **`apply` and `eval` are syntax.** Like `if` and `begin`, they are recognised by the evaluator rather than bound as procedures, so they cannot be passed as values.
-- **Rest parameters** are spelled with a `*` prefix, as in Ruby or Python, instead of Scheme's dotted syntax: `(defun f (a *rest) ...)` and `(lambda (*args) ...)`. The parameter list is always a list.
+- **Rest parameters** are spelled with a `*` prefix, as in Ruby or Python, instead of Scheme's dotted syntax: `(define (f a *rest) ...)` and `(lambda (*args) ...)`. The parameter list is always a list.
 
 ### `rusche-cli` (example host)
 
