@@ -11,7 +11,7 @@
 (define (read-num)
     (str->num (read)))
 
-;; `(prompt text)` -- write `text` with no newline, then `(read-num)`.
+;; `(prompt text)` -- write `text` with no newline, then `(read)`.
 (define (prompt text)
     (write text)
-    (read-num))
+    (read))

@@ -8,5 +8,5 @@
 (load "lib/io.rsc")
 (load "lib/format.rsc")
 
-(define n (prompt "Enter a number: "))
+(define n (str->num (prompt "Enter a number: ")))
 (writeln (format "factorial({}) => {}" n (factorial n)))

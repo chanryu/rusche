@@ -9,7 +9,7 @@
 (load "lib/io.rsc")
 
 (let ((n 1)
-      (m (prompt "Enter a number to fizzbuzz: ")))
+      (m (str->num (prompt "Enter a number to fizzbuzz: "))))
     (while (<= n m)
         (writeln (fizzbuzz n))
         (set! n (+ n 1))))

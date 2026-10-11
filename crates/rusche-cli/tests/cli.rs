@@ -309,12 +309,12 @@ fn read_num_and_prompt() {
             r#"(begin
                 (load "examples/lib/io.rsc")
                 (writeln (read-num))
-                (writeln (prompt "n: ")))"#,
+                (writeln (show (prompt "n: "))))"#,
         ],
-        "12\n34\n",
+        "12\nhi\n",
     );
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
-    assert_eq!(stdout(&out), "12\nn: 34\n");
+    assert_eq!(stdout(&out), "12\nn: \"hi\"\n");
 }
 
 #[test]
