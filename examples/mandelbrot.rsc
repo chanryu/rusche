@@ -7,6 +7,8 @@
 ;; Rendering is CPU-bound; add `--release` for larger sizes.
 
 ;; Characters from "escapes quickly" to "stays bounded" (the set itself).
+(load "examples/helpers.rsc")
+
 (define palette " .:-=+*#%@")
 
 ;; Region of the complex plane to render.
@@ -55,5 +57,5 @@
         (let ((cr (+ re-min (* col dx))))
           (set! line (str-append line (shade (escape-count cr ci)))))
         (set! col (+ col 1)))
-      (print line "\n"))
+      (writeln line))
     (set! row (+ row 1))))

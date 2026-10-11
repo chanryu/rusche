@@ -3,23 +3,25 @@
 ;;
 ;;   cargo run -p rusche-cli -- examples/strings.rsc
 
+(load "examples/helpers.rsc")
+
 (define line "  Hello, Rusche — hello again.  ")
 
-(print "raw:      [" line "]\n")
-(print "trimmed:  [" (str-trim line) "]\n")
-(print "upcase:   " (str-upcase (str-trim line)) "\n")
-(print "downcase: " (str-downcase (str-trim line)) "\n")
+(writeln (format "raw:      [{}]" line))
+(writeln (format "trimmed:  [{}]" (str-trim line)))
+(writeln (format "upcase:   {}" (str-upcase (str-trim line))))
+(writeln (format "downcase: {}" (str-downcase (str-trim line))))
 
 (define words (str-split (str-trim line) " "))
-(print "words:    " words "\n")
-(print "joined:   " (str-join words "|") "\n")
+(writeln (format "words:    {}" words))
+(writeln (format "joined:   {}" (str-join words "|")))
 
-(print "find 'che': " (str-find line "che") "\n")
-(print "replace:  " (str-replace (str-trim line) "hello" "hi") "\n")
-(print "repeat:   " (str-repeat "-*" 5) "\n")
+(writeln (format "find 'che': {}" (str-find line "che")))
+(writeln (format "replace:  {}" (str-replace (str-trim line) "hello" "hi")))
+(writeln (format "repeat:   {}" (str-repeat "-*" 5)))
 
-(print "order:    " (< "apple" "banana") " " (= (+ "a" "b") "ab") "\n")
-(print "length:   " (length line) " reversed: " (reverse "Rusche") "\n")
-(print "earliest: " (min "pear" "apple" "plum") "\n")
-(print "chars:    " (str->list "ab") "\n")
-(print "rejoined: " (list->str '("x" "y" "z")) "\n")
+(writeln (format "order:    {} {}" (< "apple" "banana") (= (+ "a" "b") "ab")))
+(writeln (format "length:   {} reversed: {}" (length line) (reverse "Rusche")))
+(writeln (format "earliest: {}" (min "pear" "apple" "plum")))
+(writeln (format "chars:    {}" (str->list "ab")))
+(writeln (format "rejoined: {}" (list->str '("x" "y" "z"))))

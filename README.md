@@ -133,12 +133,12 @@ The core language is everything available from `Evaluator::default()` (built-ins
 
 [`rusche-cli`](https://github.com/chanryu/rusche/tree/main/crates/rusche-cli/) is a sample interpreter built on the library. It is **not** part of the core language. On top of `Evaluator::with_prelude()`, it adds:
 
-- I/O: `print`, `read`, `exit`, `load`
+- I/O: `write`, `read`, `exit`, `load`
 - System helpers: `getenv`, `clock`, `random`, `command-line`
 - `vec` and `dict` foreign types
 - A REPL with history, multi-line editing, and meta-commands (`,help`, `,load`, …)
 
-The `*.rsc` scripts under [`examples/`](https://github.com/chanryu/rusche/tree/main/examples) are written for this host (for example [fizzbuzz.rsc](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsc) uses `print` and `read`). See [`docs/rusche-cli.md`](docs/rusche-cli.md).
+The `*.rsc` scripts under [`examples/`](https://github.com/chanryu/rusche/tree/main/examples) are written for this host (for example [fizzbuzz.rsc](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsc) uses `write` and `read`). See [`docs/rusche-cli.md`](docs/rusche-cli.md).
 
 ```bash
 cargo run -p rusche-cli

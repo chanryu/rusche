@@ -1,2 +1,2 @@
-(print "x")
+(write "x")
 	(car 1)

@@ -6,10 +6,12 @@
           ((div? n 5) "Buzz")
           (else n)))
 
-(print "Enter a number to fizzbuzz: ")
+(load "examples/helpers.rsc")
+
+(write "Enter a number to fizzbuzz: ")
 
 (let ((n 1)
       (m (str->num (read)))) ; read a number from stdio and store it to `m`
     (while (<= n m)
-        (print (fizzbuzz n) "\n")
+        (writeln (fizzbuzz n))
         (set! n (+ n 1))))

@@ -1,2 +1,2 @@
 (define x 1)
-(print x "\n")
+(write x "\n")

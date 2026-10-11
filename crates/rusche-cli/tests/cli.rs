@@ -26,6 +26,7 @@ fn example(name: &str) -> PathBuf {
 fn run(args: &[&str], stdin: &str) -> Output {
     let mut child = Command::new(bin())
         .args(args)
+        .current_dir(workspace_root())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -58,7 +59,7 @@ fn ok_script_exits_zero() {
 fn runtime_error_goes_to_stderr_and_exits_one() {
     let out = run(&[script("runtime_error.rsc").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1));
-    // print without a trailing newline is followed by ensure_newline before the diagnostic
+    // write without a trailing newline is followed by ensure_newline before the diagnostic
     assert_eq!(stdout(&out), "hi\n");
     let err = stderr(&out);
     assert!(err.contains("error:"), "{err}");
@@ -140,21 +141,21 @@ fn unknown_flag_exits_two() {
 
 #[test]
 fn stdin_script() {
-    let out = run(&[], "(print \"from-stdin\\n\")\n");
+    let out = run(&[], "(write \"from-stdin\\n\")\n");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert_eq!(stdout(&out), "from-stdin\n");
 }
 
 #[test]
 fn dash_means_stdin() {
-    let out = run(&["-"], "(print 42 \"\\n\")\n");
+    let out = run(&["-"], "(write 42 \"\\n\")\n");
     assert_eq!(out.status.code(), Some(0));
     assert_eq!(stdout(&out), "42\n");
 }
 
 #[test]
 fn command_line_builtin() {
-    let out = run(&["-e", "(begin (print (car (command-line)) \"\\n\"))"], "");
+    let out = run(&["-e", "(begin (write (car (command-line)) \"\\n\"))"], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert!(stdout(&out).contains("rusche-cli"));
 }
@@ -165,7 +166,7 @@ fn command_line_with_script_args() {
     // Use -e via a tiny temp approach: run with a file that prints command-line.
     let dir = tempfile_dir();
     let path = dir.join("args.rsc");
-    std::fs::write(&path, "(print (command-line) \"\\n\")\n").unwrap();
+    std::fs::write(&path, "(write (command-line) \"\\n\")\n").unwrap();
     let out = run(&[path.to_str().unwrap(), "alpha", "beta"], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     let printed = stdout(&out);
@@ -180,11 +181,11 @@ fn vec_builtins() {
             "-e",
             r#"(begin
                 (define v (vec 1 2 3))
-                (print (vec-length v) "\n")
+                (write (vec-length v) "\n")
                 (vec-set! v 1 9)
-                (print (vec-get v 1) "\n")
-                (print (show "hi") "\n")
-                (print (vec? v) "\n"))"#,
+                (write (vec-get v 1) "\n")
+                (write (show "hi") "\n")
+                (write (vec? v) "\n"))"#,
         ],
         "",
     );
@@ -199,12 +200,12 @@ fn dict_builtins() {
             "-e",
             r#"(begin
                 (define d (dict "a" 1 "b" 2))
-                (print (dict-length d) "\n")
+                (write (dict-length d) "\n")
                 (dict-set! d "c" 3)
-                (print (dict-get d "a") "\n")
-                (print (dict-get d "missing" 0) "\n")
-                (print (dict->list d) "\n")
-                (print (dict? d) "\n"))"#,
+                (write (dict-get d "a") "\n")
+                (write (dict-get d "missing" 0) "\n")
+                (write (dict->list d) "\n")
+                (write (dict? d) "\n"))"#,
         ],
         "",
     );
@@ -238,7 +239,7 @@ fn load_builtin() {
     let loaded = dir.join("loaded.rsc");
     std::fs::write(&loaded, "(define loaded-value 99)\n").unwrap();
     let expr = format!(
-        "(begin (load \"{}\") (print loaded-value \"\\n\"))",
+        "(begin (load \"{}\") (write loaded-value \"\\n\"))",
         loaded.display()
     );
     let out = run(&["-e", &expr], "");
@@ -251,6 +252,34 @@ fn dict_rejects_odd_args() {
     let out = run(&["-e", "(dict 1)"], "");
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("even number"), "{}", stderr(&out));
+}
+
+#[test]
+fn helpers_writeln_and_format() {
+    let out = run(
+        &[
+            "-e",
+            r#"(begin
+                (load "examples/helpers.rsc")
+                (writeln (format "hello {}" "world"))
+                (writeln (format "{{}} {}" '(a b)))
+                (writeln "x"))"#,
+        ],
+        "",
+    );
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out), "hello world\n{} (a b)\nx\n");
+
+    let out = run(
+        &["-e", r#"(begin (load "examples/helpers.rsc") (format "{}"))"#],
+        "",
+    );
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        stderr(&out).contains("not enough arguments"),
+        "{}",
+        stderr(&out)
+    );
 }
 
 #[test]
@@ -322,7 +351,7 @@ fn arity_error_snapshot() {
 fn load_nested_prints_inner_source() {
     let dir = tempfile_dir();
     let inner = dir.join("inner.rsc");
-    std::fs::write(&inner, "(print \"in\")\n(car 99)\n").unwrap();
+    std::fs::write(&inner, "(write \"in\")\n(car 99)\n").unwrap();
     let expr = format!("(load \"{}\")", inner.display());
     let out = run(&["-e", &expr], "");
     assert_eq!(out.status.code(), Some(1));
@@ -356,10 +385,10 @@ fn sys_builtins_and_arity() {
         &[
             "-e",
             r#"(begin
-                (print (num? (clock)) "\n")
-                (print (num? (random)) "\n")
-                (print (null? (cdr (command-line))) "\n")
-                (print (str? (or-else (getenv "PATH") "")) "\n"))"#,
+                (write (num? (clock)) "\n")
+                (write (num? (random)) "\n")
+                (write (null? (cdr (command-line))) "\n")
+                (write (str? (or-else (getenv "PATH") "")) "\n"))"#,
         ],
         "",
     );
@@ -395,12 +424,12 @@ fn vec_error_paths() {
             "-e",
             r#"(begin
                 (define v (vec 1 2))
-                (print (vec-get v 0) "\n")
-                (print (vec-length v) "\n")
-                (print (vec->list v) "\n")
-                (print (vec? (list->vec '(a b))) "\n")
+                (write (vec-get v 0) "\n")
+                (write (vec-length v) "\n")
+                (write (vec->list v) "\n")
+                (write (vec? (list->vec '(a b))) "\n")
                 (vec-push v 3)
-                (print (vec-pop v) "\n"))"#,
+                (write (vec-pop v) "\n"))"#,
         ],
         "",
     );
@@ -483,8 +512,8 @@ fn dangling_paren_and_invalid_number_messages() {
 }
 
 #[test]
-fn interleaved_print_gets_newline_before_error() {
-    let out = run(&["-e", "(begin (print \"hi\") (car 1))"], "");
+fn interleaved_write_gets_newline_before_error() {
+    let out = run(&["-e", "(begin (write \"hi\") (car 1))"], "");
     assert_eq!(out.status.code(), Some(1));
     assert_eq!(stdout(&out), "hi\n");
     assert!(stderr(&out).contains("error:"));

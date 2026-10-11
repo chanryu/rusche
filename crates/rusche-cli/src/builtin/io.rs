@@ -8,15 +8,15 @@ use crate::diagnostics::print_pipeline_error;
 use crate::host;
 
 pub fn load_io_procs(context: &EvalContext) {
-    context.env.define_native_proc("print", print);
+    context.env.define_native_proc("write", write);
     context.env.define_native_proc("read", read);
     context.env.define_native_proc("exit", exit);
     context.env.define_native_proc("load", load);
 }
 
-/// `(print expr ...)` -- prints each argument with nothing between them.
+/// `(write expr ...)` -- writes each argument with nothing between them.
 /// Strings are raw text; other values use their source form. A newline is `"\n"`.
-fn print(_: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn write(_: &str, args: &List, context: &EvalContext) -> EvalResult {
     for expr in args.iter() {
         match eval(expr, context)? {
             Expr::Str(text, _) => {
@@ -122,13 +122,13 @@ mod tests {
     }
 
     #[test]
-    fn print_and_load_errors() {
+    fn write_and_load_errors() {
         colored::control::set_override(false);
         let e = with_io();
 
-        assert!(e.eval_str(r#"(print "hi" 1)"#).is_ok());
-        assert!(e.eval_str(r#"(print (show "hi"))"#).is_ok());
-        assert!(e.eval_str(r#"(print)"#).is_ok());
+        assert!(e.eval_str(r#"(write "hi" 1)"#).is_ok());
+        assert!(e.eval_str(r#"(write (show "hi"))"#).is_ok());
+        assert!(e.eval_str(r#"(write)"#).is_ok());
 
         assert!(eval_err(&e, "(load 1)").contains("string path"));
         assert!(eval_err(&e, r#"(load "/tmp/rusche-missing-xyz.rsc")"#).contains("failed to read"));

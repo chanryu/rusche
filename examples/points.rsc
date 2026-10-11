@@ -3,6 +3,8 @@
 ;;
 ;;   cargo run -p rusche-cli -- examples/points.rsc
 
+(load "examples/helpers.rsc")
+
 (defrecord point (x y))
 
 (defun point-dist (a b)
@@ -25,10 +27,11 @@
 (let loop ((pts samples))
     (when (not (null? pts))
         (let ((p (car pts)))
-            (print "point (" (point-x p) ", " (point-y p) ")"
-                   " dist=" (point-dist (make-point 0 0) p)
-                   " -> " (classify p) "\n")
+            (writeln (format "point ({}, {}) dist={} -> {}"
+                             (point-x p) (point-y p)
+                             (point-dist (make-point 0 0) p)
+                             (classify p)))
             (loop (cdr pts)))))
 
 (unless (point? 42)
-    (print "42 is not a point\n"))
+    (writeln "42 is not a point"))

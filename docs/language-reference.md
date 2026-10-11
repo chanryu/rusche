@@ -9,7 +9,7 @@ This reference covers only what the `rusche` crate provides:
 - **Prelude** — macros and helpers loaded by `Evaluator::with_prelude()` / `Default`
 
 It does **not** document the example host [`rusche-cli`](rusche-cli.md). That
-application adds I/O (`print`, `read`) and the `vec` and `dict`
+application adds I/O (`write`, `read`) and the `vec` and `dict`
 foreign types. The `examples/*.rsc` scripts in this repository target
 `rusche-cli`, not a bare `Evaluator::default()`.
 

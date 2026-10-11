@@ -18,7 +18,7 @@ cargo run -p rusche-cli -- examples/fizzbuzz.rsc
 | Layer | Source | Contents |
 | --- | --- | --- |
 | Core built-ins + prelude | `rusche` crate | [Language reference](language-reference.md). |
-| I/O | [`builtin/io.rs`](../crates/rusche-cli/src/builtin/io.rs) | `print`, `read`, `exit`, `load` |
+| I/O | [`builtin/io.rs`](../crates/rusche-cli/src/builtin/io.rs) | `write`, `read`, `exit`, `load` |
 | System | [`builtin/sys.rs`](../crates/rusche-cli/src/builtin/sys.rs) | `getenv`, `clock`, `random`, `command-line` |
 | Vectors | [`builtin/vec.rs`](../crates/rusche-cli/src/builtin/vec.rs) | `vec?`, `vec`, `vec-push`, `vec-pop`, `vec-get`, `vec-set!`, `vec-length`, `vec->list`, `list->vec` |
 | Dicts | [`builtin/dict.rs`](../crates/rusche-cli/src/builtin/dict.rs) | `dict?`, `dict`, `dict-get`, `dict-set!`, `dict-has?`, `dict-remove!`, `dict-length`, `dict-keys`, `dict->list`, `list->dict` |
@@ -49,7 +49,7 @@ next argument.
 | `rusche-cli -e EXPR` | `EXPR` (a later file or `-` replaces it) | The last value, unless it is `()` | `(program)` |
 
 `program` is `argv[0]`. Every top-level form runs. An empty script prints
-nothing. File, pipe, and `-` produce output only through `print`.
+nothing. File, pipe, and `-` produce output only through `write`.
 
 ```bash
 rusche-cli --no-color examples/counter.rsc
@@ -98,7 +98,7 @@ A terminal with no file, no `-`, and no `-e` starts the REPL. The prompt is
 - Tab completes the identifier at the cursor from names in the root environment. Matching brackets are highlighted.
 - History is `$HOME/.rusche_history` when `HOME` is set, loaded at startup and saved on Ctrl+D or `,quit`.
 - Ctrl+C drops the current line. Ctrl+D exits.
-- `()` is not printed. Any other result is printed in green. If `print` did not end in a newline, the next prompt stays on that line, and a newline is inserted before the next result.
+- `()` is not printed. Any other result is printed in green. If `write` did not end in a newline, the next prompt stays on that line, and a newline is inserted before the next result.
 - `(read)` takes the next typed line as data.
 
 A line whose first non-whitespace character is `,` is a meta-command:
@@ -133,18 +133,18 @@ large stack so the call-depth limit reports an error instead of aborting.
 
 ## I/O
 
-Ordinary native procedures. `print` returns `()`.
+Ordinary native procedures. `write` returns `()`.
 
-#### `print`
+#### `write`
 
-Prints each argument with nothing between them. Strings are raw text; other
+Writes each argument with nothing between them. Strings are raw text; other
 values use their usual printed form. A newline is the string `"\n"`. Stdout is
 flushed. The source form of a value, with strings quoted, is [`show`](language-reference.md#show).
 
 ```scheme
-(print "hello " "world\n")  ; hello world
-(print 1 2)                 ; 12
-(print (show "hi\n"))       ; "hi\n"
+(write "hello " "world\n")  ; hello world
+(write 1 2)                 ; 12
+(write (show "hi\n"))       ; "hi\n"
 ```
 
 #### `read`
@@ -262,6 +262,7 @@ for scripts that use it.
 
 | Script | What it shows |
 | --- | --- |
+| [`helpers.rsc`](../examples/helpers.rsc) | `writeln` and `format` (`{}` placeholders). Other scripts `(load "examples/helpers.rsc")`. |
 | [`backwards.rsc`](../examples/backwards.rsc) | A macro that reverses a sequence of forms. |
 | [`counter.rsc`](../examples/counter.rsc) | A closure that counts with `set!`. |
 | [`dict.rsc`](../examples/dict.rsc) | Word frequencies with `dict`. Shebang. |

@@ -15,7 +15,9 @@
         (dict-set! cache n result)
         result)))
 
-(print "Enter a number: ")
+(load "examples/helpers.rsc")
+
+(write "Enter a number: ")
 (define n (str->num (read)))
-(print "fib(" n ") => " (fib n) "\n")
-(print "cache entries: " (dict-length cache) "\n")
+(writeln (format "fib({}) => {}" n (fib n)))
+(writeln (format "cache entries: {}" (dict-length cache)))

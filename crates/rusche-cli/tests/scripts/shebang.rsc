@@ -1,2 +1,2 @@
 #!/usr/bin/env rusche-cli
-(print "shebang-ok\n")
+(write "shebang-ok\n")

@@ -5,6 +5,8 @@
             (factorial-aux (- n 1) (* n acc))))
     (factorial-aux n 1))
 
-(print "Enter a number: ")
+(load "examples/helpers.rsc")
+
+(write "Enter a number: ")
 (define n (str->num (read)))
-(print "factorial(" n ") => " (factorial n) "\n")
+(writeln (format "factorial({}) => {}" n (factorial n)))
