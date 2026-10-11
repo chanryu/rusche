@@ -5,7 +5,6 @@
 
 (load "lib/io.rsc")
 (load "lib/format.rsc")
-
 (define words '(the quick brown fox jumps over the lazy dog the fox))
 
 (define counts (dict))
@@ -24,11 +23,11 @@
     (if (null? pairs)
         ()
         (let ((pair (car pairs)))
-            (writeln (format "{}: {}" (car pair) (cadr pair)))
+            (println (format "{}: {}" (car pair) (cadr pair)))
             (print-counts (cdr pairs)))))
 
 (tally-all words)
 (print-counts (dict->list counts))
-(writeln (format "unique: {}" (dict-length counts)))
-(writeln (format "has fox? {}" (dict-has? counts 'fox)))
-(writeln (format "keys: {}" (dict-keys counts)))
+(println (format "unique: {}" (dict-length counts)))
+(println (format "has fox? {}" (dict-has? counts 'fox)))
+(println (format "keys: {}" (dict-keys counts)))

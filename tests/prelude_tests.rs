@@ -382,6 +382,49 @@ fn test_str_list_conversion() {
 }
 
 #[test]
+fn test_repr() {
+    assert_eq!(eval_str(r#"(repr "hi")"#), r#""\"hi\"""#);
+    assert_eq!(eval_str("(repr 1)"), r#""1""#);
+    assert_eq!(eval_str("(repr 'foo)"), r#""foo""#);
+    assert_eq!(eval_str("(repr '(1 2))"), r#""(1 2)""#);
+    assert!(eval_str("(repr)").starts_with("Err:"));
+    assert!(eval_str("(repr 1 2)").starts_with("Err:"));
+}
+
+#[test]
+fn test_format_library() {
+    let evaluator = Evaluator::with_prelude();
+    evaluator
+        .eval_str(include_str!("../examples/lib/format.rsc"))
+        .unwrap();
+    assert_eq!(
+        evaluator.eval_to_str(r#"(format "hello {}" "world")"#),
+        r#""hello \"world\"""#
+    );
+    assert_eq!(evaluator.eval_to_str(r#"(format "n={}" 1)"#), r#""n=1""#);
+    assert_eq!(
+        evaluator.eval_to_str(r#"(format "{{}} {}" '(a b))"#),
+        r#""{} (a b)""#
+    );
+    assert!(evaluator
+        .eval_to_str(r#"(format "{}")"#)
+        .contains("not enough arguments"));
+    assert!(evaluator
+        .eval_to_str(r#"(format "x" 1)"#)
+        .contains("unused arguments"));
+    assert!(evaluator.eval_to_str(r#"(format "{")"#).contains("unclosed"));
+    assert!(evaluator
+        .eval_to_str(r#"(format "{x}")"#)
+        .contains("expected '}'"));
+    assert!(evaluator
+        .eval_to_str(r#"(format "}")"#)
+        .contains("unmatched"));
+    assert!(evaluator
+        .eval_to_str(r#"(format 1)"#)
+        .contains("string template"));
+}
+
+#[test]
 fn test_str_repeat_and_natives() {
     assert_eq!(eval_str("(str-repeat \"ab\" 3)"), "\"ababab\"");
     assert_eq!(eval_str("(str-repeat \"x\" 0)"), "\"\"");

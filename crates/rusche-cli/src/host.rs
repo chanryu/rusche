@@ -91,7 +91,7 @@ mod tests {
         let outer = enter_source_file(Path::new("examples/fizzbuzz.rsc"));
         assert_eq!(current_source_dir().unwrap(), PathBuf::from("examples"));
         {
-            let _inner = enter_source_file(Path::new("examples/lib/format.rsc"));
+            let _inner = enter_source_file(Path::new("examples/lib/io.rsc"));
             assert_eq!(current_source_dir().unwrap(), PathBuf::from("examples/lib"));
         }
         assert_eq!(current_source_dir().unwrap(), PathBuf::from("examples"));

@@ -2,8 +2,12 @@
 ;;
 ;;   (load "lib/io.rsc")
 
-;; `(writeln expr ...)` -- `(write expr ...)` followed by a newline.
-(define (writeln *args)
+;; `(print expr ...)` -- write `(repr expr)` for each argument, with nothing between them.
+(define (print *args)
+    (apply write (map repr args)))
+
+;; `(println expr ...)` -- `(write expr ...)` followed by a newline.
+(define (println *args)
     (apply write args)
     (write "\n"))
 

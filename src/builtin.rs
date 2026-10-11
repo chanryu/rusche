@@ -4,6 +4,7 @@ mod convert;
 mod list;
 mod num;
 mod proc;
+mod repr;
 pub(crate) mod special;
 mod str;
 mod sym;
@@ -69,6 +70,7 @@ pub fn load_builtin(env: &Rc<Env>) {
     env.define_native_proc("proc?", proc::is_proc);
 
     // conversions
+    env.define_native_proc("repr", repr::repr);
     env.define_native_proc("num->str", convert::num_to_str);
     env.define_native_proc("str->num", convert::str_to_num);
     env.define_native_proc("sym->str", convert::sym_to_str);

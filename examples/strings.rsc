@@ -5,24 +5,23 @@
 
 (load "lib/io.rsc")
 (load "lib/format.rsc")
-
 (define line "  Hello, Rusche — hello again.  ")
 
-(writeln (format "raw:      [{}]" line))
-(writeln (format "trimmed:  [{}]" (str-trim line)))
-(writeln (format "upcase:   {}" (str-upcase (str-trim line))))
-(writeln (format "downcase: {}" (str-downcase (str-trim line))))
+(println (format "raw:      [{}]" line))
+(println (format "trimmed:  [{}]" (str-trim line)))
+(println (format "upcase:   {}" (str-upcase (str-trim line))))
+(println (format "downcase: {}" (str-downcase (str-trim line))))
 
 (define words (str-split (str-trim line) " "))
-(writeln (format "words:    {}" words))
-(writeln (format "joined:   {}" (str-join words "|")))
+(println (format "words:    {}" words))
+(println (format "joined:   {}" (str-join words "|")))
 
-(writeln (format "find 'che': {}" (str-find line "che")))
-(writeln (format "replace:  {}" (str-replace (str-trim line) "hello" "hi")))
-(writeln (format "repeat:   {}" (str-repeat "-*" 5)))
+(println (format "find 'che': {}" (str-find line "che")))
+(println (format "replace:  {}" (str-replace (str-trim line) "hello" "hi")))
+(println (format "repeat:   {}" (str-repeat "-*" 5)))
 
-(writeln (format "order:    {} {}" (< "apple" "banana") (= (+ "a" "b") "ab")))
-(writeln (format "length:   {} reversed: {}" (length line) (reverse "Rusche")))
-(writeln (format "earliest: {}" (min "pear" "apple" "plum")))
-(writeln (format "chars:    {}" (str->list "ab")))
-(writeln (format "rejoined: {}" (list->str '("x" "y" "z"))))
+(println (format "order:    {} {}" (< "apple" "banana") (= (+ "a" "b") "ab")))
+(println (format "length:   {} reversed: {}" (length line) (reverse "Rusche")))
+(println (format "earliest: {}" (min "pear" "apple" "plum")))
+(println (format "chars:    {}" (str->list "ab")))
+(println (format "rejoined: {}" (list->str '("x" "y" "z"))))

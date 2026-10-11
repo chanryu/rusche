@@ -18,7 +18,7 @@ cargo run -p rusche-cli -- examples/fizzbuzz.rsc
 | Layer | Source | Contents |
 | --- | --- | --- |
 | Core built-ins + prelude | `rusche` crate | [Language reference](language-reference.md). |
-| I/O | [`builtin/io.rs`](../crates/rusche-cli/src/builtin/io.rs) | `write`, `show`, `read`, `exit`, `load` |
+| I/O | [`builtin/io.rs`](../crates/rusche-cli/src/builtin/io.rs) | `write`, `read`, `exit`, `load` |
 | System | [`builtin/sys.rs`](../crates/rusche-cli/src/builtin/sys.rs) | `getenv`, `clock`, `random`, `command-line` |
 | Vectors | [`builtin/vec.rs`](../crates/rusche-cli/src/builtin/vec.rs) | `vec?`, `vec`, `vec-push`, `vec-pop`, `vec-get`, `vec-set!`, `vec-length`, `vec->list`, `list->vec` |
 | Dicts | [`builtin/dict.rs`](../crates/rusche-cli/src/builtin/dict.rs) | `dict?`, `dict`, `dict-get`, `dict-set!`, `dict-has?`, `dict-remove!`, `dict-length`, `dict-keys`, `dict->list`, `list->dict` |
@@ -98,7 +98,7 @@ A terminal with no file, no `-`, and no `-e` starts the REPL. The prompt is
 - Tab completes the identifier at the cursor from names in the root environment. Matching brackets are highlighted.
 - History is `$HOME/.rusche_history` when `HOME` is set, loaded at startup and saved on Ctrl+D or `,quit`.
 - Ctrl+C drops the current line. Ctrl+D exits.
-- `()` is not printed. Any other result is printed in green. If `write` did not end in a newline, the next prompt stays on that line, and a newline is inserted before the next result.
+- `()` is not printed. Any other result is printed in green. If stdout did not end in a newline, the next prompt stays on that line, and a newline is inserted before the next result.
 - `(read)` takes the next typed line as data.
 
 A line whose first non-whitespace character is `,` is a meta-command:
@@ -138,25 +138,20 @@ Ordinary native procedures. `write` returns `()`.
 #### `write`
 
 Writes each argument with nothing between them. Strings are raw text; other
-values use their usual printed form. A newline is the string `"\n"`. Stdout is
-flushed. The source form of a value, with strings quoted, is [`show`](#show).
+values use their source form. A newline is the string `"\n"`. Stdout is flushed.
 
 ```scheme
 (write "hello " "world\n")  ; hello world
 (write 1 2)                 ; 12
-(write (show "hi\n"))       ; "hi\n"
 ```
 
-#### `show`
-
-Returns the source form of one value as a string. Strings are quoted and escapes are shown. This is a value, not output.
+[`lib/io.rsc`](../examples/lib/io.rsc) defines `print`, which writes `(repr expr)` for each argument. Strings are quoted. `repr` is core language; see the [language reference](language-reference.md#repr).
 
 ```scheme
-(show "hi")    ; "\"hi\""
-(show "hi\n")  ; "\"hi\\n\""
-(show 1)       ; "1"
-(show 'foo)    ; "foo"
-(show '(1 2))  ; "(1 2)"
+(load "lib/io.rsc")
+(print "hi")      ; "hi"
+(print "hi\n")    ; "hi\n"   (a backslash and n, not a newline)
+(print 1 '(a b))  ; 1(a b)
 ```
 
 #### `read`
@@ -291,7 +286,7 @@ for scripts that use it.
 | [`points.rsc`](../examples/points.rsc) | `defrecord`, list destructuring, named `let`, `case` / `when` / `unless`, `sqrt` / `expt`. Shebang. |
 | [`strings.rsc`](../examples/strings.rsc) | `str-find`, `str-split`, `str-join`, `str-replace`, trim/case, `str-repeat`, `str->list`. Shebang. |
 
-Shared modules live in [`lib/`](../examples/lib) and are loaded by these scripts: [`io.rsc`](../examples/lib/io.rsc) (`writeln`, `read-num`, `prompt`) and [`format.rsc`](../examples/lib/format.rsc) (`{}` placeholders).
+Shared modules live in [`lib/`](../examples/lib) and are loaded by these scripts: [`io.rsc`](../examples/lib/io.rsc) (`print`, `println`, `read-num`, `prompt`) and [`format.rsc`](../examples/lib/format.rsc) (`{}` placeholders, filled with `repr`).
 
 ```bash
 cargo run -p rusche-cli -- examples/fizzbuzz.rsc

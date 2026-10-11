@@ -17,7 +17,6 @@
 
 (load "lib/io.rsc")
 (load "lib/format.rsc")
-
 (define n (str->num (prompt "Enter a number: ")))
-(writeln (format "fib({}) => {}" n (fib n)))
-(writeln (format "cache entries: {}" (dict-length cache)))
+(println (format "fib({}) => {}" n (fib n)))
+(println (format "cache entries: {}" (dict-length cache)))

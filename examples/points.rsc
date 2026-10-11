@@ -5,7 +5,6 @@
 
 (load "lib/io.rsc")
 (load "lib/format.rsc")
-
 (defrecord point (x y))
 
 (defun point-dist (a b)
@@ -28,11 +27,11 @@
 (let loop ((pts samples))
     (when (not (null? pts))
         (let ((p (car pts)))
-            (writeln (format "point ({}, {}) dist={} -> {}"
+            (println (format "point ({}, {}) dist={} -> {}"
                              (point-x p) (point-y p)
                              (point-dist (make-point 0 0) p)
                              (classify p)))
             (loop (cdr pts)))))
 
 (unless (point? 42)
-    (writeln "42 is not a point"))
+    (println "42 is not a point"))

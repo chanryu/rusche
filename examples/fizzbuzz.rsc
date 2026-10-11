@@ -11,5 +11,5 @@
 (let ((n 1)
       (m (str->num (prompt "Enter a number to fizzbuzz: "))))
     (while (<= n m)
-        (writeln (fizzbuzz n))
+        (println (fizzbuzz n))
         (set! n (+ n 1))))

@@ -4,6 +4,6 @@
     `(begin ,@(reverse args)))
 
 (backwards
-    (writeln "uno")
-    (writeln "dos")
-    (writeln "tres"))
+    (println "uno")
+    (println "dos")
+    (println "tres"))
