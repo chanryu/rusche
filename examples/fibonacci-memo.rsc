@@ -2,7 +2,7 @@
 ;; Without the cache, the naive tree recursion is exponential; with it,
 ;; each n is computed once.
 ;;
-;;   cargo run -p rusche-cli -- examples/fibonacci.rsc
+;;   cargo run -p rusche-cli -- examples/fibonacci-memo.rsc
 
 (define cache (dict))
 

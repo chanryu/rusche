@@ -336,7 +336,7 @@ fn example_dict() {
 
 #[test]
 fn example_fibonacci_memoized() {
-    let out = run(&[example("fibonacci.rsc").to_str().unwrap()], "10\n");
+    let out = run(&[example("fibonacci-memo.rsc").to_str().unwrap()], "10\n");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     let s = stdout(&out);
     assert!(s.contains("fib(10) => 55"), "{s}");
