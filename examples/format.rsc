@@ -1,6 +1,6 @@
-;; Helpers for the example scripts. From another file in this directory:
+;; writeln and format. From another file in this directory:
 ;;
-;;   (load "helpers.rsc")
+;;   (load "format.rsc")
 
 ;; `(writeln expr ...)` -- `(write expr ...)` followed by a newline.
 (define (writeln *args)

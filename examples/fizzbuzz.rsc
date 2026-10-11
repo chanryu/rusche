@@ -6,7 +6,7 @@
           ((div? n 5) "Buzz")
           (else n)))
 
-(load "helpers.rsc")
+(load "format.rsc")
 
 (write "Enter a number to fizzbuzz: ")
 

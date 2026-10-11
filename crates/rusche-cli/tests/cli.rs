@@ -270,12 +270,12 @@ fn dict_rejects_odd_args() {
 }
 
 #[test]
-fn helpers_writeln_and_format() {
+fn writeln_and_format() {
     let out = run(
         &[
             "-e",
             r#"(begin
-                (load "examples/helpers.rsc")
+                (load "examples/format.rsc")
                 (writeln (format "hello {}" "world"))
                 (writeln (format "{{}} {}" '(a b)))
                 (writeln "x"))"#,
@@ -288,7 +288,7 @@ fn helpers_writeln_and_format() {
     let out = run(
         &[
             "-e",
-            r#"(begin (load "examples/helpers.rsc") (format "{}"))"#,
+            r#"(begin (load "examples/format.rsc") (format "{}"))"#,
         ],
         "",
     );

@@ -3,7 +3,7 @@
 ;;
 ;;   cargo run -p rusche-cli -- examples/dict.rsc
 
-(load "helpers.rsc")
+(load "format.rsc")
 
 (define words '(the quick brown fox jumps over the lazy dog the fox))
 
