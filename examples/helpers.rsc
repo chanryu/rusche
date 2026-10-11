@@ -1,6 +1,6 @@
-;; Helpers for the example scripts. Load from the repository root:
+;; Helpers for the example scripts. From another file in this directory:
 ;;
-;;   (load "examples/helpers.rsc")
+;;   (load "helpers.rsc")
 
 ;; `(writeln expr ...)` -- `(write expr ...)` followed by a newline.
 (define (writeln *args)

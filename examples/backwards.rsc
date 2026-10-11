@@ -1,4 +1,4 @@
-(load "examples/helpers.rsc")
+(load "helpers.rsc")
 
 (defmacro (backwards *args)
     `(begin ,@(reverse args)))

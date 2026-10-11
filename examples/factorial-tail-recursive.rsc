@@ -5,7 +5,7 @@
             (factorial-aux (- n 1) (* n acc))))
     (factorial-aux n 1))
 
-(load "examples/helpers.rsc")
+(load "helpers.rsc")
 
 (write "Enter a number: ")
 (define n (str->num (read)))

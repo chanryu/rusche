@@ -12,6 +12,7 @@ use rusche::{tokenize, Evaluator, Loc, ParseError, Parser, Span};
 use builtin::{load_dict_procs, load_io_procs, load_sys_procs, load_vec_procs};
 use cli::{parse_args, usage, Input, Options};
 use diagnostics::{print_eval_error, print_lex_error, print_parse_error, print_pipeline_error};
+use host::enter_source_file;
 use repl::run_repl;
 
 const EVAL_STACK_SIZE: usize = 256 * 1024 * 1024;
@@ -104,6 +105,7 @@ fn run_with_options(opts: Options) -> ExitCode {
         Input::File(path) => match std::fs::read_to_string(&path) {
             Ok(text) => {
                 let name = path.display().to_string();
+                let _source = enter_source_file(&path);
                 match run_source(&evaluator, &text, &name) {
                     Ok(()) => ExitCode::SUCCESS,
                     Err(()) => ExitCode::from(1),

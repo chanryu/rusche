@@ -1,4 +1,4 @@
-(load "examples/helpers.rsc")
+(load "helpers.rsc")
 
 (define counter
     (let ((count 0))

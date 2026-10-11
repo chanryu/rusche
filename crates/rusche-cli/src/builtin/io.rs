@@ -3,6 +3,7 @@ use rusche::{
     NIL,
 };
 use std::io::Write;
+use std::path::{Path, PathBuf};
 
 use crate::diagnostics::print_pipeline_error;
 use crate::host;
@@ -80,25 +81,45 @@ fn load(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
         }
     };
 
-    let text = std::fs::read_to_string(&path).map_err(|e| {
+    let resolved = resolve_load_path(&path);
+    let display = resolved.display().to_string();
+
+    let text = std::fs::read_to_string(&resolved).map_err(|e| {
         EvalError::new(
             ErrorKind::Other,
-            format!("{proc_name}: failed to read \"{path}\": {e}"),
+            format!("{proc_name}: failed to read \"{display}\": {e}"),
         )
         .with_span(arg.span())
     })?;
 
+    // Nested `load` calls resolve relative to this file, not the caller.
+    let _source = host::enter_source_file(&resolved);
     match eval_source(&text, context, false) {
         Ok(result) => Ok(result),
         Err(error) => {
             // Print the inner file's diagnostic with its own source, then return a terse error
             // so the caller's caret lands on the `(load ...)` form without embedding spans in prose.
-            print_pipeline_error(&error, &text, &path);
-            Err(
-                EvalError::new(ErrorKind::Other, format!("{proc_name}: \"{path}\" failed"))
-                    .with_span(arg.span()),
+            print_pipeline_error(&error, &text, &display);
+            Err(EvalError::new(
+                ErrorKind::Other,
+                format!("{proc_name}: \"{display}\" failed"),
             )
+            .with_span(arg.span()))
         }
+    }
+}
+
+/// Absolute paths are used as given. A relative path is joined onto the directory of the
+/// file currently being evaluated, or left for the process working directory when there
+/// is none (REPL, `-e`, stdin).
+fn resolve_load_path(path: &str) -> PathBuf {
+    let path = Path::new(path);
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else if let Some(dir) = host::current_source_dir() {
+        dir.join(path)
+    } else {
+        path.to_path_buf()
     }
 }
 

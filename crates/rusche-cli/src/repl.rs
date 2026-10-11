@@ -154,16 +154,19 @@ Meta-commands:
                 return false;
             };
             match std::fs::read_to_string(path) {
-                Ok(text) => match evaluator.eval_str(&text) {
-                    Ok(result) => {
-                        if !result.is_nil() {
-                            println!("{}", result.to_string().green());
+                Ok(text) => {
+                    let _source = host::enter_source_file(std::path::Path::new(path));
+                    match evaluator.eval_str(&text) {
+                        Ok(result) => {
+                            if !result.is_nil() {
+                                println!("{}", result.to_string().green());
+                            }
+                        }
+                        Err(error) => {
+                            print_pipeline_error(&error, &text, path);
                         }
                     }
-                    Err(error) => {
-                        print_pipeline_error(&error, &text, path);
-                    }
-                },
+                }
                 Err(e) => eprintln!("Failed to read \"{path}\": {e}"),
             }
         }

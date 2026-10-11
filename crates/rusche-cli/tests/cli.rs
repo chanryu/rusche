@@ -234,6 +234,21 @@ fn exit_builtin() {
 }
 
 #[test]
+fn load_relative_to_calling_file() {
+    let dir = tempfile_dir();
+    let sub = dir.join("sub");
+    std::fs::create_dir(&sub).unwrap();
+    std::fs::write(sub.join("b.rsc"), "(define from-b 7)\n").unwrap();
+    std::fs::write(&sub.join("a.rsc"), "(load \"b.rsc\")\n").unwrap();
+    let main = dir.join("main.rsc");
+    std::fs::write(&main, "(load \"sub/a.rsc\")\n(write from-b \"\\n\")\n").unwrap();
+
+    let out = run(&[main.to_str().unwrap()], "");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out), "7\n");
+}
+
+#[test]
 fn load_builtin() {
     let dir = tempfile_dir();
     let loaded = dir.join("loaded.rsc");
@@ -271,7 +286,10 @@ fn helpers_writeln_and_format() {
     assert_eq!(stdout(&out), "hello world\n{} (a b)\nx\n");
 
     let out = run(
-        &["-e", r#"(begin (load "examples/helpers.rsc") (format "{}"))"#],
+        &[
+            "-e",
+            r#"(begin (load "examples/helpers.rsc") (format "{}"))"#,
+        ],
         "",
     );
     assert_eq!(out.status.code(), Some(1));

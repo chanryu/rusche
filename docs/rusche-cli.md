@@ -166,15 +166,21 @@ process keeps running.
 
 #### `load`
 
-Reads a string path (from the current directory) and evaluates it in the
-current environment. Returns the last value, or `()` when the file is empty.
+Reads a string path and evaluates it in the current environment. Returns the
+last value, or `()` when the file is empty. A relative path is resolved against
+the directory of the file currently being evaluated, so a script can load a
+neighbor by name. From the REPL, `-e`, or stdin, a relative path is resolved
+against the current directory. An absolute path is used as given.
+
 A shebang line is not stripped. When a form in the loaded file fails, the CLI
 prints that file's diagnostic first (with the loaded path as the source name),
 then reports a terse `load: "path" failed` error at the `(load ...)` call site.
-`,load` prints the value and uses the file as source context.
+`,load` prints the value and uses the file as source context. A file loaded
+that way is the current file for any relative `load` inside it.
 
 ```scheme
-(load "examples/counter.rsc")
+(load "helpers.rsc")            ; next to the file that contains this call
+(load "examples/counter.rsc")   ; from the REPL, in the repository root
 ```
 
 ## System
@@ -262,7 +268,7 @@ for scripts that use it.
 
 | Script | What it shows |
 | --- | --- |
-| [`helpers.rsc`](../examples/helpers.rsc) | `writeln` and `format` (`{}` placeholders). Other scripts `(load "examples/helpers.rsc")`. |
+| [`helpers.rsc`](../examples/helpers.rsc) | `writeln` and `format` (`{}` placeholders). Other scripts in this directory `(load "helpers.rsc")`. |
 | [`backwards.rsc`](../examples/backwards.rsc) | A macro that reverses a sequence of forms. |
 | [`counter.rsc`](../examples/counter.rsc) | A closure that counts with `set!`. |
 | [`dict.rsc`](../examples/dict.rsc) | Word frequencies with `dict`. Shebang. |

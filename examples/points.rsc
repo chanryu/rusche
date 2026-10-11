@@ -3,7 +3,7 @@
 ;;
 ;;   cargo run -p rusche-cli -- examples/points.rsc
 
-(load "examples/helpers.rsc")
+(load "helpers.rsc")
 
 (defrecord point (x y))
 
