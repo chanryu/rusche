@@ -138,7 +138,7 @@ The core language is everything available from `Evaluator::default()` (built-ins
 - `vec` and `dict` foreign types
 - A REPL with history, multi-line editing, and meta-commands (`,help`, `,load`, …)
 
-The `*.rsc` scripts under [`examples/`](https://github.com/chanryu/rusche/tree/main/examples) are written for this host (for example [fizzbuzz.rsc](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsc) uses `println` and `read`). See [`docs/rusche-cli.md`](docs/rusche-cli.md).
+The `*.rsc` scripts under [`examples/`](https://github.com/chanryu/rusche/tree/main/examples) are written for this host (for example [fizzbuzz.rsc](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsc) uses `writeln` and `read`). See [`docs/rusche-cli.md`](docs/rusche-cli.md).
 
 ```bash
 cargo run -p rusche-cli

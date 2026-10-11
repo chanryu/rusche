@@ -119,5 +119,5 @@
             (while (< x width)
                 (set! line (str-append line (vec-get grid (at x y))))
                 (set! x (+ x 1)))
-            (println line))
+            (writeln line))
         (set! y (+ y 1))))

@@ -145,13 +145,12 @@ values use their source form. A newline is the string `"\n"`. Stdout is flushed.
 (write 1 2)                 ; 12
 ```
 
-[`lib/io.rsc`](../examples/lib/io.rsc) defines `print`, which writes `(repr expr)` for each argument. Strings are quoted. `repr` is core language; see the [language reference](language-reference.md#repr).
+To write the source form of a value, including quotes around a string, pass it through `repr`. `repr` is core language; see the [language reference](language-reference.md#repr).
 
 ```scheme
-(load "lib/io.rsc")
-(print "hi")      ; "hi"
-(print "hi\n")    ; "hi\n"   (a backslash and n, not a newline)
-(print 1 '(a b))  ; 1(a b)
+(write (repr "hi"))    ; "hi"
+(write (repr "hi\n"))  ; "hi\n"   (a backslash and n, not a newline)
+(write (repr 1) (repr '(a b)))  ; 1(a b)
 ```
 
 #### `read`
@@ -286,7 +285,7 @@ for scripts that use it.
 | [`points.rsc`](../examples/points.rsc) | `defrecord`, list destructuring, named `let`, `case` / `when` / `unless`, `sqrt` / `expt`. Shebang. |
 | [`strings.rsc`](../examples/strings.rsc) | `str-find`, `str-split`, `str-join`, `str-replace`, trim/case, `str-repeat`, `str->list`. Shebang. |
 
-Shared modules live in [`lib/`](../examples/lib) and are loaded by these scripts: [`io.rsc`](../examples/lib/io.rsc) (`print`, `println`, `read-num`, `prompt`) and [`format.rsc`](../examples/lib/format.rsc) (`{}` placeholders, filled with `repr`).
+Shared modules live in [`lib/`](../examples/lib) and are loaded by these scripts: [`io.rsc`](../examples/lib/io.rsc) (`writeln`, `read-num`, `prompt`) and [`format.rsc`](../examples/lib/format.rsc) (`{}` placeholders, filled with `repr`).
 
 ```bash
 cargo run -p rusche-cli -- examples/fizzbuzz.rsc

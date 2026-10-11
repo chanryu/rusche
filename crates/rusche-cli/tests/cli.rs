@@ -180,12 +180,11 @@ fn vec_builtins() {
         &[
             "-e",
             r#"(begin
-                (load "examples/lib/io.rsc")
                 (define v (vec 1 2 3))
                 (write (vec-length v) "\n")
                 (vec-set! v 1 9)
                 (write (vec-get v 1) "\n")
-                (print "hi")
+                (write (repr "hi"))
                 (write "\n")
                 (write (vec? v) "\n"))"#,
         ],
@@ -272,16 +271,16 @@ fn dict_rejects_odd_args() {
 }
 
 #[test]
-fn println_and_format() {
+fn writeln_and_format() {
     let out = run(
         &[
             "-e",
             r#"(begin
                 (load "examples/lib/io.rsc")
                 (load "examples/lib/format.rsc")
-                (println (format "hello {}" "world"))
-                (println (format "{{}} {}" '(a b)))
-                (println "x"))"#,
+                (writeln (format "hello {}" "world"))
+                (writeln (format "{{}} {}" '(a b)))
+                (writeln "x"))"#,
         ],
         "",
     );
@@ -310,9 +309,9 @@ fn read_num_and_prompt() {
             "-e",
             r#"(begin
                 (load "examples/lib/io.rsc")
-                (println (read-num))
-                (print (prompt "n: "))
-                (println))"#,
+                (writeln (read-num))
+                (write (repr (prompt "n: ")))
+                (writeln))"#,
         ],
         "12\nhi\n",
     );
