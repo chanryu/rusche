@@ -239,7 +239,7 @@ fn load_relative_to_calling_file() {
     let sub = dir.join("sub");
     std::fs::create_dir(&sub).unwrap();
     std::fs::write(sub.join("b.rsc"), "(define from-b 7)\n").unwrap();
-    std::fs::write(&sub.join("a.rsc"), "(load \"b.rsc\")\n").unwrap();
+    std::fs::write(sub.join("a.rsc"), "(load \"b.rsc\")\n").unwrap();
     let main = dir.join("main.rsc");
     std::fs::write(&main, "(load \"sub/a.rsc\")\n(write from-b \"\\n\")\n").unwrap();
 

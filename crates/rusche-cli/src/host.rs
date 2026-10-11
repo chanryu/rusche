@@ -30,7 +30,7 @@ pub fn note_output(text: &str) {
 }
 
 thread_local! {
-    static SOURCE_DIRS: RefCell<Vec<PathBuf>> = RefCell::new(Vec::new());
+    static SOURCE_DIRS: RefCell<Vec<PathBuf>> = const { RefCell::new(Vec::new()) };
 }
 
 /// Directory of the file currently being evaluated. Relative `load` paths join onto it.
