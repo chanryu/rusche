@@ -10,6 +10,7 @@ use crate::host;
 
 pub fn load_io_procs(context: &EvalContext) {
     context.env.define_native_proc("write", write);
+    context.env.define_native_proc("show", show);
     context.env.define_native_proc("read", read);
     context.env.define_native_proc("exit", exit);
     context.env.define_native_proc("load", load);
@@ -33,6 +34,13 @@ fn write(_: &str, args: &List, context: &EvalContext) -> EvalResult {
     }
     let _ = std::io::stdout().flush();
     Ok(NIL)
+}
+
+/// `(show expr)` -- the source form of a value, as a string.
+fn show(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let expr = get_exact_1_arg(proc_name, args)?;
+    let value = eval(expr, context)?;
+    Ok(Expr::from(value.to_string()))
 }
 
 fn read(_: &str, _: &List, _: &EvalContext) -> EvalResult {
@@ -135,6 +143,13 @@ mod tests {
         evaluator
     }
 
+    fn str_value(evaluator: &Evaluator, src: &str) -> String {
+        match evaluator.eval_str(src) {
+            Ok(Expr::Str(text, _)) => text,
+            other => panic!("expected a string, got {other:?}"),
+        }
+    }
+
     fn eval_err(evaluator: &Evaluator, src: &str) -> String {
         match evaluator.eval_str(src) {
             Ok(v) => panic!("expected error, got {v}"),
@@ -150,6 +165,14 @@ mod tests {
         assert!(e.eval_str(r#"(write "hi" 1)"#).is_ok());
         assert!(e.eval_str(r#"(write (show "hi"))"#).is_ok());
         assert!(e.eval_str(r#"(write)"#).is_ok());
+
+        assert_eq!(str_value(&e, r#"(show "hi")"#), r#""hi""#);
+        assert_eq!(str_value(&e, "(show \"hi\\n\")"), "\"hi\\n\"");
+        assert_eq!(str_value(&e, "(show 1)"), "1");
+        assert_eq!(str_value(&e, "(show 'foo)"), "foo");
+        assert_eq!(str_value(&e, "(show '(1 2))"), "(1 2)");
+        assert!(e.eval_str("(show)").is_err());
+        assert!(e.eval_str("(show 1 2)").is_err());
 
         assert!(eval_err(&e, "(load 1)").contains("string path"));
         assert!(eval_err(&e, r#"(load "/tmp/rusche-missing-xyz.rsc")"#).contains("failed to read"));

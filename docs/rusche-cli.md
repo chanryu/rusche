@@ -18,7 +18,7 @@ cargo run -p rusche-cli -- examples/fizzbuzz.rsc
 | Layer | Source | Contents |
 | --- | --- | --- |
 | Core built-ins + prelude | `rusche` crate | [Language reference](language-reference.md). |
-| I/O | [`builtin/io.rs`](../crates/rusche-cli/src/builtin/io.rs) | `write`, `read`, `exit`, `load` |
+| I/O | [`builtin/io.rs`](../crates/rusche-cli/src/builtin/io.rs) | `write`, `show`, `read`, `exit`, `load` |
 | System | [`builtin/sys.rs`](../crates/rusche-cli/src/builtin/sys.rs) | `getenv`, `clock`, `random`, `command-line` |
 | Vectors | [`builtin/vec.rs`](../crates/rusche-cli/src/builtin/vec.rs) | `vec?`, `vec`, `vec-push`, `vec-pop`, `vec-get`, `vec-set!`, `vec-length`, `vec->list`, `list->vec` |
 | Dicts | [`builtin/dict.rs`](../crates/rusche-cli/src/builtin/dict.rs) | `dict?`, `dict`, `dict-get`, `dict-set!`, `dict-has?`, `dict-remove!`, `dict-length`, `dict-keys`, `dict->list`, `list->dict` |
@@ -139,12 +139,24 @@ Ordinary native procedures. `write` returns `()`.
 
 Writes each argument with nothing between them. Strings are raw text; other
 values use their usual printed form. A newline is the string `"\n"`. Stdout is
-flushed. The source form of a value, with strings quoted, is [`show`](language-reference.md#show).
+flushed. The source form of a value, with strings quoted, is [`show`](#show).
 
 ```scheme
 (write "hello " "world\n")  ; hello world
 (write 1 2)                 ; 12
 (write (show "hi\n"))       ; "hi\n"
+```
+
+#### `show`
+
+Returns the source form of one value as a string. Strings are quoted and escapes are shown. This is a value, not output.
+
+```scheme
+(show "hi")    ; "\"hi\""
+(show "hi\n")  ; "\"hi\\n\""
+(show 1)       ; "1"
+(show 'foo)    ; "foo"
+(show '(1 2))  ; "(1 2)"
 ```
 
 #### `read`

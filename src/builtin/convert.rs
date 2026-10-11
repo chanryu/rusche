@@ -36,13 +36,6 @@ pub fn str_to_sym(proc_name: &str, args: &List, context: &EvalContext) -> EvalRe
     Ok(Expr::Sym(crate::symbol::Symbol::intern(text), None))
 }
 
-/// `(show expr)` -- the source form of a value, as a string.
-pub fn show(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let expr = get_exact_1_arg(proc_name, args)?;
-    let value = eval(expr, context)?;
-    Ok(Expr::from(value.to_string()))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -102,20 +95,5 @@ mod tests {
         assert_eq!(str_to_sym(list!("foo")), Ok(intern("foo")));
         assert_eq!(str_to_sym(list!("")), Ok(intern("")));
         assert!(str_to_sym(list!(1)).is_err());
-    }
-
-    #[test]
-    fn test_show() {
-        setup_native_proc_test!(show);
-
-        assert_eq!(show(list!("hi")), Ok(Expr::from(r#""hi""#)));
-        assert_eq!(show(list!("hi\n")), Ok(Expr::from("\"hi\\n\"")));
-        assert_eq!(show(list!(1)), Ok(Expr::from("1")));
-        assert_eq!(
-            show(list!(list!(intern("quote"), intern("foo")))),
-            Ok(Expr::from("foo"))
-        );
-        assert!(show(list!()).is_err());
-        assert!(show(list!(1, 2)).is_err());
     }
 }
