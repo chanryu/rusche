@@ -351,6 +351,23 @@ fn example_dict() {
 }
 
 #[test]
+fn example_maze() {
+    let out = run(&[example("maze.rsc").to_str().unwrap(), "6", "4"], "");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    let text = stdout(&out);
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines.len(), 9, "{text}");
+    assert!(
+        lines.iter().all(|line| line.chars().count() == 13),
+        "{}",
+        stdout(&out)
+    );
+    assert!(lines[0].chars().all(|ch| ch == '#'));
+    assert!(lines[1].starts_with(' '));
+    assert!(lines[7].ends_with(' '));
+}
+
+#[test]
 fn example_fibonacci_memoized() {
     let out = run(&[example("fibonacci-memo.rsc").to_str().unwrap()], "10\n");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));

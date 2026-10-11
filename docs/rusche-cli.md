@@ -287,6 +287,7 @@ for scripts that use it.
 | [`fibonacci-memo.rsc`](../examples/fibonacci-memo.rsc), [`fibonacci-tail.rsc`](../examples/fibonacci-tail.rsc) | Fibonacci, reading a number. The first memoizes with `dict`; the second is tail recursive. |
 | [`fizzbuzz.rsc`](../examples/fizzbuzz.rsc) | FizzBuzz from stdin. Shebang. |
 | [`mandelbrot.rsc`](../examples/mandelbrot.rsc) | ASCII Mandelbrot. Optional width and height from `(command-line)`. Shebang. |
+| [`maze.rsc`](../examples/maze.rsc) | ASCII maze by recursive backtracking. Optional columns and rows from `(command-line)`. Shebang. |
 | [`points.rsc`](../examples/points.rsc) | `defrecord`, list destructuring, named `let`, `case` / `when` / `unless`, `sqrt` / `expt`. Shebang. |
 | [`strings.rsc`](../examples/strings.rsc) | `str-find`, `str-split`, `str-join`, `str-replace`, trim/case, `str-repeat`, `str->list`. Shebang. |
 
@@ -295,6 +296,7 @@ Shared modules live in [`lib/`](../examples/lib) and are loaded by these scripts
 ```bash
 cargo run -p rusche-cli -- examples/fizzbuzz.rsc
 cargo run -p rusche-cli -- examples/mandelbrot.rsc 80 30
+cargo run -p rusche-cli -- examples/maze.rsc 24 12
 cargo run -p rusche-cli -- examples/strings.rsc
 cargo run -p rusche-cli -- examples/points.rsc
 ```
