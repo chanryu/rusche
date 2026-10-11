@@ -120,11 +120,11 @@ The core language is everything available from `Evaluator::default()` (built-ins
 #### Differences from Scheme
 
 - **Booleans.** Literals are `true`/`false`; there is no `#t`/`#f`. Conditions must be booleans; `'()` is just a value. Predicates return `true` or `false`.
-- **Equality.** `eq?` compares structurally and `=` is an alias for it.
+- **Comparison.** `eq?` compares structurally and returns false for different types. `=` requires the same type, so a number and a string is an error, while two strings or two symbols compare. `<`, `>`, `<=`, and `>=` order numbers, strings, or lists.
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
-- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`); number and string ops use a type prefix (`num-add`, `str-append`) with short prelude aliases (`+`, `sqrt`, …); list/binding forms keep classic names (`car`, `lambda`); conversions use `type1->type2` (`num->str`). There are no Scheme spellings such as `number?` or `string-append`.
+- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`); number and string ops use a type prefix (`num-add`, `str-append`) with short prelude aliases (`sqrt`, …). `+` adds numbers or concatenates strings. List/binding forms keep classic names (`car`, `lambda`); conversions use `type1->type2` (`num->str`). There are no Scheme spellings such as `number?` or `string-append`.
 - **Small surface.** `if` without an else branch and `define` return `()`. There is no `do`. Characters, vectors, ports, and continuations are host concerns (the prelude offers macros such as `when` / `unless` / `case` / named `let` / `letrec` / `defrecord`).
 - **`apply` and `eval` are syntax.** Like `if` and `begin`, they are recognised by the evaluator rather than bound as procedures, so they cannot be passed as values.
 - **Rest parameters** are spelled with a `*` prefix, as in Ruby or Python, instead of Scheme's dotted syntax: `(define (f a *rest) ...)` and `(lambda (*args) ...)`. The parameter list is always a list.

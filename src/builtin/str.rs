@@ -325,11 +325,7 @@ mod tests {
         assert_eq!(
             split(list!("a,b,c", ",")),
             Ok(Expr::List(
-                List::from(vec![
-                    Expr::from("a"),
-                    Expr::from("b"),
-                    Expr::from("c")
-                ]),
+                List::from(vec![Expr::from("a"), Expr::from("b"), Expr::from("c")]),
                 None
             ))
         );
@@ -348,10 +344,7 @@ mod tests {
         assert_eq!(upcase(list!("Hi")), Ok(Expr::from("HI")));
         assert_eq!(downcase(list!("Hi")), Ok(Expr::from("hi")));
 
-        assert_eq!(
-            replace(list!("a-b-c", "-", "_")),
-            Ok(Expr::from("a_b_c"))
-        );
+        assert_eq!(replace(list!("a-b-c", "-", "_")), Ok(Expr::from("a_b_c")));
         assert!(replace(list!("abc", "", "x")).is_err());
 
         use crate::expr::intern;

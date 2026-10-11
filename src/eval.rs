@@ -239,9 +239,7 @@ impl EvalContext {
     }
 
     pub(crate) fn pop_call(&self) {
-        self.shared
-            .call_depth
-            .set(self.shared.call_depth.get() - 1);
+        self.shared.call_depth.set(self.shared.call_depth.get() - 1);
         self.shared.call_trace.borrow_mut().pop();
     }
 

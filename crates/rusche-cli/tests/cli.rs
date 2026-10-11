@@ -280,11 +280,7 @@ fn newline_rejects_extra_args() {
 fn dict_rejects_odd_args() {
     let out = run(&["-e", "(dict 1)"], "");
     assert_eq!(out.status.code(), Some(1));
-    assert!(
-        stderr(&out).contains("even number"),
-        "{}",
-        stderr(&out)
-    );
+    assert!(stderr(&out).contains("even number"), "{}", stderr(&out));
 }
 
 #[test]

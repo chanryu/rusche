@@ -55,10 +55,7 @@ impl Vars {
     fn lookup(&self, name: &Symbol) -> Option<Expr> {
         match self {
             Vars::Map(map) => map.get(name).cloned(),
-            Vars::Flat(flat) => flat
-                .iter()
-                .find(|(k, _)| k == name)
-                .map(|(_, v)| v.clone()),
+            Vars::Flat(flat) => flat.iter().find(|(k, _)| k == name).map(|(_, v)| v.clone()),
         }
     }
 
