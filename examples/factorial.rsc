@@ -3,6 +3,6 @@
         1
         (* n (factorial (- n 1)))))
 
-(display "Enter a number: ")
+(print "Enter a number: ")
 (define n (str->num (read)))
-(display "factorial(" n ") => " (factorial n)) (newline)
+(print "factorial(" n ") => " (factorial n) "\n")

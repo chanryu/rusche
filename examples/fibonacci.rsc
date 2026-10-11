@@ -15,7 +15,7 @@
         (dict-set! cache n result)
         result)))
 
-(display "Enter a number: ")
+(print "Enter a number: ")
 (define n (str->num (read)))
-(display "fib(" n ") => " (fib n)) (newline)
-(display "cache entries: " (dict-length cache)) (newline)
+(print "fib(" n ") => " (fib n) "\n")
+(print "cache entries: " (dict-length cache) "\n")

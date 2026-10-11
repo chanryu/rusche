@@ -2,6 +2,6 @@
     `(begin ,@(reverse args)))
 
 (backwards
-    (display "uno\n")
-    (display "dos\n")
-    (display "tres\n"))
+    (print "uno\n")
+    (print "dos\n")
+    (print "tres\n"))

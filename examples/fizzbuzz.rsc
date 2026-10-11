@@ -6,10 +6,10 @@
           ((div? n 5) "Buzz")
           (else n)))
 
-(display "Enter a number to fizzbuzz: ")
+(print "Enter a number to fizzbuzz: ")
 
 (let ((n 1)
       (m (str->num (read)))) ; read a number from stdio and store it to `m`
     (while (<= n m)
-        (display (fizzbuzz n)) (newline)
+        (print (fizzbuzz n) "\n")
         (set! n (+ n 1))))

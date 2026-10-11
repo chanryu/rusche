@@ -73,4 +73,5 @@ pub fn load_builtin(env: &Rc<Env>) {
     env.define_native_proc("str->num", convert::str_to_num);
     env.define_native_proc("sym->str", convert::sym_to_str);
     env.define_native_proc("str->sym", convert::str_to_sym);
+    env.define_native_proc("show", convert::show);
 }

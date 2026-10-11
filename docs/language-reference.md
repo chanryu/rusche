@@ -9,7 +9,7 @@ This reference covers only what the `rusche` crate provides:
 - **Prelude** — macros and helpers loaded by `Evaluator::with_prelude()` / `Default`
 
 It does **not** document the example host [`rusche-cli`](rusche-cli.md). That
-application adds I/O (`display`, `read`, `newline`) and the `vec` and `dict`
+application adds I/O (`print`, `read`) and the `vec` and `dict`
 foreign types. The `examples/*.rsc` scripts in this repository target
 `rusche-cli`, not a bare `Evaluator::default()`.
 
@@ -621,6 +621,16 @@ Numeric helpers, and comparisons of numbers, strings, or lists (comparisons take
   Converts a string to a symbol. Any string is accepted, including the empty string.
   ```scheme
   (str->sym "foo")  ; foo
+  ```
+
+#### `show`
+  Returns the source form of one value as a string: the same text the REPL prints. Strings are quoted and escapes are shown.
+  ```scheme
+  (show "hi")    ; "\"hi\""
+  (show "hi\n")  ; "\"hi\\n\""
+  (show 1)       ; "1"
+  (show 'foo)    ; "foo"
+  (show '(1 2))  ; "(1 2)"
   ```
 
 ## Differences from Scheme

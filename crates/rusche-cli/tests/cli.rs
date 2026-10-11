@@ -58,7 +58,7 @@ fn ok_script_exits_zero() {
 fn runtime_error_goes_to_stderr_and_exits_one() {
     let out = run(&[script("runtime_error.rsc").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1));
-    // display without newline is followed by ensure_newline before the diagnostic
+    // print without a trailing newline is followed by ensure_newline before the diagnostic
     assert_eq!(stdout(&out), "hi\n");
     let err = stderr(&out);
     assert!(err.contains("error:"), "{err}");
@@ -140,14 +140,14 @@ fn unknown_flag_exits_two() {
 
 #[test]
 fn stdin_script() {
-    let out = run(&[], "(display \"from-stdin\") (newline)\n");
+    let out = run(&[], "(print \"from-stdin\\n\")\n");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert_eq!(stdout(&out), "from-stdin\n");
 }
 
 #[test]
 fn dash_means_stdin() {
-    let out = run(&["-"], "(display 42) (newline)\n");
+    let out = run(&["-"], "(print 42 \"\\n\")\n");
     assert_eq!(out.status.code(), Some(0));
     assert_eq!(stdout(&out), "42\n");
 }
@@ -161,10 +161,7 @@ fn no_prelude_hides_plus() {
 
 #[test]
 fn command_line_builtin() {
-    let out = run(
-        &["-e", "(begin (display (car (command-line))) (newline))"],
-        "",
-    );
+    let out = run(&["-e", "(begin (print (car (command-line)) \"\\n\"))"], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert!(stdout(&out).contains("rusche-cli"));
 }
@@ -175,7 +172,7 @@ fn command_line_with_script_args() {
     // Use -e via a tiny temp approach: run with a file that prints command-line.
     let dir = tempfile_dir();
     let path = dir.join("args.rsc");
-    std::fs::write(&path, "(display (command-line)) (newline)\n").unwrap();
+    std::fs::write(&path, "(print (command-line) \"\\n\")\n").unwrap();
     let out = run(&[path.to_str().unwrap(), "alpha", "beta"], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     let printed = stdout(&out);
@@ -184,21 +181,17 @@ fn command_line_with_script_args() {
 }
 
 #[test]
-fn vec_and_write_builtins() {
+fn vec_builtins() {
     let out = run(
         &[
             "-e",
             r#"(begin
                 (define v (vec 1 2 3))
-                (display (vec-length v))
-                (newline)
+                (print (vec-length v) "\n")
                 (vec-set! v 1 9)
-                (display (vec-get v 1))
-                (newline)
-                (write "hi")
-                (newline)
-                (display (vec? v))
-                (newline))"#,
+                (print (vec-get v 1) "\n")
+                (print (show "hi") "\n")
+                (print (vec? v) "\n"))"#,
         ],
         "",
     );
@@ -213,17 +206,12 @@ fn dict_builtins() {
             "-e",
             r#"(begin
                 (define d (dict "a" 1 "b" 2))
-                (display (dict-length d))
-                (newline)
+                (print (dict-length d) "\n")
                 (dict-set! d "c" 3)
-                (display (dict-get d "a"))
-                (newline)
-                (display (dict-get d "missing" 0))
-                (newline)
-                (display (dict->list d))
-                (newline)
-                (display (dict? d))
-                (newline))"#,
+                (print (dict-get d "a") "\n")
+                (print (dict-get d "missing" 0) "\n")
+                (print (dict->list d) "\n")
+                (print (dict? d) "\n"))"#,
         ],
         "",
     );
@@ -257,23 +245,12 @@ fn load_builtin() {
     let loaded = dir.join("loaded.rsc");
     std::fs::write(&loaded, "(define loaded-value 99)\n").unwrap();
     let expr = format!(
-        "(begin (load \"{}\") (display loaded-value) (newline))",
+        "(begin (load \"{}\") (print loaded-value \"\\n\"))",
         loaded.display()
     );
     let out = run(&["-e", &expr], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert_eq!(stdout(&out), "99\n");
-}
-
-#[test]
-fn newline_rejects_extra_args() {
-    let out = run(&["-e", "(newline 1)"], "");
-    assert_eq!(out.status.code(), Some(1));
-    assert!(
-        stderr(&out).contains("expected 0 arguments"),
-        "{}",
-        stderr(&out)
-    );
 }
 
 #[test]
@@ -352,7 +329,7 @@ fn arity_error_snapshot() {
 fn load_nested_prints_inner_source() {
     let dir = tempfile_dir();
     let inner = dir.join("inner.rsc");
-    std::fs::write(&inner, "(display \"in\")\n(car 99)\n").unwrap();
+    std::fs::write(&inner, "(print \"in\")\n(car 99)\n").unwrap();
     let expr = format!("(load \"{}\")", inner.display());
     let out = run(&["-e", &expr], "");
     assert_eq!(out.status.code(), Some(1));
@@ -386,14 +363,10 @@ fn sys_builtins_and_arity() {
         &[
             "-e",
             r#"(begin
-                (display (num? (clock)))
-                (newline)
-                (display (num? (random)))
-                (newline)
-                (display (null? (cdr (command-line))))
-                (newline)
-                (display (str? (or-else (getenv "PATH") "")))
-                (newline))"#,
+                (print (num? (clock)) "\n")
+                (print (num? (random)) "\n")
+                (print (null? (cdr (command-line))) "\n")
+                (print (str? (or-else (getenv "PATH") "")) "\n"))"#,
         ],
         "",
     );
@@ -429,17 +402,12 @@ fn vec_error_paths() {
             "-e",
             r#"(begin
                 (define v (vec 1 2))
-                (display (vec-get v 0))
-                (newline)
-                (display (vec-length v))
-                (newline)
-                (display (vec->list v))
-                (newline)
-                (display (vec? (list->vec '(a b))))
-                (newline)
+                (print (vec-get v 0) "\n")
+                (print (vec-length v) "\n")
+                (print (vec->list v) "\n")
+                (print (vec? (list->vec '(a b))) "\n")
                 (vec-push v 3)
-                (display (vec-pop v))
-                (newline))"#,
+                (print (vec-pop v) "\n"))"#,
         ],
         "",
     );
@@ -522,8 +490,8 @@ fn dangling_paren_and_invalid_number_messages() {
 }
 
 #[test]
-fn interleaved_display_gets_newline_before_error() {
-    let out = run(&["-e", "(begin (display \"hi\") (car 1))"], "");
+fn interleaved_print_gets_newline_before_error() {
+    let out = run(&["-e", "(begin (print \"hi\") (car 1))"], "");
     assert_eq!(out.status.code(), Some(1));
     assert_eq!(stdout(&out), "hi\n");
     assert!(stderr(&out).contains("error:"));

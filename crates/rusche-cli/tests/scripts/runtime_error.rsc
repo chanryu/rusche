@@ -1,3 +1,3 @@
-(display "hi")
+(print "hi")
 (car 1)
-(display "after")
+(print "after")

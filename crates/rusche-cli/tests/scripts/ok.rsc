@@ -1,3 +1,2 @@
 (define x 1)
-(display x)
-(newline)
+(print x "\n")

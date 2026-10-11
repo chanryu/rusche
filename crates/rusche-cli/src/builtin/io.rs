@@ -1,6 +1,6 @@
 use rusche::{
-    arity_error, eval, eval_source, get_exact_1_arg, ErrorKind, EvalContext, EvalError, EvalResult,
-    Expr, List, NIL,
+    eval, eval_source, get_exact_1_arg, ErrorKind, EvalContext, EvalError, EvalResult, Expr, List,
+    NIL,
 };
 use std::io::Write;
 
@@ -8,16 +8,15 @@ use crate::diagnostics::print_pipeline_error;
 use crate::host;
 
 pub fn load_io_procs(context: &EvalContext) {
-    context.env.define_native_proc("display", display);
-    context.env.define_native_proc("write", write);
-    context.env.define_native_proc("newline", newline);
+    context.env.define_native_proc("print", print);
     context.env.define_native_proc("read", read);
     context.env.define_native_proc("exit", exit);
     context.env.define_native_proc("load", load);
 }
 
-/// `(display expr ...)` -- prints each argument; strings are printed without quotes.
-fn display(_: &str, args: &List, context: &EvalContext) -> EvalResult {
+/// `(print expr ...)` -- prints each argument with nothing between them.
+/// Strings are raw text; other values use their source form. A newline is `"\n"`.
+fn print(_: &str, args: &List, context: &EvalContext) -> EvalResult {
     for expr in args.iter() {
         match eval(expr, context)? {
             Expr::Str(text, _) => {
@@ -32,26 +31,6 @@ fn display(_: &str, args: &List, context: &EvalContext) -> EvalResult {
         }
     }
     let _ = std::io::stdout().flush();
-    Ok(NIL)
-}
-
-/// `(write expr ...)` -- prints each argument using `Display` (strings quoted).
-fn write(_: &str, args: &List, context: &EvalContext) -> EvalResult {
-    for expr in args.iter() {
-        let text = eval(expr, context)?.to_string();
-        print!("{}", text);
-        host::note_output(&text);
-    }
-    let _ = std::io::stdout().flush();
-    Ok(NIL)
-}
-
-fn newline(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
-    if !args.is_nil() {
-        return Err(arity_error(proc_name, 0..=0, args.len()));
-    }
-    println!();
-    host::note_output("\n");
     Ok(NIL)
 }
 
@@ -143,14 +122,13 @@ mod tests {
     }
 
     #[test]
-    fn display_write_newline_and_load_errors() {
+    fn print_and_load_errors() {
         colored::control::set_override(false);
         let e = with_io();
 
-        assert!(e.eval_str(r#"(display "hi" 1)"#).is_ok());
-        assert!(e.eval_str(r#"(write "hi" 1)"#).is_ok());
-        assert!(e.eval_str("(newline)").is_ok());
-        assert!(eval_err(&e, "(newline 1)").contains("expected 0"));
+        assert!(e.eval_str(r#"(print "hi" 1)"#).is_ok());
+        assert!(e.eval_str(r#"(print (show "hi"))"#).is_ok());
+        assert!(e.eval_str(r#"(print)"#).is_ok());
 
         assert!(eval_err(&e, "(load 1)").contains("string path"));
         assert!(eval_err(&e, r#"(load "/tmp/rusche-missing-xyz.rsc")"#).contains("failed to read"));

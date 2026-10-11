@@ -55,6 +55,5 @@
         (let ((cr (+ re-min (* col dx))))
           (set! line (str-append line (shade (escape-count cr ci)))))
         (set! col (+ col 1)))
-      (display line)
-      (newline))
+      (print line "\n"))
     (set! row (+ row 1))))

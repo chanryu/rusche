@@ -5,6 +5,6 @@
             (factorial-aux (- n 1) (* n acc))))
     (factorial-aux n 1))
 
-(display "Enter a number: ")
+(print "Enter a number: ")
 (define n (str->num (read)))
-(display "factorial(" n ") => " (factorial n)) (newline)
+(print "factorial(" n ") => " (factorial n) "\n")

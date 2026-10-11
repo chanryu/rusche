@@ -25,11 +25,10 @@
 (let loop ((pts samples))
     (when (not (null? pts))
         (let ((p (car pts)))
-            (display "point (" (point-x p) ", " (point-y p) ")"
-                     " dist=" (point-dist (make-point 0 0) p)
-                     " -> " (classify p))
-            (newline)
+            (print "point (" (point-x p) ", " (point-y p) ")"
+                   " dist=" (point-dist (make-point 0 0) p)
+                   " -> " (classify p) "\n")
             (loop (cdr pts)))))
 
 (unless (point? 42)
-    (display "42 is not a point") (newline))
+    (print "42 is not a point\n"))
