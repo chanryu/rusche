@@ -15,10 +15,9 @@
         (dict-set! cache n result)
         result)))
 
-(load "lib/writeln.rsc")
+(load "lib/io.rsc")
 (load "lib/format.rsc")
 
-(write "Enter a number: ")
-(define n (str->num (read)))
+(define n (prompt "Enter a number: "))
 (writeln (format "fib({}) => {}" n (fib n)))
 (writeln (format "cache entries: {}" (dict-length cache)))

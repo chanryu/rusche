@@ -3,9 +3,8 @@
         1
         (* n (factorial (- n 1)))))
 
-(load "lib/writeln.rsc")
+(load "lib/io.rsc")
 (load "lib/format.rsc")
 
-(write "Enter a number: ")
-(define n (str->num (read)))
+(define n (prompt "Enter a number: "))
 (writeln (format "factorial({}) => {}" n (factorial n)))

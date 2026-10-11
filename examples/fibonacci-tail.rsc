@@ -5,9 +5,8 @@
         (fib-aux (- n 1) b (+ a b))))
   (fib-aux n 0 1))
 
-(load "lib/writeln.rsc")
+(load "lib/io.rsc")
 (load "lib/format.rsc")
 
-(write "Enter a number: ")
-(define n (str->num (read)))
+(define n (prompt "Enter a number: "))
 (writeln (format "fib({}) => {}" n (fib n)))

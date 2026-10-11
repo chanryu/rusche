@@ -191,7 +191,7 @@ then reports a terse `load: "path" failed` error at the `(load ...)` call site.
 that way is the current file for any relative `load` inside it.
 
 ```scheme
-(load "lib/writeln.rsc")        ; relative to the file that contains this call
+(load "lib/io.rsc")             ; relative to the file that contains this call
 (load "examples/counter.rsc")   ; from the REPL, in the repository root
 ```
 
@@ -290,7 +290,7 @@ for scripts that use it.
 | [`points.rsc`](../examples/points.rsc) | `defrecord`, list destructuring, named `let`, `case` / `when` / `unless`, `sqrt` / `expt`. Shebang. |
 | [`strings.rsc`](../examples/strings.rsc) | `str-find`, `str-split`, `str-join`, `str-replace`, trim/case, `str-repeat`, `str->list`. Shebang. |
 
-Shared modules live in [`lib/`](../examples/lib) and are loaded by these scripts: [`writeln.rsc`](../examples/lib/writeln.rsc) (`write` plus a newline) and [`format.rsc`](../examples/lib/format.rsc) (`{}` placeholders).
+Shared modules live in [`lib/`](../examples/lib) and are loaded by these scripts: [`io.rsc`](../examples/lib/io.rsc) (`writeln`, `read-num`, `prompt`) and [`format.rsc`](../examples/lib/format.rsc) (`{}` placeholders).
 
 ```bash
 cargo run -p rusche-cli -- examples/fizzbuzz.rsc

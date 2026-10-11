@@ -275,7 +275,7 @@ fn writeln_and_format() {
         &[
             "-e",
             r#"(begin
-                (load "examples/lib/writeln.rsc")
+                (load "examples/lib/io.rsc")
                 (load "examples/lib/format.rsc")
                 (writeln (format "hello {}" "world"))
                 (writeln (format "{{}} {}" '(a b)))
@@ -299,6 +299,22 @@ fn writeln_and_format() {
         "{}",
         stderr(&out)
     );
+}
+
+#[test]
+fn read_num_and_prompt() {
+    let out = run(
+        &[
+            "-e",
+            r#"(begin
+                (load "examples/lib/io.rsc")
+                (writeln (read-num))
+                (writeln (prompt "n: ")))"#,
+        ],
+        "12\n34\n",
+    );
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out), "12\nn: 34\n");
 }
 
 #[test]

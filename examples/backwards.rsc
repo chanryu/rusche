@@ -1,4 +1,4 @@
-(load "lib/writeln.rsc")
+(load "lib/io.rsc")
 
 (defmacro (backwards *args)
     `(begin ,@(reverse args)))

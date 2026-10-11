@@ -1,0 +1,17 @@
+;; I/O for the example scripts. From a script in `examples/`:
+;;
+;;   (load "lib/io.rsc")
+
+;; `(writeln expr ...)` -- `(write expr ...)` followed by a newline.
+(define (writeln *args)
+    (apply write args)
+    (write "\n"))
+
+;; `(read-num)` -- one line from stdin, parsed as a number.
+(define (read-num)
+    (str->num (read)))
+
+;; `(prompt text)` -- write `text` with no newline, then `(read-num)`.
+(define (prompt text)
+    (write text)
+    (read-num))
