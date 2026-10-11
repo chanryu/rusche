@@ -1,7 +1,9 @@
+(load "lib/io.rsc")
+
 (defmacro (backwards *args)
     `(begin ,@(reverse args)))
 
 (backwards
-    (display "uno\n")
-    (display "dos\n")
-    (display "tres\n"))
+    (writeln "uno")
+    (writeln "dos")
+    (writeln "tres"))

@@ -26,6 +26,7 @@ fn example(name: &str) -> PathBuf {
 fn run(args: &[&str], stdin: &str) -> Output {
     let mut child = Command::new(bin())
         .args(args)
+        .current_dir(workspace_root())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -58,7 +59,7 @@ fn ok_script_exits_zero() {
 fn runtime_error_goes_to_stderr_and_exits_one() {
     let out = run(&[script("runtime_error.rsc").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1));
-    // display without newline is followed by ensure_newline before the diagnostic
+    // write without a trailing newline is followed by ensure_newline before the diagnostic
     assert_eq!(stdout(&out), "hi\n");
     let err = stderr(&out);
     assert!(err.contains("error:"), "{err}");
@@ -140,31 +141,21 @@ fn unknown_flag_exits_two() {
 
 #[test]
 fn stdin_script() {
-    let out = run(&[], "(display \"from-stdin\") (newline)\n");
+    let out = run(&[], "(write \"from-stdin\\n\")\n");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert_eq!(stdout(&out), "from-stdin\n");
 }
 
 #[test]
 fn dash_means_stdin() {
-    let out = run(&["-"], "(display 42) (newline)\n");
+    let out = run(&["-"], "(write 42 \"\\n\")\n");
     assert_eq!(out.status.code(), Some(0));
     assert_eq!(stdout(&out), "42\n");
 }
 
 #[test]
-fn no_prelude_hides_plus() {
-    let out = run(&["--no-prelude", "-e", "(+ 1 2)"], "");
-    assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("undefined symbol") || stderr(&out).contains("+"));
-}
-
-#[test]
 fn command_line_builtin() {
-    let out = run(
-        &["-e", "(begin (display (car (command-line))) (newline))"],
-        "",
-    );
+    let out = run(&["-e", "(begin (write (car (command-line)) \"\\n\"))"], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert!(stdout(&out).contains("rusche-cli"));
 }
@@ -175,7 +166,7 @@ fn command_line_with_script_args() {
     // Use -e via a tiny temp approach: run with a file that prints command-line.
     let dir = tempfile_dir();
     let path = dir.join("args.rsc");
-    std::fs::write(&path, "(display (command-line)) (newline)\n").unwrap();
+    std::fs::write(&path, "(write (command-line) \"\\n\")\n").unwrap();
     let out = run(&[path.to_str().unwrap(), "alpha", "beta"], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     let printed = stdout(&out);
@@ -184,21 +175,18 @@ fn command_line_with_script_args() {
 }
 
 #[test]
-fn vec_and_write_builtins() {
+fn vec_builtins() {
     let out = run(
         &[
             "-e",
             r#"(begin
                 (define v (vec 1 2 3))
-                (display (vec-length v))
-                (newline)
+                (write (vec-length v) "\n")
                 (vec-set! v 1 9)
-                (display (vec-get v 1))
-                (newline)
-                (write "hi")
-                (newline)
-                (display (vec? v))
-                (newline))"#,
+                (write (vec-get v 1) "\n")
+                (write (repr "hi"))
+                (write "\n")
+                (write (vec? v) "\n"))"#,
         ],
         "",
     );
@@ -213,17 +201,12 @@ fn dict_builtins() {
             "-e",
             r#"(begin
                 (define d (dict "a" 1 "b" 2))
-                (display (dict-length d))
-                (newline)
+                (write (dict-length d) "\n")
                 (dict-set! d "c" 3)
-                (display (dict-get d "a"))
-                (newline)
-                (display (dict-get d "missing" 0))
-                (newline)
-                (display (dict->list d))
-                (newline)
-                (display (dict? d))
-                (newline))"#,
+                (write (dict-get d "a") "\n")
+                (write (dict-get d "missing" 0) "\n")
+                (write (dict->list d) "\n")
+                (write (dict? d) "\n"))"#,
         ],
         "",
     );
@@ -252,12 +235,27 @@ fn exit_builtin() {
 }
 
 #[test]
+fn load_relative_to_calling_file() {
+    let dir = tempfile_dir();
+    let sub = dir.join("sub");
+    std::fs::create_dir(&sub).unwrap();
+    std::fs::write(sub.join("b.rsc"), "(define from-b 7)\n").unwrap();
+    std::fs::write(sub.join("a.rsc"), "(load \"b.rsc\")\n").unwrap();
+    let main = dir.join("main.rsc");
+    std::fs::write(&main, "(load \"sub/a.rsc\")\n(write from-b \"\\n\")\n").unwrap();
+
+    let out = run(&[main.to_str().unwrap()], "");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out), "7\n");
+}
+
+#[test]
 fn load_builtin() {
     let dir = tempfile_dir();
     let loaded = dir.join("loaded.rsc");
     std::fs::write(&loaded, "(define loaded-value 99)\n").unwrap();
     let expr = format!(
-        "(begin (load \"{}\") (display loaded-value) (newline))",
+        "(begin (load \"{}\") (write loaded-value \"\\n\"))",
         loaded.display()
     );
     let out = run(&["-e", &expr], "");
@@ -266,21 +264,59 @@ fn load_builtin() {
 }
 
 #[test]
-fn newline_rejects_extra_args() {
-    let out = run(&["-e", "(newline 1)"], "");
+fn dict_rejects_odd_args() {
+    let out = run(&["-e", "(dict 1)"], "");
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("even number"), "{}", stderr(&out));
+}
+
+#[test]
+fn writeln_and_format() {
+    let out = run(
+        &[
+            "-e",
+            r#"(begin
+                (load "examples/lib/io.rsc")
+                (load "examples/lib/format.rsc")
+                (writeln (format "hello {}" "world"))
+                (writeln (format "{{}} {}" '(a b)))
+                (writeln "x"))"#,
+        ],
+        "",
+    );
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out), "hello \"world\"\n{} (a b)\nx\n");
+
+    let out = run(
+        &[
+            "-e",
+            r#"(begin (load "examples/lib/format.rsc") (format "{}"))"#,
+        ],
+        "",
+    );
     assert_eq!(out.status.code(), Some(1));
     assert!(
-        stderr(&out).contains("expected 0 arguments"),
+        stderr(&out).contains("not enough arguments"),
         "{}",
         stderr(&out)
     );
 }
 
 #[test]
-fn dict_rejects_odd_args() {
-    let out = run(&["-e", "(dict 1)"], "");
-    assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("even number"), "{}", stderr(&out));
+fn read_num_and_prompt() {
+    let out = run(
+        &[
+            "-e",
+            r#"(begin
+                (load "examples/lib/io.rsc")
+                (writeln (read-num))
+                (write (repr (prompt "n: ")))
+                (writeln))"#,
+        ],
+        "12\nhi\n",
+    );
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    assert_eq!(stdout(&out), "12\nn: \"hi\"\n");
 }
 
 #[test]
@@ -317,8 +353,25 @@ fn example_dict() {
 }
 
 #[test]
+fn example_maze() {
+    let out = run(&[example("maze.rsc").to_str().unwrap(), "6", "4"], "");
+    assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
+    let text = stdout(&out);
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines.len(), 9, "{text}");
+    assert!(
+        lines.iter().all(|line| line.chars().count() == 13),
+        "{}",
+        stdout(&out)
+    );
+    assert!(lines[0].chars().all(|ch| ch == '#'));
+    assert!(lines[1].starts_with(' '));
+    assert!(lines[7].ends_with(' '));
+}
+
+#[test]
 fn example_fibonacci_memoized() {
-    let out = run(&[example("fibonacci.rsc").to_str().unwrap()], "10\n");
+    let out = run(&[example("fibonacci-memo.rsc").to_str().unwrap()], "10\n");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     let s = stdout(&out);
     assert!(s.contains("fib(10) => 55"), "{s}");
@@ -352,7 +405,7 @@ fn arity_error_snapshot() {
 fn load_nested_prints_inner_source() {
     let dir = tempfile_dir();
     let inner = dir.join("inner.rsc");
-    std::fs::write(&inner, "(display \"in\")\n(car 99)\n").unwrap();
+    std::fs::write(&inner, "(write \"in\")\n(car 99)\n").unwrap();
     let expr = format!("(load \"{}\")", inner.display());
     let out = run(&["-e", &expr], "");
     assert_eq!(out.status.code(), Some(1));
@@ -386,14 +439,10 @@ fn sys_builtins_and_arity() {
         &[
             "-e",
             r#"(begin
-                (display (num? (clock)))
-                (newline)
-                (display (num? (random)))
-                (newline)
-                (display (null? (cdr (command-line))))
-                (newline)
-                (display (str? (or-else (getenv "PATH") "")))
-                (newline))"#,
+                (write (num? (clock)) "\n")
+                (write (num? (random)) "\n")
+                (write (null? (cdr (command-line))) "\n")
+                (write (str? (or-else (getenv "PATH") "")) "\n"))"#,
         ],
         "",
     );
@@ -429,17 +478,12 @@ fn vec_error_paths() {
             "-e",
             r#"(begin
                 (define v (vec 1 2))
-                (display (vec-get v 0))
-                (newline)
-                (display (vec-length v))
-                (newline)
-                (display (vec->list v))
-                (newline)
-                (display (vec? (list->vec '(a b))))
-                (newline)
+                (write (vec-get v 0) "\n")
+                (write (vec-length v) "\n")
+                (write (vec->list v) "\n")
+                (write (vec? (list->vec '(a b))) "\n")
                 (vec-push v 3)
-                (display (vec-pop v))
-                (newline))"#,
+                (write (vec-pop v) "\n"))"#,
         ],
         "",
     );
@@ -522,8 +566,8 @@ fn dangling_paren_and_invalid_number_messages() {
 }
 
 #[test]
-fn interleaved_display_gets_newline_before_error() {
-    let out = run(&["-e", "(begin (display \"hi\") (car 1))"], "");
+fn interleaved_write_gets_newline_before_error() {
+    let out = run(&["-e", "(begin (write \"hi\") (car 1))"], "");
     assert_eq!(out.status.code(), Some(1));
     assert_eq!(stdout(&out), "hi\n");
     assert!(stderr(&out).contains("error:"));

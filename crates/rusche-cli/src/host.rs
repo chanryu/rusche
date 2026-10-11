@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
@@ -25,6 +27,32 @@ pub fn note_output(text: &str) {
         return;
     }
     set_at_column_zero(text.ends_with('\n'));
+}
+
+thread_local! {
+    static SOURCE_DIRS: RefCell<Vec<PathBuf>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Directory of the file currently being evaluated. Relative `load` paths join onto it.
+pub struct SourceDirGuard;
+
+impl Drop for SourceDirGuard {
+    fn drop(&mut self) {
+        SOURCE_DIRS.with(|stack| {
+            stack.borrow_mut().pop();
+        });
+    }
+}
+
+/// Treat `path` as the file being evaluated until the guard is dropped.
+pub fn enter_source_file(path: &Path) -> SourceDirGuard {
+    let dir = path.parent().unwrap_or(Path::new("")).to_path_buf();
+    SOURCE_DIRS.with(|stack| stack.borrow_mut().push(dir));
+    SourceDirGuard
+}
+
+pub fn current_source_dir() -> Option<PathBuf> {
+    SOURCE_DIRS.with(|stack| stack.borrow().last().cloned())
 }
 
 /// If the last stdout write did not end in a newline, emit one so diagnostics start cleanly.
@@ -55,5 +83,19 @@ mod tests {
 
         set_command_line(vec!["rusche".into(), "a".into()]);
         assert_eq!(command_line(), vec!["rusche".to_string(), "a".to_string()]);
+    }
+
+    #[test]
+    fn source_dir_stack_follows_the_file_being_evaluated() {
+        assert!(current_source_dir().is_none());
+        let outer = enter_source_file(Path::new("examples/fizzbuzz.rsc"));
+        assert_eq!(current_source_dir().unwrap(), PathBuf::from("examples"));
+        {
+            let _inner = enter_source_file(Path::new("examples/lib/io.rsc"));
+            assert_eq!(current_source_dir().unwrap(), PathBuf::from("examples/lib"));
+        }
+        assert_eq!(current_source_dir().unwrap(), PathBuf::from("examples"));
+        drop(outer);
+        assert!(current_source_dir().is_none());
     }
 }

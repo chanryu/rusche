@@ -3,7 +3,7 @@
 Native functions are Rust procedures registered in a Rusche environment. They are
 how a **host** adds I/O, domain APIs, and other capabilities the core language
 does not provide — the same mechanism [`rusche-cli`](../rusche-cli.md) uses for
-`display` and friends.
+`write` and friends.
 
 A runnable version of the worked example lives in
 [`examples/tutorial-native`](../../examples/tutorial-native/main.rs).
@@ -59,7 +59,7 @@ Fixed arity:
 | `get_exact_3_args` | exactly three |
 
 Variable arity: iterate `args` and evaluate each element, as
-[`display`](../../crates/rusche-cli/src/builtin/io.rs) does in `rusche-cli`.
+[`write`](../../crates/rusche-cli/src/builtin/io.rs) does in `rusche-cli`.
 
 ## Return values and errors
 

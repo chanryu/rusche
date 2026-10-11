@@ -6,10 +6,10 @@
           ((div? n 5) "Buzz")
           (else n)))
 
-(display "Enter a number to fizzbuzz: ")
+(load "lib/io.rsc")
 
 (let ((n 1)
-      (m (str->num (read)))) ; read a number from stdio and store it to `m`
+      (m (str->num (prompt "Enter a number to fizzbuzz: "))))
     (while (<= n m)
-        (display (fizzbuzz n)) (newline)
+        (writeln (fizzbuzz n))
         (set! n (+ n 1))))

@@ -1,9 +1,11 @@
+(load "lib/io.rsc")
+
 (define counter
     (let ((count 0))
         (lambda ()
             (set! count (+ count 1))
             count)))
 
-(display (counter)) (newline) ; 1
-(display (counter)) (newline) ; 2
-(display (counter)) (newline) ; 3
+(writeln (counter)) ; 1
+(writeln (counter)) ; 2
+(writeln (counter)) ; 3

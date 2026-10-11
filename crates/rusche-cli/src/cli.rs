@@ -14,7 +14,6 @@ pub struct Options {
     pub script_args: Vec<String>,
     pub max_call_depth: Option<usize>,
     pub gc_threshold: Option<Option<usize>>,
-    pub no_prelude: bool,
     pub no_color: bool,
     pub help: bool,
     pub version: bool,
@@ -48,7 +47,6 @@ where
         script_args: Vec::new(),
         max_call_depth: None,
         gc_threshold: None,
-        no_prelude: false,
         no_color: false,
         help: false,
         version: false,
@@ -59,7 +57,6 @@ where
         match arg.as_str() {
             "-h" | "--help" => opts.help = true,
             "-V" | "--version" => opts.version = true,
-            "--no-prelude" => opts.no_prelude = true,
             "--no-color" => opts.no_color = true,
             "-e" | "--eval" => {
                 let expr = iter.next().ok_or(ParseCliError::MissingValue("--eval"))?;
@@ -125,7 +122,6 @@ Options:
   -e, --eval EXPR            Evaluate EXPR and exit
   --max-call-depth N         Set maximum call depth
   --gc-threshold N|off       Set GC threshold, or disable automatic GC
-  --no-prelude               Start without the prelude
   --no-color                 Disable colored output
 
 With no FILE and a TTY on stdin, starts a REPL.
@@ -159,7 +155,6 @@ mod tests {
     #[test]
     fn test_eval_and_flags() {
         let opts = parse_args(args(&[
-            "--no-prelude",
             "--no-color",
             "--max-call-depth",
             "50",
@@ -170,7 +165,6 @@ mod tests {
         ]))
         .unwrap();
         assert_eq!(opts.input, Input::Eval("(+ 1 2)".into()));
-        assert!(opts.no_prelude);
         assert!(opts.no_color);
         assert_eq!(opts.max_call_depth, Some(50));
         assert_eq!(opts.gc_threshold, Some(None));

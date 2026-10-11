@@ -1,57 +1,35 @@
 use rusche::{
-    arity_error, eval, eval_source, get_exact_1_arg, ErrorKind, EvalContext, EvalError, EvalResult,
-    Expr, List, NIL,
+    eval, eval_source, get_exact_1_arg, ErrorKind, EvalContext, EvalError, EvalResult, Expr, List,
+    NIL,
 };
 use std::io::Write;
+use std::path::{Path, PathBuf};
 
 use crate::diagnostics::print_pipeline_error;
 use crate::host;
 
 pub fn load_io_procs(context: &EvalContext) {
-    context.env.define_native_proc("display", display);
     context.env.define_native_proc("write", write);
-    context.env.define_native_proc("newline", newline);
     context.env.define_native_proc("read", read);
     context.env.define_native_proc("exit", exit);
     context.env.define_native_proc("load", load);
 }
 
-/// `(display expr ...)` -- prints each argument; strings are printed without quotes.
-fn display(_: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn emit(text: &str) {
+    print!("{text}");
+    host::note_output(text);
+}
+
+/// `(write expr ...)` -- writes each argument with nothing between them.
+/// Strings are raw text; other values use their source form. A newline is `"\n"`.
+fn write(_: &str, args: &List, context: &EvalContext) -> EvalResult {
     for expr in args.iter() {
         match eval(expr, context)? {
-            Expr::Str(text, _) => {
-                print!("{}", text);
-                host::note_output(&text);
-            }
-            expr => {
-                let text = expr.to_string();
-                print!("{}", text);
-                host::note_output(&text);
-            }
+            Expr::Str(text, _) => emit(&text),
+            expr => emit(&expr.to_string()),
         }
     }
     let _ = std::io::stdout().flush();
-    Ok(NIL)
-}
-
-/// `(write expr ...)` -- prints each argument using `Display` (strings quoted).
-fn write(_: &str, args: &List, context: &EvalContext) -> EvalResult {
-    for expr in args.iter() {
-        let text = eval(expr, context)?.to_string();
-        print!("{}", text);
-        host::note_output(&text);
-    }
-    let _ = std::io::stdout().flush();
-    Ok(NIL)
-}
-
-fn newline(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
-    if !args.is_nil() {
-        return Err(arity_error(proc_name, 0..=0, args.len()));
-    }
-    println!();
-    host::note_output("\n");
     Ok(NIL)
 }
 
@@ -101,25 +79,45 @@ fn load(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
         }
     };
 
-    let text = std::fs::read_to_string(&path).map_err(|e| {
+    let resolved = resolve_load_path(&path);
+    let display = resolved.display().to_string();
+
+    let text = std::fs::read_to_string(&resolved).map_err(|e| {
         EvalError::new(
             ErrorKind::Other,
-            format!("{proc_name}: failed to read \"{path}\": {e}"),
+            format!("{proc_name}: failed to read \"{display}\": {e}"),
         )
         .with_span(arg.span())
     })?;
 
+    // Nested `load` calls resolve relative to this file, not the caller.
+    let _source = host::enter_source_file(&resolved);
     match eval_source(&text, context, false) {
         Ok(result) => Ok(result),
         Err(error) => {
             // Print the inner file's diagnostic with its own source, then return a terse error
             // so the caller's caret lands on the `(load ...)` form without embedding spans in prose.
-            print_pipeline_error(&error, &text, &path);
-            Err(
-                EvalError::new(ErrorKind::Other, format!("{proc_name}: \"{path}\" failed"))
-                    .with_span(arg.span()),
+            print_pipeline_error(&error, &text, &display);
+            Err(EvalError::new(
+                ErrorKind::Other,
+                format!("{proc_name}: \"{display}\" failed"),
             )
+            .with_span(arg.span()))
         }
+    }
+}
+
+/// Absolute paths are used as given. A relative path is joined onto the directory of the
+/// file currently being evaluated, or left for the process working directory when there
+/// is none (REPL, `-e`, stdin).
+fn resolve_load_path(path: &str) -> PathBuf {
+    let path = Path::new(path);
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else if let Some(dir) = host::current_source_dir() {
+        dir.join(path)
+    } else {
+        path.to_path_buf()
     }
 }
 
@@ -143,14 +141,12 @@ mod tests {
     }
 
     #[test]
-    fn display_write_newline_and_load_errors() {
+    fn write_and_load_errors() {
         colored::control::set_override(false);
         let e = with_io();
 
-        assert!(e.eval_str(r#"(display "hi" 1)"#).is_ok());
         assert!(e.eval_str(r#"(write "hi" 1)"#).is_ok());
-        assert!(e.eval_str("(newline)").is_ok());
-        assert!(eval_err(&e, "(newline 1)").contains("expected 0"));
+        assert!(e.eval_str(r#"(write)"#).is_ok());
 
         assert!(eval_err(&e, "(load 1)").contains("string path"));
         assert!(eval_err(&e, r#"(load "/tmp/rusche-missing-xyz.rsc")"#).contains("failed to read"));

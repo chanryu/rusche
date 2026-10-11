@@ -3,6 +3,7 @@
         1
         (* n (factorial (- n 1)))))
 
-(display "Enter a number: ")
-(define n (str->num (read)))
-(display "factorial(" n ") => " (factorial n)) (newline)
+(load "lib/io.rsc")
+(load "lib/format.rsc")
+(define n (str->num (prompt "Enter a number: ")))
+(writeln (format "factorial({}) => {}" n (factorial n)))

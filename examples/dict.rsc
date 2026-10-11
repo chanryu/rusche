@@ -3,6 +3,8 @@
 ;;
 ;;   cargo run -p rusche-cli -- examples/dict.rsc
 
+(load "lib/io.rsc")
+(load "lib/format.rsc")
 (define words '(the quick brown fox jumps over the lazy dog the fox))
 
 (define counts (dict))
@@ -21,12 +23,11 @@
     (if (null? pairs)
         ()
         (let ((pair (car pairs)))
-            (display (car pair) ": " (cadr pair))
-            (newline)
+            (writeln (format "{}: {}" (car pair) (cadr pair)))
             (print-counts (cdr pairs)))))
 
 (tally-all words)
 (print-counts (dict->list counts))
-(display "unique: " (dict-length counts)) (newline)
-(display "has fox? " (dict-has? counts 'fox)) (newline)
-(display "keys: " (dict-keys counts)) (newline)
+(writeln (format "unique: {}" (dict-length counts)))
+(writeln (format "has fox? {}" (dict-has? counts 'fox)))
+(writeln (format "keys: {}" (dict-keys counts)))

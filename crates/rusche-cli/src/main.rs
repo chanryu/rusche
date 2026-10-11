@@ -12,6 +12,7 @@ use rusche::{tokenize, Evaluator, Loc, ParseError, Parser, Span};
 use builtin::{load_dict_procs, load_io_procs, load_sys_procs, load_vec_procs};
 use cli::{parse_args, usage, Input, Options};
 use diagnostics::{print_eval_error, print_lex_error, print_parse_error, print_pipeline_error};
+use host::enter_source_file;
 use repl::run_repl;
 
 const EVAL_STACK_SIZE: usize = 256 * 1024 * 1024;
@@ -104,6 +105,7 @@ fn run_with_options(opts: Options) -> ExitCode {
         Input::File(path) => match std::fs::read_to_string(&path) {
             Ok(text) => {
                 let name = path.display().to_string();
+                let _source = enter_source_file(&path);
                 match run_source(&evaluator, &text, &name) {
                     Ok(()) => ExitCode::SUCCESS,
                     Err(()) => ExitCode::from(1),
@@ -130,11 +132,7 @@ fn run_with_options(opts: Options) -> ExitCode {
 }
 
 fn build_evaluator(opts: &Options) -> Evaluator {
-    let evaluator = if opts.no_prelude {
-        Evaluator::with_builtin()
-    } else {
-        Evaluator::with_prelude()
-    };
+    let evaluator = Evaluator::with_prelude();
 
     if let Some(depth) = opts.max_call_depth {
         evaluator.set_max_call_depth(depth);
@@ -217,7 +215,6 @@ mod tests {
             script_args: Vec::new(),
             max_call_depth: None,
             gc_threshold: None,
-            no_prelude: false,
             no_color: true,
             help: false,
             version: false,
@@ -239,11 +236,10 @@ mod tests {
         colored::control::set_override(false);
 
         let mut opts = default_opts();
-        opts.no_prelude = true;
         opts.max_call_depth = Some(8);
         opts.gc_threshold = Some(None);
         let evaluator = build_evaluator(&opts);
-        assert!(evaluator.eval_str("(+ 1 2)").is_err());
+        assert_eq!(evaluator.eval_str("(+ 1 2)").unwrap().to_string(), "3");
 
         let mut opts = default_opts();
         opts.gc_threshold = Some(Some(50));

@@ -3,23 +3,25 @@
 ;;
 ;;   cargo run -p rusche-cli -- examples/strings.rsc
 
+(load "lib/io.rsc")
+(load "lib/format.rsc")
 (define line "  Hello, Rusche — hello again.  ")
 
-(display "raw:      [" line "]") (newline)
-(display "trimmed:  [" (str-trim line) "]") (newline)
-(display "upcase:   " (str-upcase (str-trim line))) (newline)
-(display "downcase: " (str-downcase (str-trim line))) (newline)
+(writeln (format "raw:      [{}]" line))
+(writeln (format "trimmed:  [{}]" (str-trim line)))
+(writeln (format "upcase:   {}" (str-upcase (str-trim line))))
+(writeln (format "downcase: {}" (str-downcase (str-trim line))))
 
 (define words (str-split (str-trim line) " "))
-(display "words:    " words) (newline)
-(display "joined:   " (str-join words "|")) (newline)
+(writeln (format "words:    {}" words))
+(writeln (format "joined:   {}" (str-join words "|")))
 
-(display "find 'che': " (str-find line "che")) (newline)
-(display "replace:  " (str-replace (str-trim line) "hello" "hi")) (newline)
-(display "repeat:   " (str-repeat "-*" 5)) (newline)
+(writeln (format "find 'che': {}" (str-find line "che")))
+(writeln (format "replace:  {}" (str-replace (str-trim line) "hello" "hi")))
+(writeln (format "repeat:   {}" (str-repeat "-*" 5)))
 
-(display "order:    " (< "apple" "banana") " " (= (+ "a" "b") "ab")) (newline)
-(display "length:   " (length line) " reversed: " (reverse "Rusche")) (newline)
-(display "earliest: " (min "pear" "apple" "plum")) (newline)
-(display "chars:    " (str->list "ab")) (newline)
-(display "rejoined: " (list->str '("x" "y" "z"))) (newline)
+(writeln (format "order:    {} {}" (< "apple" "banana") (= (+ "a" "b") "ab")))
+(writeln (format "length:   {} reversed: {}" (length line) (reverse "Rusche")))
+(writeln (format "earliest: {}" (min "pear" "apple" "plum")))
+(writeln (format "chars:    {}" (str->list "ab")))
+(writeln (format "rejoined: {}" (list->str '("x" "y" "z"))))

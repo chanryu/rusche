@@ -1,2 +1,2 @@
-(display "x")
+(write "x")
 	(car 1)
