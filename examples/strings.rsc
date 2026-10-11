@@ -1,5 +1,5 @@
 #!/usr/bin/env rusche-cli
-;; String helpers: find, split, join, replace, trim, case, repeat.
+;; String helpers: find, split, join, replace, trim, case, repeat, compare.
 ;;
 ;;   cargo run -p rusche-cli -- examples/strings.rsc
 
@@ -18,5 +18,8 @@
 (display "replace:  " (str-replace (str-trim line) "hello" "hi")) (newline)
 (display "repeat:   " (str-repeat "-*" 5)) (newline)
 
+(display "order:    " (< "apple" "banana") " " (= (+ "a" "b") "ab")) (newline)
+(display "length:   " (length line) " reversed: " (reverse "Rusche")) (newline)
+(display "earliest: " (min "pear" "apple" "plum")) (newline)
 (display "chars:    " (str->list "ab")) (newline)
 (display "rejoined: " (list->str '("x" "y" "z"))) (newline)

@@ -64,7 +64,7 @@ fn bench_mandelbrot(c: &mut Criterion) {
                   (set! col (+ col 1))))
               (set! row (+ row 1)))
             sum))
-        "#
+        "#,
     );
     c.bench_function("mandelbrot 24x8", |b| {
         b.iter(|| {

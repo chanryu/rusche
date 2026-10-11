@@ -173,13 +173,49 @@ The following forms and procedures are implemented in Rust. Most are native proc
   by `apply`) are not cached. Redefining a macro invalidates cached expansions that used the
   old body.
 
-#### `eq?`, `=`
-  Compares two values structurally. `=` is an alias for `eq?`.
+#### `eq?`
+  Compares two values structurally. Different types compare as false; this is not an error.
   ```scheme
   (eq? 'a 'a)         ; true
   (eq? 'a 'b)         ; false
   (eq? '(1 2) '(1 2)) ; true
-  (= 1 1)             ; true
+  (eq? 1 "1")         ; false
+  ```
+
+#### `=`
+  Prelude procedure. Equality of two or more values. The first argument chooses the type,
+  and every later argument must be that same type. Numbers compare as numbers and strings
+  as strings. Any other type compares structurally, the same way `eq?` does. A mix of
+  types, such as a number and a string, is an error.
+  ```scheme
+  (= 1 1 1)           ; true
+  (= "a" "a")         ; true
+  (= 'a 'a)           ; true
+  (= '(1 2) '(1 2))   ; true
+  (= 1 "1")           ; error: expected a number
+  (= "a" "b")         ; false
+  ```
+
+#### `<`, `<=`, `>`, `>=`
+  Prelude procedures. Ordered comparison of two or more numbers, two or more strings, or
+  two or more lists. The relation must hold between every consecutive pair. The first
+  argument chooses the type. String order is lexicographic by Unicode scalar value, the
+  same order as `str-compare` (`"A"` comes before `"a"`, and a proper prefix comes before
+  the longer string). Lists use that same order on their elements, and a list that is a
+  proper prefix of another comes first. A mix of types, or a value that is not a number,
+  string, or list, is an error.
+  ```scheme
+  (< 1 2 3)           ; true
+  (<= 1 1)            ; true
+  (> 3 2 1)           ; true
+  (>= 3 3)            ; true
+  (< "a" "b" "c")     ; true
+  (> "z" "a")         ; true
+  (< '(1 2) '(1 3))   ; true
+  (< '() '(1))        ; true
+  (< 1 "a")           ; error: expected a number
+  (< 'a 'b)           ; error: expected a number, a string, or a list
+  (< '(1) '("a"))     ; error: expected a number
   ```
 
 #### `error`
@@ -273,9 +309,9 @@ The following forms and procedures are implemented in Rusche itself. Please chec
 
 Macros: `and`, `case`, `cond` (with `else`), `defrecord`, `defun`, `let` (including named `let` and list destructuring), `let*`, `letrec`, `or`, `or-else`, `unless`, `when`, `while`
 
-Procedures: `append`, `assoc`, `caar`, `cadr`, `caddr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `nth`, `list->str`, `map`, `member`, `not`, `reverse`, `str->list`, `str-repeat`, `<`, `>`, `<=`, `>=`, `abs`, `ceil`, `floor`, `min`, `max`, `round`, `truncate`
+Procedures: `append`, `assoc`, `caar`, `cadr`, `caddr`, `cdar`, `cddr`, `filter`, `fold`, `length`, `list`, `nth`, `list->str`, `map`, `member`, `not`, `reverse`, `str->list`, `str-repeat`, `=`, `<`, `>`, `<=`, `>=`, `abs`, `ceil`, `floor`, `min`, `max`, `round`, `truncate`, `+`
 
-Numeric short names (`+`, `-`, `*`, `/`, `%`, `sqrt`, `exp`, `log`, `expt`, `abs`, `min`, `max`, `floor`, `ceil`, `truncate`, `round`) are aliases for the corresponding `num-*` bindings; see [Number functions](#number-functions). List and core names (`car`, `cons`, `lambda`, …) stay unprefixed.
+Numeric short names (`-`, `*`, `/`, `%`, `sqrt`, `exp`, `log`, `expt`, `abs`, `floor`, `ceil`, `truncate`, `round`) are aliases for the corresponding `num-*` bindings; see [Number functions](#number-functions). `+` adds numbers or concatenates strings. `min` and `max` follow `<` (numbers, strings, or lists); `num-min` and `num-max` stay numeric. List and core names (`car`, `cons`, `lambda`, …) stay unprefixed.
 
 `and` and `or` short-circuit and always return a boolean. Operands must be booleans.
 ```scheme
@@ -331,11 +367,14 @@ Numeric short names (`+`, `-`, `*`, `/`, `%`, `sqrt`, `exp`, `log`, `expt`, `abs
 (point-x p)   ; 3
 ```
 
-List helpers (`append` takes exactly two lists):
+List helpers. `length` and `reverse` also accept a string. `append` takes two lists or two strings:
 ```scheme
 (length '(a b c))                      ; 3
+(length "abc")                         ; 3
+(reverse "ab")                         ; "ba"
 (nth '(a b c) 1)                       ; b
 (append '(1 2) '(3 4))                 ; (1 2 3 4)
+(append "a" "b")                       ; "ab"
 (filter (lambda (x) (< x 3)) '(1 2 3)) ; (1 2)
 (fold + 0 '(1 2 3))                    ; 6
 (member 'b '(a b c))                   ; (b c)
@@ -349,21 +388,24 @@ Strings as lists of 1-character strings (there is no separate character type), p
 (str-repeat "ab" 3)           ; "ababab"
 ```
 
-Numeric helpers and comparisons (comparisons take two or more arguments):
+Numeric helpers, and comparisons of numbers, strings, or lists (comparisons take two or more arguments; every argument must be the same type):
 ```scheme
-(abs -3)           ; 3
-(min 3 1 2)        ; 1
-(max 3 1 2)        ; 3
-(floor -3.7)       ; -4
-(ceil 3.2)         ; 4
-(truncate -3.7)    ; -3
-(round 3.5)        ; 4
-(sqrt 9)           ; 3
-(expt 2 10)        ; 1024
-(< 1 2 3)          ; true
-(<= 1 1 2)         ; true
-(> 3 2 1)          ; true
-(>= 3 3 1)         ; true
+(abs -3)                 ; 3
+(min 3 1 2)              ; 1
+(min "pear" "apple")     ; "apple"
+(max 3 1 2)              ; 3
+(+ "a" "b")              ; "ab"
+(floor -3.7)             ; -4
+(ceil 3.2)               ; 4
+(truncate -3.7)          ; -3
+(round 3.5)              ; 4
+(sqrt 9)                 ; 3
+(expt 2 10)              ; 1024
+(< 1 2 3)                ; true
+(< "a" "b" "c")          ; true
+(< '(1 2) '(1 3))        ; true
+(= "ab" (+ "a" "b"))     ; true
+(> 3 2 1)                ; true
 ```
 
 ### Number functions
@@ -376,9 +418,11 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   ```
 
 #### `num-add`, `+`
-  Adds one or more numbers.
+  `num-add` adds one or more numbers. `+` does the same for numbers, and concatenates when every argument is a string. `(+)` with no arguments is `0`. A mix of numbers and strings is an error.
   ```scheme
-  (+ 1 2 3)     ; 6
+  (+ 1 2 3)              ; 6
+  (+ "hello" " " "world") ; "hello world"
+  (+ "a" 1)              ; error: expected a string
   ```
 
 #### `num-subtract`, `-`
@@ -407,22 +451,13 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   ```
 
 #### `num-less`, `num-greater`, `num-less-or-equal`, `num-greater-or-equal`
-  Two-argument numeric comparisons. The prelude wraps each as the multi-argument `<`, `>`, `<=`, and `>=` procedures.
+  Two-argument numeric comparisons. A non-number is an error. For numbers, strings, or lists, and for more than two arguments, use `<`, `<=`, `>`, and `>=`.
   ```scheme
   (num-less 3 5)             ; true
   (num-greater 5 3)          ; true
   (num-less-or-equal 3 3)    ; true
   (num-greater-or-equal 3 2) ; true
-  ```
-
-#### `<`, `<=`, `>`, `>=`
-  Multi-argument numeric comparisons from the prelude. Each returns `true` when the relation holds between every consecutive pair, otherwise `false`.
-  ```scheme
-  (< 1 2 3)     ; true
-  (<= 1 1 2)    ; true
-  (> 3 2 1)     ; true
-  (>= 3 3 1)    ; true
-  (> 2 4)       ; false
+  (num-less "a" "b")         ; error: expected a number
   ```
 
 #### `num-sqrt`, `sqrt`
@@ -457,10 +492,12 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   ```
 
 #### `num-min`, `min` / `num-max`, `max`
-  Minimum / maximum of one or more numbers.
+  Minimum / maximum of one or more values. `num-min` and `num-max` accept only numbers. `min` and `max` follow `<`, so they also accept strings or lists. A mix of types is an error.
   ```scheme
-  (min 3 1 2)   ; 1
-  (max 3 1 2)   ; 3
+  (min 3 1 2)            ; 1
+  (max 3 1 2)            ; 3
+  (min "pear" "apple")   ; "apple"
+  (min '(1 5) '(1 2))    ; (1 2)
   ```
 
 #### `num-truncate`, `truncate` / `num-floor`, `floor` / `num-ceil`, `ceil` / `num-round`, `round`
@@ -488,11 +525,12 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
   ```
 
 #### `str-compare`
-  Compares two strings lexicographically, returning `-1`, `0`, or `1`.
+  Compares two strings lexicographically, returning `-1`, `0`, or `1`. `=`, `<`, `<=`, `>`, and `>=` use this same order and return a boolean.
   ```scheme
   (str-compare "abc" "def")   ; -1
   (str-compare "xyz" "abc")   ; 1
   (str-compare "same" "same") ; 0
+  (< "abc" "def")             ; true
   ```
 
 #### `str-length`
@@ -588,11 +626,11 @@ Numeric helpers and comparisons (comparisons take two or more arguments):
 ## Differences from Scheme
 
 - **Booleans.** Literals are `true`/`false` (not Scheme's `#t`/`#f`). Conditions must be booleans; `()` is just a value.
-- **Equality.** `eq?` compares structurally and `=` is an alias for it.
+- **Comparison.** `eq?` compares structurally and returns false for different types. `=` requires every argument to be the same type (so `(= 1 "1")` is an error, while `(= "a" "a")` and `(= 'a 'a)` are booleans). `<`, `>`, `<=`, and `>=` order numbers, strings, or lists.
 - **Lists only.** `cons` requires a list as its second argument; there are no dotted pairs or `set-car!`/`set-cdr!`. A lone `.` is an ordinary symbol. Lists are immutable and shared.
 - **Numbers.** All numbers are 64-bit floats.
 - **Macros.** `defmacro` (unhygienic) is the macro system; there is no `syntax-rules`.
-- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Number and string operations use a type prefix (`num-add`, `str-append`, `num-less`), with short aliases or multi-arg wrappers in the prelude (`+`, `sqrt`, `<`, …). List and binding forms keep classic names (`car`, `cons`, `lambda`, `nth`). Conversions use `type1->type2` (`num->str`, `str->num`). There are no Scheme spellings such as `number?`, `modulo`, or `string-append`.
+- **Names.** Type checks end in `?` (`num?`, `str?`, `sym?`, `proc?`, `atom?`). Number and string operations use a type prefix (`num-add`, `str-append`, `num-less`), with short aliases in the prelude (`sqrt`, …). `+` adds numbers or concatenates strings. `=`, `<`, `>`, `<=`, and `>=` compare numbers, strings, or lists. `length`, `reverse`, and `append` accept lists or strings. List and binding forms keep classic names (`car`, `cons`, `lambda`, `nth`). Conversions use `type1->type2` (`num->str`, `str->num`). There are no Scheme spellings such as `number?`, `modulo`, or `string-append`.
 - **Small surface.** `if` without an else branch and `define` return `()`. There is no `do`. Characters, vectors, ports, and continuations are host concerns (the prelude offers macros such as `when` / `unless` / `case` / named `let` / `letrec` / `defrecord`).
 - **`apply` and `eval` are syntax.** In Scheme they are procedures; in Rusche they are evaluator forms like `if`, so they cannot be passed as values or rebound. `(begin)` with no arguments is allowed and returns `()`.
 - **Rest parameters** are spelled with a `*` prefix instead of Scheme's dotted syntax: `(define (f a *rest) ...)` and `(lambda (*args) ...)`. See [Procedure Parameters](#procedure-parameters).

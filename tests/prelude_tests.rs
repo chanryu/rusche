@@ -129,6 +129,9 @@ fn test_append() {
     assert_eq!(eval_str("(append '(1) '(2))"), "(1 2)");
     assert_eq!(eval_str("(append '(1 2 3) '(4))"), "(1 2 3 4)");
     assert_eq!(eval_str("(append '(1 2 3) '(4 5 6))"), "(1 2 3 4 5 6)");
+    assert_eq!(eval_str("(append \"ab\" \"cd\")"), "\"abcd\"");
+    assert!(eval_str("(append \"ab\" '(1))").starts_with("Err:"));
+    assert!(eval_str("(append '(1) \"ab\")").starts_with("Err:"));
 }
 
 #[test]
@@ -149,12 +152,20 @@ fn test_assoc() {
 #[test]
 fn test_reverse() {
     assert_eq!(eval_str("(reverse '(a b c d))"), "(d c b a)");
+    assert_eq!(eval_str("(reverse \"\")"), "\"\"");
+    assert_eq!(eval_str("(reverse \"ab\")"), "\"ba\"");
+    assert_eq!(eval_str("(reverse \"aéb\")"), "\"béa\"");
+    assert!(eval_str("(reverse 1)").starts_with("Err:"));
 }
 
 #[test]
 fn test_length_filter_fold_member() {
     assert_eq!(eval_str("(length '())"), "0");
     assert_eq!(eval_str("(length '(a b c))"), "3");
+    assert_eq!(eval_str("(length \"\")"), "0");
+    assert_eq!(eval_str("(length \"abc\")"), "3");
+    assert_eq!(eval_str("(length \"aéb\")"), "3");
+    assert!(eval_str("(length 1)").starts_with("Err:"));
     assert_eq!(
         eval_str("(filter (lambda (x) (< x 3)) '(1 2 3 4))"),
         "(1 2)"
@@ -184,9 +195,14 @@ fn test_abs_min_max() {
     assert_eq!(eval_str("(min 3 1 2)"), "1");
     assert_eq!(eval_str("(max 3)"), "3");
     assert_eq!(eval_str("(max 3 1 2)"), "3");
+    assert_eq!(eval_str("(min \"pear\" \"apple\" \"plum\")"), "\"apple\"");
+    assert_eq!(eval_str("(max \"pear\" \"apple\")"), "\"pear\"");
+    assert_eq!(eval_str("(min '(1 5) '(1 2) '(1 2 0))"), "(1 2)");
+    assert!(eval_str("(min 1 \"a\")").starts_with("Err:"));
+    assert!(eval_str("(num-min \"b\" \"a\")").starts_with("Err:"));
     assert_eq!(eval_str("(eq? abs num-abs)"), "true");
-    assert_eq!(eval_str("(eq? min num-min)"), "true");
-    assert_eq!(eval_str("(eq? max num-max)"), "true");
+    assert_eq!(eval_str("(eq? min num-min)"), "false");
+    assert_eq!(eval_str("(eq? max num-max)"), "false");
 }
 
 #[test]
@@ -198,8 +214,58 @@ fn test_variadic_comparisons() {
     assert_eq!(eval_str("(> 3 2 1)"), "true");
     assert_eq!(eval_str("(> 3 1 2)"), "false");
     assert_eq!(eval_str("(>= 3 3 1)"), "true");
+    assert_eq!(eval_str("(< \"a\" \"b\" \"c\")"), "true");
+    assert_eq!(eval_str("(< \"a\" \"c\" \"b\")"), "false");
+    assert_eq!(eval_str("(= \"ab\" (str-append \"a\" \"b\"))"), "true");
+    assert_eq!(eval_str("(= 1 1 1)"), "true");
+    assert_eq!(eval_str("(= \"a\" \"b\")"), "false");
+    assert_eq!(eval_str("(= 'a 'a)"), "true");
+    assert_eq!(eval_str("(= 'a 'b)"), "false");
+    assert_eq!(eval_str("(= true false)"), "false");
+    assert_eq!(eval_str("(= '(1 2) '(1 2))"), "true");
+    assert_eq!(eval_str("(= car car)"), "true");
+    assert_eq!(eval_str("(= car cdr)"), "false");
+    assert_eq!(eval_str("(eq? 1 \"1\")"), "false");
+    assert!(eval_str("(< 1 \"a\")").contains("expected a number"));
+    assert!(eval_str("(= 1 \"1\")").contains("expected a number"));
+    assert!(eval_str("(= \"1\" 1)").contains("expected a string"));
+    assert!(eval_str("(= 'a 1)").contains("expected a symbol"));
+    assert!(eval_str("(< 'a 'b)").contains("expected a number, a string, or a list"));
     assert!(eval_str("(< 1)").starts_with("Err:"));
     assert!(eval_str("(<)").starts_with("Err:"));
+
+    assert_eq!(eval_str("(< '(1 2) '(1 3))"), "true");
+    assert_eq!(eval_str("(< '(1 3) '(1 2))"), "false");
+    assert_eq!(eval_str("(< '(\"a\") '(\"b\"))"), "true");
+    assert_eq!(eval_str("(< '() '(1))"), "true");
+    assert_eq!(eval_str("(< '(1) '())"), "false");
+    assert_eq!(eval_str("(< '() '())"), "false");
+    assert_eq!(eval_str("(<= '() '())"), "true");
+    assert_eq!(eval_str("(<= '(1) '(1))"), "true");
+    assert_eq!(eval_str("(< '(1) '(1 0))"), "true");
+    assert_eq!(eval_str("(> '(1 3) '(1 2) '(0))"), "true");
+    assert_eq!(eval_str("(>= '(1) '(1))"), "true");
+    assert_eq!(eval_str("(< \"A\" \"a\")"), "true");
+    assert_eq!(eval_str("(< \"app\" \"apple\")"), "true");
+    // A pair that would be false does not hide a later type error.
+    assert!(eval_str("(> 0 1 \"z\")").contains("expected a number"));
+    assert!(eval_str("(< '(1) '(\"a\"))").contains("expected a number"));
+    assert!(eval_str("(< '(1) \"a\")").contains("expected a list"));
+    assert_eq!(eval_str("(apply < '(\"a\" \"b\" \"c\"))"), "true");
+    assert_eq!(eval_str("(apply = '(1 1 1))"), "true");
+}
+
+#[test]
+fn test_plus_numbers_and_strings() {
+    assert_eq!(eval_str("(+)"), "0");
+    assert_eq!(eval_str("(+ 1 2 3)"), "6");
+    assert_eq!(eval_str("(+ 5)"), "5");
+    assert_eq!(eval_str("(+ \"hello\" \" \" \"world\")"), "\"hello world\"");
+    assert_eq!(eval_str("(+ \"a\")"), "\"a\"");
+    assert!(eval_str("(+ \"a\" 1)").contains("expected a string"));
+    assert!(eval_str("(+ 1 \"a\")").contains("expected a number"));
+    assert!(eval_str("(+ 'a)").contains("expected a number or a string"));
+    assert_eq!(eval_str("(eq? + num-add)"), "false");
 }
 
 #[test]
@@ -237,7 +303,10 @@ fn test_when_unless() {
 fn test_case() {
     assert_eq!(eval_str("(case 'b ((a) 1) ((b c) 2) (else 3))"), "2");
     assert_eq!(eval_str("(case 'x ((a) 1) (else 9))"), "9");
-    assert_eq!(eval_str("(case 2 ((1) 'one) ((2 3) 'two) (else 'other))"), "two");
+    assert_eq!(
+        eval_str("(case 2 ((1) 'one) ((2 3) 'two) (else 'other))"),
+        "two"
+    );
 }
 
 #[test]
@@ -261,10 +330,7 @@ fn test_named_let_and_letrec() {
 #[test]
 fn test_let_destructuring() {
     assert_eq!(eval_str("(let (((a b) '(1 2))) (+ a b))"), "3");
-    assert_eq!(
-        eval_str("(let (((a b) '(10 20)) (c 1)) (+ a b c))"),
-        "31"
-    );
+    assert_eq!(eval_str("(let (((a b) '(10 20)) (c 1)) (+ a b c))"), "31");
 }
 
 #[test]

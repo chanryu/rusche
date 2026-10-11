@@ -86,14 +86,7 @@ impl Proc {
                 name,
                 formal_args,
                 body,
-            } => apply_macro(
-                name.as_deref(),
-                formal_args,
-                body,
-                call,
-                call_site,
-                context,
-            ),
+            } => apply_macro(name.as_deref(), formal_args, body, call, call_site, context),
             Proc::Native { name, func } => func(name.as_ref(), args, context).map(Step::Value),
         }
     }
@@ -115,12 +108,8 @@ impl Proc {
     /// Short name used in call traces and diagnostics.
     pub(crate) fn display_name(&self) -> Rc<str> {
         match self {
-            Proc::Closure { name, .. } => name
-                .clone()
-                .unwrap_or_else(|| Rc::from("unnamed")),
-            Proc::Macro { name, .. } => name
-                .clone()
-                .unwrap_or_else(|| Rc::from("unnamed")),
+            Proc::Closure { name, .. } => name.clone().unwrap_or_else(|| Rc::from("unnamed")),
+            Proc::Macro { name, .. } => name.clone().unwrap_or_else(|| Rc::from("unnamed")),
             Proc::Native { name, .. } => name.clone(),
         }
     }
