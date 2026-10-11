@@ -179,7 +179,7 @@ then reports a terse `load: "path" failed` error at the `(load ...)` call site.
 that way is the current file for any relative `load` inside it.
 
 ```scheme
-(load "format.rsc")             ; next to the file that contains this call
+(load "lib/writeln.rsc")        ; relative to the file that contains this call
 (load "examples/counter.rsc")   ; from the REPL, in the repository root
 ```
 
@@ -274,10 +274,11 @@ for scripts that use it.
 | [`factorial.rsc`](../examples/factorial.rsc), [`factorial-tail-recursive.rsc`](../examples/factorial-tail-recursive.rsc) | Factorial, reading a number. |
 | [`fibonacci.rsc`](../examples/fibonacci.rsc), [`fibonacci-tail-recursive.rsc`](../examples/fibonacci-tail-recursive.rsc) | Fibonacci, reading a number. The non-tail version memoizes with `dict`. |
 | [`fizzbuzz.rsc`](../examples/fizzbuzz.rsc) | FizzBuzz from stdin. Shebang. |
-| [`format.rsc`](../examples/format.rsc) | `writeln` and `format` (`{}` placeholders). Other scripts in this directory `(load "format.rsc")`. |
 | [`mandelbrot.rsc`](../examples/mandelbrot.rsc) | ASCII Mandelbrot. Optional width and height from `(command-line)`. Shebang. |
 | [`points.rsc`](../examples/points.rsc) | `defrecord`, list destructuring, named `let`, `case` / `when` / `unless`, `sqrt` / `expt`. Shebang. |
 | [`strings.rsc`](../examples/strings.rsc) | `str-find`, `str-split`, `str-join`, `str-replace`, trim/case, `str-repeat`, `str->list`. Shebang. |
+
+Shared modules live in [`lib/`](../examples/lib) and are loaded by these scripts: [`writeln.rsc`](../examples/lib/writeln.rsc) (`write` plus a newline) and [`format.rsc`](../examples/lib/format.rsc) (`{}` placeholders).
 
 ```bash
 cargo run -p rusche-cli -- examples/fizzbuzz.rsc

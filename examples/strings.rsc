@@ -3,7 +3,8 @@
 ;;
 ;;   cargo run -p rusche-cli -- examples/strings.rsc
 
-(load "format.rsc")
+(load "lib/writeln.rsc")
+(load "lib/format.rsc")
 
 (define line "  Hello, Rusche — hello again.  ")
 

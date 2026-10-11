@@ -7,7 +7,7 @@
 ;; Rendering is CPU-bound; add `--release` for larger sizes.
 
 ;; Characters from "escapes quickly" to "stays bounded" (the set itself).
-(load "format.rsc")
+(load "lib/writeln.rsc")
 
 (define palette " .:-=+*#%@")
 

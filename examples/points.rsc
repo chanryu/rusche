@@ -3,7 +3,8 @@
 ;;
 ;;   cargo run -p rusche-cli -- examples/points.rsc
 
-(load "format.rsc")
+(load "lib/writeln.rsc")
+(load "lib/format.rsc")
 
 (defrecord point (x y))
 

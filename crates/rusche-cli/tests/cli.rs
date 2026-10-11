@@ -275,7 +275,8 @@ fn writeln_and_format() {
         &[
             "-e",
             r#"(begin
-                (load "examples/format.rsc")
+                (load "examples/lib/writeln.rsc")
+                (load "examples/lib/format.rsc")
                 (writeln (format "hello {}" "world"))
                 (writeln (format "{{}} {}" '(a b)))
                 (writeln "x"))"#,
@@ -288,7 +289,7 @@ fn writeln_and_format() {
     let out = run(
         &[
             "-e",
-            r#"(begin (load "examples/format.rsc") (format "{}"))"#,
+            r#"(begin (load "examples/lib/format.rsc") (format "{}"))"#,
         ],
         "",
     );

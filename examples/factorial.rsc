@@ -3,7 +3,8 @@
         1
         (* n (factorial (- n 1)))))
 
-(load "format.rsc")
+(load "lib/writeln.rsc")
+(load "lib/format.rsc")
 
 (write "Enter a number: ")
 (define n (str->num (read)))

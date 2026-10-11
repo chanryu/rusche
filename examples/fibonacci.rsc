@@ -15,7 +15,8 @@
         (dict-set! cache n result)
         result)))
 
-(load "format.rsc")
+(load "lib/writeln.rsc")
+(load "lib/format.rsc")
 
 (write "Enter a number: ")
 (define n (str->num (read)))

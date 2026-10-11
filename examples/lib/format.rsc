@@ -1,15 +1,9 @@
-;; writeln and format. From another file in this directory:
-;;
-;;   (load "format.rsc")
-
-;; `(writeln expr ...)` -- `(write expr ...)` followed by a newline.
-(define (writeln *args)
-    (apply write args)
-    (write "\n"))
-
 ;; `(format template *args)` -- replace each `{}` with the next argument.
 ;; Strings are raw text; other values use their source form (`show`).
 ;; `{{` and `}}` are literal braces. Anything else after `{` is an error.
+;; From a script in `examples/`:
+;;
+;;   (load "lib/format.rsc")
 (define (format template *args)
     (define (text x)
         (if (str? x) x (show x)))
