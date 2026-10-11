@@ -153,13 +153,6 @@ fn dash_means_stdin() {
 }
 
 #[test]
-fn no_prelude_hides_plus() {
-    let out = run(&["--no-prelude", "-e", "(+ 1 2)"], "");
-    assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("undefined symbol") || stderr(&out).contains("+"));
-}
-
-#[test]
 fn command_line_builtin() {
     let out = run(&["-e", "(begin (print (car (command-line)) \"\\n\"))"], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));

@@ -130,11 +130,7 @@ fn run_with_options(opts: Options) -> ExitCode {
 }
 
 fn build_evaluator(opts: &Options) -> Evaluator {
-    let evaluator = if opts.no_prelude {
-        Evaluator::with_builtin()
-    } else {
-        Evaluator::with_prelude()
-    };
+    let evaluator = Evaluator::with_prelude();
 
     if let Some(depth) = opts.max_call_depth {
         evaluator.set_max_call_depth(depth);
@@ -217,7 +213,6 @@ mod tests {
             script_args: Vec::new(),
             max_call_depth: None,
             gc_threshold: None,
-            no_prelude: false,
             no_color: true,
             help: false,
             version: false,
@@ -239,11 +234,10 @@ mod tests {
         colored::control::set_override(false);
 
         let mut opts = default_opts();
-        opts.no_prelude = true;
         opts.max_call_depth = Some(8);
         opts.gc_threshold = Some(None);
         let evaluator = build_evaluator(&opts);
-        assert!(evaluator.eval_str("(+ 1 2)").is_err());
+        assert_eq!(evaluator.eval_str("(+ 1 2)").unwrap().to_string(), "3");
 
         let mut opts = default_opts();
         opts.gc_threshold = Some(Some(50));

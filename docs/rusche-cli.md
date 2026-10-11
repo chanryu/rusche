@@ -17,7 +17,7 @@ cargo run -p rusche-cli -- examples/fizzbuzz.rsc
 
 | Layer | Source | Contents |
 | --- | --- | --- |
-| Core built-ins + prelude | `rusche` crate | [Language reference](language-reference.md). Built-ins always; prelude omitted with `--no-prelude`. |
+| Core built-ins + prelude | `rusche` crate | [Language reference](language-reference.md). |
 | I/O | [`builtin/io.rs`](../crates/rusche-cli/src/builtin/io.rs) | `print`, `read`, `exit`, `load` |
 | System | [`builtin/sys.rs`](../crates/rusche-cli/src/builtin/sys.rs) | `getenv`, `clock`, `random`, `command-line` |
 | Vectors | [`builtin/vec.rs`](../crates/rusche-cli/src/builtin/vec.rs) | `vec?`, `vec`, `vec-push`, `vec-pop`, `vec-get`, `vec-set!`, `vec-length`, `vec->list`, `list->vec` |
@@ -76,7 +76,6 @@ is an empty program.
 | `--max-call-depth N` | Maximum call depth (default 1000). Tail calls do not count. See [Tail calls](language-reference.md#tail-calls). |
 | `--gc-threshold N` | Collect automatically once live environments reach `N` (default 10000). |
 | `--gc-threshold off` | Leave automatic collection off. `,gc` in the REPL still collects. |
-| `--no-prelude` | Built-ins plus I/O, system, `vec`, and `dict`. No prelude (`cond`, `let`, `+`, …). |
 | `--no-color` | Turn off color in the banner, REPL values, meta-command help, and diagnostics. |
 
 ### Exit codes
