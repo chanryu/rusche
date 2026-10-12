@@ -1,4 +1,4 @@
-//! Spawns a worker thread that owns a Rusche [`Evaluator`] and streams [`TurtleEvent`]s.
+//! Worker thread owning a Rusche [`Evaluator`], streaming [`TurtleEvent`]s.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver};
@@ -13,7 +13,6 @@ use crate::turtle::{Sink, Turtle, TurtleEvent};
 
 const EVAL_STACK_SIZE: usize = 16 * 1024 * 1024;
 
-/// Handle to a running (or finished) script job.
 pub struct Job {
     pub receiver: Receiver<TurtleEvent>,
     pub cancel: Arc<AtomicBool>,
@@ -26,10 +25,7 @@ impl Job {
     }
 }
 
-/// Start evaluating `source` on a dedicated large-stack thread.
-///
-/// The worker creates a fresh evaluator each run. `ctx` is used to request
-/// repaints as events are produced.
+/// Fresh evaluator on a large-stack thread. `ctx` is used for repaint requests.
 pub fn spawn(source: String, ctx: Context) -> Job {
     let (tx, rx) = mpsc::channel();
     let cancel = Arc::new(AtomicBool::new(false));
@@ -68,23 +64,14 @@ pub fn spawn(source: String, ctx: Context) -> Job {
     }
 }
 
-/// Plain-text diagnostic similar to rusche-cli's printer (no ANSI colors).
 pub fn format_error(error: &Error, src: &str, source_name: &str) -> String {
-    let mut out = String::new();
-    out.push_str("error: ");
-    out.push_str(&error.message());
-    out.push('\n');
-
+    let mut out = format!("error: {}\n", error.message());
     if let Some(span) = error.span() {
         append_span_context(&mut out, src, source_name, &span);
     }
-
     if let Some(help) = error.help() {
-        out.push_str("  = help: ");
-        out.push_str(help);
-        out.push('\n');
+        out.push_str(&format!("  = help: {help}\n"));
     }
-
     for frame in error.trace() {
         if let Some(span) = frame.call_site {
             out.push_str(&format!(
@@ -98,7 +85,6 @@ pub fn format_error(error: &Error, src: &str, source_name: &str) -> String {
             out.push_str(&format!("  = in `{}` (prelude)\n", frame.name));
         }
     }
-
     out
 }
 
@@ -107,19 +93,17 @@ fn append_span_context(out: &mut String, src: &str, source_name: &str, span: &Sp
     if span.end.line >= lines.len() {
         return;
     }
-
     out.push_str(&format!(
         "  --> {}:{}:{}\n",
         source_name,
         span.begin.line + 1,
         span.begin.column + 1
     ));
-
     let start = span.begin.line.saturating_sub(1);
     let end = span.end.line.min(lines.len() - 1);
     for (line, text) in lines.iter().enumerate().take(end + 1).skip(start) {
         out.push_str(&format!("{:>3}| {text}\n", line + 1));
-        if line >= span.begin.line && line <= span.end.line {
+        if (span.begin.line..=span.end.line).contains(&line) {
             let begin_col = if line == span.begin.line {
                 span.begin.column
             } else {
@@ -130,10 +114,9 @@ fn append_span_context(out: &mut String, src: &str, source_name: &str, span: &Sp
             } else {
                 text.chars().count()
             };
-            let caret_width = end_col.saturating_sub(begin_col).max(1);
             out.push_str("   | ");
             out.push_str(&" ".repeat(begin_col));
-            out.push_str(&"^".repeat(caret_width));
+            out.push_str(&"^".repeat(end_col.saturating_sub(begin_col).max(1)));
             out.push('\n');
         }
     }

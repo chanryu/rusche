@@ -1,11 +1,10 @@
-//! Rusche Turtle — a desktop turtle-graphics host for Rusche scripts.
+//! Desktop turtle-graphics host for Rusche.
 
 mod app;
 mod builtin;
 mod runner;
 mod turtle;
 
-use std::path::PathBuf;
 use std::process::ExitCode;
 
 use app::TurtleApp;
@@ -15,13 +14,12 @@ fn main() -> ExitCode {
     let initial = match args.next() {
         Some(arg) if arg == "-h" || arg == "--help" => {
             eprintln!("Usage: rusche-turtle [SCRIPT.rsc]");
-            eprintln!("  Opens a turtle-graphics window. Optional SCRIPT is loaded into the editor.");
             return ExitCode::SUCCESS;
         }
         Some(path) => match std::fs::read_to_string(&path) {
             Ok(src) => Some(src),
             Err(err) => {
-                eprintln!("error: failed to read {}: {err}", PathBuf::from(path).display());
+                eprintln!("error: failed to read {path}: {err}");
                 return ExitCode::from(1);
             }
         },

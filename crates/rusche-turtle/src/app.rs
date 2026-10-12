@@ -1,4 +1,4 @@
-//! egui application: editor, canvas, and output log.
+//! Editor, canvas, and output log.
 
 use std::sync::mpsc::TryRecvError;
 
@@ -42,7 +42,6 @@ const EXAMPLES: &[Example] = &[
     },
 ];
 
-/// Visual turtle pose shown on the canvas.
 #[derive(Clone, Copy)]
 struct Pose {
     x: f64,
@@ -62,21 +61,17 @@ impl Default for Pose {
     }
 }
 
-/// In-progress interpolated travel so the turtle walks instead of teleporting.
 struct Walk {
     x1: f64,
     y1: f64,
-    /// When set, each micro-step is stroked with this pen.
     pen: Option<(Color, f32)>,
-    /// Heading / visibility to apply when the walk finishes (from a trailing Move).
     end_heading: Option<f64>,
     end_visible: Option<bool>,
 }
 
-/// Active animation: either walking a path or rotating in place.
 enum Motion {
     Walk(Walk),
-    /// Remaining signed degrees (positive = counter-clockwise).
+    /// Remaining degrees; positive = counter-clockwise.
     Turn { remaining: f64 },
 }
 
@@ -91,7 +86,7 @@ const HELP_SECTIONS: &[(&str, &[OpHint])] = &[
         &[
             OpHint {
                 form: "(forward dist)  ; fd",
-                blurb: "Move forward; draw if pen is down",
+                blurb: "Move forward (draws if pen down)",
             },
             OpHint {
                 form: "(back dist)  ; bk",
@@ -99,23 +94,23 @@ const HELP_SECTIONS: &[(&str, &[OpHint])] = &[
             },
             OpHint {
                 form: "(left deg)  ; lt",
-                blurb: "Turn left (counter-clockwise)",
+                blurb: "Turn left",
             },
             OpHint {
                 form: "(right deg)  ; rt",
-                blurb: "Turn right (clockwise)",
+                blurb: "Turn right",
             },
             OpHint {
                 form: "(goto x y)",
-                blurb: "Go to absolute position",
+                blurb: "Absolute move",
             },
             OpHint {
                 form: "(setheading deg)  ; seth",
-                blurb: "Face an absolute heading",
+                blurb: "Absolute heading",
             },
             OpHint {
                 form: "(home)",
-                blurb: "Return to origin, face north",
+                blurb: "Origin, face north",
             },
         ],
     ),
@@ -132,7 +127,7 @@ const HELP_SECTIONS: &[(&str, &[OpHint])] = &[
             },
             OpHint {
                 form: "(pencolor \"blue\")",
-                blurb: "Named color (or r g b 0–255)",
+                blurb: "Name or r g b",
             },
             OpHint {
                 form: "(pensize w)",
@@ -140,11 +135,11 @@ const HELP_SECTIONS: &[(&str, &[OpHint])] = &[
             },
             OpHint {
                 form: "(clear)",
-                blurb: "Clear canvas and reset turtle",
+                blurb: "Reset canvas",
             },
             OpHint {
                 form: "(hideturtle) / (showturtle)",
-                blurb: "Hide or show the turtle",
+                blurb: "Sprite visibility",
             },
         ],
     ),
@@ -157,23 +152,23 @@ const HELP_SECTIONS: &[(&str, &[OpHint])] = &[
             },
             OpHint {
                 form: "(heading)",
-                blurb: "→ degrees (0 = east, 90 = north)",
+                blurb: "→ degrees (0 east, 90 north)",
             },
             OpHint {
                 form: "(pen?)",
-                blurb: "→ true if pen is down",
+                blurb: "→ pen down?",
             },
             OpHint {
                 form: "(write …) / (writeln …)",
-                blurb: "Print to the output log",
+                blurb: "Output log",
             },
             OpHint {
                 form: "(random)",
-                blurb: "→ float in [0, 1)",
+                blurb: "→ [0, 1)",
             },
             OpHint {
                 form: "(repeat n body…)",
-                blurb: "Run body n times",
+                blurb: "Loop body n times",
             },
         ],
     ),
@@ -187,18 +182,20 @@ pub struct TurtleApp {
     motion: Option<Motion>,
     pose: Pose,
     job: Option<Job>,
-    /// Travel budget per frame. `0` means instant (no walking/turning).
+    /// Per-frame travel budget; `0` = instant.
     speed: u32,
     status: String,
     show_help: bool,
 }
 
-/// Distance advanced along a walk per unit of the speed slider.
 const WALK_PX_PER_SPEED: f64 = 2.0;
-/// Degrees of turn per pixel of walk budget (keeps turns paced like walking).
 const TURN_DEG_PER_PX: f64 = 2.0;
 const WALK_EPS: f64 = 0.25;
 const TURN_EPS: f64 = 0.25;
+
+fn face(dx: f64, dy: f64) -> f64 {
+    dy.atan2(dx).to_degrees().rem_euclid(360.0)
+}
 
 impl TurtleApp {
     pub fn new(initial_script: Option<String>) -> Self {
@@ -243,7 +240,6 @@ impl TurtleApp {
             job.request_stop();
             self.status = "Stopping…".into();
         }
-        // Drop remaining animation so Stop feels immediate.
         self.pending.clear();
         self.motion = None;
     }
@@ -287,9 +283,7 @@ impl TurtleApp {
             }
             if self.status == "Stopping…" {
                 self.status = "Stopped".into();
-            } else if self.status.starts_with("error") {
-                // keep
-            } else {
+            } else if !self.status.starts_with("error") {
                 self.status = "Done".into();
             }
         } else if self.is_running() {
@@ -329,15 +323,13 @@ impl TurtleApp {
         }
     }
 
-    /// Start a walk/turn from a travel event, or apply non-travel events immediately.
     fn begin_or_apply(&mut self, event: TurtleEvent) {
         match event {
             TurtleEvent::Line(seg) => {
-                // Face the direction of travel while walking.
                 let dx = seg.x1 - seg.x0;
                 let dy = seg.y1 - seg.y0;
                 if dx.hypot(dy) > WALK_EPS {
-                    self.pose.heading = dy.atan2(dx).to_degrees().rem_euclid(360.0);
+                    self.pose.heading = face(dx, dy);
                 }
                 self.pose.x = seg.x0;
                 self.pose.y = seg.y0;
@@ -348,7 +340,6 @@ impl TurtleApp {
                     end_heading: None,
                     end_visible: None,
                 };
-                // Fold the trailing Move that `Turtle::move_by` emits after a Line.
                 self.absorb_trailing_move(&mut walk);
                 self.motion = Some(Motion::Walk(walk));
             }
@@ -358,11 +349,10 @@ impl TurtleApp {
                 heading,
                 visible,
             } => {
-                let dist = (x - self.pose.x).hypot(y - self.pose.y);
-                if dist > WALK_EPS {
-                    let dx = x - self.pose.x;
-                    let dy = y - self.pose.y;
-                    self.pose.heading = dy.atan2(dx).to_degrees().rem_euclid(360.0);
+                let dx = x - self.pose.x;
+                let dy = y - self.pose.y;
+                if dx.hypot(dy) > WALK_EPS {
+                    self.pose.heading = face(dx, dy);
                     self.motion = Some(Motion::Walk(Walk {
                         x1: x,
                         y1: y,
@@ -371,38 +361,51 @@ impl TurtleApp {
                         end_visible: Some(visible),
                     }));
                 } else {
-                    self.pose.heading = heading;
-                    self.pose.visible = visible;
-                    self.pose.x = x;
-                    self.pose.y = y;
+                    self.pose = Pose {
+                        x,
+                        y,
+                        heading,
+                        visible,
+                    };
                 }
             }
-            TurtleEvent::Turn { delta } => {
-                if delta.abs() > TURN_EPS {
-                    self.motion = Some(Motion::Turn { remaining: delta });
-                }
+            TurtleEvent::Turn { delta } if delta.abs() > TURN_EPS => {
+                self.motion = Some(Motion::Turn { remaining: delta });
             }
+            TurtleEvent::Turn { .. } => {}
             other => self.apply_event_instant(other),
         }
     }
 
     fn absorb_trailing_move(&mut self, walk: &mut Walk) {
-        if let Some(TurtleEvent::Move {
+        let Some(TurtleEvent::Move {
             x,
             y,
             heading,
             visible,
         }) = self.pending.first().cloned()
-        {
-            if (x - walk.x1).hypot(y - walk.y1) <= WALK_EPS {
-                self.pending.remove(0);
-                walk.end_heading = Some(heading);
-                walk.end_visible = Some(visible);
-            }
+        else {
+            return;
+        };
+        if (x - walk.x1).hypot(y - walk.y1) <= WALK_EPS {
+            self.pending.remove(0);
+            walk.end_heading = Some(heading);
+            walk.end_visible = Some(visible);
         }
     }
 
-    /// Advance the active motion by up to `budget` walk-pixels. Returns remaining budget.
+    fn finish_walk(&mut self, walk: Walk) {
+        self.pose.x = walk.x1;
+        self.pose.y = walk.y1;
+        if let Some(h) = walk.end_heading {
+            self.pose.heading = h;
+        }
+        if let Some(v) = walk.end_visible {
+            self.pose.visible = v;
+        }
+        self.motion = None;
+    }
+
     fn advance_motion(&mut self, budget: f64) -> f64 {
         match self.motion {
             Some(Motion::Walk(_)) => self.advance_walk(budget),
@@ -412,7 +415,7 @@ impl TurtleApp {
     }
 
     fn advance_walk(&mut self, mut budget: f64) -> f64 {
-        loop {
+        while budget > 0.0 {
             let Some(Motion::Walk(walk)) = self.motion.as_ref() else {
                 return budget;
             };
@@ -420,22 +423,16 @@ impl TurtleApp {
             let dy = walk.y1 - self.pose.y;
             let dist = dx.hypot(dy);
             let pen = walk.pen;
-            let (x1, y1) = (walk.x1, walk.y1);
-            let end_heading = walk.end_heading;
-            let end_visible = walk.end_visible;
+            let walk = Walk {
+                x1: walk.x1,
+                y1: walk.y1,
+                pen: walk.pen,
+                end_heading: walk.end_heading,
+                end_visible: walk.end_visible,
+            };
 
-            if dist <= WALK_EPS || budget <= 0.0 {
-                if dist <= WALK_EPS {
-                    self.pose.x = x1;
-                    self.pose.y = y1;
-                    if let Some(h) = end_heading {
-                        self.pose.heading = h;
-                    }
-                    if let Some(v) = end_visible {
-                        self.pose.visible = v;
-                    }
-                    self.motion = None;
-                }
+            if dist <= WALK_EPS {
+                self.finish_walk(walk);
                 return budget;
             }
 
@@ -458,21 +455,11 @@ impl TurtleApp {
             budget -= step;
 
             if dist - step <= WALK_EPS {
-                self.pose.x = x1;
-                self.pose.y = y1;
-                if let Some(h) = end_heading {
-                    self.pose.heading = h;
-                }
-                if let Some(v) = end_visible {
-                    self.pose.visible = v;
-                }
-                self.motion = None;
+                self.finish_walk(walk);
                 return budget;
             }
-            if budget <= 0.0 {
-                return 0.0;
-            }
         }
+        0.0
     }
 
     fn advance_turn(&mut self, mut budget: f64) -> f64 {
@@ -480,20 +467,20 @@ impl TurtleApp {
             return budget;
         };
         let remaining = *remaining;
-        if remaining.abs() <= TURN_EPS || budget <= 0.0 {
-            if remaining.abs() <= TURN_EPS {
-                self.pose.heading = (self.pose.heading + remaining).rem_euclid(360.0);
-                self.motion = None;
-            }
+        if remaining.abs() <= TURN_EPS {
+            self.pose.heading = (self.pose.heading + remaining).rem_euclid(360.0);
+            self.motion = None;
+            return budget;
+        }
+        if budget <= 0.0 {
             return budget;
         }
 
-        let deg_budget = budget * TURN_DEG_PER_PX;
-        let step = remaining.abs().min(deg_budget);
+        let step = remaining.abs().min(budget * TURN_DEG_PER_PX);
         let signed = remaining.signum() * step;
         self.pose.heading = (self.pose.heading + signed).rem_euclid(360.0);
         let left = remaining - signed;
-        budget -= step / TURN_DEG_PER_PX;
+        budget = (budget - step / TURN_DEG_PER_PX).max(0.0);
 
         if left.abs() <= TURN_EPS {
             self.pose.heading = (self.pose.heading + left).rem_euclid(360.0);
@@ -501,7 +488,7 @@ impl TurtleApp {
         } else {
             self.motion = Some(Motion::Turn { remaining: left });
         }
-        budget.max(0.0)
+        budget
     }
 
     fn apply_event_instant(&mut self, event: TurtleEvent) {
@@ -695,18 +682,20 @@ fn color32(c: Color) -> Color32 {
     Color32::from_rgb(c.r, c.g, c.b)
 }
 
-/// Drop aliases / comments from a help form so Insert pastes a runnable call.
 fn strip_hint_form(form: &str) -> &str {
-    let form = form.split("  ;").next().unwrap_or(form).trim();
-    form.split(" / ").next().unwrap_or(form).trim()
+    form.split("  ;")
+        .next()
+        .unwrap_or(form)
+        .split(" / ")
+        .next()
+        .unwrap_or(form)
+        .trim()
 }
 
 fn draw_turtle(painter: &egui::Painter, center: Pos2, heading_deg: f64) {
     let rad = heading_deg.to_radians() as f32;
-    // Screen y is down; turtle heading 0° is east, 90° is up.
-    let forward = Vec2::new(rad.cos(), -rad.sin());
+    let forward = Vec2::new(rad.cos(), -rad.sin()); // screen y is down
     let right = Vec2::new(-forward.y, forward.x);
-
     let at = |along: f32, across: f32| center + forward * along + right * across;
 
     let shell = Color32::from_rgb(56, 142, 60);
@@ -715,38 +704,26 @@ fn draw_turtle(painter: &egui::Painter, center: Pos2, heading_deg: f64) {
     let skin_dark = Color32::from_rgb(46, 125, 50);
     let outline = Stroke::new(1.0, Color32::from_rgb(27, 54, 30));
 
-    // Flippers (behind the shell so it sits on top).
-    let flipper = |tip: Pos2, base_a: Pos2, base_b: Pos2| {
-        painter.add(egui::Shape::convex_polygon(
-            vec![tip, base_a, base_b],
-            skin,
-            outline,
-        ));
+    let flipper = |tip: Pos2, a: Pos2, b: Pos2| {
+        painter.add(egui::Shape::convex_polygon(vec![tip, a, b], skin, outline));
     };
-    flipper(at(6.0, 9.0), at(1.0, 3.0), at(5.0, 2.0)); // front right
-    flipper(at(6.0, -9.0), at(1.0, -3.0), at(5.0, -2.0)); // front left
-    flipper(at(-7.0, 8.0), at(-2.0, 3.0), at(-5.0, 2.0)); // back right
-    flipper(at(-7.0, -8.0), at(-2.0, -3.0), at(-5.0, -2.0)); // back left
+    flipper(at(6.0, 9.0), at(1.0, 3.0), at(5.0, 2.0));
+    flipper(at(6.0, -9.0), at(1.0, -3.0), at(5.0, -2.0));
+    flipper(at(-7.0, 8.0), at(-2.0, 3.0), at(-5.0, 2.0));
+    flipper(at(-7.0, -8.0), at(-2.0, -3.0), at(-5.0, -2.0));
 
-    // Tail
     painter.add(egui::Shape::convex_polygon(
         vec![at(-11.0, 0.0), at(-6.0, 2.5), at(-6.0, -2.5)],
         skin,
         outline,
     ));
-
-    // Shell (ellipse approximated with a filled circle + slightly wider look via two ovals).
     painter.circle(center, 8.5, shell, outline);
     painter.circle(center, 5.0, shell_dark, Stroke::NONE);
-    // Shell scute suggestion
     painter.line_segment([at(0.0, -4.5), at(0.0, 4.5)], Stroke::new(1.0, shell_dark));
     painter.line_segment([at(-4.0, -2.5), at(4.0, 2.5)], Stroke::new(1.0, shell_dark));
     painter.line_segment([at(-4.0, 2.5), at(4.0, -2.5)], Stroke::new(1.0, shell_dark));
 
-    // Head
-    let head = at(11.0, 0.0);
-    painter.circle(head, 4.0, skin, outline);
-    // Eyes
+    painter.circle(at(11.0, 0.0), 4.0, skin, outline);
     painter.circle(at(12.0, 1.8), 1.1, Color32::WHITE, Stroke::NONE);
     painter.circle(at(12.0, -1.8), 1.1, Color32::WHITE, Stroke::NONE);
     painter.circle(at(12.4, 1.8), 0.55, skin_dark, Stroke::NONE);
@@ -814,7 +791,6 @@ impl eframe::App for TurtleApp {
             self.canvas_controls(ui);
         });
 
-        // Keep animating while the turtle is walking or the worker is live.
         if self.is_running() {
             ctx.request_repaint();
         }

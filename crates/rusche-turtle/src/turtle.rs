@@ -1,8 +1,7 @@
-//! GUI-free turtle model. Drawing side-effects go through [`Sink`].
+//! Turtle model. Side effects go through [`Sink`].
 
 use std::sync::mpsc;
 
-/// RGB color in 0–255 per channel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Color {
     pub r: u8,
@@ -47,7 +46,7 @@ impl Color {
     }
 }
 
-/// A finished line segment in turtle coordinates (origin center, y-up).
+/// Line in turtle coords (origin center, y-up).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Segment {
     pub x0: f64,
@@ -58,33 +57,23 @@ pub struct Segment {
     pub width: f32,
 }
 
-/// Events streamed from the evaluator worker to the UI.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TurtleEvent {
-    /// Pen drew a segment from (`x0`,`y0`) to (`x1`,`y1`).
     Line(Segment),
-    /// Turtle moved without drawing (or after a pen-up move).
     Move {
         x: f64,
         y: f64,
         heading: f64,
         visible: bool,
     },
-    /// Rotate in place by `delta` degrees (positive = counter-clockwise / left).
-    Turn {
-        delta: f64,
-    },
-    /// Clear the canvas and reset turtle to home.
+    /// Degrees; positive = counter-clockwise.
+    Turn { delta: f64 },
     Clear,
-    /// Text for the output log (write / writeln).
     Print(String),
-    /// Script failed; message is already formatted for the log.
     Error(String),
-    /// Script finished (successfully or after Error).
     Done,
 }
 
-/// Destination for turtle side-effects.
 pub trait Sink {
     fn emit(&mut self, event: TurtleEvent);
 }
@@ -101,11 +90,10 @@ impl Sink for mpsc::Sender<TurtleEvent> {
     }
 }
 
-/// Logical turtle owned by the evaluator worker.
 pub struct Turtle<S: Sink> {
     pub x: f64,
     pub y: f64,
-    /// Heading in degrees: 0 = east (right), positive = counter-clockwise.
+    /// Degrees; 0 = east, positive = counter-clockwise.
     pub heading: f64,
     pub pen_down: bool,
     pub color: Color,
@@ -119,7 +107,7 @@ impl<S: Sink> Turtle<S> {
         Self {
             x: 0.0,
             y: 0.0,
-            heading: 90.0, // face up (north), Logo-style
+            heading: 90.0,
             pen_down: true,
             color: Color::BLACK,
             width: 1.5,
@@ -141,10 +129,7 @@ impl<S: Sink> Turtle<S> {
         });
     }
 
-    fn move_by(&mut self, distance: f64) {
-        let rad = self.heading.to_radians();
-        let x1 = self.x + distance * rad.cos();
-        let y1 = self.y + distance * rad.sin();
+    fn stroke_to(&mut self, x1: f64, y1: f64) {
         if self.pen_down {
             self.sink.emit(TurtleEvent::Line(Segment {
                 x0: self.x,
@@ -158,6 +143,14 @@ impl<S: Sink> Turtle<S> {
         self.x = x1;
         self.y = y1;
         self.emit_move();
+    }
+
+    fn move_by(&mut self, distance: f64) {
+        let rad = self.heading.to_radians();
+        self.stroke_to(
+            self.x + distance * rad.cos(),
+            self.y + distance * rad.sin(),
+        );
     }
 
     pub fn forward(&mut self, distance: f64) {
@@ -179,19 +172,7 @@ impl<S: Sink> Turtle<S> {
     }
 
     pub fn goto(&mut self, x: f64, y: f64) {
-        if self.pen_down {
-            self.sink.emit(TurtleEvent::Line(Segment {
-                x0: self.x,
-                y0: self.y,
-                x1: x,
-                y1: y,
-                color: self.color,
-                width: self.width,
-            }));
-        }
-        self.x = x;
-        self.y = y;
-        self.emit_move();
+        self.stroke_to(x, y);
     }
 
     pub fn set_heading(&mut self, degrees: f64) {
@@ -255,11 +236,7 @@ impl<S: Sink> Turtle<S> {
 }
 
 fn normalize_heading(degrees: f64) -> f64 {
-    let mut h = degrees % 360.0;
-    if h < 0.0 {
-        h += 360.0;
-    }
-    // Avoid -0.0
+    let h = degrees.rem_euclid(360.0);
     if h == 0.0 {
         0.0
     } else {
@@ -299,11 +276,9 @@ mod tests {
             t.forward(10.0);
             t.right(90.0);
         }
-        assert!((t.x).abs() < 1e-9);
-        assert!((t.y).abs() < 1e-9);
+        assert!(t.x.abs() < 1e-9 && t.y.abs() < 1e-9);
         assert!((t.heading - 90.0).abs() < 1e-9);
-        let segs = lines(&t.sink);
-        assert_eq!(segs.len(), 4);
+        assert_eq!(lines(&t.sink).len(), 4);
     }
 
     #[test]
@@ -318,7 +293,6 @@ mod tests {
     #[test]
     fn left_and_right_adjust_heading() {
         let mut t = Turtle::new(Vec::new());
-        assert!((t.heading - 90.0).abs() < 1e-9);
         t.left(45.0);
         assert!((t.heading - 135.0).abs() < 1e-9);
         assert!(matches!(
@@ -341,8 +315,7 @@ mod tests {
         let before = lines(&t.sink).len();
         t.home();
         assert_eq!(lines(&t.sink).len(), before);
-        assert!((t.x).abs() < 1e-9);
-        assert!((t.y).abs() < 1e-9);
+        assert!(t.x.abs() < 1e-9 && t.y.abs() < 1e-9);
         assert!((t.heading - 90.0).abs() < 1e-9);
     }
 
@@ -350,12 +323,11 @@ mod tests {
     fn clear_emits_clear_and_resets() {
         let mut t = Turtle::new(Vec::new());
         t.set_color(Color::RED);
-        t.set_width(5.0);
         t.forward(10.0);
         t.clear();
         assert!(t.sink.iter().any(|e| matches!(e, TurtleEvent::Clear)));
         assert_eq!(t.color, Color::BLACK);
-        assert!((t.x).abs() < 1e-9);
+        assert!(t.x.abs() < 1e-9);
     }
 
     #[test]
