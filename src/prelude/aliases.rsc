@@ -1,0 +1,15 @@
+;; Pure renames of `num-*`. Loaded last: `(define abs num-abs)` looks the name up immediately.
+
+(define - num-subtract)
+(define * num-multiply)
+(define / num-divide)
+(define % num-modulo)
+(define sqrt num-sqrt)
+(define exp num-exp)
+(define log num-log)
+(define expt num-expt)
+(define abs num-abs)
+(define truncate num-truncate)
+(define floor num-floor)
+(define ceil num-ceil)
+(define round num-round)

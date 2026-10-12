@@ -16,7 +16,7 @@
 //! [rusche-cli.md](https://github.com/chanryu/rusche/blob/main/docs/rusche-cli.md).
 //! Example `*.rsc` scripts target that host, not a bare evaluator.
 //!
-//! Also see the prelude in [src/prelude.rs](https://github.com/chanryu/rusche/blob/main/src/prelude.rs).
+//! Also see the prelude in [src/prelude/](https://github.com/chanryu/rusche/blob/main/src/prelude/).
 
 mod builtin;
 mod prelude;

@@ -305,7 +305,9 @@ The following forms and procedures are implemented in Rust. Most are native proc
 
 ### Prelude
 
-The following forms and procedures are implemented in Rusche itself. Please check [prelude.rs](../src/prelude.rs) to see how they are actually implemented.
+The following forms and procedures are implemented in Rusche itself. See
+[`src/prelude/`](../src/prelude/) (`macros.rsc`, `funcs.rsc`, `aliases.rsc`) for the
+source loaded by `Evaluator::with_prelude()`.
 
 Macros: `and`, `case`, `cond` (with `else`), `defrecord`, `defun`, `let` (including named `let` and list destructuring), `let*`, `letrec`, `or`, `or-else`, `unless`, `when`, `while`
 
