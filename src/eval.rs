@@ -251,6 +251,22 @@ impl EvalContext {
     pub(crate) fn trace_snapshot(&self) -> Vec<Frame> {
         self.shared.call_trace.borrow().clone()
     }
+
+    /// Span of the innermost active procedure call that came from source, if any.
+    ///
+    /// Inside a native procedure this is normally the span of the form that called it. When
+    /// that form has no span -- it was built at runtime or by a span-less prelude expansion --
+    /// the search continues outwards, so the result is the closest user-visible call form.
+    /// Hosts can use it to attribute side effects to source locations, for example to
+    /// highlight the form that is currently executing.
+    pub fn call_site(&self) -> Option<Span> {
+        self.shared
+            .call_trace
+            .borrow()
+            .iter()
+            .rev()
+            .find_map(|frame| frame.call_site)
+    }
 }
 
 /// What the evaluator does after reducing a form.
@@ -808,7 +824,7 @@ impl Drop for Evaluator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{error::Error, expr::intern, lexer::tokenize, parser::Parser};
+    use crate::{error::Error, expr::intern, lexer::tokenize, macros::list, parser::Parser};
 
     /// Evaluates every top-level form in `src` and returns the last result.
     fn eval_all(evaluator: &Evaluator, src: &str) -> Expr {
@@ -1051,6 +1067,47 @@ mod tests {
         let names: Vec<_> = err.trace().iter().map(|f| f.name.as_ref()).collect();
         assert!(names.contains(&"a"), "{names:?}");
         assert!(names.contains(&"b") || names.contains(&"car"), "{names:?}");
+    }
+
+    #[test]
+    fn test_call_site_from_native() {
+        fn site(_: &str, _: &List, context: &EvalContext) -> EvalResult {
+            Ok(match context.call_site() {
+                Some(span) => Expr::from(span.to_string()),
+                None => NIL,
+            })
+        }
+
+        let evaluator = Evaluator::with_prelude();
+        evaluator.root_env().define_native_proc("site", site);
+
+        // Direct call: the span of the call form itself.
+        assert_eq!(
+            evaluator.eval(&parse_one("  (site)")),
+            Ok(Expr::from("1:3-8"))
+        );
+
+        // Inside a closure body the call form still carries its own source span.
+        eval_all(&evaluator, "(define (f) (site))");
+        assert_eq!(evaluator.eval(&parse_one("(f)")), Ok(Expr::from("1:13-18")));
+
+        // A runtime-built form has no span of its own, so the innermost enclosing call
+        // that came from source is reported instead -- here the `(list ...)` form.
+        eval_all(&evaluator, "(define (g) (list (apply site '())))");
+        assert_eq!(
+            evaluator.eval(&parse_one("(g)")),
+            Ok(list!(Expr::from("1:13-35")).into())
+        );
+
+        // `apply` is a special form, not a procedure call, and a tail call replaces the
+        // enclosing frame: in both cases nothing with a source span remains.
+        assert_eq!(evaluator.eval(&parse_one("(apply site '())")), Ok(NIL));
+        eval_all(&evaluator, "(define (h) (apply site '()))");
+        assert_eq!(evaluator.eval(&parse_one("(h)")), Ok(NIL));
+
+        // Outside any call there is no call site.
+        assert!(evaluator.eval_str("(site)").is_ok());
+        assert_eq!(evaluator.context().call_site(), None);
     }
 
     fn parse_one(src: &str) -> Expr {

@@ -33,7 +33,12 @@ pub fn with_host<R>(host: Host, f: impl FnOnce() -> R) -> (Host, R) {
     })
 }
 
-fn with_turtle<R>(f: impl FnOnce(&mut Host) -> Result<R, EvalError>) -> Result<R, EvalError> {
+/// Runs `f` against the installed host. Checks for cancellation first, then tags the events
+/// `f` emits with the script form currently being evaluated (see [`TurtleEvent::Site`]).
+fn with_turtle<R>(
+    context: &EvalContext,
+    f: impl FnOnce(&mut Host) -> Result<R, EvalError>,
+) -> Result<R, EvalError> {
     HOST.with(|slot| {
         let mut borrow = slot.borrow_mut();
         let host = borrow
@@ -42,6 +47,7 @@ fn with_turtle<R>(f: impl FnOnce(&mut Host) -> Result<R, EvalError>) -> Result<R
         if host.cancel.load(Ordering::Relaxed) {
             return Err(EvalError::new(ErrorKind::Other, "script stopped"));
         }
+        host.turtle.set_site(context.call_site());
         f(host)
     })
 }
@@ -58,9 +64,14 @@ fn unary_num(proc_name: &str, args: &List, context: &EvalContext) -> Result<f64,
     eval_into_num(proc_name, get_exact_1_arg(proc_name, args)?, context)
 }
 
-fn nil_op(proc_name: &str, args: &List, f: impl FnOnce(&mut Turtle<Sender<TurtleEvent>>)) -> EvalResult {
+fn nil_op(
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+    f: impl FnOnce(&mut Turtle<Sender<TurtleEvent>>),
+) -> EvalResult {
     require_nil(proc_name, args)?;
-    with_turtle(|host| {
+    with_turtle(context, |host| {
         f(&mut host.turtle);
         Ok(NIL)
     })
@@ -121,7 +132,7 @@ pub fn load_turtle_procs(evaluator: &Evaluator) {
 
 fn forward(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let dist = unary_num(proc_name, args, context)?;
-    with_turtle(|host| {
+    with_turtle(context, |host| {
         host.turtle.forward(dist);
         Ok(NIL)
     })
@@ -129,7 +140,7 @@ fn forward(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
 fn back(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let dist = unary_num(proc_name, args, context)?;
-    with_turtle(|host| {
+    with_turtle(context, |host| {
         host.turtle.back(dist);
         Ok(NIL)
     })
@@ -137,7 +148,7 @@ fn back(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
 fn left(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let deg = unary_num(proc_name, args, context)?;
-    with_turtle(|host| {
+    with_turtle(context, |host| {
         host.turtle.left(deg);
         Ok(NIL)
     })
@@ -145,7 +156,7 @@ fn left(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
 fn right(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let deg = unary_num(proc_name, args, context)?;
-    with_turtle(|host| {
+    with_turtle(context, |host| {
         host.turtle.right(deg);
         Ok(NIL)
     })
@@ -155,7 +166,7 @@ fn goto(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (x_expr, y_expr) = get_exact_2_args(proc_name, args)?;
     let x = eval_into_num(proc_name, x_expr, context)?;
     let y = eval_into_num(proc_name, y_expr, context)?;
-    with_turtle(|host| {
+    with_turtle(context, |host| {
         host.turtle.goto(x, y);
         Ok(NIL)
     })
@@ -163,22 +174,22 @@ fn goto(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
 fn setheading(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let deg = unary_num(proc_name, args, context)?;
-    with_turtle(|host| {
+    with_turtle(context, |host| {
         host.turtle.set_heading(deg);
         Ok(NIL)
     })
 }
 
-fn home(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
-    nil_op(proc_name, args, |t| t.home())
+fn home(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    nil_op(proc_name, args, context, |t| t.home())
 }
 
-fn penup(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
-    nil_op(proc_name, args, |t| t.pen_up())
+fn penup(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    nil_op(proc_name, args, context, |t| t.pen_up())
 }
 
-fn pendown(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
-    nil_op(proc_name, args, |t| t.pen_down())
+fn pendown(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    nil_op(proc_name, args, context, |t| t.pen_down())
 }
 
 fn pencolor(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -221,7 +232,7 @@ fn pencolor(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
             ));
         }
     };
-    with_turtle(|host| {
+    with_turtle(context, |host| {
         host.turtle.set_color(color);
         Ok(NIL)
     })
@@ -229,27 +240,27 @@ fn pencolor(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
 fn pensize(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let size = unary_num(proc_name, args, context)?;
-    with_turtle(|host| {
+    with_turtle(context, |host| {
         host.turtle.set_width(size as f32);
         Ok(NIL)
     })
 }
 
-fn clear(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
-    nil_op(proc_name, args, |t| t.clear())
+fn clear(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    nil_op(proc_name, args, context, |t| t.clear())
 }
 
-fn hideturtle(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
-    nil_op(proc_name, args, |t| t.hide())
+fn hideturtle(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    nil_op(proc_name, args, context, |t| t.hide())
 }
 
-fn showturtle(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
-    nil_op(proc_name, args, |t| t.show())
+fn showturtle(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    nil_op(proc_name, args, context, |t| t.show())
 }
 
-fn position(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
+fn position(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     require_nil(proc_name, args)?;
-    with_turtle(|host| {
+    with_turtle(context, |host| {
         Ok(cons(
             Expr::from(host.turtle.x),
             cons(Expr::from(host.turtle.y), List::Nil),
@@ -258,19 +269,19 @@ fn position(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
     })
 }
 
-fn heading(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
+fn heading(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     require_nil(proc_name, args)?;
-    with_turtle(|host| Ok(Expr::from(host.turtle.heading)))
+    with_turtle(context, |host| Ok(Expr::from(host.turtle.heading)))
 }
 
-fn is_pen(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
+fn is_pen(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     require_nil(proc_name, args)?;
-    with_turtle(|host| Ok(host.turtle.pen_down.into()))
+    with_turtle(context, |host| Ok(host.turtle.pen_down.into()))
 }
 
 fn write(_: &str, args: &List, context: &EvalContext) -> EvalResult {
     let text = format_write_args(args, context)?;
-    with_turtle(|host| {
+    with_turtle(context, |host| {
         host.turtle.print(text);
         Ok(NIL)
     })
@@ -279,16 +290,16 @@ fn write(_: &str, args: &List, context: &EvalContext) -> EvalResult {
 fn writeln(_: &str, args: &List, context: &EvalContext) -> EvalResult {
     let mut text = format_write_args(args, context)?;
     text.push('\n');
-    with_turtle(|host| {
+    with_turtle(context, |host| {
         host.turtle.print(text);
         Ok(NIL)
     })
 }
 
-fn random(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
+fn random(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     // Touches the host so cancel is checked (tight loops can call `random`).
     require_nil(proc_name, args)?;
-    with_turtle(|_| Ok(rand::thread_rng().gen::<f64>().into()))
+    with_turtle(context, |_| Ok(rand::thread_rng().gen::<f64>().into()))
 }
 
 #[cfg(test)]
@@ -398,6 +409,41 @@ mod tests {
             })
             .collect();
         assert_eq!(printed, ["hi 1\n"]);
+    }
+
+    fn sites(events: &[TurtleEvent]) -> Vec<String> {
+        events
+            .iter()
+            .filter_map(|e| match e {
+                TurtleEvent::Site(Some(span)) => Some(span.to_string()),
+                TurtleEvent::Site(None) => Some("?".into()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn site_events_track_script_forms() {
+        // Each turtle call is preceded by the span of its own call form; repeated calls
+        // from the same form (inside `repeat`) emit the site once.
+        let src = "(repeat 2 (fd 10) (rt 90))\n(penup)";
+        let (events, _) = eval_with_vec_sink(src).unwrap();
+        assert_eq!(
+            sites(&events),
+            ["1:11-17", "1:19-25", "1:11-17", "1:19-25", "2:1-7"]
+        );
+        assert!(matches!(events[0], TurtleEvent::Site(_)));
+        assert!(matches!(events[1], TurtleEvent::Line(_)));
+
+        // Calls inside a user-defined procedure point at the form in the body.
+        let src = "(define (side) (fd 10))\n(side)";
+        let (events, _) = eval_with_vec_sink(src).unwrap();
+        assert_eq!(sites(&events), ["1:16-22"]);
+
+        // A runtime-built call falls back to the innermost enclosing source call, `(go)`.
+        let src = "(define (go) (apply fd '(10)) (rt 90))\n(go)";
+        let (events, _) = eval_with_vec_sink(src).unwrap();
+        assert_eq!(sites(&events), ["2:1-4", "1:31-37"]);
     }
 
     #[test]

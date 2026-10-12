@@ -3,6 +3,7 @@
 mod app;
 mod builtin;
 mod examples;
+mod repl;
 mod runner;
 mod turtle;
 
@@ -37,7 +38,7 @@ fn main() -> ExitCode {
     match eframe::run_native(
         "Rusche Turtle",
         options,
-        Box::new(|_cc| Ok(Box::new(TurtleApp::new(initial)))),
+        Box::new(|cc| Ok(Box::new(TurtleApp::new(initial, cc.egui_ctx.clone())))),
     ) {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {

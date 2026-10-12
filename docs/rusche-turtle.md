@@ -1,8 +1,9 @@
 # `rusche-turtle`
 
 [`rusche-turtle`](../crates/rusche-turtle) is an example host: a desktop turtle-graphics
-window with a script editor, canvas, and output log. Scripts run on a worker-thread
-`Evaluator`; turtle commands stream to the UI over a channel.
+window with a script editor, interactive REPL, canvas, and output log. Scripts and REPL
+expressions run on a worker-thread `Evaluator`; turtle commands stream to the UI over a
+channel.
 
 ## Running
 
@@ -15,11 +16,24 @@ Bundled demos ship inside the binary (`src/examples/*.rsc` via `include_str!`); 
 
 | Control | Role |
 | --- | --- |
-| Run | Evaluate the editor (fresh env each time) |
-| Stop | Cancel at the next turtle / `write` / `random` call |
-| Examples | Load a bundled demo (embedded at compile time) |
-| Help | API hints (click a form to append it) |
-| Clear / Speed | Under the canvas (`instant` skips walk animation) |
+| Script / Interactive | Left-panel tabs. Script holds the source + Output; Interactive is a REPL |
+| Run | Script tab. Fresh session, then evaluate the script |
+| Stop | Script and Interactive. Cancel at the next turtle / `write` / `random` call |
+| Examples | Script tab. Load a bundled demo (embedded at compile time) |
+| Reset | Interactive tab. Fresh session and clear the REPL transcript |
+| Help | API hints (click a form to append it to the Script) |
+| Clear / Speed | Under the canvas. Five paces: Crawl, Walk, Trot, Run, Dash |
+| Status | On the canvas: position, heading, show/hide, color, size, and pen up or down |
+
+While a script runs, the editor highlights the form whose effect is currently being drawn
+(the call to `forward`, `right`, `pencolor`, …). The highlight follows the canvas animation,
+not the evaluator, so it points at what you see even though the worker thread may already
+be further ahead. Forms called through runtime-built calls (e.g.
+`apply`) fall back to the nearest enclosing call that appears in the source.
+
+The Interactive tab shares the same session as the Script tab: after **Run**, procedures
+defined in the script are callable from the REPL. Enter evaluates a complete form; Shift+Enter
+inserts a newline. REPL turtle commands animate with the same Speed setting as Script.
 
 ## Script API
 
@@ -58,7 +72,7 @@ Core language: [language reference](language-reference.md). Host adds:
 | `(position)` | `(x y)` |
 | `(heading)` | Degrees |
 | `(pen?)` | Pen down? |
-| `(write …)` / `(writeln …)` | Output log |
+| `(write …)` / `(writeln …)` | Output log (Script) or REPL transcript (Interactive) |
 | `(random)` | Float in `[0, 1)` |
 | `(repeat n body…)` | Loop `body` `n` times |
 
@@ -74,5 +88,5 @@ Demo sources: [`crates/rusche-turtle/src/examples/`](../crates/rusche-turtle/src
 ## Limitations
 
 - **Stop** only interrupts at turtle natives, `write`/`writeln`, or `random`.
-- Each **Run** starts a fresh evaluator.
+- **Run** and **Reset** start a fresh session; the REPL continues in that session afterward.
 - Example host (`publish = false`), like `rusche-cli`.
