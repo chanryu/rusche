@@ -20,7 +20,7 @@
 (pensize 1.5)
 (hideturtle)
 (penup)
-(goto -160 -100)
+(goto -160 100)
 (setheading 0)
 (pendown)
 (snowflake 320 4)

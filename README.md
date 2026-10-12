@@ -148,7 +148,9 @@ cargo install --path crates/rusche-cli
 
 ### `rusche-turtle` (example host)
 
-[`rusche-turtle`](crates/rusche-turtle/) is a desktop turtle-graphics app that embeds Rusche. Scripts drive a turtle on a canvas via natives such as `forward`, `right`, and `pencolor`. See [`docs/rusche-turtle.md`](docs/rusche-turtle.md).
+[`rusche-turtle`](crates/rusche-turtle/) is a desktop turtle-graphics app that embeds Rusche.
+A Script editor and REPL share one session; scripts drive a turtle on a canvas via natives
+such as `forward`, `right`, and `pencolor`. See [`docs/rusche-turtle.md`](docs/rusche-turtle.md).
 
 ```bash
 cargo run -p rusche-turtle
