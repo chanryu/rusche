@@ -1,0 +1,18 @@
+[package]
+name = "rusche-turtle"
+version = "0.5.0"
+edition = "2021"
+license = "MIT"
+authors = ["Chan Ryu"]
+description = "A turtle-graphics GUI host for the Rusche Scheme-like language"
+publish = false
+
+[[bin]]
+name = "rusche-turtle"
+path = "src/main.rs"
+
+[dependencies]
+rusche = { path = "../.." }
+eframe = "0.36"
+egui = "0.36"
+rand = "0.8"
