@@ -1,8 +1,11 @@
-//! Interactive REPL state: transcript, history, and input completeness.
+//! REPL state: transcript, history, and input completeness.
 
-use egui::{self, Key, Modifiers, RichText, TextEdit};
+use egui::text::{CCursor, CCursorRange, LayoutJob, TextFormat};
+use egui::{self, Key, Modifiers, RichText, TextEdit, TextStyle};
 
 use rusche::{tokenize, LexError, ParseError, Parser};
+
+use crate::highlight;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Entry {
@@ -19,6 +22,8 @@ pub struct ReplState {
     history: Vec<String>,
     history_pos: Option<usize>,
     request_focus: bool,
+    /// After history navigation, place the caret at the end of the loaded line.
+    cursor_to_end: bool,
 }
 
 impl ReplState {
@@ -64,22 +69,59 @@ impl ReplState {
                 );
 
                 let shift_enter = egui::KeyboardShortcut::new(Modifiers::SHIFT, Key::Enter);
-                let response = ui.add(
-                    TextEdit::multiline(&mut self.input)
-                        .code_editor()
-                        .desired_width(f32::INFINITY)
-                        .desired_rows(3)
-                        .return_key(Some(shift_enter))
-                        .interactive(!busy),
-                );
+                let mut layouter = |ui: &egui::Ui, buf: &dyn egui::TextBuffer, wrap_width: f32| {
+                    let text = buf.as_str();
+                    let font_id = TextStyle::Monospace.resolve(ui.style());
+                    let default_color = ui
+                        .visuals()
+                        .override_text_color
+                        .unwrap_or_else(|| ui.visuals().widgets.inactive.text_color());
+                    let dark = ui.visuals().dark_mode;
 
-                if self.request_focus {
+                    let mut job = LayoutJob::default();
+                    for span in highlight::classify(text) {
+                        job.append(
+                            &text[span.range.clone()],
+                            0.0,
+                            TextFormat {
+                                font_id: font_id.clone(),
+                                color: highlight::color_for(span.kind, dark, default_color),
+                                ..Default::default()
+                            },
+                        );
+                    }
+                    job.wrap.max_width = wrap_width;
+                    ui.fonts_mut(|fonts| fonts.layout_job(job))
+                };
+                let mut output = TextEdit::multiline(&mut self.input)
+                    .code_editor()
+                    .desired_width(f32::INFINITY)
+                    .desired_rows(3)
+                    .return_key(Some(shift_enter))
+                    .interactive(!busy)
+                    .layouter(&mut layouter)
+                    .show(ui);
+                let response = &output.response;
+
+                // Wait until the widget is interactive again; requesting focus while
+                // `busy` clears the flag on a disabled TextEdit and never restores it.
+                if self.request_focus && !busy {
                     response.request_focus();
                     self.request_focus = false;
                 }
 
                 if !busy && response.has_focus() {
                     submitted = self.handle_keys(ui);
+                }
+
+                if self.cursor_to_end {
+                    let end = CCursor::new(self.input.chars().count());
+                    output
+                        .state
+                        .cursor
+                        .set_char_range(Some(CCursorRange::one(end)));
+                    output.state.store(ui.ctx(), response.id);
+                    self.cursor_to_end = false;
                 }
             });
 
@@ -100,11 +142,7 @@ impl ReplState {
                             ui.label(RichText::new(text.trim_end()).monospace());
                         }
                         Entry::Result(value) => {
-                            ui.label(
-                                RichText::new(format!("=> {value}"))
-                                    .monospace()
-                                    .weak(),
-                            );
+                            ui.label(RichText::new(format!("=> {value}")).monospace().weak());
                         }
                         Entry::Error(text) => {
                             ui.colored_label(
@@ -160,6 +198,7 @@ impl ReplState {
         };
         self.history_pos = Some(next);
         self.input = self.history[next].clone();
+        self.cursor_to_end = true;
     }
 
     fn history_next(&mut self) {
@@ -173,6 +212,7 @@ impl ReplState {
             self.history_pos = Some(pos + 1);
             self.input = self.history[pos + 1].clone();
         }
+        self.cursor_to_end = true;
     }
 }
 

@@ -12,7 +12,7 @@ use rusche::{
     EvalResult, Evaluator, Expr, List, NIL,
 };
 
-use crate::turtle::{Color, Turtle, TurtleEvent};
+use crate::turtle::{Color, Turtle, TurtleEvent, TurtleSnap};
 
 pub struct Host {
     pub turtle: Turtle<Sender<TurtleEvent>>,
@@ -31,6 +31,15 @@ pub fn with_host<R>(host: Host, f: impl FnOnce() -> R) -> (Host, R) {
         *slot.borrow_mut() = previous;
         (host, result)
     })
+}
+
+/// Align the installed turtle with the UI after Stop (no events emitted).
+pub fn restore_turtle(snap: &TurtleSnap) {
+    HOST.with(|slot| {
+        if let Some(host) = slot.borrow_mut().as_mut() {
+            host.turtle.restore(snap);
+        }
+    });
 }
 
 /// Runs `f` against the installed host. Checks for cancellation first, then tags the events
@@ -349,10 +358,9 @@ mod tests {
 
     #[test]
     fn repeat_square() {
-        let (events, result) = eval_with_vec_sink(
-            "(begin (repeat 4 (fd 10) (rt 90)) (list (position) (heading)))",
-        )
-        .unwrap();
+        let (events, result) =
+            eval_with_vec_sink("(begin (repeat 4 (fd 10) (rt 90)) (list (position) (heading)))")
+                .unwrap();
         assert_eq!(lines(&events).len(), 4);
         assert!(events.iter().any(|e| matches!(e, TurtleEvent::Turn { .. })));
         let n = nums(&result);
@@ -449,8 +457,7 @@ mod tests {
     #[test]
     fn bundled_examples_evaluate() {
         for example in crate::examples::ALL {
-            eval_with_vec_sink(example.source)
-                .unwrap_or_else(|e| panic!("{}: {e}", example.name));
+            eval_with_vec_sink(example.source).unwrap_or_else(|e| panic!("{}: {e}", example.name));
         }
     }
 

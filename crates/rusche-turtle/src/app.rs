@@ -1,4 +1,4 @@
-//! Script editor, Interactive REPL, canvas, and output log.
+//! Script editor, REPL, canvas, and output log.
 
 use std::ops::Range;
 use std::sync::mpsc::TryRecvError;
@@ -9,14 +9,15 @@ use egui::{pos2, Pos2, TextStyle};
 use rusche::Span;
 
 use crate::examples;
+use crate::highlight;
 use crate::repl::ReplState;
 use crate::runner::Session;
-use crate::turtle::{Color, Origin, Segment, TurtleEvent, DEFAULT_PEN_WIDTH};
+use crate::turtle::{Color, Origin, Segment, TurtleEvent, TurtleSnap, DEFAULT_PEN_WIDTH};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Tab {
     Script,
-    Interactive,
+    Repl,
 }
 
 #[derive(Clone, Copy)]
@@ -49,7 +50,9 @@ struct Walk {
 enum Motion {
     Walk(Walk),
     /// Remaining degrees; positive = counter-clockwise.
-    Turn { remaining: f64 },
+    Turn {
+        remaining: f64,
+    },
 }
 
 /// Pen the canvas is currently showing. Matches a fresh turtle until a script changes it.
@@ -188,6 +191,9 @@ pub struct TurtleApp {
     /// Script form whose effects are currently being shown on the canvas.
     active_site: Option<Span>,
     pen: PenState,
+    /// After Stop, discard drawing events until the cancelled eval's `Done` arrives
+    /// so the worker cannot pull the UI ahead of the visible turtle again.
+    drop_drawing: bool,
 }
 
 /// Five animation paces, slowest first. The budget is pixels of travel per frame;
@@ -225,6 +231,7 @@ impl TurtleApp {
             show_help: false,
             active_site: None,
             pen: PenState::default(),
+            drop_drawing: false,
         }
     }
 
@@ -239,14 +246,11 @@ impl TurtleApp {
         self.pending.clear();
         self.motion = None;
         self.active_site = None;
+        self.drop_drawing = false;
     }
 
-    fn start_run(&mut self, ctx: &egui::Context) {
-        self.replace_session(ctx);
-        self.segments.clear();
-        self.pose = Pose::default();
-        self.pen = PenState::default();
-        self.log.clear();
+    fn start_run(&mut self) {
+        // Continue from the current session, canvas, and turtle — use Clear to wipe.
         self.submit(self.script.clone(), Origin::Script);
     }
 
@@ -269,6 +273,18 @@ impl TurtleApp {
         self.pending.retain(|e| !is_drawing_event(e));
         self.motion = None;
         self.active_site = None;
+        // Worker may already be ahead of the UI; snap it back so the next command
+        // continues from the turtle the user sees.
+        let _ = self.session.sync_turtle(TurtleSnap {
+            x: self.pose.x,
+            y: self.pose.y,
+            heading: self.pose.heading,
+            visible: self.pose.visible,
+            pen_down: self.pen.down,
+            color: self.pen.color,
+            width: self.pen.width,
+        });
+        self.drop_drawing = self.in_flight > 0;
     }
 
     fn clear_canvas(&mut self) {
@@ -277,12 +293,26 @@ impl TurtleApp {
         self.motion = None;
         self.pose = Pose::default();
         self.pen = PenState::default();
+        let _ = self.session.sync_turtle(TurtleSnap {
+            x: self.pose.x,
+            y: self.pose.y,
+            heading: self.pose.heading,
+            visible: self.pose.visible,
+            pen_down: self.pen.down,
+            color: self.pen.color,
+            width: self.pen.width,
+        });
     }
 
     fn poll_session(&mut self, ctx: &egui::Context) {
         loop {
             match self.session.events.try_recv() {
-                Ok(event) => self.pending.push(event),
+                Ok(event) => {
+                    if self.drop_drawing && is_drawing_event(&event) {
+                        continue;
+                    }
+                    self.pending.push(event);
+                }
                 Err(TryRecvError::Empty) => break,
                 Err(TryRecvError::Disconnected) => break,
             }
@@ -431,11 +461,7 @@ impl TurtleApp {
                 let cross = adx * bdy - ady * bdx;
                 let dot = adx * bdx + ady * bdy;
                 // Same direction and collinear (allow for tiny numerical noise).
-                if alen > 1e-9
-                    && blen > 1e-9
-                    && cross.abs() <= 1e-6 * alen * blen
-                    && dot > 0.0
-                {
+                if alen > 1e-9 && blen > 1e-9 && cross.abs() <= 1e-6 * alen * blen && dot > 0.0 {
                     last.x1 = seg.x1;
                     last.y1 = seg.y1;
                     return;
@@ -587,6 +613,7 @@ impl TurtleApp {
             }
             TurtleEvent::Done => {
                 self.in_flight = self.in_flight.saturating_sub(1);
+                self.drop_drawing = false;
             }
         }
     }
@@ -594,7 +621,7 @@ impl TurtleApp {
     fn tab_strip(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.selectable_value(&mut self.tab, Tab::Script, "Script");
-            ui.selectable_value(&mut self.tab, Tab::Interactive, "Interactive");
+            ui.selectable_value(&mut self.tab, Tab::Repl, "REPL");
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.toggle_value(&mut self.show_help, "Help");
             });
@@ -602,20 +629,17 @@ impl TurtleApp {
     }
 
     fn editor_controls(&mut self, ui: &mut egui::Ui) {
-        let ctx = ui.ctx().clone();
         ui.horizontal(|ui| {
             let running = self.is_running();
-            if ui
-                .add_enabled(!running, egui::Button::new("Run"))
-                .clicked()
-            {
-                self.start_run(&ctx);
+            if ui.add_enabled(!running, egui::Button::new("Run")).clicked() {
+                self.start_run();
             }
-            if ui
-                .add_enabled(running, egui::Button::new("Stop"))
-                .clicked()
-            {
+            if ui.add_enabled(running, egui::Button::new("Stop")).clicked() {
                 self.request_stop();
+            }
+            if ui.button("Clear").clicked() {
+                self.clear_canvas();
+                self.log.clear();
             }
             ui.separator();
             ui.menu_button("Examples", |ui| {
@@ -655,19 +679,17 @@ impl TurtleApp {
         });
     }
 
-    fn interactive_tab(&mut self, ui: &mut egui::Ui) {
+    fn repl_tab(&mut self, ui: &mut egui::Ui) {
         let ctx = ui.ctx().clone();
         let running = self.is_running();
 
         ui.horizontal(|ui| {
-            if ui
-                .add_enabled(running, egui::Button::new("Stop"))
-                .clicked()
-            {
+            if ui.add_enabled(running, egui::Button::new("Stop")).clicked() {
                 self.request_stop();
             }
+            // Clear here is a full reset: fresh session, blank canvas, empty transcript.
             if ui
-                .add_enabled(!running, egui::Button::new("Reset"))
+                .add_enabled(!running, egui::Button::new("Clear"))
                 .clicked()
             {
                 self.reset_session(&ctx);
@@ -683,10 +705,6 @@ impl TurtleApp {
 
     fn canvas_controls(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            if ui.button("Clear").clicked() {
-                self.clear_canvas();
-            }
-            ui.separator();
             ui.label("Speed");
             for (i, (label, _)) in SPEEDS.iter().enumerate() {
                 ui.selectable_value(&mut self.speed, i as u32, *label);
@@ -717,11 +735,9 @@ impl TurtleApp {
                     let insert = strip_hint_form(op.form);
                     let response = ui
                         .add(
-                            egui::Button::new(
-                                RichText::new(op.form).monospace().size(12.0),
-                            )
-                            .frame(false)
-                            .wrap(),
+                            egui::Button::new(RichText::new(op.form).monospace().size(12.0))
+                                .frame(false)
+                                .wrap(),
                         )
                         .on_hover_text(format!("Insert `{insert}`"));
                     if response.clicked() {
@@ -738,34 +754,35 @@ impl TurtleApp {
         });
     }
 
-    /// Code editor that highlights the form whose effects are currently being animated.
+    /// Code editor with syntax coloring; also marks the form currently being animated.
     fn script_editor(&mut self, ui: &mut egui::Ui) {
         let active = self.active_site;
         let mut layouter = |ui: &egui::Ui, buf: &dyn egui::TextBuffer, wrap_width: f32| {
             let text = buf.as_str();
             let font_id = TextStyle::Monospace.resolve(ui.style());
-            let color = ui
+            let default_color = ui
                 .visuals()
                 .override_text_color
                 .unwrap_or_else(|| ui.visuals().widgets.inactive.text_color());
-            let plain = TextFormat {
-                font_id,
-                color,
-                ..Default::default()
-            };
+            let dark = ui.visuals().dark_mode;
+            let mark_bg = active_site_color(dark);
+            let active_range = active.and_then(|span| span_to_byte_range(text, &span));
 
             let mut job = LayoutJob::default();
-            match active.and_then(|span| span_to_byte_range(text, &span)) {
-                Some(range) => {
-                    let marked = TextFormat {
-                        background: active_site_color(ui.visuals().dark_mode),
-                        ..plain.clone()
-                    };
-                    job.append(&text[..range.start], 0.0, plain.clone());
-                    job.append(&text[range.clone()], 0.0, marked);
-                    job.append(&text[range.end..], 0.0, plain);
-                }
-                None => job.append(text, 0.0, plain),
+            for span in highlight::classify(text) {
+                let color = highlight::color_for(span.kind, dark, default_color);
+                append_syntax_span(
+                    &mut job,
+                    text,
+                    span.range,
+                    active_range.as_ref(),
+                    TextFormat {
+                        font_id: font_id.clone(),
+                        color,
+                        ..Default::default()
+                    },
+                    mark_bg,
+                );
             }
             job.wrap.max_width = wrap_width;
             ui.fonts_mut(|fonts| fonts.layout_job(job))
@@ -796,9 +813,7 @@ impl TurtleApp {
             Stroke::new(1.0, Color32::from_gray(220)),
         );
 
-        let to_screen = |x: f64, y: f64| -> Pos2 {
-            pos2(origin.x + x as f32, origin.y - y as f32)
-        };
+        let to_screen = |x: f64, y: f64| -> Pos2 { pos2(origin.x + x as f32, origin.y - y as f32) };
 
         for seg in &self.segments {
             painter.line_segment(
@@ -845,7 +860,11 @@ fn draw_status(painter: &egui::Painter, canvas: egui::Rect, pose: &Pose, pen: &P
             pad * 2.0 + text_size.y,
         ),
     );
-    painter.rect_filled(badge, 4.0, Color32::from_rgba_unmultiplied(255, 255, 255, 230));
+    painter.rect_filled(
+        badge,
+        4.0,
+        Color32::from_rgba_unmultiplied(255, 255, 255, 230),
+    );
     painter.rect_stroke(
         badge,
         4.0,
@@ -874,7 +893,10 @@ fn draw_status(painter: &egui::Painter, canvas: egui::Rect, pose: &Pose, pen: &P
 
 fn status_text(pose: &Pose, pen: &PenState) -> String {
     [
-        status_row("pos", &format!("{} {}", format_num(pose.x), format_num(pose.y))),
+        status_row(
+            "pos",
+            &format!("{} {}", format_num(pose.x), format_num(pose.y)),
+        ),
         status_row("heading", &format_num(pose.heading)),
         status_row("turtle", if pose.visible { "show" } else { "hide" }),
         status_row("color", &format_color(pen.color)),
@@ -888,12 +910,12 @@ fn status_row(label: &str, value: &str) -> String {
     format!("{label:<7}  {value}")
 }
 
-/// A named color such as `blue`, or `r g b` when the channels do not match a name.
+/// A named color such as `blue`, or `#rrggbb` when the channels do not match a name.
 fn format_color(color: Color) -> String {
     color
         .name()
         .map(str::to_string)
-        .unwrap_or_else(|| format!("{} {} {}", color.r, color.g, color.b))
+        .unwrap_or_else(|| format!("#{:02x}{:02x}{:02x}", color.r, color.g, color.b))
 }
 
 fn format_num(n: f64) -> String {
@@ -922,6 +944,41 @@ fn active_site_color(dark_mode: bool) -> Color32 {
         Color32::from_rgb(110, 90, 20)
     } else {
         Color32::from_rgb(255, 232, 140)
+    }
+}
+
+/// Append `range` of `text` to `job`, splitting so the active-site background applies only
+/// where it overlaps.
+fn append_syntax_span(
+    job: &mut LayoutJob,
+    text: &str,
+    range: Range<usize>,
+    active: Option<&Range<usize>>,
+    base: TextFormat,
+    mark_bg: Color32,
+) {
+    let Some(active) = active else {
+        job.append(&text[range], 0.0, base);
+        return;
+    };
+    let start = range.start;
+    let end = range.end;
+    let mid_start = start.max(active.start);
+    let mid_end = end.min(active.end);
+
+    if mid_start >= mid_end {
+        job.append(&text[start..end], 0.0, base);
+        return;
+    }
+
+    if start < mid_start {
+        job.append(&text[start..mid_start], 0.0, base.clone());
+    }
+    let mut marked = base.clone();
+    marked.background = mark_bg;
+    job.append(&text[mid_start..mid_end], 0.0, marked);
+    if mid_end < end {
+        job.append(&text[mid_end..end], 0.0, base);
     }
 }
 
@@ -1018,7 +1075,7 @@ impl eframe::App for TurtleApp {
                 ui.separator();
                 match self.tab {
                     Tab::Script => self.editor_tab(ui),
-                    Tab::Interactive => self.interactive_tab(ui),
+                    Tab::Repl => self.repl_tab(ui),
                 }
             });
 
@@ -1174,6 +1231,8 @@ mod tests {
     fn request_stop_keeps_control_events() {
         let mut app = test_app();
         app.in_flight = 1;
+        app.pose.x = 12.0;
+        app.pose.y = 34.0;
         app.pending = vec![
             TurtleEvent::Started(Origin::Repl),
             TurtleEvent::Line(Segment {
@@ -1190,10 +1249,13 @@ mod tests {
         app.motion = Some(Motion::Turn { remaining: 90.0 });
         app.request_stop();
         assert!(app.motion.is_none());
+        assert!(app.drop_drawing);
         assert_eq!(app.pending.len(), 3);
         assert!(matches!(app.pending[0], TurtleEvent::Started(_)));
         assert!(matches!(app.pending[1], TurtleEvent::Result(_)));
         assert!(matches!(app.pending[2], TurtleEvent::Done));
+        app.apply_event_instant(TurtleEvent::Done);
+        assert!(!app.drop_drawing);
     }
 
     #[test]
@@ -1253,9 +1315,16 @@ pen?     down"
     }
 
     #[test]
-    fn format_color_uses_name_or_rgb() {
+    fn format_color_uses_name_or_hex() {
         assert_eq!(format_color(Color::BLUE), "blue");
-        assert_eq!(format_color(Color { r: 10, g: 20, b: 30 }), "10 20 30");
+        assert_eq!(
+            format_color(Color {
+                r: 10,
+                g: 20,
+                b: 30
+            }),
+            "#0a141e"
+        );
     }
 
     #[test]

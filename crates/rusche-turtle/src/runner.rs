@@ -7,15 +7,24 @@ use std::sync::Arc;
 use egui::Context;
 use rusche::{Error, Evaluator, Span};
 
-use crate::builtin::{load_turtle_procs, with_host, Host};
-use crate::turtle::{Origin, Turtle, TurtleEvent};
+use crate::builtin::{load_turtle_procs, restore_turtle, with_host, Host};
+use crate::turtle::{Origin, Turtle, TurtleEvent, TurtleSnap};
 
 const EVAL_STACK_SIZE: usize = 16 * 1024 * 1024;
+
+enum Request {
+    Eval {
+        source: String,
+        origin: Origin,
+    },
+    /// Align the worker turtle with the UI after Stop discarded queued drawing.
+    Sync(TurtleSnap),
+}
 
 /// A long-lived evaluation session. Dropping it disconnects the request channel and the
 /// worker exits after the in-flight request (if any) finishes or is cancelled.
 pub struct Session {
-    requests: Sender<(String, Origin)>,
+    requests: Sender<Request>,
     pub events: Receiver<TurtleEvent>,
     cancel: Arc<AtomicBool>,
 }
@@ -23,7 +32,7 @@ pub struct Session {
 impl Session {
     /// Spawns a worker with a fresh evaluator. `ctx` is used for repaint requests.
     pub fn spawn(ctx: Context) -> Self {
-        let (req_tx, req_rx) = mpsc::channel::<(String, Origin)>();
+        let (req_tx, req_rx) = mpsc::channel::<Request>();
         let (evt_tx, evt_rx) = mpsc::channel();
         let cancel = Arc::new(AtomicBool::new(false));
         let cancel_worker = Arc::clone(&cancel);
@@ -42,30 +51,35 @@ impl Session {
                     let evaluator = Evaluator::with_prelude();
                     load_turtle_procs(&evaluator);
 
-                    while let Ok((source, origin)) = req_rx.recv() {
-                        cancel_worker.store(false, Ordering::Relaxed);
-                        let _ = evt_worker.send(TurtleEvent::Started(origin));
+                    while let Ok(request) = req_rx.recv() {
+                        match request {
+                            Request::Sync(snap) => restore_turtle(&snap),
+                            Request::Eval { source, origin } => {
+                                cancel_worker.store(false, Ordering::Relaxed);
+                                let _ = evt_worker.send(TurtleEvent::Started(origin));
 
-                        let source_name = match origin {
-                            Origin::Script => "<script>",
-                            Origin::Repl => "<repl>",
-                        };
+                                let source_name = match origin {
+                                    Origin::Script => "<script>",
+                                    Origin::Repl => "<repl>",
+                                };
 
-                        match evaluator.eval_str(&source) {
-                            Ok(value) => {
-                                if origin == Origin::Repl {
-                                    let _ = evt_worker
-                                        .send(TurtleEvent::Result(value.to_string()));
+                                match evaluator.eval_str(&source) {
+                                    Ok(value) => {
+                                        if origin == Origin::Repl {
+                                            let _ = evt_worker
+                                                .send(TurtleEvent::Result(value.to_string()));
+                                        }
+                                    }
+                                    Err(error) => {
+                                        let message = format_error(&error, &source, source_name);
+                                        let _ = evt_worker.send(TurtleEvent::Error(message));
+                                    }
                                 }
-                            }
-                            Err(error) => {
-                                let message = format_error(&error, &source, source_name);
-                                let _ = evt_worker.send(TurtleEvent::Error(message));
+
+                                let _ = evt_worker.send(TurtleEvent::Done);
+                                ctx.request_repaint();
                             }
                         }
-
-                        let _ = evt_worker.send(TurtleEvent::Done);
-                        ctx.request_repaint();
                     }
                 });
             })
@@ -80,7 +94,12 @@ impl Session {
 
     /// Queue `source` for evaluation. Returns `false` if the worker is gone.
     pub fn eval(&self, source: String, origin: Origin) -> bool {
-        self.requests.send((source, origin)).is_ok()
+        self.requests.send(Request::Eval { source, origin }).is_ok()
+    }
+
+    /// Queue a pose/pen restore so the next eval continues from the UI turtle.
+    pub fn sync_turtle(&self, snap: TurtleSnap) -> bool {
+        self.requests.send(Request::Sync(snap)).is_ok()
     }
 
     pub fn request_stop(&self) {
@@ -194,7 +213,10 @@ mod tests {
         let session = Session::spawn(Context::default());
         assert!(session.eval("(define (double x) (* x 2))".into(), Origin::Repl));
         let first = drain_until_done(&session, Duration::from_secs(5));
-        assert!(matches!(first.first(), Some(TurtleEvent::Started(Origin::Repl))));
+        assert!(matches!(
+            first.first(),
+            Some(TurtleEvent::Started(Origin::Repl))
+        ));
         assert!(first.iter().any(|e| matches!(e, TurtleEvent::Result(_))));
         assert!(matches!(first.last(), Some(TurtleEvent::Done)));
 
@@ -211,7 +233,10 @@ mod tests {
         let session = Session::spawn(Context::default());
         assert!(session.eval("(car 1)".into(), Origin::Repl));
         let events = drain_until_done(&session, Duration::from_secs(5));
-        assert!(matches!(events.first(), Some(TurtleEvent::Started(Origin::Repl))));
+        assert!(matches!(
+            events.first(),
+            Some(TurtleEvent::Started(Origin::Repl))
+        ));
         assert!(events.iter().any(|e| matches!(e, TurtleEvent::Error(_))));
         assert!(!events.iter().any(|e| matches!(e, TurtleEvent::Result(_))));
         assert!(matches!(events.last(), Some(TurtleEvent::Done)));
@@ -228,5 +253,32 @@ mod tests {
         ));
         assert!(!events.iter().any(|e| matches!(e, TurtleEvent::Result(_))));
         assert!(matches!(events.last(), Some(TurtleEvent::Done)));
+    }
+
+    #[test]
+    fn session_sync_then_forward_continues_from_snap() {
+        let session = Session::spawn(Context::default());
+        assert!(session.sync_turtle(TurtleSnap {
+            x: 40.0,
+            y: -10.0,
+            heading: 0.0,
+            visible: true,
+            pen_down: true,
+            color: crate::turtle::Color::BLUE,
+            width: 2.0,
+        }));
+        // Sync is silent; give the worker a moment, then move.
+        std::thread::sleep(Duration::from_millis(20));
+        assert!(session.eval("(forward 10)".into(), Origin::Repl));
+        let events = drain_until_done(&session, Duration::from_secs(5));
+        let line = events.iter().find_map(|e| match e {
+            TurtleEvent::Line(s) => Some(s),
+            _ => None,
+        });
+        let line = line.expect("expected a line after sync");
+        assert!((line.x0 - 40.0).abs() < 1e-9);
+        assert!((line.y0 - (-10.0)).abs() < 1e-9);
+        assert!((line.x1 - 50.0).abs() < 1e-9);
+        assert_eq!(line.color, crate::turtle::Color::BLUE);
     }
 }

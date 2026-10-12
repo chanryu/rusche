@@ -13,17 +13,61 @@ pub struct Color {
 
 impl Color {
     pub const BLACK: Color = Color { r: 0, g: 0, b: 0 };
-    pub const WHITE: Color = Color { r: 255, g: 255, b: 255 };
-    pub const RED: Color = Color { r: 220, g: 50, b: 47 };
-    pub const GREEN: Color = Color { r: 133, g: 153, b: 0 };
-    pub const BLUE: Color = Color { r: 38, g: 139, b: 210 };
-    pub const YELLOW: Color = Color { r: 181, g: 137, b: 0 };
-    pub const ORANGE: Color = Color { r: 203, g: 75, b: 22 };
-    pub const PURPLE: Color = Color { r: 108, g: 113, b: 196 };
-    pub const CYAN: Color = Color { r: 42, g: 161, b: 152 };
-    pub const MAGENTA: Color = Color { r: 211, g: 54, b: 130 };
-    pub const GRAY: Color = Color { r: 128, g: 128, b: 128 };
-    pub const BROWN: Color = Color { r: 139, g: 90, b: 43 };
+    pub const WHITE: Color = Color {
+        r: 255,
+        g: 255,
+        b: 255,
+    };
+    pub const RED: Color = Color {
+        r: 220,
+        g: 50,
+        b: 47,
+    };
+    pub const GREEN: Color = Color {
+        r: 133,
+        g: 153,
+        b: 0,
+    };
+    pub const BLUE: Color = Color {
+        r: 38,
+        g: 139,
+        b: 210,
+    };
+    pub const YELLOW: Color = Color {
+        r: 181,
+        g: 137,
+        b: 0,
+    };
+    pub const ORANGE: Color = Color {
+        r: 203,
+        g: 75,
+        b: 22,
+    };
+    pub const PURPLE: Color = Color {
+        r: 108,
+        g: 113,
+        b: 196,
+    };
+    pub const CYAN: Color = Color {
+        r: 42,
+        g: 161,
+        b: 152,
+    };
+    pub const MAGENTA: Color = Color {
+        r: 211,
+        g: 54,
+        b: 130,
+    };
+    pub const GRAY: Color = Color {
+        r: 128,
+        g: 128,
+        b: 128,
+    };
+    pub const BROWN: Color = Color {
+        r: 139,
+        g: 90,
+        b: 43,
+    };
 
     pub fn from_name(name: &str) -> Option<Color> {
         Some(match name.to_ascii_lowercase().as_str() {
@@ -91,6 +135,18 @@ pub enum Origin {
     Repl,
 }
 
+/// Pose + pen snapshot used to resync the worker turtle after Stop (UI may lag behind).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TurtleSnap {
+    pub x: f64,
+    pub y: f64,
+    pub heading: f64,
+    pub visible: bool,
+    pub pen_down: bool,
+    pub color: Color,
+    pub width: f32,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum TurtleEvent {
     Line(Segment),
@@ -101,7 +157,9 @@ pub enum TurtleEvent {
         visible: bool,
     },
     /// Degrees; positive = counter-clockwise.
-    Turn { delta: f64 },
+    Turn {
+        delta: f64,
+    },
     Clear,
     Print(String),
     Error(String),
@@ -203,10 +261,7 @@ impl<S: Sink> Turtle<S> {
 
     fn move_by(&mut self, distance: f64) {
         let rad = self.heading.to_radians();
-        self.stroke_to(
-            self.x + distance * rad.cos(),
-            self.y + distance * rad.sin(),
-        );
+        self.stroke_to(self.x + distance * rad.cos(), self.y + distance * rad.sin());
     }
 
     pub fn forward(&mut self, distance: f64) {
@@ -297,6 +352,17 @@ impl<S: Sink> Turtle<S> {
         self.sink.emit(TurtleEvent::Clear);
         self.emit_pen();
         self.emit_move();
+    }
+
+    /// Silently match the UI after Stop so the next command continues from what is shown.
+    pub fn restore(&mut self, snap: &TurtleSnap) {
+        self.x = snap.x;
+        self.y = snap.y;
+        self.heading = snap.heading;
+        self.visible = snap.visible;
+        self.pen_down = snap.pen_down;
+        self.color = snap.color;
+        self.width = snap.width;
     }
 
     pub fn print(&mut self, text: String) {
@@ -438,7 +504,15 @@ mod tests {
         assert_eq!(Color::BLUE.name(), Some("blue"));
         assert_eq!(Color::from_name("violet").unwrap().name(), Some("purple"));
         assert_eq!(Color::from_name("grey").unwrap().name(), Some("gray"));
-        assert_eq!(Color { r: 10, g: 20, b: 30 }.name(), None);
+        assert_eq!(
+            Color {
+                r: 10,
+                g: 20,
+                b: 30
+            }
+            .name(),
+            None
+        );
     }
 
     #[test]

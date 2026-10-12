@@ -3,6 +3,7 @@
 mod app;
 mod builtin;
 mod examples;
+mod highlight;
 mod repl;
 mod runner;
 mod turtle;
