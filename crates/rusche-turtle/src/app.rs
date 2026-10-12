@@ -194,8 +194,8 @@ pub struct TurtleApp {
 /// turns spend the same budget at [`TURN_DEG_PER_PX`] degrees per pixel.
 const SPEEDS: &[(&str, f64)] = &[
     ("Crawl", 0.5),
-    ("Walk", 2.0),
-    ("Trot", 8.0),
+    ("Walk", 1.25),
+    ("Trot", 5.0),
     ("Run", 32.0),
     ("Dash", 128.0),
 ];
@@ -644,12 +644,12 @@ impl TurtleApp {
                         ui.add(
                             egui::TextEdit::multiline(&mut self.log)
                                 .desired_width(f32::INFINITY)
-                                .font(egui::TextStyle::Monospace),
+                                .font(egui::TextStyle::Monospace)
+                                .interactive(false),
                         );
                     });
             });
 
-        ui.label(RichText::new("Script").strong());
         egui::ScrollArea::both().show(ui, |ui| {
             self.script_editor(ui);
         });
@@ -688,10 +688,9 @@ impl TurtleApp {
             }
             ui.separator();
             ui.label("Speed");
-            ui.add(
-                egui::Slider::new(&mut self.speed, 0..=SPEEDS.len() as u32 - 1).show_value(false),
-            );
-            ui.label(SPEEDS[self.speed as usize].0);
+            for (i, (label, _)) in SPEEDS.iter().enumerate() {
+                ui.selectable_value(&mut self.speed, i as u32, *label);
+            }
         });
     }
 

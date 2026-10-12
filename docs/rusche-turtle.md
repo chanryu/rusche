@@ -22,7 +22,7 @@ Bundled demos ship inside the binary (`src/examples/*.rsc` via `include_str!`); 
 | Examples | Script tab. Load a bundled demo (embedded at compile time) |
 | Reset | Interactive tab. Fresh session and clear the REPL transcript |
 | Help | API hints (click a form to append it to the Script) |
-| Clear / Speed | Under the canvas. Five paces: Crawl, Walk, Trot, Run, Dash |
+| Clear / Speed | Under the canvas. Toggle Crawl, Walk, Trot, Run, or Dash |
 | Status | On the canvas: position, heading, show/hide, color, size, and pen up or down |
 
 While a script runs, the editor highlights the form whose effect is currently being drawn
