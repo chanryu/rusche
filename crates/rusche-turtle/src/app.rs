@@ -259,6 +259,7 @@ impl TurtleApp {
         self.segments.clear();
         self.pose = Pose::default();
         self.pen = PenState::default();
+        self.log.clear();
         self.repl.clear_transcript();
     }
 
@@ -629,6 +630,7 @@ impl TurtleApp {
     }
 
     fn editor_controls(&mut self, ui: &mut egui::Ui) {
+        let ctx = ui.ctx().clone();
         ui.horizontal(|ui| {
             let running = self.is_running();
             if ui.add_enabled(!running, egui::Button::new("Run")).clicked() {
@@ -637,9 +639,11 @@ impl TurtleApp {
             if ui.add_enabled(running, egui::Button::new("Stop")).clicked() {
                 self.request_stop();
             }
-            if ui.button("Clear").clicked() {
-                self.clear_canvas();
-                self.log.clear();
+            if ui
+                .add_enabled(!running, egui::Button::new("Reset"))
+                .clicked()
+            {
+                self.reset_session(&ctx);
             }
             ui.separator();
             ui.menu_button("Examples", |ui| {
@@ -687,9 +691,8 @@ impl TurtleApp {
             if ui.add_enabled(running, egui::Button::new("Stop")).clicked() {
                 self.request_stop();
             }
-            // Clear here is a full reset: fresh session, blank canvas, empty transcript.
             if ui
-                .add_enabled(!running, egui::Button::new("Clear"))
+                .add_enabled(!running, egui::Button::new("Reset"))
                 .clicked()
             {
                 self.reset_session(&ctx);
@@ -705,7 +708,11 @@ impl TurtleApp {
 
     fn canvas_controls(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.label("Speed");
+            if ui.button("Clear").clicked() {
+                self.clear_canvas();
+            }
+            ui.separator();
+            ui.label(RichText::new("Speed").small().weak());
             for (i, (label, _)) in SPEEDS.iter().enumerate() {
                 ui.selectable_value(&mut self.speed, i as u32, *label);
             }

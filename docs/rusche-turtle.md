@@ -19,10 +19,10 @@ Bundled demos ship inside the binary (`src/examples/*.rsc` via `include_str!`); 
 | Script / REPL | Left-panel tabs. Script holds the source + Output; REPL is the interactive prompt. Both editors use simple syntax coloring (Rusche keywords vs turtle API names) |
 | Run | Script tab. Evaluate the script on the current session and canvas |
 | Stop | Script and REPL. Cancel at the next turtle / `write` / `random` call; next commands continue from the visible turtle |
-| Clear | Script: blank canvas and Output (keeps definitions). REPL: fresh session, blank canvas, and empty transcript |
+| Reset | Script and REPL. Fresh session, blank canvas, clear Output / transcript |
 | Examples | Script tab. Load a bundled demo (embedded at compile time) |
 | Help | API hints (click a form to append it to the Script) |
-| Speed | Under the canvas. Toggle Crawl, Walk, Trot, Run, or Dash |
+| Clear / Speed | Under the canvas. Clear blanks the drawing (keeps definitions); toggle Crawl–Dash |
 | Status | On the canvas: position, heading, show/hide, color, size, and pen up or down |
 
 While a script runs, the editor highlights the form whose effect is currently being drawn
@@ -88,5 +88,5 @@ Demo sources: [`crates/rusche-turtle/src/examples/`](../crates/rusche-turtle/src
 ## Limitations
 
 - **Stop** only interrupts at turtle natives, `write`/`writeln`, or `random`.
-- REPL **Clear** starts a fresh session; **Run** and the REPL continue in the current session.
+- **Reset** starts a fresh session; **Run** and the REPL continue in the current session.
 - Example host (`publish = false`), like `rusche-cli`.
