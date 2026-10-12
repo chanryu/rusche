@@ -402,15 +402,9 @@ mod tests {
 
     #[test]
     fn bundled_examples_evaluate() {
-        for (name, src) in [
-            ("squares", include_str!("../examples/squares.rsc")),
-            ("spiral", include_str!("../examples/spiral.rsc")),
-            ("star", include_str!("../examples/star.rsc")),
-            ("tree", include_str!("../examples/tree.rsc")),
-            ("colors", include_str!("../examples/colors.rsc")),
-            ("koch", include_str!("../examples/koch.rsc")),
-        ] {
-            eval_with_vec_sink(src).unwrap_or_else(|e| panic!("{name}: {e}"));
+        for example in crate::examples::ALL {
+            eval_with_vec_sink(example.source)
+                .unwrap_or_else(|e| panic!("{}: {e}", example.name));
         }
     }
 

@@ -5,42 +5,9 @@ use std::sync::mpsc::TryRecvError;
 use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, Stroke, Vec2};
 use egui::{pos2, Pos2};
 
+use crate::examples;
 use crate::runner::{self, Job};
 use crate::turtle::{Color, Segment, TurtleEvent};
-
-const DEFAULT_SCRIPT: &str = include_str!("../examples/squares.rsc");
-
-struct Example {
-    name: &'static str,
-    source: &'static str,
-}
-
-const EXAMPLES: &[Example] = &[
-    Example {
-        name: "Nested squares",
-        source: include_str!("../examples/squares.rsc"),
-    },
-    Example {
-        name: "Spiral",
-        source: include_str!("../examples/spiral.rsc"),
-    },
-    Example {
-        name: "Star",
-        source: include_str!("../examples/star.rsc"),
-    },
-    Example {
-        name: "Tree",
-        source: include_str!("../examples/tree.rsc"),
-    },
-    Example {
-        name: "Color wheel",
-        source: include_str!("../examples/colors.rsc"),
-    },
-    Example {
-        name: "Koch snowflake",
-        source: include_str!("../examples/koch.rsc"),
-    },
-];
 
 #[derive(Clone, Copy)]
 struct Pose {
@@ -200,7 +167,7 @@ fn face(dx: f64, dy: f64) -> f64 {
 impl TurtleApp {
     pub fn new(initial_script: Option<String>) -> Self {
         Self {
-            script: initial_script.unwrap_or_else(|| DEFAULT_SCRIPT.to_string()),
+            script: initial_script.unwrap_or_else(|| examples::DEFAULT.to_string()),
             log: String::new(),
             segments: Vec::new(),
             pending: Vec::new(),
@@ -551,7 +518,7 @@ impl TurtleApp {
 
             ui.separator();
             ui.menu_button("Examples", |ui| {
-                for example in EXAMPLES {
+                for example in examples::ALL {
                     if ui.button(example.name).clicked() && !running {
                         self.script = example.source.to_string();
                         ui.close();

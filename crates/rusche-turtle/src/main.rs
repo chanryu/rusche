@@ -2,6 +2,7 @@
 
 mod app;
 mod builtin;
+mod examples;
 mod runner;
 mod turtle;
 

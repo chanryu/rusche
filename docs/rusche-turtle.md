@@ -8,14 +8,16 @@ window with a script editor, canvas, and output log. Scripts run on a worker-thr
 
 ```bash
 cargo run -p rusche-turtle
-cargo run -p rusche-turtle -- crates/rusche-turtle/examples/star.rsc
+cargo run -p rusche-turtle -- path/to/script.rsc   # optional: load into the editor
 ```
+
+Bundled demos ship inside the binary (`src/examples/*.rsc` via `include_str!`); pick them from **Examples** in the UI.
 
 | Control | Role |
 | --- | --- |
 | Run | Evaluate the editor (fresh env each time) |
 | Stop | Cancel at the next turtle / `write` / `random` call |
-| Examples | Load a bundled demo |
+| Examples | Load a bundled demo (embedded at compile time) |
 | Help | API hints (click a form to append it) |
 | Clear / Speed | Under the canvas (`instant` skips walk animation) |
 
@@ -67,7 +69,7 @@ Core language: [language reference](language-reference.md). Host adds:
   (right 10))
 ```
 
-Demos: [`crates/rusche-turtle/examples/`](../crates/rusche-turtle/examples).
+Demo sources: [`crates/rusche-turtle/src/examples/`](../crates/rusche-turtle/src/examples).
 
 ## Limitations
 

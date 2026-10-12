@@ -152,7 +152,7 @@ cargo install --path crates/rusche-cli
 
 ```bash
 cargo run -p rusche-turtle
-cargo run -p rusche-turtle -- crates/rusche-turtle/examples/star.rsc
+cargo run -p rusche-turtle -- path/to/script.rsc   # optional: load a file into the editor
 ```
 
 ## Documentation
