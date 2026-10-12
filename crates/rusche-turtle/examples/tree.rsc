@@ -1,0 +1,21 @@
+; Recursive binary tree
+(define (tree length depth)
+  (if (<= depth 0)
+      ()
+      (begin
+        (forward length)
+        (left 30)
+        (tree (* length 0.7) (- depth 1))
+        (right 60)
+        (tree (* length 0.7) (- depth 1))
+        (left 30)
+        (back length))))
+
+(pencolor "green")
+(pensize 2)
+(penup)
+(goto 0 -220)
+(setheading 90)
+(pendown)
+(tree 80 7)
+(hideturtle)

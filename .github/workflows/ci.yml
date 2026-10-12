@@ -15,6 +15,16 @@ jobs:
 
         steps:
             - uses: actions/checkout@v4
+            - name: Install Linux GUI dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y \
+                    libxkbcommon-dev \
+                    libwayland-dev \
+                    libxcb-render0-dev \
+                    libxcb-shape0-dev \
+                    libxcb-xfixes0-dev \
+                    libgl1-mesa-dev
             - name: Install cargo-llvm-cov
               uses: taiki-e/install-action@cargo-llvm-cov
             - name: Build
