@@ -250,7 +250,7 @@ impl TurtleApp {
     }
 
     fn start_run(&mut self) {
-        // Continue from the current session, canvas, and turtle — use Clear to wipe.
+        // Continue from the current session, canvas, and turtle — use Reset / Clear to wipe.
         self.submit(self.script.clone(), Origin::Script);
     }
 
