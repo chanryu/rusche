@@ -62,11 +62,10 @@
 (define speeds (list "Crawl" "Walk" "Trot" "Run" "Dash"))
 
 (define (script-layouter text)
-  (let ((spans (highlight text (dark-mode?)))
-        (site (turtle-site text))
-        (bg (if (dark-mode?) '(110 90 20) '(255 232 140))))
+  (let ((spans (highlight text))
+        (site (turtle-site text)))
     (if (list? site)
-        (mark-site spans (car site) (cadr site) bg)
+        (mark-site spans (car site) (cadr site) '(255 232 140))
         spans)))
 
 (define (mark-site spans start end bg)
@@ -190,9 +189,9 @@
   (let ((focused
           (if focus-repl
               (text-edit repl-input 'code 'rows 3 'submit-on-enter 'focus
-                (lambda (text) (highlight text (dark-mode?))))
+                (lambda (text) (highlight text)))
               (text-edit repl-input 'code 'rows 3 'submit-on-enter
-                (lambda (text) (highlight text (dark-mode?)))))))
+                (lambda (text) (highlight text))))))
     (set! focus-repl false)
     (when (if running false focused)
       (when (if (key-pressed? 'enter) (not (shift-down?)) false)

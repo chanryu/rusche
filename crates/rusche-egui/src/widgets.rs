@@ -771,19 +771,6 @@ fn text_format(
     }
 }
 
-pub(crate) fn dark_mode(
-    host: &Rc<Host>,
-    proc_name: &str,
-    args: &List,
-    _context: &EvalContext,
-) -> EvalResult {
-    if !args.is_nil() {
-        return Err(arity_error(proc_name, 0..=0, args.len()));
-    }
-    let dark = host.with_ui(proc_name, |ui| Ok(ui.visuals().dark_mode))?;
-    Ok(Expr::from(dark))
-}
-
 pub(crate) fn key_pressed(
     host: &Rc<Host>,
     proc_name: &str,

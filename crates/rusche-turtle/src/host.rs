@@ -288,39 +288,14 @@ fn highlight_text(
     args: &List,
     context: &EvalContext,
 ) -> EvalResult {
-    let values: Vec<Expr> = args
-        .iter()
-        .map(|a| eval(a, context))
-        .collect::<Result<_, _>>()?;
-    if values.len() != 2 {
-        return Err(arity_error(proc_name, 2..=2, values.len()));
-    }
-    let text = values[0]
-        .as_str()
-        .ok_or_else(|| {
-            EvalError::new(
-                ErrorKind::Type,
-                format!("{proc_name}: expected a string, got `{}`", values[0]),
-            )
-        })?
-        .to_string();
-    let dark = values[1].as_bool().ok_or_else(|| {
-        EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: expected a boolean, got `{}`", values[1]),
-        )
-    })?;
-    let default = if dark {
-        Color32::from_rgb(205, 214, 244)
-    } else {
-        Color32::from_rgb(76, 79, 105)
-    };
+    let text = eval_into_str(proc_name, get_exact_1_arg(proc_name, args)?, context)?;
+    let default = Color32::from_rgb(76, 79, 105);
     let mut list = List::Nil;
     for span in highlight::classify(&text).into_iter().rev() {
         if matches!(span.kind, Kind::Plain) {
             continue;
         }
-        let color = highlight::color_for(span.kind, dark, default);
+        let color = highlight::color_for(span.kind, false, default);
         list = cons(
             Expr::from(vec![
                 Expr::from(span.range.start as f64),

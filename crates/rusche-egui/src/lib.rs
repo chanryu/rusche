@@ -51,7 +51,6 @@
 //! `(lambda (text) spans)` with each span `(start end r g b)` or
 //! `(start end r g b br bg bb)` in byte offsets. The optional trailing triple is a
 //! background color. It may run more than once per frame and should not build widgets.
-//! `(dark-mode?)` reports the active theme (usable from a layouter).
 //!
 //! `(canvas height (lambda (painter x y w h) ...))`,
 //! `(fill-rect painter x y w h color)`,
@@ -63,7 +62,7 @@
 //! Pass `false` for a polygon or circle fill or stroke to skip that part.
 //! A width of `0` draws no stroke.
 //!
-//! `(run-app title width height ui-proc)`, `request-repaint`, `dark-mode?`,
+//! `(run-app title width height ui-proc)`, `request-repaint`,
 //! `(key-pressed? 'enter|'up|'down)`, `shift-down?`.
 
 mod app;
@@ -233,7 +232,6 @@ fn install(evaluator: &Evaluator, host: &Rc<Host>) {
 
     bind(env, host, "run-app", app::run_app);
     bind(env, host, "request-repaint", request_repaint);
-    bind(env, host, "dark-mode?", widgets::dark_mode);
     bind(env, host, "key-pressed?", widgets::key_pressed);
     bind(env, host, "shift-down?", widgets::shift_down);
 }
@@ -378,9 +376,6 @@ mod tests {
             evaluator.eval_str("(buffer-text buf)").unwrap(),
             Expr::from("ab")
         );
-
-        let dark = frame(&egui, &evaluator, "(lambda () (dark-mode?))").unwrap();
-        assert!(dark.as_bool().is_some());
 
         // Invalid spans fall back to plain text instead of aborting the frame.
         frame(
