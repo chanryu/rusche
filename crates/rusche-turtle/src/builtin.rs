@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::sync::mpsc::Sender;
 
 use rand::Rng;
-use rusche::utils::eval_into_num;
+use rusche::eval_into_num;
 use rusche::{
     arity_error, cons, eval, get_exact_1_arg, get_exact_2_args, ErrorKind, EvalContext, EvalError,
     EvalResult, Evaluator, Expr, List, NIL,
@@ -58,9 +58,11 @@ fn nil_op(
 fn format_write_args(args: &List, context: &EvalContext) -> Result<String, EvalError> {
     let mut text = String::new();
     for expr in args.iter() {
-        match eval(expr, context)? {
-            Expr::Str(s, _) => text.push_str(&s),
-            other => text.push_str(&other.to_string()),
+        let value = eval(expr, context)?;
+        if let Some(s) = value.as_str() {
+            text.push_str(s);
+        } else {
+            text.push_str(&value.to_string());
         }
     }
     Ok(text)
@@ -233,25 +235,24 @@ fn pencolor(
     let color = match args.len() {
         1 => {
             let arg = get_exact_1_arg(proc_name, args)?;
-            match eval(arg, context)? {
-                Expr::Str(name, _) => Color::from_name(&name).ok_or_else(|| {
+            let value = eval(arg, context)?;
+            if let Some(name) = value.as_str() {
+                Color::from_name(name).ok_or_else(|| {
                     EvalError::new(
                         ErrorKind::Other,
                         format!("{proc_name}: unknown color name `{name}`"),
                     )
                     .with_span(arg.span())
-                })?,
-                Expr::Num(n, _) => {
-                    let c = Color::clamp_channel(n);
-                    Color { r: c, g: c, b: c }
-                }
-                other => {
-                    return Err(EvalError::new(
-                        ErrorKind::Type,
-                        format!("{proc_name}: expected a color name or rgb numbers, got `{other}`"),
-                    )
-                    .with_span(arg.span()));
-                }
+                })?
+            } else if let Some(n) = value.as_num() {
+                let c = Color::clamp_channel(n);
+                Color { r: c, g: c, b: c }
+            } else {
+                return Err(EvalError::new(
+                    ErrorKind::Type,
+                    format!("{proc_name}: expected a color name or rgb numbers, got `{value}`"),
+                )
+                .with_span(arg.span()));
             }
         }
         3 => {

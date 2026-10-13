@@ -4,9 +4,8 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use rusche::{
-    arity_error, tokenize,
-    utils::{eval_into_num, get_exact_3_args},
-    EvalContext, EvalResult, Evaluator, Expr, List, Parser,
+    arity_error, eval_into_num, get_exact_3_args, tokenize, EvalContext, EvalResult, Evaluator,
+    Expr, List, Parser,
 };
 
 fn clamp(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {

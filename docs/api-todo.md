@@ -49,19 +49,28 @@ stoppable.
 
 ## P4 — Value conversion ergonomics
 
-Reading a result means matching tuple variants that carry a span slot
-(`Expr::Num(n, _)`). The embedding tutorial's `describe`, the turtle host's
-`format_write_args`, and `Key::from_expr` in `rusche-cli`'s dict builtin all
-repeat this. Additive and non-breaking; can land incrementally.
+Partly done. Hosts read values with `Expr::as_num`, `as_bool`, `as_str`,
+`as_sym`, `as_list`, `as_proc`, and `as_foreign::<T>`, and build foreign objects
+with `Expr::foreign`. `eval_into_list` and `eval_into_usize` cover the list and
+index conversions `rusche-cli` was writing by hand. `From<usize>` and
+`FromIterator<Expr>` cover lengths and list construction. The conversion and
+arity helpers are re-exported from the crate root.
 
-- [ ] Add accessors: `Expr::as_num`, `as_bool`, `as_str`, `as_sym`, `as_list`, `as_proc`, and `as_foreign::<T> -> Option<Rc<T>>`
-- [ ] Add `Expr::foreign(value)` so hosts stop writing `Expr::Foreign(Rc::new(...))`
-- [ ] Add `From` impls for `i64`, `u32`, and `usize`, and `FromIterator<Expr>` for `List` and `Expr`
-- [ ] Add `eval_into_bool`, `eval_into_sym`, `eval_into_list`, and `eval_into_proc`
-- [ ] Widen integer conversion: `eval_into_int` returns `i32`, so index code such as `vec_get` range-checks by hand; offer an `i64` or `usize` variant
-- [ ] Add a variadic arity helper (`get_exact_N` stops at 3; `vec_set` hand-rolls its arity check)
+Still open: `From` for `i64` and `u32` (nothing constructs those today),
+`eval_into_bool` and `eval_into_sym` (the accessors cover the current readers),
+a variadic arity helper (`vec-set!` uses the existing 3-argument helper), and
+`define_native_fn` for natives whose arguments are all evaluated.
+
+- [x] Add accessors: `Expr::as_num`, `as_bool`, `as_str`, `as_sym`, `as_list`, `as_proc`, and `as_foreign::<T> -> Option<Rc<T>>`
+- [x] Add `Expr::foreign(value)` so hosts stop writing `Expr::Foreign(Rc::new(...))`
+- [x] Add `From<usize>` and `FromIterator<Expr>` for `List` and `Expr`
+- [ ] Add `From` impls for `i64` and `u32`
+- [x] Add `eval_into_list` (`eval_into_proc` landed with P2)
+- [ ] Add `eval_into_bool` and `eval_into_sym`
+- [x] Add `eval_into_usize` so index code such as `vec-get` does not range-check an `i32` by hand
+- [ ] Add a variadic arity helper (`vec-set!` now uses `get_exact_3_args`)
 - [ ] Add a second registration form for the common case of evaluated arguments, e.g. `define_native_fn("hypot", |args: &[Expr], ctx| ...)`, keeping the unevaluated form for special-form-like natives
-- [ ] Make re-exports consistent: `eval_into_num` and `get_exact_3_args` are not at the crate root while `eval_into_int` is, so hosts import from both `rusche` and `rusche::utils`
+- [x] Re-export `eval_into_num`, `eval_into_str`, `eval_into_list`, `eval_into_usize`, `get_exact_3_args`, and `get_2_or_3_args` from the crate root
 
 ## P5 — `ForeignObject` trait (breaking, target 0.6.0)
 

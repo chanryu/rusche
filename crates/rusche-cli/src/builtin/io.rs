@@ -35,9 +35,11 @@ fn emit(host: &Host, text: &str) {
 /// Strings are raw text; other values use their source form. A newline is `"\n"`.
 fn write(host: &Host, _: &str, args: &List, context: &EvalContext) -> EvalResult {
     for expr in args.iter() {
-        match eval(expr, context)? {
-            Expr::Str(text, _) => emit(host, &text),
-            expr => emit(host, &expr.to_string()),
+        let value = eval(expr, context)?;
+        if let Some(text) = value.as_str() {
+            emit(host, text);
+        } else {
+            emit(host, &value.to_string());
         }
     }
     let _ = std::io::stdout().flush();
@@ -79,15 +81,13 @@ fn exit(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
 fn load(host: &Rc<Host>, proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let arg = get_exact_1_arg(proc_name, args)?;
-    let path = match eval(arg, context)? {
-        Expr::Str(path, _) => path,
-        other => {
-            return Err(EvalError::new(
-                ErrorKind::Type,
-                format!("{proc_name}: expected a string path, got `{other}`"),
-            )
-            .with_span(arg.span()));
-        }
+    let value = eval(arg, context)?;
+    let Some(path) = value.as_str().map(str::to_string) else {
+        return Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: expected a string path, got `{value}`"),
+        )
+        .with_span(arg.span()));
     };
 
     let resolved = resolve_load_path(host, &path);

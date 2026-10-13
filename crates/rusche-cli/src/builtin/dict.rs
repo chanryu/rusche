@@ -1,7 +1,7 @@
 use rusche::{
-    cons, eval, eval_into_foreign, get_exact_1_arg, get_exact_2_args, intern,
-    utils::{get_2_or_3_args, get_exact_3_args},
-    ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, Expr, List, NIL,
+    cons, eval, eval_into_list, get_2_or_3_args, get_exact_1_arg, get_exact_2_args,
+    get_exact_3_args, intern, ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, Expr, List,
+    NIL,
 };
 
 use std::{cell::RefCell, cmp::Ordering, collections::BTreeMap, rc::Rc};
@@ -60,29 +60,33 @@ enum Key {
 
 impl Key {
     fn from_expr(proc_name: &str, expr: &Expr) -> Result<Self, EvalError> {
-        match expr {
-            Expr::Bool(b, _) => Ok(Key::Bool(*b)),
-            Expr::Num(n, _) => {
-                if n.is_nan() {
-                    return Err(EvalError::new(
-                        ErrorKind::Type,
-                        format!("{proc_name}: `NaN` cannot be used as a dict key"),
-                    )
-                    .with_span(expr.span()));
-                }
-                let n = if *n == 0.0 { 0.0 } else { *n };
-                Ok(Key::Num(NumKey(n)))
-            }
-            Expr::Str(s, _) => Ok(Key::Str(s.clone())),
-            Expr::Sym(s, _) => Ok(Key::Sym(s.to_string())),
-            _ => Err(EvalError::new(
-                ErrorKind::Type,
-                format!(
-                    "{proc_name}: `{expr}` is not a valid dict key (expected bool, number, string, or symbol)"
-                ),
-            )
-            .with_span(expr.span())),
+        if let Some(b) = expr.as_bool() {
+            return Ok(Key::Bool(b));
         }
+        if let Some(n) = expr.as_num() {
+            if n.is_nan() {
+                return Err(EvalError::new(
+                    ErrorKind::Type,
+                    format!("{proc_name}: `NaN` cannot be used as a dict key"),
+                )
+                .with_span(expr.span()));
+            }
+            let n = if n == 0.0 { 0.0 } else { n };
+            return Ok(Key::Num(NumKey(n)));
+        }
+        if let Some(s) = expr.as_str() {
+            return Ok(Key::Str(s.to_string()));
+        }
+        if let Some(s) = expr.as_sym() {
+            return Ok(Key::Sym(s.as_str().to_string()));
+        }
+        Err(EvalError::new(
+            ErrorKind::Type,
+            format!(
+                "{proc_name}: `{expr}` is not a valid dict key (expected bool, number, string, or symbol)"
+            ),
+        )
+        .with_span(expr.span()))
     }
 
     fn into_expr(self) -> Expr {
@@ -102,15 +106,14 @@ fn eval_into_dict(
     expr: &Expr,
     context: &EvalContext,
 ) -> Result<Rc<DictCell>, EvalError> {
-    eval_into_foreign(proc_name, expr, context)?
-        .downcast::<DictCell>()
-        .map_err(|_| {
-            EvalError::new(
-                ErrorKind::Type,
-                format!("{proc_name}: `{expr}` does not evaluate to a dict"),
-            )
-            .with_span(expr.span())
-        })
+    let value = eval(expr, context)?;
+    value.as_foreign::<DictCell>().ok_or_else(|| {
+        EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: `{expr}` does not evaluate to a dict"),
+        )
+        .with_span(expr.span())
+    })
 }
 
 fn is_dict(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -137,7 +140,7 @@ fn dict(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
         let value = eval(value_expr, context)?;
         map.insert(key, value);
     }
-    Ok(Expr::Foreign(Rc::new(RefCell::new(map))))
+    Ok(Expr::foreign(RefCell::new(map)))
 }
 
 fn dict_get(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -183,47 +186,40 @@ fn dict_remove(proc_name: &str, args: &List, context: &EvalContext) -> EvalResul
 fn dict_length(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let dict_expr = get_exact_1_arg(proc_name, args)?;
     let dict = eval_into_dict(proc_name, dict_expr, context)?;
-    let len = dict.borrow().len() as f64;
-    Ok(len.into())
+    let len = dict.borrow().len();
+    Ok(Expr::from(len))
 }
 
 fn dict_keys(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let dict_expr = get_exact_1_arg(proc_name, args)?;
     let dict = eval_into_dict(proc_name, dict_expr, context)?;
-    let mut list = List::Nil;
-    for key in dict.borrow().keys().cloned().rev() {
-        list = cons(key.into_expr(), list);
-    }
-    Ok(list.into())
+    let keys = dict.borrow().keys().cloned().map(Key::into_expr).collect();
+    Ok(keys)
 }
 
 fn dict_to_list(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let dict_expr = get_exact_1_arg(proc_name, args)?;
     let dict = eval_into_dict(proc_name, dict_expr, context)?;
-    let mut list = List::Nil;
-    for (key, value) in dict.borrow().iter().rev() {
-        let pair = cons(key.clone().into_expr(), cons(value.clone(), List::Nil));
-        list = cons(pair, list);
-    }
-    Ok(list.into())
+    let list = dict
+        .borrow()
+        .iter()
+        .map(|(key, value)| {
+            Expr::from(cons(
+                key.clone().into_expr(),
+                cons(value.clone(), List::Nil),
+            ))
+        })
+        .collect();
+    Ok(list)
 }
 
 fn list_to_dict(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let list_expr = get_exact_1_arg(proc_name, args)?;
-    let list = match eval(list_expr, context)? {
-        Expr::List(list, _) => list,
-        other => {
-            return Err(EvalError::new(
-                ErrorKind::Type,
-                format!("{proc_name}: `{other}` does not evaluate to a list"),
-            )
-            .with_span(list_expr.span()));
-        }
-    };
+    let list = eval_into_list(proc_name, list_expr, context)?;
 
     let mut map = BTreeMap::new();
     for entry in list.iter() {
-        let Expr::List(pair, _) = entry else {
+        let Some(pair) = entry.as_list() else {
             return Err(EvalError::new(
                 ErrorKind::Type,
                 format!("{proc_name}: `{entry}` is not a two-element list"),
@@ -255,7 +251,7 @@ fn list_to_dict(proc_name: &str, args: &List, context: &EvalContext) -> EvalResu
         let key = Key::from_expr(proc_name, key_expr)?;
         map.insert(key, value_expr.clone());
     }
-    Ok(Expr::Foreign(Rc::new(RefCell::new(map))))
+    Ok(Expr::foreign(RefCell::new(map)))
 }
 
 #[cfg(test)]

@@ -12,9 +12,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use rusche::{
-    arity_error,
-    utils::{eval_into_num, get_exact_1_arg},
-    EvalContext, EvalResult, Evaluator, Expr, List,
+    arity_error, eval_into_num, get_exact_1_arg, EvalContext, EvalResult, Evaluator, Expr, List,
 };
 
 struct Bank {

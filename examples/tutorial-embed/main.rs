@@ -1,7 +1,7 @@
 //! Companion example for docs/tutorials/embedding.md
 
 use rusche::{
-    eval, eval_into_proc, utils::get_exact_3_args, EvalContext, EvalResult, Evaluator, Expr, List,
+    eval, eval_into_proc, get_exact_3_args, EvalContext, EvalResult, Evaluator, Expr, List,
 };
 
 fn apply2(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -58,13 +58,23 @@ fn main() {
 }
 
 fn describe(expr: &Expr) -> String {
-    match expr {
-        Expr::Bool(b, _) => format!("boolean {b}"),
-        Expr::Num(n, _) => format!("number {n}"),
-        Expr::Str(s, _) => format!("string {s:?}"),
-        Expr::Sym(name, _) => format!("symbol {name}"),
-        Expr::List(list, _) => format!("list {list}"),
-        Expr::Proc(proc, _) => format!("procedure <{}>", proc.fingerprint()),
-        Expr::Foreign(object) => format!("foreign {:p}", object),
+    if let Some(n) = expr.as_num() {
+        return format!("number {n}");
     }
+    if let Some(b) = expr.as_bool() {
+        return format!("boolean {b}");
+    }
+    if let Some(s) = expr.as_str() {
+        return format!("string {s:?}");
+    }
+    if let Some(name) = expr.as_sym() {
+        return format!("symbol {name}");
+    }
+    if let Some(list) = expr.as_list() {
+        return format!("list {list}");
+    }
+    if let Some(proc) = expr.as_proc() {
+        return format!("procedure <{}>", proc.fingerprint());
+    }
+    format!("foreign {expr}")
 }

@@ -343,6 +343,56 @@ pub fn eval_into_num(
     }
 }
 
+/// Evaluate an expression into a non-negative integer (`usize`).
+///
+/// Rejects fractional numbers, negatives, and values that do not fit in `usize`.
+/// Index code can use the result directly, without a separate range check.
+///
+/// # Example
+///
+/// ```
+/// use rusche::{eval_into_usize, Evaluator, Expr};
+///
+/// let evaluator = Evaluator::new();
+/// let expr = Expr::from(3);
+/// assert_eq!(
+///     eval_into_usize("test", "index", &expr, evaluator.context()).unwrap(),
+///     3
+/// );
+/// ```
+pub fn eval_into_usize(
+    proc_name: &str,
+    arg_name: &str,
+    expr: &Expr,
+    context: &EvalContext,
+) -> Result<usize, EvalError> {
+    let num = eval_into_num(proc_name, expr, context)?;
+
+    if num.fract() != 0.0 || !num.is_finite() {
+        return Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: {arg_name} must be an integer, but got {num}"),
+        )
+        .with_span(expr.span()));
+    }
+    if num < 0.0 {
+        return Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: {arg_name} must be a zero or positive integer, but got {num}"),
+        )
+        .with_span(expr.span()));
+    }
+    let index = num as usize;
+    if index as f64 != num {
+        return Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: {arg_name} is out of range, but got {num}"),
+        )
+        .with_span(expr.span()));
+    }
+    Ok(index)
+}
+
 /// Evaluate an expression into an integer (`i32`).
 ///
 /// Check if `expr` evaluates to `f64`` with `fract() == 0``. If so, return the number
@@ -394,6 +444,37 @@ pub fn eval_into_int(
             format!("{proc_name}: {arg_name} must be an integer, but got {num}"),
         )
         .with_span(expr.span()))
+    }
+}
+
+/// Evaluate an expression into a list.
+///
+/// # Example
+///
+/// ```
+/// use rusche::{eval_into_list, intern, Evaluator, Expr};
+///
+/// let evaluator = Evaluator::with_builtin();
+/// // The argument form `(quote (1 2))`, as a native would receive it.
+/// let expr = Expr::from(vec![
+///     intern("quote"),
+///     Expr::from(vec![Expr::from(1), Expr::from(2)]),
+/// ]);
+/// let list = eval_into_list("test", &expr, evaluator.context()).unwrap();
+/// assert_eq!(list.len(), 2);
+/// ```
+pub fn eval_into_list(
+    proc_name: &str,
+    expr: &Expr,
+    context: &EvalContext,
+) -> Result<List, EvalError> {
+    match eval(expr, context)? {
+        Expr::List(list, _) => Ok(list),
+        value => Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a list"),
+        )
+        .with_span(expr.span())),
     }
 }
 
@@ -563,6 +644,33 @@ mod tests {
 
         let result = eval_into_int("test", "index", &Expr::from("1"), context);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_eval_into_usize() {
+        let evaluator = Evaluator::new();
+        let context = evaluator.context();
+        assert_eq!(
+            eval_into_usize("test", "index", &Expr::from(4), context).unwrap(),
+            4
+        );
+        let err = eval_into_usize("test", "index", &Expr::from(-1), context).unwrap_err();
+        assert!(err.message().contains("zero or positive"), "{err}");
+        assert!(eval_into_usize("test", "index", &Expr::from(1.5), context).is_err());
+        let err = eval_into_usize("test", "index", &Expr::from(1e20), context).unwrap_err();
+        assert!(err.message().contains("out of range"), "{err}");
+    }
+
+    #[test]
+    fn test_eval_into_list() {
+        let evaluator = Evaluator::with_builtin();
+        let context = evaluator.context();
+        let expr = Expr::from(vec![
+            intern("quote"),
+            Expr::from(vec![Expr::from(1), Expr::from(2)]),
+        ]);
+        assert_eq!(eval_into_list("test", &expr, context).unwrap().len(), 2);
+        assert!(eval_into_list("test", &Expr::from(1), context).is_err());
     }
 
     #[test]

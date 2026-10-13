@@ -52,6 +52,7 @@ pub use span::{Loc, Span};
 pub use symbol::Symbol;
 pub use token::Token;
 pub use utils::{
-    arity_error, eval_into_foreign, eval_into_int, eval_into_proc, get_exact_1_arg,
-    get_exact_2_args,
+    arity_error, eval_into_foreign, eval_into_int, eval_into_list, eval_into_num, eval_into_proc,
+    eval_into_str, eval_into_usize, get_2_or_3_args, get_exact_1_arg, get_exact_2_args,
+    get_exact_3_args,
 };

@@ -83,8 +83,7 @@ so hosts and tests can match without parsing message text.
 
 ```rust
 use rusche::{
-    utils::{eval_into_num, get_exact_3_args},
-    EvalContext, EvalResult, Evaluator, Expr, List,
+    eval_into_num, get_exact_3_args, EvalContext, EvalResult, Evaluator, Expr, List,
 };
 
 fn clamp(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {

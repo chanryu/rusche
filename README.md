@@ -43,13 +43,10 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
 ### Implementing or embedding Rusche interpreter
 
 ```rust
-use rusche::{
-    utils::{eval_into_num, get_exact_2_args},
-    EvalContext, EvalResult, Evaluator, Expr, List,
-};
+use rusche::{eval_into_num, get_exact_2_args, EvalContext, EvalResult, Evaluator, Expr, List};
 
 // A native function: Rust code that scripts can call. Arguments arrive
-// unevaluated; the helpers in `rusche::utils` evaluate and type-check them.
+// unevaluated; the helpers evaluate and type-check them.
 fn hypot(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (a, b) = get_exact_2_args(proc_name, args)?;
     let a = eval_into_num(proc_name, a, context)?;

@@ -65,6 +65,73 @@ impl Expr {
         }
     }
 
+    /// Returns the number, ignoring its span.
+    pub fn as_num(&self) -> Option<f64> {
+        match self {
+            Expr::Num(value, _) => Some(*value),
+            _ => None,
+        }
+    }
+
+    /// Returns the boolean, ignoring its span.
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Expr::Bool(value, _) => Some(*value),
+            _ => None,
+        }
+    }
+
+    /// Returns the string, ignoring its span.
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            Expr::Str(text, _) => Some(text),
+            _ => None,
+        }
+    }
+
+    /// Returns the symbol, ignoring its span.
+    pub fn as_sym(&self) -> Option<&Symbol> {
+        match self {
+            Expr::Sym(name, _) => Some(name),
+            _ => None,
+        }
+    }
+
+    /// Returns the list, ignoring its span.
+    pub fn as_list(&self) -> Option<&List> {
+        match self {
+            Expr::List(list, _) => Some(list),
+            _ => None,
+        }
+    }
+
+    /// Returns the procedure, ignoring its span.
+    pub fn as_proc(&self) -> Option<&Proc> {
+        match self {
+            Expr::Proc(proc, _) => Some(proc),
+            _ => None,
+        }
+    }
+
+    /// Downcasts a foreign object to `T`.
+    ///
+    /// `T` is the concrete type stored inside the `Rc`, the same type passed to
+    /// [`Expr::foreign`].
+    pub fn as_foreign<T: Any>(&self) -> Option<Rc<T>> {
+        match self {
+            Expr::Foreign(object) => Rc::clone(object).downcast().ok(),
+            _ => None,
+        }
+    }
+
+    /// Wraps `value` as [`Expr::Foreign`].
+    ///
+    /// Pass the value itself, not an `Rc`. [`Expr::as_foreign`] downcasts to that
+    /// same type.
+    pub fn foreign(value: impl Any) -> Self {
+        Expr::Foreign(Rc::new(value))
+    }
+
     /// Returns a copy of the expression with every span removed, recursively.
     pub(crate) fn without_spans(&self) -> Expr {
         match self {
@@ -171,6 +238,21 @@ impl From<f64> for Expr {
 impl From<bool> for Expr {
     fn from(value: bool) -> Self {
         Expr::Bool(value, None)
+    }
+}
+
+/// Converts a length or index into a Rusche number.
+///
+/// Values above `2^53` are not all exactly representable as `f64`.
+impl From<usize> for Expr {
+    fn from(value: usize) -> Self {
+        Expr::Num(value as f64, None)
+    }
+}
+
+impl FromIterator<Expr> for Expr {
+    fn from_iter<T: IntoIterator<Item = Expr>>(iter: T) -> Self {
+        List::from_iter(iter).into()
     }
 }
 
@@ -334,6 +416,41 @@ mod tests {
     fn test_expr_from_bool() {
         assert_eq!(Expr::from(true), Expr::Bool(true, None));
         assert_eq!(Expr::from(false), Expr::Bool(false, None));
+    }
+
+    #[test]
+    fn test_accessors_ignore_spans() {
+        use crate::span::{Loc, Span};
+
+        let span = Some(Span::new(Loc::new(1, 1), Loc::new(1, 2)));
+        assert_eq!(Expr::Num(1.5, span).as_num(), Some(1.5));
+        assert_eq!(Expr::Bool(true, span).as_bool(), Some(true));
+        assert_eq!(Expr::Str("hi".into(), span).as_str(), Some("hi"));
+        assert_eq!(
+            Expr::Sym(Symbol::intern("x"), span)
+                .as_sym()
+                .unwrap()
+                .as_str(),
+            "x"
+        );
+        assert!(Expr::from(1).as_str().is_none());
+
+        let list = list!(1, 2);
+        assert_eq!(Expr::List(list.clone(), span).as_list(), Some(&list));
+
+        let foreign = Expr::foreign(7_i32);
+        assert_eq!(*foreign.as_foreign::<i32>().unwrap(), 7);
+        assert!(foreign.as_foreign::<String>().is_none());
+        assert!(Expr::from(1).as_foreign::<i32>().is_none());
+    }
+
+    #[test]
+    fn test_from_usize_and_collect() {
+        assert_eq!(Expr::from(3_usize), Expr::from(3));
+        let list: List = [Expr::from(1), Expr::from(2)].into_iter().collect();
+        assert_eq!(list.len(), 2);
+        let expr: Expr = [Expr::from(1), Expr::from(2)].into_iter().collect();
+        assert_eq!(expr, Expr::from(vec![Expr::from(1), Expr::from(2)]));
     }
 
     #[test]

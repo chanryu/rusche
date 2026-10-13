@@ -105,6 +105,12 @@ impl From<Vec<Expr>> for List {
     }
 }
 
+impl FromIterator<Expr> for List {
+    fn from_iter<T: IntoIterator<Item = Expr>>(iter: T) -> Self {
+        iter.into_iter().collect::<Vec<_>>().into()
+    }
+}
+
 impl fmt::Display for List {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write_list(f, self, true)

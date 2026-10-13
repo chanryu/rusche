@@ -22,17 +22,15 @@ pub fn load_sys_procs(context: &EvalContext, host: &Rc<Host>) {
 
 fn getenv(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let arg = get_exact_1_arg(proc_name, args)?;
-    let name = match eval(arg, context)? {
-        Expr::Str(name, _) => name,
-        other => {
-            return Err(EvalError::new(
-                ErrorKind::Type,
-                format!("{proc_name}: expected a string, got `{other}`"),
-            )
-            .with_span(arg.span()));
-        }
+    let value = eval(arg, context)?;
+    let Some(name) = value.as_str() else {
+        return Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: expected a string, got `{value}`"),
+        )
+        .with_span(arg.span()));
     };
-    match std::env::var(&name) {
+    match std::env::var(name) {
         Ok(value) => Ok(value.into()),
         Err(_) => Ok(false.into()),
     }

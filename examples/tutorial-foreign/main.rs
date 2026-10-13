@@ -3,8 +3,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use rusche::{
-    eval_into_foreign, get_exact_1_arg, get_exact_2_args, tokenize,
-    utils::{eval_into_num, get_exact_3_args},
+    eval, eval_into_num, get_exact_1_arg, get_exact_2_args, get_exact_3_args, tokenize, ErrorKind,
     EvalContext, EvalError, EvalResult, Evaluator, Expr, List, Parser, NIL,
 };
 
@@ -20,22 +19,21 @@ fn eval_into_point(
     expr: &Expr,
     context: &EvalContext,
 ) -> Result<Rc<PointCell>, EvalError> {
-    eval_into_foreign(proc_name, expr, context)?
-        .downcast::<PointCell>()
-        .map_err(|_| {
-            EvalError::new(
-                rusche::ErrorKind::Type,
-                format!("{proc_name}: `{expr}` does not evaluate to a point"),
-            )
-            .with_span(expr.span())
-        })
+    let value = eval(expr, context)?;
+    value.as_foreign::<PointCell>().ok_or_else(|| {
+        EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: `{expr}` does not evaluate to a point"),
+        )
+        .with_span(expr.span())
+    })
 }
 
 fn point(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (x_expr, y_expr) = get_exact_2_args(proc_name, args)?;
     let x = eval_into_num(proc_name, x_expr, context)?;
     let y = eval_into_num(proc_name, y_expr, context)?;
-    Ok(Expr::Foreign(Rc::new(RefCell::new(Point { x, y }))))
+    Ok(Expr::foreign(RefCell::new(Point { x, y })))
 }
 
 fn point_x(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
