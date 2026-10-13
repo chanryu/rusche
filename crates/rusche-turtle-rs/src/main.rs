@@ -1,16 +1,8 @@
-//! Desktop turtle-graphics host for Rusche.
-
-mod app;
-mod builtin;
-mod examples;
-mod highlight;
-mod repl;
-mod runner;
-mod turtle;
+//! Desktop turtle-graphics host for Rusche (Rust UI).
 
 use std::process::ExitCode;
 
-use app::TurtleApp;
+use rusche_turtle_rs::app::TurtleApp;
 
 fn main() -> ExitCode {
     let mut args = std::env::args().skip(1);

@@ -48,8 +48,10 @@
 //! `(text-edit buf ['code] ['read-only] ['submit-on-enter] ['focus] ['rows n] [layouter])`
 //! returns true when the editor has focus. `'submit-on-enter` inserts a newline on
 //! Shift+Enter and leaves Enter for `(key-pressed? 'enter)`. The layouter is
-//! `(lambda (text) spans)` with each span `(start end r g b)` in byte offsets.
-//! It may run more than once per frame and should not build widgets.
+//! `(lambda (text) spans)` with each span `(start end r g b)` or
+//! `(start end r g b br bg bb)` in byte offsets. The optional trailing triple is a
+//! background color. It may run more than once per frame and should not build widgets.
+//! `(dark-mode?)` reports the active theme (usable from a layouter).
 //!
 //! `(canvas height (lambda (painter x y w h) ...))`,
 //! `(fill-rect painter x y w h color)`,
@@ -61,7 +63,7 @@
 //! Pass `false` for a polygon or circle fill or stroke to skip that part.
 //! A width of `0` draws no stroke.
 //!
-//! `(run-app title width height ui-proc)`, `request-repaint`,
+//! `(run-app title width height ui-proc)`, `request-repaint`, `dark-mode?`,
 //! `(key-pressed? 'enter|'up|'down)`, `shift-down?`.
 
 mod app;
@@ -166,6 +168,18 @@ impl Egui {
     pub fn repaint_requested(&self) -> bool {
         self.host.repaint_requested()
     }
+
+    /// The egui context for the active frame, if a widget or frame procedure is running.
+    ///
+    /// Hosts that need a [`egui::Context`] (for example to spawn a worker that calls
+    /// `request_repaint`) use this from inside the frame procedure.
+    pub fn frame_context(&self) -> Option<egui::Context> {
+        if self.host.in_frame() {
+            Some(self.host.egui_ctx())
+        } else {
+            None
+        }
+    }
 }
 
 impl Default for Egui {
@@ -219,6 +233,7 @@ fn install(evaluator: &Evaluator, host: &Rc<Host>) {
 
     bind(env, host, "run-app", app::run_app);
     bind(env, host, "request-repaint", request_repaint);
+    bind(env, host, "dark-mode?", widgets::dark_mode);
     bind(env, host, "key-pressed?", widgets::key_pressed);
     bind(env, host, "shift-down?", widgets::shift_down);
 }
@@ -353,7 +368,7 @@ mod tests {
               (text-edit buf 'code 'rows 4 'submit-on-enter 'focus
                 (lambda (text)
                   (set! seen text)
-                  '((0 2 9 8 7)))))
+                  '((0 2 9 8 7 255 232 140)))))
             "#,
         )
         .unwrap();
@@ -364,7 +379,11 @@ mod tests {
             Expr::from("ab")
         );
 
-        let err = frame(
+        let dark = frame(&egui, &evaluator, "(lambda () (dark-mode?))").unwrap();
+        assert!(dark.as_bool().is_some());
+
+        // Invalid spans fall back to plain text instead of aborting the frame.
+        frame(
             &egui,
             &evaluator,
             r#"
@@ -372,8 +391,7 @@ mod tests {
               (text-edit buf (lambda (text) '((0 99 1 2 3)))))
             "#,
         )
-        .unwrap_err();
-        assert!(err.message().contains("span offset"));
+        .unwrap();
     }
 
     #[test]

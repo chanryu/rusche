@@ -7,6 +7,10 @@ authors = ["Chan Ryu"]
 description = "A turtle-graphics GUI host for the Rusche Scheme-like language"
 publish = false
 
+[lib]
+name = "rusche_turtle_rs"
+path = "src/lib.rs"
+
 [[bin]]
 name = "rusche-turtle-rs"
 path = "src/main.rs"
