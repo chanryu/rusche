@@ -107,10 +107,7 @@ fn load(host: &Rc<Host>, proc_name: &str, args: &List, context: &EvalContext) ->
     // file after the directory guard is dropped.
     host.remember_source(&display, &text);
     let _source = host.enter_source_file(&resolved);
-    eval_source_named(&text, context, false, Some(&display)).map_err(|error| match error {
-        Error::Eval(err) => err,
-        other => EvalError::new(ErrorKind::Other, other.message()).with_span(other.span()),
-    })
+    eval_source_named(&text, context, false, Some(&display)).map_err(Error::into_eval)
 }
 
 /// Absolute paths are used as given. A relative path is joined onto the directory of the

@@ -30,20 +30,15 @@ pub fn print_error(host: &Host, diag: &Diagnostic<'_>) {
 
     // A span from another file (a `load`ed buffer) is drawn against that file's
     // text. The name on the span wins over the buffer the caller passed in.
-    let source_name = span.source().unwrap_or(diag.source_name);
-    let owned = if span.source().is_some_and(|name| name != diag.source_name) {
-        Some(host.source_text(source_name).unwrap_or_default())
-    } else {
+    let (source_name, same_buffer) = span.source_in(diag.source_name);
+    let owned = if same_buffer {
         None
+    } else {
+        Some(host.source_text(source_name).unwrap_or_default())
     };
     let src = owned.as_deref().unwrap_or(diag.src);
     let lines: Vec<&str> = src.lines().collect();
-
-    let loc = format!(
-        "{source_name}:{}:{}",
-        span.begin.line + 1,
-        span.begin.column + 1
-    );
+    let loc = span.location(diag.source_name);
     if span.end.line >= lines.len() {
         if owned.is_some() {
             eprintln!("  {} {}", "-->".blue().bold(), loc);
@@ -202,17 +197,7 @@ fn print_help_and_trace(diag: &Diagnostic<'_>) {
     }
 
     for frame in diag.trace {
-        let line = if let Some(span) = frame.call_site {
-            let name = span.source().unwrap_or(diag.source_name);
-            format!(
-                "in `{}`, called at {name}:{}:{}",
-                frame.name,
-                span.begin.line + 1,
-                span.begin.column + 1
-            )
-        } else {
-            format!("in `{}` (prelude)", frame.name)
-        };
+        let line = frame.trace_label(diag.source_name);
         eprintln!("  {} {}", "=".blue().bold(), line.dimmed());
     }
 }

@@ -1,7 +1,7 @@
 use std::error::Error as StdError;
 use std::fmt;
 
-use crate::eval::{EvalError, Frame};
+use crate::eval::{ErrorKind, EvalError, Frame};
 use crate::lexer::LexError;
 use crate::parser::ParseError;
 use crate::span::Span;
@@ -46,6 +46,17 @@ impl Error {
         match self {
             Error::Eval(e) => e.trace(),
             _ => &[],
+        }
+    }
+
+    /// Turns a pipeline error into an [`EvalError`], keeping its span.
+    ///
+    /// Lex and parse failures become [`ErrorKind::Other`]. A native such as `load`
+    /// uses this so the caller's diagnostic still names the file that failed.
+    pub fn into_eval(self) -> EvalError {
+        match self {
+            Error::Eval(err) => err,
+            other => EvalError::new(ErrorKind::Other, other.message()).with_span(other.span()),
         }
     }
 }

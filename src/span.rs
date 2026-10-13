@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fmt;
 use std::num::NonZeroUsize;
 use std::sync::Mutex;
@@ -30,32 +29,29 @@ impl Loc {
 }
 
 pub(crate) fn intern_source(name: &str) -> &'static str {
-    let mut guard = sources()
+    let mut sources = sources()
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let sources = guard.get_or_insert_with(HashMap::new);
-    if let Some((stored, _)) = sources.get_key_value(name) {
+    if let Some(stored) = sources.iter().find(|stored| **stored == name) {
         return stored;
     }
     let stored: &'static str = Box::leak(Box::<str>::from(name));
-    sources.insert(stored, ());
+    sources.push(stored);
     stored
 }
 
 fn lookup_source(addr: NonZeroUsize) -> Option<&'static str> {
-    let guard = sources()
+    let sources = sources()
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    guard.as_ref().and_then(|sources| {
-        sources
-            .keys()
-            .find(|name| name.as_ptr() as usize == addr.get())
-            .copied()
-    })
+    sources
+        .iter()
+        .find(|name| name.as_ptr() as usize == addr.get())
+        .copied()
 }
 
-fn sources() -> &'static Mutex<Option<HashMap<&'static str, ()>>> {
-    static SOURCES: Mutex<Option<HashMap<&'static str, ()>>> = Mutex::new(None);
+fn sources() -> &'static Mutex<Vec<&'static str>> {
+    static SOURCES: Mutex<Vec<&'static str>> = Mutex::new(Vec::new());
     &SOURCES
 }
 
@@ -89,6 +85,30 @@ impl Span {
             begin: start.begin,
             end: end.end,
             source: start.source,
+        }
+    }
+
+    /// Copies the source name from `other`.
+    pub fn with_source_from(mut self, other: Span) -> Self {
+        self.source = other.source;
+        self
+    }
+
+    /// 1-based `name:line:column` of where this span starts.
+    ///
+    /// An unnamed span uses `fallback` as the name.
+    pub fn location(&self, fallback: &str) -> String {
+        let (name, _) = self.source_in(fallback);
+        format!("{name}:{}:{}", self.begin.line + 1, self.begin.column + 1)
+    }
+
+    /// The name to print, and whether `buffer` holds the text this span indexes.
+    ///
+    /// Unnamed spans use `buffer` and report that the text matches.
+    pub fn source_in<'a>(&'a self, buffer: &'a str) -> (&'a str, bool) {
+        match self.source() {
+            Some(name) => (name, name == buffer),
+            None => (buffer, true),
         }
     }
 

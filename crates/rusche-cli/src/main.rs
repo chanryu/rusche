@@ -185,10 +185,7 @@ fn run_source(
                         begin_loc,
                         Loc::new(end_line, end_col.max(begin_loc.column + 1)),
                     );
-                    Some(match error.span().source() {
-                        Some(name) => widened.with_source(name),
-                        None => widened,
-                    })
+                    Some(widened.with_source_from(error.span()))
                 } else {
                     Some(error.span())
                 };

@@ -1,8 +1,8 @@
 use crate::{
-    eval::{eval, ErrorKind, EvalContext, EvalError, EvalResult},
+    eval::{eval, EvalContext, EvalResult},
     expr::Expr,
     list::List,
-    utils::{eval_into_num, eval_into_str, get_exact_1_arg},
+    utils::{eval_into_num, eval_into_str, get_exact_1_arg, type_error},
 };
 
 pub fn num_to_str(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -23,11 +23,7 @@ pub fn sym_to_str(proc_name: &str, args: &List, context: &EvalContext) -> EvalRe
     let expr = get_exact_1_arg(proc_name, args)?;
     match eval(expr, context)? {
         Expr::Sym(name, _) => Ok(Expr::Str(name.to_string(), None)),
-        value => Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a symbol"),
-        )
-        .with_span(expr.span())),
+        value => Err(type_error(proc_name, expr, &value, "a symbol")),
     }
 }
 

@@ -3,8 +3,8 @@ use crate::{
     expr::Expr,
     list::List,
     utils::{
-        eval_into_int, eval_into_str, get_2_or_3_args, get_exact_1_arg, get_exact_2_args,
-        get_exact_3_args,
+        eval_into_int, eval_into_list, eval_into_str, get_2_or_3_args, get_exact_1_arg,
+        get_exact_2_args, get_exact_3_args, type_error,
     },
 };
 
@@ -22,13 +22,7 @@ pub fn append(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     for expr in args {
         match eval(expr, context)? {
             Expr::Str(text, _) => result += &text,
-            value => {
-                return Err(EvalError::new(
-                    ErrorKind::Type,
-                    format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a string"),
-                )
-                .with_span(expr.span()));
-            }
+            value => return Err(type_error(proc_name, expr, &value, "a string")),
         }
     }
     Ok(Expr::Str(result, None))
@@ -47,11 +41,7 @@ pub fn length(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     let expr = get_exact_1_arg(proc_name, args)?;
     match eval(expr, context)? {
         Expr::Str(text, _) => Ok(Expr::from(text.chars().count() as i32)),
-        value => Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a string"),
-        )
-        .with_span(expr.span())),
+        value => Err(type_error(proc_name, expr, &value, "a string")),
     }
 }
 
@@ -166,13 +156,7 @@ pub fn join(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (lst_expr, sep_expr) = get_exact_2_args(proc_name, args)?;
     let sep = eval_into_str(proc_name, sep_expr, context)?;
 
-    let Expr::List(list, _) = eval(lst_expr, context)? else {
-        return Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: `{lst_expr}` evaluated to a non-list"),
-        )
-        .with_span(lst_expr.span()));
-    };
+    let list = eval_into_list(proc_name, lst_expr, context)?;
 
     let mut result = String::new();
     for (i, item) in list.iter().enumerate() {

@@ -264,6 +264,14 @@ pub fn make_formal_args(expr: &Expr) -> Result<Rc<FormalArgs>, EvalError> {
     Ok(Rc::new(formal_args))
 }
 
+pub(crate) fn type_error(proc_name: &str, expr: &Expr, value: &Expr, expected: &str) -> EvalError {
+    EvalError::new(
+        ErrorKind::Type,
+        format!("{proc_name}: `{expr}` evaluated to `{value}`, expected {expected}"),
+    )
+    .with_span(expr.span())
+}
+
 /// Evaluate an expression into a string.
 ///
 /// Check if `expr` evaluates to a string. If so, return the string. Otherwise, return an error message.
@@ -295,11 +303,7 @@ pub fn eval_into_str(
 ) -> Result<String, EvalError> {
     match eval(expr, context)? {
         Expr::Str(text, _) => Ok(text),
-        value => Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a string"),
-        )
-        .with_span(expr.span())),
+        value => Err(type_error(proc_name, expr, &value, "a string")),
     }
 }
 
@@ -332,14 +336,10 @@ pub fn eval_into_num(
     expr: &Expr,
     context: &EvalContext,
 ) -> Result<f64, EvalError> {
-    match eval(expr, context)? {
-        Expr::Num(value, _) => Ok(value),
-        value => Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a number"),
-        )
-        .with_span(expr.span())),
-    }
+    let value = eval(expr, context)?;
+    value
+        .as_num()
+        .ok_or_else(|| type_error(proc_name, expr, &value, "a number"))
 }
 
 /// Evaluate an expression into a non-negative integer (`usize`).
@@ -366,28 +366,23 @@ pub fn eval_into_usize(
     context: &EvalContext,
 ) -> Result<usize, EvalError> {
     let num = eval_into_num(proc_name, expr, context)?;
+    let bad = |detail: String| EvalError::new(ErrorKind::Type, detail).with_span(expr.span());
 
     if num.fract() != 0.0 || !num.is_finite() {
-        return Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: {arg_name} must be an integer, but got {num}"),
-        )
-        .with_span(expr.span()));
+        return Err(bad(format!(
+            "{proc_name}: {arg_name} must be an integer, but got {num}"
+        )));
     }
     if num < 0.0 {
-        return Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: {arg_name} must be a zero or positive integer, but got {num}"),
-        )
-        .with_span(expr.span()));
+        return Err(bad(format!(
+            "{proc_name}: {arg_name} must be a zero or positive integer, but got {num}"
+        )));
     }
     let index = num as usize;
     if index as f64 != num {
-        return Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: {arg_name} is out of range, but got {num}"),
-        )
-        .with_span(expr.span()));
+        return Err(bad(format!(
+            "{proc_name}: {arg_name} is out of range, but got {num}"
+        )));
     }
     Ok(index)
 }
@@ -469,11 +464,7 @@ pub fn eval_into_list(
 ) -> Result<List, EvalError> {
     match eval(expr, context)? {
         Expr::List(list, _) => Ok(list),
-        value => Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a list"),
-        )
-        .with_span(expr.span())),
+        value => Err(type_error(proc_name, expr, &value, "a list")),
     }
 }
 
@@ -500,13 +491,11 @@ pub fn eval_into_proc(
     expr: &Expr,
     context: &EvalContext,
 ) -> Result<Expr, EvalError> {
-    match eval(expr, context)? {
-        proc @ Expr::Proc(_, _) => Ok(proc),
-        value => Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a procedure"),
-        )
-        .with_span(expr.span())),
+    let value = eval(expr, context)?;
+    if value.as_proc().is_some() {
+        Ok(value)
+    } else {
+        Err(type_error(proc_name, expr, &value, "a procedure"))
     }
 }
 
@@ -543,11 +532,7 @@ pub fn eval_into_foreign(
 ) -> Result<Foreign, EvalError> {
     match eval(expr, context)? {
         Expr::Foreign(object) => Ok(object),
-        value => Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a foreign object"),
-        )
-        .with_span(expr.span())),
+        value => Err(type_error(proc_name, expr, &value, "a foreign object")),
     }
 }
 

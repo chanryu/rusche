@@ -5,7 +5,7 @@ use crate::{
     expr::{intern, Expr, NIL},
     list::{cons, List},
     proc::Proc,
-    utils::{get_exact_2_args, make_formal_args},
+    utils::{eval_into_list, get_exact_2_args, make_formal_args, type_error},
 };
 
 pub fn error(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -43,25 +43,9 @@ pub(crate) fn apply_form(
 
     let proc = match eval(proc_expr, context)? {
         Expr::Proc(proc, _) => proc,
-        value => {
-            return Err(EvalError::new(
-                ErrorKind::Type,
-                format!("{proc_name}: `{proc_expr}` evaluated to `{value}`, expected a procedure"),
-            )
-            .with_span(proc_expr.span()));
-        }
+        value => return Err(type_error(proc_name, proc_expr, &value, "a procedure")),
     };
-
-    let arg_list = match eval(args_expr, context)? {
-        Expr::List(arg_list, _) => arg_list,
-        value => {
-            return Err(EvalError::new(
-                ErrorKind::Type,
-                format!("{proc_name}: `{args_expr}` evaluated to `{value}`, expected a list"),
-            )
-            .with_span(args_expr.span()));
-        }
-    };
+    let arg_list = eval_into_list(proc_name, args_expr, context)?;
 
     // A procedure value in head position evaluates to itself, so this is a regular call.
     Ok(call_expr(proc, arg_list.iter().cloned().collect()))

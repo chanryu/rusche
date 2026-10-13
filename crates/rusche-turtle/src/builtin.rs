@@ -90,42 +90,39 @@ pub struct TurtleProcs(pub Rc<RefCell<Host>>);
 
 impl Extension for TurtleProcs {
     fn install(&self, evaluator: &Evaluator) {
-        load_turtle_procs(evaluator, &self.0);
+        let env = evaluator.root_env();
+        let host = &self.0;
+        define(env, host, "forward", forward);
+        define(env, host, "fd", forward);
+        define(env, host, "back", back);
+        define(env, host, "bk", back);
+        define(env, host, "left", left);
+        define(env, host, "lt", left);
+        define(env, host, "right", right);
+        define(env, host, "rt", right);
+        define(env, host, "goto", goto);
+        define(env, host, "setheading", setheading);
+        define(env, host, "seth", setheading);
+        define(env, host, "home", home);
+        define(env, host, "penup", penup);
+        define(env, host, "pu", penup);
+        define(env, host, "pendown", pendown);
+        define(env, host, "pd", pendown);
+        define(env, host, "pencolor", pencolor);
+        define(env, host, "pensize", pensize);
+        define(env, host, "clear", clear);
+        define(env, host, "hideturtle", hideturtle);
+        define(env, host, "showturtle", showturtle);
+        define(env, host, "position", position);
+        define(env, host, "heading", heading);
+        define(env, host, "pen?", is_pen);
+        define(env, host, "write", write);
+        define(env, host, "writeln", writeln);
+        define(env, host, "random", random);
+        evaluator
+            .eval_prelude(PRELUDE)
+            .expect("turtle prelude must evaluate");
     }
-}
-
-fn load_turtle_procs(evaluator: &Evaluator, host: &Rc<RefCell<Host>>) {
-    let env = evaluator.root_env();
-    define(env, host, "forward", forward);
-    define(env, host, "fd", forward);
-    define(env, host, "back", back);
-    define(env, host, "bk", back);
-    define(env, host, "left", left);
-    define(env, host, "lt", left);
-    define(env, host, "right", right);
-    define(env, host, "rt", right);
-    define(env, host, "goto", goto);
-    define(env, host, "setheading", setheading);
-    define(env, host, "seth", setheading);
-    define(env, host, "home", home);
-    define(env, host, "penup", penup);
-    define(env, host, "pu", penup);
-    define(env, host, "pendown", pendown);
-    define(env, host, "pd", pendown);
-    define(env, host, "pencolor", pencolor);
-    define(env, host, "pensize", pensize);
-    define(env, host, "clear", clear);
-    define(env, host, "hideturtle", hideturtle);
-    define(env, host, "showturtle", showturtle);
-    define(env, host, "position", position);
-    define(env, host, "heading", heading);
-    define(env, host, "pen?", is_pen);
-    define(env, host, "write", write);
-    define(env, host, "writeln", writeln);
-    define(env, host, "random", random);
-    evaluator
-        .eval_prelude(PRELUDE)
-        .expect("turtle prelude must evaluate");
 }
 
 fn forward(

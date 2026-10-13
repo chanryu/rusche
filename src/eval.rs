@@ -123,6 +123,24 @@ pub struct Frame {
     pub call_site: Option<Span>,
 }
 
+impl Frame {
+    /// `in `name`, called at file:line:col`, or `in `name` (prelude)` when there is no span.
+    ///
+    /// An unnamed call site uses `fallback_source`.
+    pub fn trace_label(&self, fallback_source: &str) -> String {
+        match self.call_site {
+            Some(span) => {
+                format!(
+                    "in `{}`, called at {}",
+                    self.name,
+                    span.location(fallback_source)
+                )
+            }
+            None => format!("in `{}` (prelude)", self.name),
+        }
+    }
+}
+
 /// Cached macro expansion keyed by the address of the call-site [`Cons`].
 #[derive(Debug)]
 pub(crate) struct MacroCacheEntry {
@@ -776,6 +794,14 @@ impl Evaluator {
         }
     }
 
+    /// Runs `f` as one top-level evaluation: reset the step counter, then collect garbage.
+    fn run<E>(&self, f: impl FnOnce() -> Result<Expr, E>) -> Result<Expr, E> {
+        self.begin_eval();
+        let result = f();
+        self.maybe_collect_garbage(result.as_ref().ok());
+        result
+    }
+
     /// Returns the garbage collection threshold, or `None` if automatic collection is disabled.
     pub fn gc_threshold(&self) -> Option<usize> {
         self.gc_threshold.get()
@@ -845,10 +871,7 @@ impl Evaluator {
     /// assert_eq!(evaluator.eval_str("(twice 4)").unwrap(), Expr::from(8));
     /// ```
     pub fn eval_prelude(&self, src: &str) -> Result<Expr, Error> {
-        self.begin_eval();
-        let result = eval_source(src, self.context(), true)?;
-        self.maybe_collect_garbage(Some(&result));
-        Ok(result)
+        self.run(|| eval_source(src, self.context(), true))
     }
 
     /// Returns the root environment of the evaluator.
@@ -880,10 +903,7 @@ impl Evaluator {
     /// );
     /// ```
     pub fn call(&self, proc: &Expr, args: &[Expr]) -> EvalResult {
-        self.begin_eval();
-        let result = self.context().call(proc, args);
-        self.maybe_collect_garbage(result.as_ref().ok());
-        result
+        self.run(|| self.context().call(proc, args))
     }
 
     /// Evaluates an expression in the current context.
@@ -893,10 +913,7 @@ impl Evaluator {
     /// registered environments has reached the [threshold](Evaluator::set_gc_threshold).
     /// The returned value is treated as a root during that collection.
     pub fn eval(&self, expr: &Expr) -> EvalResult {
-        self.begin_eval();
-        let result = eval(expr, self.context());
-        self.maybe_collect_garbage(result.as_ref().ok());
-        result
+        self.run(|| eval(expr, self.context()))
     }
 
     /// Tokenizes, parses, and evaluates every top-level expression in `src`.
@@ -930,10 +947,7 @@ impl Evaluator {
     }
 
     fn eval_str_in(&self, src: &str, source: Option<&str>) -> Result<Expr, Error> {
-        self.begin_eval();
-        let result = eval_source_named(src, self.context(), false, source)?;
-        self.maybe_collect_garbage(Some(&result));
-        Ok(result)
+        self.run(|| eval_source_named(src, self.context(), false, source))
     }
 
     /// Count the number of unreachable environments in the evaluator.

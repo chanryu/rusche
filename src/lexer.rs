@@ -63,7 +63,7 @@ where
     }
 
     /// Tags every span this lexer produces with `name`.
-    pub fn with_source(mut self, name: &str) -> Self {
+    fn with_source(mut self, name: &str) -> Self {
         self.source = Some(crate::span::intern_source(name));
         self
     }

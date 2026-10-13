@@ -1,7 +1,7 @@
 use crate::eval::{eval, ErrorKind, EvalContext, EvalError, EvalResult};
 use crate::expr::{intern, Expr, NIL};
 use crate::list::List;
-use crate::utils::get_exact_1_arg;
+use crate::utils::{get_exact_1_arg, type_error};
 
 pub const QUOTE: &str = "quote";
 pub const QUASIQUOTE: &str = "quasiquote";
@@ -86,13 +86,7 @@ fn quasiquote_expr(
                         exprs.extend(list.iter().cloned());
                     }
                     value => {
-                        return Err(EvalError::new(
-                            ErrorKind::Type,
-                            format!(
-                                "{UNQUOTE_SPLICING}: `{cadr}` evaluated to `{value}`, expected a list"
-                            ),
-                        )
-                        .with_span(cadr.span()));
+                        return Err(type_error(UNQUOTE_SPLICING, cadr, &value, "a list"));
                     }
                 }
             } else {

@@ -109,32 +109,18 @@ impl Session {
 pub fn format_error(error: &Error, src: &str, source_name: &str) -> String {
     let mut out = format!("error: {}\n", error.message());
     if let Some(span) = error.span() {
-        let name = span.source().unwrap_or(source_name);
-        if span.source().is_none_or(|source| source == source_name) {
+        let (name, same_buffer) = span.source_in(source_name);
+        if same_buffer {
             append_span_context(&mut out, src, name, &span);
         } else {
-            out.push_str(&format!(
-                "  --> {name}:{}:{}\n",
-                span.begin.line + 1,
-                span.begin.column + 1
-            ));
+            out.push_str(&format!("  --> {}\n", span.location(source_name)));
         }
     }
     if let Some(help) = error.help() {
         out.push_str(&format!("  = help: {help}\n"));
     }
     for frame in error.trace() {
-        if let Some(span) = frame.call_site {
-            let name = span.source().unwrap_or(source_name);
-            out.push_str(&format!(
-                "  = in `{}`, called at {name}:{}:{}\n",
-                frame.name,
-                span.begin.line + 1,
-                span.begin.column + 1
-            ));
-        } else {
-            out.push_str(&format!("  = in `{}` (prelude)\n", frame.name));
-        }
+        out.push_str(&format!("  = {}\n", frame.trace_label(source_name)));
     }
     out
 }
@@ -144,12 +130,7 @@ fn append_span_context(out: &mut String, src: &str, source_name: &str, span: &Sp
     if span.end.line >= lines.len() {
         return;
     }
-    out.push_str(&format!(
-        "  --> {}:{}:{}\n",
-        source_name,
-        span.begin.line + 1,
-        span.begin.column + 1
-    ));
+    out.push_str(&format!("  --> {}\n", span.location(source_name)));
     let start = span.begin.line.saturating_sub(1);
     let end = span.end.line.min(lines.len() - 1);
     for (line, text) in lines.iter().enumerate().take(end + 1).skip(start) {
