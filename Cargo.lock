@@ -2956,6 +2956,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rusche-egui"
+version = "0.5.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "rusche",
+]
+
+[[package]]
 name = "rusche-turtle"
 version = "0.5.0"
 dependencies = [

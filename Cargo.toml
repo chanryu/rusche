@@ -12,7 +12,7 @@ categories = ["compilers", "config", "parser-implementations", "parsing"]
 include = ["/src", "/examples", "/tests", "LICENSE", "README.md"]
 
 [workspace]
-members = ["crates/rusche-cli", "crates/rusche-turtle"]
+members = ["crates/rusche-cli", "crates/rusche-egui", "crates/rusche-turtle"]
 resolver = "2"
 
 [dependencies]
