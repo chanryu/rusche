@@ -148,6 +148,16 @@ numbers. This is how [`rusche-cli`](../../crates/rusche-cli/src/host.rs) shares
 its command line and [`rusche-turtle`](../../crates/rusche-turtle/src/builtin.rs)
 shares the turtle.
 
+A single counter could still have lived in a global. What a function pointer
+could not do is give each evaluator its own host.
+[`examples/captured-host`](../../examples/captured-host/main.rs) registers
+`deposit` and `balance` twice, each closure capturing a different `Bank`, and
+shows that one script cannot see the other's balance:
+
+```bash
+cargo run --example captured-host
+```
+
 Use a [`Foreign`](foreign.md) object when the value itself should be a Rusche
 value that scripts pass around. Use a capture when the state belongs to the
 host and scripts only call into it.
