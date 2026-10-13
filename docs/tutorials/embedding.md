@@ -174,6 +174,22 @@ fn apply2(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 `(apply2 (lambda (a b) (+ a b)) 20 22)` is `42`. Macros passed to `call` receive
 the arguments as forms, matching `(apply macro args)`.
 
+## Interrupting evaluation
+
+`set_interrupt(Some(flag))` watches an `Arc<AtomicBool>`. The eval loop loads it
+on the first step and every `INTERRUPT_CHECK_INTERVAL` steps after that (64).
+When the flag is set, evaluation fails with `ErrorKind::Interrupted` and the
+message `evaluation interrupted`. The evaluator does not clear the flag. Pass
+`None` to stop watching.
+
+`set_step_budget(Some(n))` fails the same way, with message
+`step budget (n) exceeded`, once a top-level `eval`, `eval_str`, or `call` has
+taken more than `n` steps. Each of those calls starts the count over when
+evaluation is not already inside a procedure, so a native that re-enters `eval`
+or `call` keeps the budget of the script that called it. Pass `None` to disable
+the cap. One step is one trip around the eval loop; atoms that never enter the
+loop do not count.
+
 ## Call depth and garbage collection
 
 - **Call depth.** Non-tail calls are capped by `Evaluator::max_call_depth()`

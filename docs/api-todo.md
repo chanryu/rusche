@@ -35,15 +35,17 @@ evaluated again; macros receive them as forms, matching `(apply ...)`.
 
 ## P3 — Interrupt and cancellation
 
-A host can only stop a running script when the script calls one of its natives.
-`rusche-turtle` checks its cancel flag inside `random` and notes that tight
-loops must call it; a `(while true)` with no native calls is unstoppable.
-`Shared` is already consulted on every evaluation step, so the check is cheap.
+Done. `Evaluator::set_interrupt` watches an `Arc<AtomicBool>`, loaded on the
+first eval step and every `INTERRUPT_CHECK_INTERVAL` steps after that.
+`set_step_budget` counts those same steps and fails a top-level `eval`,
+`eval_str`, or `call` that exceeds it. Both report `ErrorKind::Interrupted`.
+`rusche-turtle` Stop sets the flag; a `(while true)` with no native calls is
+stoppable.
 
-- [ ] Add `Evaluator::set_interrupt` taking an `Arc<AtomicBool>` (or a step hook), checked every N iterations of the `eval` loop
-- [ ] Add an `ErrorKind::Interrupted`
-- [ ] Use the same hook for an optional step budget, so a host can sandbox runaway scripts
-- [ ] Rewrite the turtle host's cancel path to set the flag instead of checking it per native
+- [x] Add `Evaluator::set_interrupt` taking an `Arc<AtomicBool>` (or a step hook), checked every N iterations of the `eval` loop
+- [x] Add an `ErrorKind::Interrupted`
+- [x] Use the same hook for an optional step budget, so a host can sandbox runaway scripts
+- [x] Rewrite the turtle host's cancel path to set the flag instead of checking it per native
 
 ## P4 — Value conversion ergonomics
 

@@ -46,9 +46,9 @@ impl Session {
             .spawn(move || {
                 let host = Rc::new(RefCell::new(Host {
                     turtle: Turtle::new(evt_worker.clone()),
-                    cancel: cancel_worker.clone(),
                 }));
                 let evaluator = Evaluator::with_prelude();
+                evaluator.set_interrupt(Some(cancel_worker.clone()));
                 load_turtle_procs(&evaluator, &host);
 
                 while let Ok(request) = req_rx.recv() {

@@ -4,6 +4,10 @@ use std::{
     collections::HashMap,
     fmt,
     rc::{Rc, Weak},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
 
 use crate::{
@@ -73,6 +77,8 @@ pub enum ErrorKind {
     InvalidForm,
     User,
     CallDepth,
+    /// The host interrupt flag was set, or the step budget was exceeded.
+    Interrupted,
     Other,
 }
 
@@ -110,6 +116,12 @@ pub(crate) struct MacroCacheEntry {
 /// Cap on cached expansions. On overflow the whole cache is cleared.
 pub(crate) const MACRO_CACHE_CAP: usize = 4096;
 
+/// How often the eval loop loads the host interrupt flag.
+///
+/// The flag is also loaded on the first step, so a flag that is already set fails
+/// immediately. Between checks, a tight loop can run this many steps.
+pub const INTERRUPT_CHECK_INTERVAL: usize = 64;
+
 /// Shared evaluator state cloned cheaply with every [`EvalContext`].
 ///
 /// Collapsing call-depth, call-trace, and the macro cache into one `Rc` halves
@@ -120,6 +132,10 @@ pub(crate) struct Shared {
     max_call_depth: Cell<usize>,
     call_trace: RefCell<Vec<Frame>>,
     pub(crate) macro_cache: RefCell<HashMap<*const Cons, MacroCacheEntry>>,
+    /// Steps taken since the current top-level `eval` / `eval_str` / `call`.
+    steps: Cell<usize>,
+    step_budget: Cell<Option<usize>>,
+    interrupt: RefCell<Option<Arc<AtomicBool>>>,
 }
 
 impl Shared {
@@ -129,11 +145,46 @@ impl Shared {
             max_call_depth: Cell::new(DEFAULT_MAX_CALL_DEPTH),
             call_trace: RefCell::new(Vec::new()),
             macro_cache: RefCell::new(HashMap::new()),
+            steps: Cell::new(0),
+            step_budget: Cell::new(None),
+            interrupt: RefCell::new(None),
         }
     }
 
     pub(crate) fn clear_macro_cache(&self) {
         self.macro_cache.borrow_mut().clear();
+    }
+
+    /// Counts one evaluation step and fails if the step budget or interrupt flag says to stop.
+    fn poll(&self) -> Result<(), EvalError> {
+        let steps = self.steps.get().saturating_add(1);
+        self.steps.set(steps);
+
+        if let Some(budget) = self.step_budget.get() {
+            if steps > budget {
+                return Err(EvalError::new(
+                    ErrorKind::Interrupted,
+                    format!("step budget ({budget}) exceeded"),
+                ));
+            }
+        }
+
+        // The first step honors a flag set before evaluation started. After that the
+        // atomic is loaded every INTERRUPT_CHECK_INTERVAL steps.
+        if steps == 1 || steps.is_multiple_of(INTERRUPT_CHECK_INTERVAL) {
+            let flag = self.interrupt.borrow();
+            if flag
+                .as_ref()
+                .is_some_and(|flag| flag.load(Ordering::Relaxed))
+            {
+                return Err(EvalError::new(
+                    ErrorKind::Interrupted,
+                    "evaluation interrupted",
+                ));
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -406,7 +457,11 @@ pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
             cons_for_span = Some(cons.clone());
         }
 
-        match eval_form(&cons, &context, &mut frame, expr.span()) {
+        let reduced = match context.shared.poll() {
+            Err(err) => Err(err),
+            Ok(()) => eval_form(&cons, &context, &mut frame, expr.span()),
+        };
+        match reduced {
             Ok(Step::Value(value)) => return Ok(value),
             Ok(Step::Eval(next_expr, next_context)) => {
                 expr = next_expr;
@@ -569,6 +624,14 @@ fn eval_form(
 /// The struct that owns the root environment and evaluation context, enforces the call depth
 /// limit, and performs garbage collection.
 ///
+/// # Interrupting evaluation
+///
+/// [`Evaluator::set_interrupt`] watches an [`AtomicBool`]. The eval loop loads it on the
+/// first step and every [`INTERRUPT_CHECK_INTERVAL`] steps after that. When the flag is
+/// set, evaluation fails with [`ErrorKind::Interrupted`]. [`Evaluator::set_step_budget`]
+/// uses the same check to cap how many steps one top-level `eval`, `eval_str`, or `call`
+/// may take.
+///
 /// # Call depth and tail calls
 ///
 /// Evaluation is iterative in tail position (see [`eval`]), so tail-recursive procedures run
@@ -641,6 +704,57 @@ impl Evaluator {
     /// evaluate on -- roughly 6 KiB per level in debug builds and 2 KiB in release builds.
     pub fn set_max_call_depth(&self, depth: usize) {
         self.context.shared.max_call_depth.set(depth);
+    }
+
+    /// Watches `flag` and fails evaluation with [`ErrorKind::Interrupted`] when it is set.
+    ///
+    /// Pass `None` to stop watching. The evaluator does not clear the flag. The load happens
+    /// on the first evaluation step and then every [`INTERRUPT_CHECK_INTERVAL`] steps, so a
+    /// tight loop with no native calls still stops.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use std::sync::Arc;
+    /// use rusche::{Error, ErrorKind, Evaluator};
+    ///
+    /// let evaluator = Evaluator::with_builtin();
+    /// let flag = Arc::new(AtomicBool::new(false));
+    /// evaluator.set_interrupt(Some(Arc::clone(&flag)));
+    ///
+    /// evaluator.eval_str("(define (spin) (spin))").unwrap();
+    /// flag.store(true, Ordering::Relaxed);
+    /// let Error::Eval(err) = evaluator.eval_str("(spin)").unwrap_err() else {
+    ///     panic!("expected an evaluation error");
+    /// };
+    /// assert_eq!(err.kind, ErrorKind::Interrupted);
+    /// ```
+    pub fn set_interrupt(&self, flag: Option<Arc<AtomicBool>>) {
+        *self.context.shared.interrupt.borrow_mut() = flag;
+    }
+
+    /// Returns the step budget, or `None` if it is disabled.
+    pub fn step_budget(&self) -> Option<usize> {
+        self.context.shared.step_budget.get()
+    }
+
+    /// Caps how many evaluation steps a top-level [`Evaluator::eval`], [`Evaluator::eval_str`],
+    /// or [`Evaluator::call`] may take. Pass `None` to disable the cap.
+    ///
+    /// Exceeding the budget fails with [`ErrorKind::Interrupted`]. The count resets at the
+    /// start of each of those calls when evaluation is not already inside a procedure.
+    /// One step is one trip around the eval loop (a form reduced in tail position counts;
+    /// atoms that never enter the loop do not).
+    pub fn set_step_budget(&self, budget: Option<usize>) {
+        self.context.shared.step_budget.set(budget);
+    }
+
+    /// Resets the step counter at the start of a top-level evaluation.
+    fn begin_eval(&self) {
+        if !self.context.is_in_proc() {
+            self.context.shared.steps.set(0);
+        }
     }
 
     /// Returns the garbage collection threshold, or `None` if automatic collection is disabled.
@@ -734,6 +848,7 @@ impl Evaluator {
     /// );
     /// ```
     pub fn call(&self, proc: &Expr, args: &[Expr]) -> EvalResult {
+        self.begin_eval();
         let result = self.context().call(proc, args);
         self.maybe_collect_garbage(result.as_ref().ok());
         result
@@ -746,6 +861,7 @@ impl Evaluator {
     /// registered environments has reached the [threshold](Evaluator::set_gc_threshold).
     /// The returned value is treated as a root during that collection.
     pub fn eval(&self, expr: &Expr) -> EvalResult {
+        self.begin_eval();
         let result = eval(expr, self.context());
         self.maybe_collect_garbage(result.as_ref().ok());
         result
@@ -757,6 +873,7 @@ impl Evaluator {
     /// Lex, parse, and evaluation failures are reported as a unified
     /// [`crate::error::Error`].
     pub fn eval_str(&self, src: &str) -> Result<Expr, Error> {
+        self.begin_eval();
         let result = eval_source(src, self.context(), false)?;
         self.maybe_collect_garbage(Some(&result));
         Ok(result)
@@ -1088,6 +1205,79 @@ mod tests {
             evaluator.call(&loop_proc, &[10_000.into()]).unwrap(),
             intern("done")
         );
+    }
+
+    #[test]
+    fn test_interrupt_stops_a_loop_with_no_further_natives() {
+        let evaluator = Evaluator::with_prelude();
+        let flag = Arc::new(AtomicBool::new(false));
+        evaluator.set_interrupt(Some(Arc::clone(&flag)));
+
+        let stop_flag = Arc::clone(&flag);
+        evaluator
+            .root_env()
+            .define_native_proc("stop", move |proc_name, args, _| {
+                if !args.is_nil() {
+                    return Err(crate::utils::arity_error(proc_name, 0..=0, args.len()));
+                }
+                stop_flag.store(true, Ordering::Relaxed);
+                Ok(NIL)
+            });
+
+        // After `stop`, `loop` tail-calls itself with no further native calls.
+        evaluator
+            .eval_str(
+                "(define (loop) (loop))
+                 (define (spin n) (if (= n 0) (begin (stop) (loop)) (spin (- n 1))))",
+            )
+            .unwrap();
+        let err = evaluator.eval_str("(spin 3)").unwrap_err();
+        let Error::Eval(err) = err else {
+            panic!("expected an evaluation error");
+        };
+        assert_eq!(err.kind, ErrorKind::Interrupted);
+        assert_eq!(err.message(), "evaluation interrupted");
+        assert!(
+            err.trace.iter().any(|frame| frame.name.as_ref() == "loop"),
+            "{:?}",
+            err.trace
+        );
+        assert!(!evaluator.context.is_in_proc());
+
+        flag.store(false, Ordering::Relaxed);
+        assert_eq!(evaluator.eval_str("1").unwrap(), Expr::from(1));
+
+        evaluator.set_interrupt(None);
+        flag.store(true, Ordering::Relaxed);
+        assert_eq!(evaluator.eval_str("(+ 1 2)").unwrap(), Expr::from(3));
+    }
+
+    #[test]
+    fn test_step_budget_stops_a_loop_and_resets_per_top_level_eval() {
+        let evaluator = Evaluator::with_builtin();
+        assert_eq!(evaluator.step_budget(), None);
+
+        evaluator.set_step_budget(Some(0));
+        let err = evaluator.eval_str("(quote 1)").unwrap_err();
+        let Error::Eval(err) = err else {
+            panic!("expected an evaluation error");
+        };
+        assert_eq!(err.kind, ErrorKind::Interrupted);
+        assert_eq!(err.message(), "step budget (0) exceeded");
+
+        evaluator.set_step_budget(Some(64));
+        evaluator.eval_str("(define (spin) (spin))").unwrap();
+        let err = evaluator.eval_str("(spin)").unwrap_err();
+        let Error::Eval(err) = err else {
+            panic!("expected an evaluation error");
+        };
+        assert_eq!(err.kind, ErrorKind::Interrupted);
+        assert!(err.message().contains("step budget (64) exceeded"));
+        assert!(!evaluator.context.is_in_proc());
+
+        evaluator.set_step_budget(None);
+        assert_eq!(evaluator.step_budget(), None);
+        assert_eq!(evaluator.eval_str("(quote ok)").unwrap(), intern("ok"));
     }
 
     #[test]

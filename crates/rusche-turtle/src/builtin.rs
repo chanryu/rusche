@@ -2,9 +2,7 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
-use std::sync::Arc;
 
 use rand::Rng;
 use rusche::utils::eval_into_num;
@@ -17,20 +15,16 @@ use crate::turtle::{Color, Turtle, TurtleEvent};
 
 pub struct Host {
     pub turtle: Turtle<Sender<TurtleEvent>>,
-    pub cancel: Arc<AtomicBool>,
 }
 
-/// Runs `f` against the captured host. Checks for cancellation first, then tags the events
-/// `f` emits with the script form currently being evaluated (see [`TurtleEvent::Site`]).
+/// Runs `f` against the captured host and tags the events `f` emits with the script form
+/// currently being evaluated (see [`TurtleEvent::Site`]).
 fn with_turtle<R>(
     host: &RefCell<Host>,
     context: &EvalContext,
     f: impl FnOnce(&mut Host) -> Result<R, EvalError>,
 ) -> Result<R, EvalError> {
     let mut host = host.borrow_mut();
-    if host.cancel.load(Ordering::Relaxed) {
-        return Err(EvalError::new(ErrorKind::Other, "script stopped"));
-    }
     host.turtle.set_site(context.call_site());
     f(&mut host)
 }
@@ -380,7 +374,6 @@ fn random(
     args: &List,
     context: &EvalContext,
 ) -> EvalResult {
-    // Every turtle native, including `random`, observes the cancel flag.
     require_nil(proc_name, args)?;
     with_turtle(host, context, |_| {
         Ok(rand::thread_rng().gen::<f64>().into())
@@ -394,7 +387,6 @@ fn eval_with_vec_sink(src: &str) -> Result<(Vec<TurtleEvent>, Expr), rusche::Err
     let (tx, rx) = mpsc::channel();
     let host = Rc::new(RefCell::new(Host {
         turtle: Turtle::new(tx),
-        cancel: Arc::new(AtomicBool::new(false)),
     }));
     let evaluator = Evaluator::with_prelude();
     load_turtle_procs(&evaluator, &host);
@@ -534,16 +526,23 @@ mod tests {
     }
 
     #[test]
-    fn cancel_aborts_turtle_call() {
+    fn interrupt_stops_a_loop_with_no_turtle_calls() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::sync::Arc;
+
         let (tx, rx) = mpsc::channel();
         let host = Rc::new(RefCell::new(Host {
             turtle: Turtle::new(tx),
-            cancel: Arc::new(AtomicBool::new(true)),
         }));
         let evaluator = Evaluator::with_prelude();
+        let flag = Arc::new(AtomicBool::new(false));
+        evaluator.set_interrupt(Some(Arc::clone(&flag)));
         load_turtle_procs(&evaluator, &host);
-        let result = evaluator.eval_str("(forward 10)");
+        evaluator.eval_str("(define (spin) (spin))").unwrap();
+        flag.store(true, Ordering::Relaxed);
+        let result = evaluator.eval_str("(spin)");
         drop(rx);
-        assert!(result.unwrap_err().message().contains("stopped"));
+        let message = result.unwrap_err().message();
+        assert!(message.contains("evaluation interrupted"), "{message}");
     }
 }
