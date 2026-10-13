@@ -145,7 +145,7 @@ evaluator.root_env().define_native_proc("bump", move |proc_name, args, _| {
 
 `(bump)` then returns `1`, then `2`, and `count` on the host reads the same
 numbers. This is how [`rusche-cli`](../../crates/rusche-cli/src/host.rs) shares
-its command line and [`rusche-turtle-rs`](../../crates/rusche-turtle-rs/src/builtin.rs)
+its command line and [`rusche-turtle`](../../crates/rusche-turtle/src/builtin.rs)
 shares the turtle.
 
 A single counter could still have lived in a global. What a function pointer
@@ -215,7 +215,7 @@ evaluator
 [`rusche-cli`](../../crates/rusche-cli/src/main.rs) installs `IoProcs` and
 `SysProcs` (which hold the host) alongside the plain `load_vec_procs` and
 `load_dict_procs` functions, and
-[`rusche-turtle-rs`](../../crates/rusche-turtle-rs/src/builtin.rs) installs
+[`rusche-turtle`](../../crates/rusche-turtle/src/builtin.rs) installs
 `TurtleProcs`, whose `install` registers the natives and then runs the turtle
 prelude through `eval_prelude`.
 

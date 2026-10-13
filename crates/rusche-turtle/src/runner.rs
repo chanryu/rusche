@@ -41,7 +41,7 @@ impl Session {
         let evt_worker = evt_tx;
 
         std::thread::Builder::new()
-            .name("rusche-turtle-rs-eval".into())
+            .name("rusche-turtle-eval".into())
             .stack_size(EVAL_STACK_SIZE)
             .spawn(move || {
                 let host = Rc::new(RefCell::new(Host {

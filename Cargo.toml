@@ -14,9 +14,7 @@ include = ["/src", "/examples", "/tests", "LICENSE", "README.md"]
 [workspace]
 members = [
     "crates/rusche-cli",
-    "crates/rusche-egui",
     "crates/rusche-turtle",
-    "crates/rusche-turtle-rs",
 ]
 resolver = "2"
 

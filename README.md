@@ -145,29 +145,20 @@ cargo install --path crates/rusche-cli
 
 ### `rusche-turtle` (example host)
 
-[`rusche-turtle`](crates/rusche-turtle/) is a desktop turtle-graphics app whose window is a
-Rusche script on [`rusche-egui`](crates/rusche-egui/). A Script editor and REPL share one
-session; scripts drive a turtle via natives such as `forward`, `right`, and `pencolor`.
-See [`docs/rusche-turtle.md`](docs/rusche-turtle.md).
+[`rusche-turtle`](crates/rusche-turtle/) is a desktop turtle-graphics app that embeds Rusche.
+A Script editor and REPL share one session; scripts drive a turtle on a canvas via natives
+such as `forward`, `right`, and `pencolor`. See [`docs/rusche-turtle.md`](docs/rusche-turtle.md).
 
 ```bash
 cargo run -p rusche-turtle
 cargo run -p rusche-turtle -- path/to/script.rsc   # optional: load a file into the editor
 ```
 
-The earlier Rust-UI twin remains as [`rusche-turtle-rs`](crates/rusche-turtle-rs/)
-([docs](docs/rusche-turtle-rs.md)):
-
-```bash
-cargo run -p rusche-turtle-rs
-```
-
 ## Documentation
 
 - [Language reference](docs/language-reference.md) -- core special forms and built-ins (crate only)
 - [`rusche-cli`](docs/rusche-cli.md) -- running the example interpreter: options, the REPL, I/O, `vec`, and `dict`
-- [`rusche-turtle`](docs/rusche-turtle.md) -- turtle-graphics GUI host (Rusche UI) and script API
-- [`rusche-turtle-rs`](docs/rusche-turtle-rs.md) -- the same host with a Rust egui UI
+- [`rusche-turtle`](docs/rusche-turtle.md) -- turtle-graphics GUI host and script API
 - [API documentation on docs.rs](https://docs.rs/rusche/latest/rusche/) -- embedding Rusche in a Rust application
 - Tutorials for host applications:
   - [Embedding the interpreter](docs/tutorials/embedding.md)
