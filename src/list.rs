@@ -74,7 +74,7 @@ impl List {
         let last_span = last.span()?;
 
         if first_span.begin < last_span.end {
-            Some(Span::new(first_span.begin, last_span.end))
+            Some(Span::between(first_span, last_span))
         } else {
             None
         }

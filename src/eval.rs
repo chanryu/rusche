@@ -14,7 +14,7 @@ use crate::{
     env::Env,
     error::Error,
     expr::{Expr, NIL},
-    lexer::tokenize,
+    lexer::tokenize_named,
     list::{Cons, List},
     parser::Parser,
     prelude::load_prelude,
@@ -28,7 +28,21 @@ use crate::{
 /// When `strip_spans` is true, spans are removed from each parsed expression before
 /// evaluation (used by the prelude so errors attribute to the call site).
 pub fn eval_source(src: &str, context: &EvalContext, strip_spans: bool) -> Result<Expr, Error> {
-    let tokens = tokenize(src, None)?;
+    eval_source_named(src, context, strip_spans, None)
+}
+
+/// Like [`eval_source`], tagging every span with `source`.
+///
+/// `source` is a file name or other label. Pass `None` for unnamed spans, the
+/// same as [`eval_source`]. Locations inside `src` then name that buffer, so a
+/// later error and its call trace can say which file each frame came from.
+pub fn eval_source_named(
+    src: &str,
+    context: &EvalContext,
+    strip_spans: bool,
+    source: Option<&str>,
+) -> Result<Expr, Error> {
+    let tokens = tokenize_named(src, None, source)?;
     let mut parser = Parser::with_tokens(tokens);
     let mut last = NIL;
     loop {
@@ -891,8 +905,33 @@ impl Evaluator {
     /// Lex, parse, and evaluation failures are reported as a unified
     /// [`crate::error::Error`].
     pub fn eval_str(&self, src: &str) -> Result<Expr, Error> {
+        self.eval_str_in(src, None)
+    }
+
+    /// Like [`Evaluator::eval_str`], tagging every span with `source`.
+    ///
+    /// Use a file path or a label such as `"<eval>"`. Errors raised from this
+    /// buffer, including inside procedures defined here and called from
+    /// somewhere else, keep this name on their span and call trace.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rusche::{Error, Evaluator};
+    ///
+    /// let evaluator = Evaluator::with_builtin();
+    /// let Error::Eval(err) = evaluator.eval_str_named("(car 1)", "main.rsc").unwrap_err() else {
+    ///     panic!("expected an evaluation error");
+    /// };
+    /// assert_eq!(err.span.unwrap().source(), Some("main.rsc"));
+    /// ```
+    pub fn eval_str_named(&self, src: &str, source: &str) -> Result<Expr, Error> {
+        self.eval_str_in(src, Some(source))
+    }
+
+    fn eval_str_in(&self, src: &str, source: Option<&str>) -> Result<Expr, Error> {
         self.begin_eval();
-        let result = eval_source(src, self.context(), false)?;
+        let result = eval_source_named(src, self.context(), false, source)?;
         self.maybe_collect_garbage(Some(&result));
         Ok(result)
     }
@@ -1344,6 +1383,34 @@ mod tests {
             panic!("expected an evaluation error");
         };
         assert_eq!(err.span.map(|span| span.begin.line), Some(1));
+    }
+
+    #[test]
+    fn test_named_spans_follow_each_buffer_into_the_trace() {
+        let evaluator = Evaluator::with_prelude();
+        evaluator
+            .eval_str_named("(define (boom x) (begin (car x) 0))", "lib.rsc")
+            .unwrap();
+        let Error::Eval(err) = evaluator
+            .eval_str_named("(boom 1)", "main.rsc")
+            .unwrap_err()
+        else {
+            panic!("expected an evaluation error");
+        };
+
+        // `(car x)` fails inside the body defined in lib.rsc. The argument
+        // expression lives there, so the error span names that file.
+        assert_eq!(err.span.and_then(|span| span.source()), Some("lib.rsc"));
+
+        let boom = err
+            .trace
+            .iter()
+            .find(|frame| frame.name.as_ref() == "boom")
+            .expect("boom frame");
+        assert_eq!(
+            boom.call_site.and_then(|span| span.source()),
+            Some("main.rsc")
+        );
     }
 
     #[test]

@@ -412,7 +412,7 @@ fn load_nested_prints_inner_source() {
     let err = stderr(&out);
     assert!(err.contains("car:"), "{err}");
     assert!(err.contains("inner.rsc"), "{err}");
-    assert!(err.contains("failed"), "{err}");
+    assert!(err.contains("(car 99)"), "{err}");
 }
 
 #[test]

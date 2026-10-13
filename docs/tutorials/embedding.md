@@ -60,6 +60,31 @@ for an optional hint, and `trace()` for the call stack collected while
 unwinding. The [`rusche-cli`](../../crates/rusche-cli/src/main.rs) host prints
 those against the original source lines.
 
+### Naming the source
+
+`eval_str` leaves spans unnamed. `eval_str_named` tags every span with a file
+name or label, and that name stays on procedures defined in the buffer. An
+error raised later, and each call-trace frame, then says which buffer it came
+from:
+
+```rust
+use rusche::{Error, Evaluator};
+
+let evaluator = Evaluator::with_prelude();
+evaluator
+    .eval_str_named("(define (boom x) (begin (car x) 0))", "lib.rsc")
+    .unwrap();
+let Error::Eval(err) = evaluator.eval_str_named("(boom 1)", "main.rsc").unwrap_err() else {
+    panic!("expected an evaluation error");
+};
+assert_eq!(err.span.unwrap().source(), Some("lib.rsc"));
+```
+
+`Span::source` is `None` unless the span was tagged. `tokenize_named` does the
+same when you drive the lexer yourself. Display of a named span includes the
+name (`lib.rsc:1:2`). The `begin` around `(car x)` keeps `boom` on the call
+trace; a tail call would replace that frame.
+
 ### Lower-level pipeline
 
 When you need incremental parsing (for example a multi-line REPL), use the

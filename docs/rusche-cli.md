@@ -178,11 +178,11 @@ the directory of the file currently being evaluated, so a script can load a
 neighbor by name. From the REPL, `-e`, or stdin, a relative path is resolved
 against the current directory. An absolute path is used as given.
 
-A shebang line is not stripped. When a form in the loaded file fails, the CLI
-prints that file's diagnostic first (with the loaded path as the source name),
-then reports a terse `load: "path" failed` error at the `(load ...)` call site.
-`,load` prints the value and uses the file as source context. A file loaded
-that way is the current file for any relative `load` inside it.
+A shebang line is not stripped. When a form in the loaded file fails, the
+diagnostic names that file: the error span and each call-trace frame carry the
+buffer they came from, and the CLI prints the loaded file's source at the
+failing line. `,load` prints the value and uses the file as source context. A
+file loaded that way is the current file for any relative `load` inside it.
 
 ```scheme
 (load "lib/io.rsc")             ; relative to the file that contains this call

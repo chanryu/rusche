@@ -28,18 +28,29 @@ pub fn print_error(host: &Host, diag: &Diagnostic<'_>) {
         return;
     };
 
-    let lines: Vec<&str> = diag.src.lines().collect();
-    if span.end.line >= lines.len() {
-        print_help_and_trace(diag);
-        return;
-    }
+    // A span from another file (a `load`ed buffer) is drawn against that file's
+    // text. The name on the span wins over the buffer the caller passed in.
+    let source_name = span.source().unwrap_or(diag.source_name);
+    let owned = if span.source().is_some_and(|name| name != diag.source_name) {
+        Some(host.source_text(source_name).unwrap_or_default())
+    } else {
+        None
+    };
+    let src = owned.as_deref().unwrap_or(diag.src);
+    let lines: Vec<&str> = src.lines().collect();
 
     let loc = format!(
-        "{}:{}:{}",
-        diag.source_name,
+        "{source_name}:{}:{}",
         span.begin.line + 1,
         span.begin.column + 1
     );
+    if span.end.line >= lines.len() {
+        if owned.is_some() {
+            eprintln!("  {} {}", "-->".blue().bold(), loc);
+        }
+        print_help_and_trace(diag);
+        return;
+    }
     eprintln!("  {} {}", "-->".blue().bold(), loc);
 
     let print_line = |line: usize| {
@@ -192,10 +203,10 @@ fn print_help_and_trace(diag: &Diagnostic<'_>) {
 
     for frame in diag.trace {
         let line = if let Some(span) = frame.call_site {
+            let name = span.source().unwrap_or(diag.source_name);
             format!(
-                "in `{}`, called at {}:{}:{}",
+                "in `{}`, called at {name}:{}:{}",
                 frame.name,
-                diag.source_name,
                 span.begin.line + 1,
                 span.begin.column + 1
             )
@@ -283,7 +294,9 @@ mod tests {
         let lex = LexError::IncompleteString(span(0, 0, 0, 3));
         print_lex_error(&host, &lex, "\"ab", "<lex>");
 
-        let parse = ParseError::UnexpectedToken(rusche::Token::CloseParen(Loc::new(0, 0)));
+        let parse = ParseError::UnexpectedToken(rusche::Token::CloseParen(
+            Loc::new(0, 0).span_to(Loc::new(0, 1)),
+        ));
         print_parse_error(&host, &parse, ")", "<parse>", None);
 
         let pipeline: Error = eval_err.into();

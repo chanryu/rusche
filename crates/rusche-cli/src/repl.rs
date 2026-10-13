@@ -159,7 +159,7 @@ Meta-commands:
             match std::fs::read_to_string(path) {
                 Ok(text) => {
                     let _source = host.enter_source_file(std::path::Path::new(path));
-                    match evaluator.eval_str(&text) {
+                    match evaluator.eval_str_named(&text, path) {
                         Ok(result) => {
                             if !result.is_nil() {
                                 println!("{}", result.to_string().green());

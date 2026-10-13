@@ -103,10 +103,13 @@ only add a second way to spell `set_max_call_depth` and `set_gc_threshold`.
 
 ## P7 — Named sources in spans
 
-`Span` is line and column only (`src/span.rs`); there is no source name, so
-`eval_str` cannot tag a file and `load` in `rusche-cli` prints the inner file's
-diagnostic itself before rethrowing a terse error.
+Done. A [`Span`](../src/span.rs) carries an interned source name (a `Loc` stays
+line and column only, so `Expr` does not grow). `Evaluator::eval_str_named`
+and `eval_source_named` tag a buffer; `eval_str` stays unnamed. `load`
+evaluates with the file path as the source name and returns the inner error.
+The CLI keeps the loaded text and prints that file when the span's name is
+not the caller's buffer, so the old print-then-rethrow path is gone.
 
-- [ ] Add a source name to `Span` or to `Frame.call_site`
-- [ ] Add `eval_source_named` (or a source-name parameter on `eval_str`) so multi-file traces name each file
-- [ ] Simplify `rusche-cli`'s `load` error path once traces carry the file name
+- [x] Add a source name to `Span` or to `Frame.call_site`
+- [x] Add `eval_source_named` (or a source-name parameter on `eval_str`) so multi-file traces name each file
+- [x] Simplify `rusche-cli`'s `load` error path once traces carry the file name

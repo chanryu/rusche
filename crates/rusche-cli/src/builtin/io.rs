@@ -1,12 +1,11 @@
 use rusche::{
-    eval, eval_source, get_exact_1_arg, ErrorKind, EvalContext, EvalError, EvalResult, Evaluator,
-    Expr, Extension, List, NIL,
+    eval, eval_source_named, get_exact_1_arg, Error, ErrorKind, EvalContext, EvalError, EvalResult,
+    Evaluator, Expr, Extension, List, NIL,
 };
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use crate::diagnostics::print_pipeline_error;
 use crate::host::Host;
 
 /// `write`, `read`, `exit`, and `load`.
@@ -104,20 +103,14 @@ fn load(host: &Rc<Host>, proc_name: &str, args: &List, context: &EvalContext) ->
     })?;
 
     // Nested `load` calls resolve relative to this file, not the caller.
+    // The text stays remembered so the top-level diagnostic can still show this
+    // file after the directory guard is dropped.
+    host.remember_source(&display, &text);
     let _source = host.enter_source_file(&resolved);
-    match eval_source(&text, context, false) {
-        Ok(result) => Ok(result),
-        Err(error) => {
-            // Print the inner file's diagnostic with its own source, then return a terse error
-            // so the caller's caret lands on the `(load ...)` form without embedding spans in prose.
-            print_pipeline_error(host, &error, &text, &display);
-            Err(EvalError::new(
-                ErrorKind::Other,
-                format!("{proc_name}: \"{display}\" failed"),
-            )
-            .with_span(arg.span()))
-        }
-    }
+    eval_source_named(&text, context, false, Some(&display)).map_err(|error| match error {
+        Error::Eval(err) => err,
+        other => EvalError::new(ErrorKind::Other, other.message()).with_span(other.span()),
+    })
 }
 
 /// Absolute paths are used as given. A relative path is joined onto the directory of the
@@ -180,7 +173,7 @@ mod tests {
         }
         let src = format!(r#"(load "{}")"#, bad.display());
         let err = eval_err(&e, &src);
-        assert!(err.contains("failed"), "{err}");
+        assert!(err.contains("car:"), "{err}");
         assert!(eval_err(&e, "(exit 999)").contains("0-255"));
         assert!(eval_err(&e, r#"(exit "no")"#).contains("0-255"));
 

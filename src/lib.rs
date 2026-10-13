@@ -40,11 +40,12 @@ pub mod utils;
 pub use env::Env;
 pub use error::Error;
 pub use eval::{
-    eval, eval_source, ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, Extension, Frame,
-    FrameKind, DEFAULT_GC_THRESHOLD, DEFAULT_MAX_CALL_DEPTH, INTERRUPT_CHECK_INTERVAL,
+    eval, eval_source, eval_source_named, ErrorKind, EvalContext, EvalError, EvalResult, Evaluator,
+    Extension, Frame, FrameKind, DEFAULT_GC_THRESHOLD, DEFAULT_MAX_CALL_DEPTH,
+    INTERRUPT_CHECK_INTERVAL,
 };
 pub use expr::{intern, Expr, Foreign, ForeignDowncast, ForeignObject, NIL};
-pub use lexer::{tokenize, LexError, Lexer};
+pub use lexer::{tokenize, tokenize_named, LexError, Lexer};
 pub use list::{cons, Cons, List, ListIter};
 pub use parser::{ParseError, Parser};
 pub use proc::{FormalArgs, NativeFunc, Proc};

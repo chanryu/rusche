@@ -8,7 +8,7 @@ use std::io::{self, IsTerminal, Read};
 use std::process::ExitCode;
 use std::rc::Rc;
 
-use rusche::{tokenize, Evaluator, Loc, ParseError, Parser, Span};
+use rusche::{tokenize_named, Evaluator, Loc, ParseError, Parser, Span};
 
 use builtin::{load_dict_procs, load_vec_procs, IoProcs, SysProcs};
 use cli::{parse_args, usage, Input, Options};
@@ -117,7 +117,7 @@ fn run_with_options(opts: Options, command_line: Vec<String>) -> ExitCode {
                 ExitCode::from(2)
             }
         },
-        Input::Eval(expr) => match evaluator.eval_str(&expr) {
+        Input::Eval(expr) => match evaluator.eval_str_named(&expr, "<eval>") {
             Ok(result) => {
                 if !result.is_nil() {
                     println!("{}", result);
@@ -157,7 +157,7 @@ fn run_source(
     source_name: &str,
 ) -> Result<(), ()> {
     let (body, loc) = strip_shebang(text);
-    let tokens = match tokenize(body, Some(loc)) {
+    let tokens = match tokenize_named(body, Some(loc), Some(source_name)) {
         Ok(tokens) => tokens,
         Err(error) => {
             print_lex_error(host, &error, text, source_name);
@@ -181,10 +181,14 @@ fn run_source(
                 let end_line = text.lines().count().saturating_sub(1);
                 let end_col = text.lines().last().map(|l| l.chars().count()).unwrap_or(0);
                 let span = if begin_loc.line < text.lines().count() {
-                    Some(Span::new(
+                    let widened = Span::new(
                         begin_loc,
                         Loc::new(end_line, end_col.max(begin_loc.column + 1)),
-                    ))
+                    );
+                    Some(match error.span().source() {
+                        Some(name) => widened.with_source(name),
+                        None => widened,
+                    })
                 } else {
                     Some(error.span())
                 };

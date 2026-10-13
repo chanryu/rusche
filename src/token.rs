@@ -1,27 +1,27 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-use crate::span::{Loc, Span};
+use crate::span::Span;
 
 /// The enum that represents a lexical unit of the source code in Rusche.
 #[derive(Clone, Debug)]
 pub enum Token {
     /// Open parenthesis `(`.
-    OpenParen(Loc),
+    OpenParen(Span),
 
     /// Close parenthesis `)`.
-    CloseParen(Loc),
+    CloseParen(Span),
 
     /// Quote `'`.
-    Quote(Loc),
+    Quote(Span),
 
     /// Quasiquote `` ` ``.
-    Quasiquote(Loc),
+    Quasiquote(Span),
 
     /// Unquote `,`.
-    Unquote(Loc),
+    Unquote(Span),
 
     /// Unquote-splicing `,@`.
-    UnquoteSplicing(Loc),
+    UnquoteSplicing(Span),
 
     /// A number literal.
     Num(f64, Span),
@@ -39,18 +39,13 @@ pub enum Token {
 impl Token {
     pub fn span(&self) -> Span {
         match self {
-            // 1-letter tokens
-            Token::OpenParen(loc)
-            | Token::CloseParen(loc)
-            | Token::Quote(loc)
-            | Token::Quasiquote(loc)
-            | Token::Unquote(loc) => Span::new(*loc, loc.with_column_offset(1)),
-
-            // 2-letter tokens
-            Token::UnquoteSplicing(loc) => Span::new(*loc, loc.with_column_offset(2)),
-
-            // multi-letter tokens
-            Token::Num(_, span)
+            Token::OpenParen(span)
+            | Token::CloseParen(span)
+            | Token::Quote(span)
+            | Token::Quasiquote(span)
+            | Token::Unquote(span)
+            | Token::UnquoteSplicing(span)
+            | Token::Num(_, span)
             | Token::Bool(_, span)
             | Token::Str(_, span)
             | Token::Sym(_, span) => *span,
@@ -98,14 +93,14 @@ impl Display for Token {
 mod tests {
     use super::*;
     use crate::macros::tok;
+    use crate::span::Loc;
 
     #[test]
     fn test_span_fixed_len() {
         macro_rules! assert_token_span_length_eq {
             ($length:literal, $token_case:ident) => {
-                let span = Token::$token_case(Loc::new(1, 1)).span();
-                assert_eq!(span.begin.line, span.end.line);
-                assert_eq!($length, span.end.column - span.begin.column);
+                let span = Span::new(Loc::new(1, 1), Loc::new(1, 1 + $length));
+                assert_eq!(Token::$token_case(span).span(), span);
             };
         }
         assert_token_span_length_eq!(1, OpenParen);
@@ -141,7 +136,10 @@ mod tests {
         macro_rules! assert_token_format_eq {
             ($token_case:ident, $formatted:literal) => {
                 assert_eq!(
-                    format!("{}", Token::$token_case(Loc::new(1, 1))),
+                    format!(
+                        "{}",
+                        Token::$token_case(Span::new(Loc::new(1, 1), Loc::new(1, 2)))
+                    ),
                     $formatted
                 );
             };

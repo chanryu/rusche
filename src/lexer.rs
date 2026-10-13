@@ -47,6 +47,7 @@ where
 {
     iter: Peekable<Iter>,
     loc: Loc,
+    source: Option<&'static str>,
 }
 
 impl<Iter> Lexer<Iter>
@@ -57,6 +58,21 @@ where
         Self {
             iter: iter.peekable(),
             loc,
+            source: None,
+        }
+    }
+
+    /// Tags every span this lexer produces with `name`.
+    pub fn with_source(mut self, name: &str) -> Self {
+        self.source = Some(crate::span::intern_source(name));
+        self
+    }
+
+    fn make_span(&self, begin: Loc) -> Span {
+        let span = Span::new(begin, self.loc);
+        match self.source {
+            Some(source) => span.with_interned_source(source),
+            None => span,
         }
     }
 
@@ -72,16 +88,16 @@ where
         let begin_loc = self.loc;
 
         match self.next_char() {
-            Some('(') => Ok(Some(Token::OpenParen(begin_loc))),
-            Some(')') => Ok(Some(Token::CloseParen(begin_loc))),
+            Some('(') => Ok(Some(Token::OpenParen(self.make_span(begin_loc)))),
+            Some(')') => Ok(Some(Token::CloseParen(self.make_span(begin_loc)))),
 
-            Some('\'') => Ok(Some(Token::Quote(begin_loc))),
-            Some('`') => Ok(Some(Token::Quasiquote(begin_loc))),
+            Some('\'') => Ok(Some(Token::Quote(self.make_span(begin_loc)))),
+            Some('`') => Ok(Some(Token::Quasiquote(self.make_span(begin_loc)))),
             Some(',') => {
                 if self.next_char_if(|ch| *ch == '@').is_some() {
-                    Ok(Some(Token::UnquoteSplicing(begin_loc)))
+                    Ok(Some(Token::UnquoteSplicing(self.make_span(begin_loc))))
                 } else {
-                    Ok(Some(Token::Unquote(begin_loc)))
+                    Ok(Some(Token::Unquote(self.make_span(begin_loc))))
                 }
             }
 
@@ -132,12 +148,12 @@ where
                         _ => text.push(ch),
                     }
                 }
-                ('"', false) => return Ok(Some(Token::Str(text, begin_loc.span_to(self.loc)))),
+                ('"', false) => return Ok(Some(Token::Str(text, self.make_span(begin_loc)))),
                 ('\\', false) => escaped = true,
                 (ch, false) => text.push(ch),
             }
         }
-        Err(LexError::IncompleteString(begin_loc.span_to(self.loc)))
+        Err(LexError::IncompleteString(self.make_span(begin_loc)))
     }
 
     fn read_number(&mut self, first_char: char, begin_loc: Loc) -> LexResult {
@@ -152,7 +168,7 @@ where
         }
 
         let sign = if first_char == '-' { -1.0 } else { 1.0 };
-        let span = begin_loc.span_to(self.loc);
+        let span = self.make_span(begin_loc);
 
         let display = if first_char == '+' || first_char == '-' {
             format!("{first_char}{digits}")
@@ -173,7 +189,7 @@ where
             name.push(ch);
         }
 
-        let span = Span::new(begin_loc, self.loc);
+        let span = self.make_span(begin_loc);
 
         // Numbers without a leading digit (`.5`, `-.5`, `+.5`) reach here because they start
         // like a symbol. Only treat the text as a number if it looks like one, so that symbols
@@ -233,8 +249,20 @@ where
 /// A convinient function to tokenize a string. Internally, it uses the [`Lexer`] to tokenize
 /// the input string.
 pub fn tokenize(text: &str, loc: Option<Loc>) -> Result<Vec<Token>, LexError> {
+    tokenize_named(text, loc, None)
+}
+
+/// Like [`tokenize`], tagging every span with `source` when it is `Some`.
+pub fn tokenize_named(
+    text: &str,
+    loc: Option<Loc>,
+    source: Option<&str>,
+) -> Result<Vec<Token>, LexError> {
     let mut tokens = Vec::new();
     let mut lexer = Lexer::new(text.chars(), loc.unwrap_or_default());
+    if let Some(source) = source {
+        lexer = lexer.with_source(source);
+    }
 
     while let Some(token) = lexer.get_token()? {
         tokens.push(token);
@@ -370,8 +398,7 @@ mod tests {
             };
             ($token_case:ident) => {
                 let token = lexer.get_token().unwrap().unwrap();
-                let loc = Loc::new(1, 1); // don't care about the location
-                assert_eq!(token, Token::$token_case(loc));
+                assert_eq!(token, Token::$token_case(token.span()));
             };
         }
 
@@ -405,8 +432,7 @@ mod tests {
             };
             (Some($token_case:ident)) => {
                 let token = lexer.get_token().unwrap().unwrap();
-                let loc = Loc::new(1, 1); // don't care about the location
-                assert_eq!(token, Token::$token_case(loc));
+                assert_eq!(token, Token::$token_case(token.span()));
             };
             (Some($token_case:ident($value:expr))) => {
                 let token = lexer.get_token().unwrap().unwrap();

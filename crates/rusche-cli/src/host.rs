@@ -10,6 +10,9 @@ pub struct Host {
     command_line: Vec<String>,
     at_column_zero: Cell<bool>,
     source_dirs: RefCell<Vec<PathBuf>>,
+    /// File text retained so a diagnostic can show a file other than the one
+    /// the top-level printer was given. Entries stay for the process lifetime.
+    source_texts: RefCell<Vec<(String, String)>>,
 }
 
 impl Host {
@@ -18,6 +21,7 @@ impl Host {
             command_line,
             at_column_zero: Cell::new(true),
             source_dirs: RefCell::new(Vec::new()),
+            source_texts: RefCell::new(Vec::new()),
         })
     }
 
@@ -52,6 +56,29 @@ impl Host {
 
     pub fn current_source_dir(&self) -> Option<PathBuf> {
         self.source_dirs.borrow().last().cloned()
+    }
+
+    /// Remembers `text` under `name` so diagnostics can print it after `load` returns.
+    ///
+    /// A later load of the same name replaces the text.
+    pub fn remember_source(&self, name: &str, text: &str) {
+        let mut texts = self.source_texts.borrow_mut();
+        if let Some(slot) = texts.iter_mut().find(|(stored, _)| stored == name) {
+            slot.1.clear();
+            slot.1.push_str(text);
+        } else {
+            texts.push((name.to_string(), text.to_string()));
+        }
+    }
+
+    /// Text previously stored with [`Host::remember_source`].
+    pub fn source_text(&self, name: &str) -> Option<String> {
+        self.source_texts
+            .borrow()
+            .iter()
+            .rev()
+            .find(|(stored, _)| stored == name)
+            .map(|(_, text)| text.clone())
     }
 
     /// If the last stdout write did not end in a newline, emit one so diagnostics start cleanly.

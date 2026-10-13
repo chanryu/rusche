@@ -130,7 +130,7 @@ impl Parser {
                             (Some(token), Some(expr_span))
                                 if token.span().begin < expr_span.end =>
                             {
-                                Some(Span::new(token.span().begin, expr_span.end))
+                                Some(Span::between(token.span(), expr_span))
                             }
                             _ => None,
                         };
@@ -175,10 +175,7 @@ impl Parser {
                 list = cons(car, list);
             }
             if let Some(begin_token) = context.token {
-                let expr_span = Span {
-                    begin: begin_token.span().begin,
-                    end: token.span().end,
-                };
+                let expr_span = Span::between(begin_token.span(), token.span());
                 return Ok(Expr::List(list, Some(expr_span)));
             }
         }
@@ -282,7 +279,7 @@ mod tests {
 
         // 'abc at columns 4..8
         let mut parser = Parser::with_tokens(vec![
-            Token::Quote(Loc::new(0, 4)),
+            Token::Quote(Loc::new(0, 4).span_to(Loc::new(0, 5))),
             Token::Sym("abc".into(), Span::new(Loc::new(0, 5), Loc::new(0, 8))),
         ]);
         let parsed_expr = parser.parse().unwrap().unwrap();
@@ -298,14 +295,16 @@ mod tests {
 
         // "(a (b" -- the incomplete expression starts at the first paren
         let mut parser = Parser::with_tokens(vec![
-            Token::OpenParen(Loc::new(0, 0)),
+            Token::OpenParen(Loc::new(0, 0).span_to(Loc::new(0, 1))),
             tok!(Sym("a")),
-            Token::OpenParen(Loc::new(0, 3)),
+            Token::OpenParen(Loc::new(0, 3).span_to(Loc::new(0, 4))),
             tok!(Sym("b")),
         ]);
         assert_eq!(
             parser.parse(),
-            Err(ParseError::IncompleteExpr(Token::OpenParen(Loc::new(0, 0))))
+            Err(ParseError::IncompleteExpr(Token::OpenParen(
+                Loc::new(0, 0).span_to(Loc::new(0, 1)),
+            )))
         );
     }
 
@@ -361,10 +360,24 @@ mod tests {
         use crate::span::Loc;
 
         for (tokens, needle) in [
-            (vec![Token::Quote(Loc::default())], "after `'`"),
-            (vec![Token::Quasiquote(Loc::default())], "after `` ` ``"),
-            (vec![Token::Unquote(Loc::default())], "after `,`"),
-            (vec![Token::UnquoteSplicing(Loc::default())], "after `,@`"),
+            (
+                vec![Token::Quote(Loc::default().span_to(Loc::new(0, 1)))],
+                "after `'`",
+            ),
+            (
+                vec![Token::Quasiquote(Loc::default().span_to(Loc::new(0, 1)))],
+                "after `` ` ``",
+            ),
+            (
+                vec![Token::Unquote(Loc::default().span_to(Loc::new(0, 1)))],
+                "after `,`",
+            ),
+            (
+                vec![Token::UnquoteSplicing(
+                    Loc::default().span_to(Loc::new(0, 1)),
+                )],
+                "after `,@`",
+            ),
         ] {
             let mut parser = Parser::with_tokens(tokens);
             let err = parser.parse().unwrap_err();
@@ -382,7 +395,9 @@ mod tests {
     fn test_unexpected_close_paren_message() {
         use crate::span::Loc;
 
-        let mut parser = Parser::with_tokens(vec![Token::CloseParen(Loc::default())]);
+        let mut parser = Parser::with_tokens(vec![Token::CloseParen(
+            Loc::default().span_to(Loc::new(0, 1)),
+        )]);
         let err = parser.parse().unwrap_err();
         assert_eq!(err.message(), "unexpected `)` with no matching `(`");
     }

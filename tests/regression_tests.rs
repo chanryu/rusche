@@ -62,7 +62,7 @@ fn macro_expansion_with_unordered_spans_does_not_panic() {
                (m lst)";
     let err = eval_all(&e, src).unwrap_err();
     assert!(err.message.contains("car"), "{}", err.message);
-    if let Some(Span { begin, end }) = err.span {
+    if let Some(Span { begin, end, .. }) = err.span {
         assert!(begin < end, "span must be ordered: {begin:?}..{end:?}");
     }
 }

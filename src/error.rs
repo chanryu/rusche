@@ -116,7 +116,9 @@ mod tests {
         assert_eq!(num.message(), "invalid number literal `23abc`");
         assert!(num.to_string().contains("23abc"));
 
-        let parse: Error = ParseError::UnexpectedToken(Token::CloseParen(Loc::new(0, 0))).into();
+        let parse: Error =
+            ParseError::UnexpectedToken(Token::CloseParen(Loc::new(0, 0).span_to(Loc::new(0, 1))))
+                .into();
         assert_eq!(parse.message(), "unexpected `)` with no matching `(`");
         assert!(parse.help().is_none());
         assert!(parse.trace().is_empty());
@@ -158,23 +160,26 @@ mod tests {
     fn parse_error_messages_for_quote_forms() {
         use ParseError::IncompleteExpr;
         assert_eq!(
-            IncompleteExpr(Token::Quote(Loc::default())).message(),
+            IncompleteExpr(Token::Quote(Loc::default().span_to(Loc::new(0, 1)))).message(),
             "unexpected end of input after `'`"
         );
         assert_eq!(
-            IncompleteExpr(Token::Quasiquote(Loc::default())).message(),
+            IncompleteExpr(Token::Quasiquote(Loc::default().span_to(Loc::new(0, 1)))).message(),
             "unexpected end of input after `` ` ``"
         );
         assert_eq!(
-            IncompleteExpr(Token::Unquote(Loc::default())).message(),
+            IncompleteExpr(Token::Unquote(Loc::default().span_to(Loc::new(0, 1)))).message(),
             "unexpected end of input after `,`"
         );
         assert_eq!(
-            IncompleteExpr(Token::UnquoteSplicing(Loc::default())).message(),
+            IncompleteExpr(Token::UnquoteSplicing(
+                Loc::default().span_to(Loc::new(0, 1))
+            ))
+            .message(),
             "unexpected end of input after `,@`"
         );
         assert_eq!(
-            IncompleteExpr(Token::OpenParen(Loc::default())).message(),
+            IncompleteExpr(Token::OpenParen(Loc::default().span_to(Loc::new(0, 1)))).message(),
             "unexpected end of input: unclosed `(`"
         );
         // Fallback arm for other tokens stored as IncompleteExpr.

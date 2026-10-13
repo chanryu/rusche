@@ -109,17 +109,26 @@ impl Session {
 pub fn format_error(error: &Error, src: &str, source_name: &str) -> String {
     let mut out = format!("error: {}\n", error.message());
     if let Some(span) = error.span() {
-        append_span_context(&mut out, src, source_name, &span);
+        let name = span.source().unwrap_or(source_name);
+        if span.source().is_none_or(|source| source == source_name) {
+            append_span_context(&mut out, src, name, &span);
+        } else {
+            out.push_str(&format!(
+                "  --> {name}:{}:{}\n",
+                span.begin.line + 1,
+                span.begin.column + 1
+            ));
+        }
     }
     if let Some(help) = error.help() {
         out.push_str(&format!("  = help: {help}\n"));
     }
     for frame in error.trace() {
         if let Some(span) = frame.call_site {
+            let name = span.source().unwrap_or(source_name);
             out.push_str(&format!(
-                "  = in `{}`, called at {}:{}:{}\n",
+                "  = in `{}`, called at {name}:{}:{}\n",
                 frame.name,
-                source_name,
                 span.begin.line + 1,
                 span.begin.column + 1
             ));
