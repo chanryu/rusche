@@ -25,5 +25,13 @@ rand = "0.8"
 name = "eval"
 harness = false
 
+[[example]]
+name = "tutorial-native-clamp"
+path = "examples/tutorial-native/clamp.rs"
+
+[[example]]
+name = "tutorial-native-capture"
+path = "examples/tutorial-native/capture.rs"
+
 [lib]
 name = "rusche"

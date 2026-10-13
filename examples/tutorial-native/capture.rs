@@ -1,25 +1,18 @@
-//! Companion example for docs/tutorials/native-functions.md
+//! Companion example for docs/tutorials/native-functions.md: natives that
+//! capture host state.
 //!
-//! `clamp` is a plain function. `bump` closes over one counter. `deposit` and
-//! `balance` are registered on two evaluators, each capturing its own bank, so
-//! one script cannot see the other's balance.
+//! `bump` closes over one counter. `deposit` and `balance` are registered on
+//! two evaluators, each capturing its own bank, so one script cannot see the
+//! other's balance.
+//!
+//! Run with `cargo run --example tutorial-native-capture`.
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use rusche::{
-    arity_error, eval_into_num, get_exact_1_arg, get_exact_3_args, tokenize, EvalContext,
-    EvalResult, Evaluator, Expr, List, Parser,
+    arity_error, eval_into_num, get_exact_1_arg, EvalContext, EvalResult, Evaluator, Expr, List,
 };
-
-fn clamp(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let (value_expr, lo_expr, hi_expr) = get_exact_3_args(proc_name, args)?;
-    let value = eval_into_num(proc_name, value_expr, context)?;
-    let lo = eval_into_num(proc_name, lo_expr, context)?;
-    let hi = eval_into_num(proc_name, hi_expr, context)?;
-
-    Ok(Expr::from(value.clamp(lo, hi)))
-}
 
 struct Bank {
     balance: f64,
@@ -63,22 +56,8 @@ fn balance(bank: &RefCell<Bank>, proc_name: &str, args: &List) -> EvalResult {
 }
 
 fn main() {
-    let evaluator = Evaluator::with_prelude();
-    evaluator.root_env().define_native_proc("clamp", clamp);
-
-    let result = evaluator
-        .eval(
-            &Parser::with_tokens(tokenize("(clamp 15 0 10)", None).unwrap())
-                .parse()
-                .unwrap()
-                .unwrap(),
-        )
-        .unwrap();
-
-    assert_eq!(result, Expr::from(10));
-    println!("{result}");
-
     // A closure can capture host state. The capture must be `'static`, so share it.
+    let evaluator = Evaluator::with_prelude();
     let count = Rc::new(Cell::new(0));
     let count_for_proc = Rc::clone(&count);
     evaluator
@@ -94,6 +73,7 @@ fn main() {
     assert_eq!(evaluator.eval_str("(bump)").unwrap(), Expr::from(1));
     assert_eq!(evaluator.eval_str("(bump)").unwrap(), Expr::from(2));
     assert_eq!(count.get(), 2);
+    println!("bump:  {}", count.get());
 
     // Each evaluator's natives close over their own host state. A function
     // pointer could only reach a shared static or thread-local, so a second

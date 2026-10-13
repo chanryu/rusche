@@ -5,8 +5,9 @@ how a **host** adds I/O, domain APIs, and other capabilities the core language
 does not provide — the same mechanism [`rusche-cli`](../rusche-cli.md) uses for
 `write` and friends.
 
-A runnable version of the worked example lives in
-[`examples/tutorial-native`](../../examples/tutorial-native/main.rs).
+Runnable versions of the examples live in
+[`examples/tutorial-native`](../../examples/tutorial-native): `clamp.rs` is the
+worked example below, and `capture.rs` shows natives that capture host state.
 
 ## Signature
 
@@ -117,7 +118,7 @@ fn main() {
 Run it with:
 
 ```bash
-cargo run --example tutorial-native
+cargo run --example tutorial-native-clamp
 ```
 
 ## Capturing host state
@@ -148,10 +149,15 @@ its command line and [`rusche-turtle`](../../crates/rusche-turtle/src/builtin.rs
 shares the turtle.
 
 A single counter could still have lived in a global. What a function pointer
-could not do is give each evaluator its own host. The same example registers
-`deposit` and `balance` on two evaluators, each closure capturing a different
-`Bank`, and shows that one script cannot see the other's balance. A
-thread-local host would have mixed them.
+could not do is give each evaluator its own host.
+[`capture.rs`](../../examples/tutorial-native/capture.rs) registers `deposit`
+and `balance` on two evaluators, each closure capturing a different `Bank`, and
+shows that one script cannot see the other's balance. A thread-local host would
+have mixed them.
+
+```bash
+cargo run --example tutorial-native-capture
+```
 
 Use a [`Foreign`](foreign.md) object when the value itself should be a Rusche
 value that scripts pass around. Use a capture when the state belongs to the
