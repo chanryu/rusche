@@ -14,9 +14,9 @@ use crate::diagnostics::{
     print_error, print_eval_error, print_lex_error, print_parse_error, print_pipeline_error,
     Diagnostic,
 };
-use crate::host;
+use crate::host::Host;
 
-pub fn run_repl(evaluator: Evaluator) {
+pub fn run_repl(evaluator: Evaluator, host: &Rc<Host>) {
     print_logo();
 
     let config = Config::builder().auto_add_history(true).build();
@@ -41,7 +41,7 @@ pub fn run_repl(evaluator: Evaluator) {
                 }
 
                 if trimmed.starts_with(',') {
-                    if handle_meta(&line, &evaluator) {
+                    if handle_meta(&line, &evaluator, host) {
                         break;
                     }
                     continue;
@@ -56,46 +56,49 @@ pub fn run_repl(evaluator: Evaluator) {
                                 Ok(Some(expr)) => match evaluator.eval(&expr) {
                                     Ok(result) => {
                                         if !result.is_nil() {
-                                            host::ensure_newline();
+                                            host.ensure_newline();
                                             println!("{}", result.to_string().green());
-                                            host::set_at_column_zero(true);
+                                            host.set_at_column_zero(true);
                                         }
                                     }
                                     Err(error) => {
-                                        print_eval_error(&error, &line, "<repl>");
-                                        host::set_at_column_zero(true);
+                                        print_eval_error(host, &error, &line, "<repl>");
+                                        host.set_at_column_zero(true);
                                     }
                                 },
                                 Err(ParseError::IncompleteExpr(_)) => {
-                                    print_error(&Diagnostic {
-                                        source_name: "<repl>",
-                                        src: &line,
-                                        message: "incomplete expression".into(),
-                                        span: None,
-                                        help: None,
-                                        trace: &[],
-                                    });
-                                    host::set_at_column_zero(true);
+                                    print_error(
+                                        host,
+                                        &Diagnostic {
+                                            source_name: "<repl>",
+                                            src: &line,
+                                            message: "incomplete expression".into(),
+                                            span: None,
+                                            help: None,
+                                            trace: &[],
+                                        },
+                                    );
+                                    host.set_at_column_zero(true);
                                     break;
                                 }
                                 Err(error) => {
-                                    print_parse_error(&error, &line, "<repl>", None);
-                                    host::set_at_column_zero(true);
+                                    print_parse_error(host, &error, &line, "<repl>", None);
+                                    host.set_at_column_zero(true);
                                     break;
                                 }
                             }
                         }
                     }
                     Err(error) => {
-                        print_lex_error(&error, &line, "<repl>");
-                        host::set_at_column_zero(true);
+                        print_lex_error(host, &error, &line, "<repl>");
+                        host.set_at_column_zero(true);
                     }
                 }
             }
             Err(ReadlineError::Interrupted) => {
-                host::ensure_newline();
+                host.ensure_newline();
                 println!("{}", "^C".dimmed());
-                host::set_at_column_zero(true);
+                host.set_at_column_zero(true);
             }
             Err(ReadlineError::Eof) => break,
             Err(error) => {
@@ -111,7 +114,7 @@ pub fn run_repl(evaluator: Evaluator) {
 }
 
 /// Returns true if the REPL should quit.
-fn handle_meta(line: &str, evaluator: &Evaluator) -> bool {
+fn handle_meta(line: &str, evaluator: &Evaluator, host: &Rc<Host>) -> bool {
     let body = line.trim().trim_start_matches(',');
     let mut parts = body.split_whitespace();
     let Some(cmd) = parts.next() else {
@@ -155,7 +158,7 @@ Meta-commands:
             };
             match std::fs::read_to_string(path) {
                 Ok(text) => {
-                    let _source = host::enter_source_file(std::path::Path::new(path));
+                    let _source = host.enter_source_file(std::path::Path::new(path));
                     match evaluator.eval_str(&text) {
                         Ok(result) => {
                             if !result.is_nil() {
@@ -163,7 +166,7 @@ Meta-commands:
                             }
                         }
                         Err(error) => {
-                            print_pipeline_error(&error, &text, path);
+                            print_pipeline_error(host, &error, &text, path);
                         }
                     }
                 }

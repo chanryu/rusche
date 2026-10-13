@@ -4,29 +4,40 @@ use rusche::{
 };
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use crate::diagnostics::print_pipeline_error;
-use crate::host;
+use crate::host::Host;
 
-pub fn load_io_procs(context: &EvalContext) {
-    context.env.define_native_proc("write", write);
+pub fn load_io_procs(context: &EvalContext, host: &Rc<Host>) {
+    let write_host = Rc::clone(host);
+    context
+        .env
+        .define_native_proc("write", move |proc_name, args, context| {
+            write(&write_host, proc_name, args, context)
+        });
     context.env.define_native_proc("read", read);
     context.env.define_native_proc("exit", exit);
-    context.env.define_native_proc("load", load);
+    let load_host = Rc::clone(host);
+    context
+        .env
+        .define_native_proc("load", move |proc_name, args, context| {
+            load(&load_host, proc_name, args, context)
+        });
 }
 
-fn emit(text: &str) {
+fn emit(host: &Host, text: &str) {
     print!("{text}");
-    host::note_output(text);
+    host.note_output(text);
 }
 
 /// `(write expr ...)` -- writes each argument with nothing between them.
 /// Strings are raw text; other values use their source form. A newline is `"\n"`.
-fn write(_: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn write(host: &Host, _: &str, args: &List, context: &EvalContext) -> EvalResult {
     for expr in args.iter() {
         match eval(expr, context)? {
-            Expr::Str(text, _) => emit(&text),
-            expr => emit(&expr.to_string()),
+            Expr::Str(text, _) => emit(host, &text),
+            expr => emit(host, &expr.to_string()),
         }
     }
     let _ = std::io::stdout().flush();
@@ -66,7 +77,7 @@ fn exit(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     std::process::exit(code);
 }
 
-fn load(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn load(host: &Rc<Host>, proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let arg = get_exact_1_arg(proc_name, args)?;
     let path = match eval(arg, context)? {
         Expr::Str(path, _) => path,
@@ -79,7 +90,7 @@ fn load(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
         }
     };
 
-    let resolved = resolve_load_path(&path);
+    let resolved = resolve_load_path(host, &path);
     let display = resolved.display().to_string();
 
     let text = std::fs::read_to_string(&resolved).map_err(|e| {
@@ -91,13 +102,13 @@ fn load(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     })?;
 
     // Nested `load` calls resolve relative to this file, not the caller.
-    let _source = host::enter_source_file(&resolved);
+    let _source = host.enter_source_file(&resolved);
     match eval_source(&text, context, false) {
         Ok(result) => Ok(result),
         Err(error) => {
             // Print the inner file's diagnostic with its own source, then return a terse error
             // so the caller's caret lands on the `(load ...)` form without embedding spans in prose.
-            print_pipeline_error(&error, &text, &display);
+            print_pipeline_error(host, &error, &text, &display);
             Err(EvalError::new(
                 ErrorKind::Other,
                 format!("{proc_name}: \"{display}\" failed"),
@@ -110,11 +121,11 @@ fn load(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 /// Absolute paths are used as given. A relative path is joined onto the directory of the
 /// file currently being evaluated, or left for the process working directory when there
 /// is none (REPL, `-e`, stdin).
-fn resolve_load_path(path: &str) -> PathBuf {
+fn resolve_load_path(host: &Host, path: &str) -> PathBuf {
     let path = Path::new(path);
     if path.is_absolute() {
         path.to_path_buf()
-    } else if let Some(dir) = host::current_source_dir() {
+    } else if let Some(dir) = host.current_source_dir() {
         dir.join(path)
     } else {
         path.to_path_buf()
@@ -129,7 +140,7 @@ mod tests {
 
     fn with_io() -> Evaluator {
         let evaluator = Evaluator::with_builtin();
-        load_io_procs(evaluator.context());
+        load_io_procs(evaluator.context(), &Host::new(Vec::new()));
         evaluator
     }
 

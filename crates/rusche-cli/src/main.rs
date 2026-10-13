@@ -12,7 +12,7 @@ use rusche::{tokenize, Evaluator, Loc, ParseError, Parser, Span};
 use builtin::{load_dict_procs, load_io_procs, load_sys_procs, load_vec_procs};
 use cli::{parse_args, usage, Input, Options};
 use diagnostics::{print_eval_error, print_lex_error, print_parse_error, print_pipeline_error};
-use host::enter_source_file;
+use host::Host;
 use repl::run_repl;
 
 const EVAL_STACK_SIZE: usize = 256 * 1024 * 1024;
@@ -50,7 +50,6 @@ fn main() -> ExitCode {
         Input::Eval(_) | Input::Repl => {}
     }
     command_line.extend(opts.script_args.iter().cloned());
-    host::set_command_line(command_line);
 
     // Evaluate on a large-stack thread so DEFAULT_MAX_CALL_DEPTH can fire as an error
     // instead of aborting with a stack overflow on debug builds.
@@ -58,7 +57,7 @@ fn main() -> ExitCode {
     let result = std::thread::Builder::new()
         .name("rusche-eval".into())
         .stack_size(EVAL_STACK_SIZE)
-        .spawn(move || run_with_options(opts_for_thread))
+        .spawn(move || run_with_options(opts_for_thread, command_line))
         .expect("failed to spawn evaluation thread")
         .join();
 
@@ -71,13 +70,14 @@ fn main() -> ExitCode {
     }
 }
 
-fn run_with_options(opts: Options) -> ExitCode {
-    let evaluator = build_evaluator(&opts);
+fn run_with_options(opts: Options, command_line: Vec<String>) -> ExitCode {
+    let host = Host::new(command_line);
+    let evaluator = build_evaluator(&opts, &host);
 
     match opts.input {
         Input::Repl => {
             if io::stdin().is_terminal() {
-                run_repl(evaluator);
+                run_repl(evaluator, &host);
                 ExitCode::SUCCESS
             } else {
                 let mut text = String::new();
@@ -85,7 +85,7 @@ fn run_with_options(opts: Options) -> ExitCode {
                     eprintln!("Failed to read stdin: {e}");
                     return ExitCode::from(2);
                 }
-                match run_source(&evaluator, &text, "<stdin>") {
+                match run_source(&evaluator, &host, &text, "<stdin>") {
                     Ok(()) => ExitCode::SUCCESS,
                     Err(()) => ExitCode::from(1),
                 }
@@ -97,7 +97,7 @@ fn run_with_options(opts: Options) -> ExitCode {
                 eprintln!("Failed to read stdin: {e}");
                 return ExitCode::from(2);
             }
-            match run_source(&evaluator, &text, "<stdin>") {
+            match run_source(&evaluator, &host, &text, "<stdin>") {
                 Ok(()) => ExitCode::SUCCESS,
                 Err(()) => ExitCode::from(1),
             }
@@ -105,8 +105,8 @@ fn run_with_options(opts: Options) -> ExitCode {
         Input::File(path) => match std::fs::read_to_string(&path) {
             Ok(text) => {
                 let name = path.display().to_string();
-                let _source = enter_source_file(&path);
-                match run_source(&evaluator, &text, &name) {
+                let _source = host.enter_source_file(&path);
+                match run_source(&evaluator, &host, &text, &name) {
                     Ok(()) => ExitCode::SUCCESS,
                     Err(()) => ExitCode::from(1),
                 }
@@ -124,14 +124,14 @@ fn run_with_options(opts: Options) -> ExitCode {
                 ExitCode::SUCCESS
             }
             Err(error) => {
-                print_pipeline_error(&error, &expr, "<eval>");
+                print_pipeline_error(&host, &error, &expr, "<eval>");
                 ExitCode::from(1)
             }
         },
     }
 }
 
-fn build_evaluator(opts: &Options) -> Evaluator {
+fn build_evaluator(opts: &Options, host: &std::rc::Rc<Host>) -> Evaluator {
     let evaluator = Evaluator::with_prelude();
 
     if let Some(depth) = opts.max_call_depth {
@@ -141,19 +141,24 @@ fn build_evaluator(opts: &Options) -> Evaluator {
         evaluator.set_gc_threshold(threshold);
     }
 
-    load_io_procs(evaluator.context());
-    load_sys_procs(evaluator.context());
+    load_io_procs(evaluator.context(), host);
+    load_sys_procs(evaluator.context(), host);
     load_vec_procs(&evaluator);
     load_dict_procs(&evaluator);
     evaluator
 }
 
-fn run_source(evaluator: &Evaluator, text: &str, source_name: &str) -> Result<(), ()> {
+fn run_source(
+    evaluator: &Evaluator,
+    host: &std::rc::Rc<Host>,
+    text: &str,
+    source_name: &str,
+) -> Result<(), ()> {
     let (body, loc) = strip_shebang(text);
     let tokens = match tokenize(body, Some(loc)) {
         Ok(tokens) => tokens,
         Err(error) => {
-            print_lex_error(&error, text, source_name);
+            print_lex_error(host, &error, text, source_name);
             return Err(());
         }
     };
@@ -165,7 +170,7 @@ fn run_source(evaluator: &Evaluator, text: &str, source_name: &str) -> Result<()
             Ok(Some(expr)) => match evaluator.eval(&expr) {
                 Ok(_) => {}
                 Err(e) => {
-                    print_eval_error(&e, text, source_name);
+                    print_eval_error(host, &e, text, source_name);
                     return Err(());
                 }
             },
@@ -181,11 +186,11 @@ fn run_source(evaluator: &Evaluator, text: &str, source_name: &str) -> Result<()
                 } else {
                     Some(error.span())
                 };
-                print_parse_error(&error, text, source_name, span);
+                print_parse_error(host, &error, text, source_name, span);
                 return Err(());
             }
             Err(error) => {
-                print_parse_error(&error, text, source_name, None);
+                print_parse_error(host, &error, text, source_name, None);
                 return Err(());
             }
         }
@@ -238,16 +243,18 @@ mod tests {
         let mut opts = default_opts();
         opts.max_call_depth = Some(8);
         opts.gc_threshold = Some(None);
-        let evaluator = build_evaluator(&opts);
+        let host = Host::new(vec!["rusche".into()]);
+        let evaluator = build_evaluator(&opts, &host);
         assert_eq!(evaluator.eval_str("(+ 1 2)").unwrap().to_string(), "3");
 
         let mut opts = default_opts();
         opts.gc_threshold = Some(Some(50));
-        let evaluator = build_evaluator(&opts);
-        assert!(run_source(&evaluator, "#!/usr/bin/env rusche\n1\n", "<t>").is_ok());
-        assert!(run_source(&evaluator, "(car 1)", "<t>").is_err());
-        assert!(run_source(&evaluator, "\"unterminated", "<t>").is_err());
-        assert!(run_source(&evaluator, "(", "<t>").is_err());
-        assert!(run_source(&evaluator, ")", "<t>").is_err());
+        let host = Host::new(Vec::new());
+        let evaluator = build_evaluator(&opts, &host);
+        assert!(run_source(&evaluator, &host, "#!/usr/bin/env rusche\n1\n", "<t>").is_ok());
+        assert!(run_source(&evaluator, &host, "(car 1)", "<t>").is_err());
+        assert!(run_source(&evaluator, &host, "\"unterminated", "<t>").is_err());
+        assert!(run_source(&evaluator, &host, "(", "<t>").is_err());
+        assert!(run_source(&evaluator, &host, ")", "<t>").is_err());
     }
 }

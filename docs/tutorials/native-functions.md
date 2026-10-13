@@ -10,13 +10,13 @@ A runnable version of the worked example lives in
 
 ## Signature
 
-A native procedure is a function pointer matching
-[`NativeFunc`](https://docs.rs/rusche/latest/rusche/type.NativeFunc.html):
+A native procedure is any `'static` function of the shape
+`Fn(&str, &List, &EvalContext) -> EvalResult`: a plain function item, or a
+closure that captures host state. `define_native_proc` wraps it in a
+[`NativeFunc`](https://docs.rs/rusche/latest/rusche/struct.NativeFunc.html).
 
 ```rust
-use rusche::{EvalContext, EvalResult, List};
-
-pub type NativeFunc = fn(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult;
+fn clamp(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult { /* ... */ }
 ```
 
 | Parameter | Role |
@@ -35,7 +35,9 @@ evaluator.root_env().define_native_proc("clamp", clamp);
 ```
 
 `define_native_proc` is shorthand for binding
-`Expr::Proc(Rc::new(Proc::Native { name: Rc::from(name), func }), None)`.
+`Expr::Proc(Rc::new(Proc::Native { name: Rc::from(name), func: NativeFunc::new(func) }), None)`.
+Two natives compare equal only when they share that `NativeFunc` allocation, so a
+closure that captures different state is a different procedure.
 
 ## Evaluate arguments
 
@@ -119,11 +121,36 @@ Run it with:
 cargo run --example tutorial-native
 ```
 
-## Limits of `NativeFunc`
+## Capturing host state
 
-`NativeFunc` is a plain function pointer: it cannot capture host state in a
-closure. Shared or mutable host data belongs in a [`Foreign`](foreign.md) object
-that native procedures create and update.
+The closure passed to `define_native_proc` can capture host data. The capture
+must be `'static`, so share it with `Rc` (and `Cell` or `RefCell` when it
+changes) rather than borrowing a local:
+
+```rust
+use std::cell::Cell;
+use std::rc::Rc;
+
+let count = Rc::new(Cell::new(0));
+let count_for_proc = Rc::clone(&count);
+evaluator.root_env().define_native_proc("bump", move |proc_name, args, _| {
+    if !args.is_nil() {
+        return Err(rusche::arity_error(proc_name, 0..=0, args.len()));
+    }
+    let next = count_for_proc.get() + 1;
+    count_for_proc.set(next);
+    Ok(rusche::Expr::from(next))
+});
+```
+
+`(bump)` then returns `1`, then `2`, and `count` on the host reads the same
+numbers. This is how [`rusche-cli`](../../crates/rusche-cli/src/host.rs) shares
+its command line and [`rusche-turtle`](../../crates/rusche-turtle/src/builtin.rs)
+shares the turtle.
+
+Use a [`Foreign`](foreign.md) object when the value itself should be a Rusche
+value that scripts pass around. Use a capture when the state belongs to the
+host and scripts only call into it.
 
 A native returns a finished value, so anything it evaluates with `eval` is a
 nested call: it counts towards the call depth and is never a tail call. If you

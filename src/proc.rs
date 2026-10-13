@@ -1,3 +1,4 @@
+use std::fmt;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::rc::Rc;
 
@@ -10,8 +11,50 @@ use crate::list::{cons, Cons, List};
 use crate::span::Span;
 use crate::symbol::Symbol;
 
-/// The function signature for native procedures -- [`Proc::Native`].
-pub type NativeFunc = fn(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult;
+type NativeBody = dyn Fn(&str, &List, &EvalContext) -> EvalResult;
+
+/// Body of a native procedure ([`Proc::Native`]).
+///
+/// A [`NativeFunc`] may be a plain function item or a `'static` closure that captures
+/// host state (`Rc`, `Arc`, interior mutability). Cloning shares the same allocation.
+/// Equality is pointer identity, so two closures that capture different state are
+/// different procedures even when their source looks the same.
+///
+/// Register one with [`Env::define_native_proc`](crate::env::Env::define_native_proc).
+#[derive(Clone)]
+pub struct NativeFunc {
+    func: Rc<NativeBody>,
+}
+
+impl NativeFunc {
+    /// Wraps a function item or a `'static` closure.
+    pub fn new(func: impl Fn(&str, &List, &EvalContext) -> EvalResult + 'static) -> Self {
+        Self {
+            func: Rc::new(func),
+        }
+    }
+
+    /// Invokes the native body.
+    pub fn call(&self, proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+        (self.func)(proc_name, args, context)
+    }
+
+    fn as_ptr(&self) -> *const () {
+        Rc::as_ptr(&self.func) as *const ()
+    }
+}
+
+impl PartialEq for NativeFunc {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.func, &other.func)
+    }
+}
+
+impl fmt::Debug for NativeFunc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "NativeFunc({:p})", self.as_ptr())
+    }
+}
 
 /// The formal parameters of a closure or macro.
 ///
@@ -48,7 +91,7 @@ pub enum Proc {
         body: Rc<List>,
     },
 
-    /// A native procedure that is implemented in Rust.
+    /// A native procedure implemented in Rust. `func` may close over host state.
     Native { name: Rc<str>, func: NativeFunc },
 }
 
@@ -87,7 +130,7 @@ impl Proc {
                 formal_args,
                 body,
             } => apply_macro(name.as_deref(), formal_args, body, call, call_site, context),
-            Proc::Native { name, func } => func(name.as_ref(), args, context).map(Step::Value),
+            Proc::Native { name, func } => func.call(name.as_ref(), args, context).map(Step::Value),
         }
     }
 
@@ -142,7 +185,7 @@ impl Proc {
                 body.to_string().hash(&mut hasher);
             }
             Proc::Native { func, .. } => {
-                func.hash(&mut hasher);
+                func.as_ptr().hash(&mut hasher);
             }
         }
 
@@ -193,7 +236,7 @@ impl PartialEq for Proc {
                     name: name2,
                     func: func2,
                 },
-            ) => name1 == name2 && std::ptr::fn_addr_eq(*func1, *func2),
+            ) => name1 == name2 && func1 == func2,
             _ => false,
         }
     }
@@ -409,13 +452,22 @@ mod tests {
             Ok(NIL)
         }
 
+        let shared = NativeFunc::new(native_fn_1);
         let native = |name: &str, func: NativeFunc| Proc::Native {
             name: Rc::from(name),
             func,
         };
-        assert_eq!(native("a", native_fn_1), native("a", native_fn_1));
-        assert_ne!(native("a", native_fn_1), native("b", native_fn_1));
-        assert_ne!(native("a", native_fn_1), native("a", native_fn_2));
+        // Same allocation compares equal; a fresh wrap of the same fn does not.
+        assert_eq!(native("a", shared.clone()), native("a", shared.clone()));
+        assert_ne!(native("a", shared.clone()), native("b", shared));
+        assert_ne!(
+            native("a", NativeFunc::new(native_fn_1)),
+            native("a", NativeFunc::new(native_fn_1))
+        );
+        assert_ne!(
+            native("a", NativeFunc::new(native_fn_1)),
+            native("a", NativeFunc::new(native_fn_2))
+        );
 
         let macro_ = |name: &str| Proc::Macro {
             name: Some(Rc::from(name)),
@@ -426,7 +478,7 @@ mod tests {
         assert_ne!(macro_("m"), macro_("n"));
 
         // mixed kinds are never equal
-        assert_ne!(native("m", native_fn_1), macro_("m"));
+        assert_ne!(native("m", NativeFunc::new(native_fn_1)), macro_("m"));
 
         let evaluator = Evaluator::new();
         let closure = Proc::Closure {
@@ -436,11 +488,38 @@ mod tests {
             outer_context: evaluator.context().clone(),
         };
         assert_ne!(closure, macro_("m"));
-        assert_ne!(closure, native("m", native_fn_1));
+        assert_ne!(closure, native("m", NativeFunc::new(native_fn_1)));
 
         // code coverage workaround (#[coverage(off)] is unstable)
         native_fn_1("", &list!(), evaluator.context()).unwrap();
         native_fn_2("", &list!(), evaluator.context()).unwrap();
+    }
+
+    #[test]
+    fn native_closure_captures_host_state() {
+        use std::cell::Cell;
+
+        let evaluator = Evaluator::with_builtin();
+        let counter = Rc::new(Cell::new(0_i32));
+        let counter_for_proc = Rc::clone(&counter);
+        evaluator
+            .root_env()
+            .define_native_proc("bump", move |name, args, _| {
+                if !args.is_nil() {
+                    return Err(crate::utils::arity_error(name, 0..=0, args.len()));
+                }
+                let next = counter_for_proc.get() + 1;
+                counter_for_proc.set(next);
+                Ok(next.into())
+            });
+
+        assert_eq!(evaluator.eval_str("(bump)").unwrap(), 1.into());
+        assert_eq!(evaluator.eval_str("(bump)").unwrap(), 2.into());
+        assert_eq!(counter.get(), 2);
+        assert_eq!(
+            evaluator.root_env().lookup("bump"),
+            evaluator.root_env().lookup("bump")
+        );
     }
 
     #[test]
@@ -476,20 +555,29 @@ mod tests {
             Ok(NIL)
         }
 
+        let shared = NativeFunc::new(native_fn_1);
         let native1 = Proc::Native {
             name: Rc::from("native"),
-            func: native_fn_1,
+            func: shared.clone(),
         };
         let native1_1 = Proc::Native {
             name: Rc::from("native"),
-            func: native_fn_1,
+            func: shared,
         };
         let native2 = Proc::Native {
             name: Rc::from("native"),
-            func: native_fn_2,
+            func: NativeFunc::new(native_fn_2),
         };
         assert_eq!(native1.fingerprint(), native1_1.fingerprint());
         assert_ne!(native1.fingerprint(), native2.fingerprint());
+        assert_ne!(
+            native1.fingerprint(),
+            Proc::Native {
+                name: Rc::from("native"),
+                func: NativeFunc::new(native_fn_1),
+            }
+            .fingerprint()
+        );
 
         let macro_ = |names: &[&str], body: List| Proc::Macro {
             name: Some(Rc::from("m")),

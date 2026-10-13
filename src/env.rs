@@ -2,8 +2,9 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
-use crate::eval::ForeignTracers;
+use crate::eval::{EvalContext, EvalResult, ForeignTracers};
 use crate::expr::Expr;
+use crate::list::List;
 use crate::proc::{NativeFunc, Proc};
 use crate::symbol::Symbol;
 
@@ -262,15 +263,22 @@ impl Env {
         names
     }
 
-    /// A convience fucntion to define a native procedure in the current environment.
-    /// This is a shorthand for `define(name, Expr::Proc(Proc::Native { ... }))`.
-    pub fn define_native_proc(&self, name: &str, func: NativeFunc) {
+    /// Defines a native procedure in the current environment.
+    ///
+    /// `func` may be a function item or a `'static` closure that captures host state.
+    /// Share that state with `Rc` (or `Arc`); the closure cannot borrow the caller's stack.
+    /// This is a shorthand for binding `Expr::Proc(Proc::Native { name, func: NativeFunc::new(func) }, None)`.
+    pub fn define_native_proc(
+        &self,
+        name: &str,
+        func: impl Fn(&str, &List, &EvalContext) -> EvalResult + 'static,
+    ) {
         self.define(
             name,
             Expr::Proc(
                 Rc::new(Proc::Native {
                     name: Rc::from(name),
-                    func,
+                    func: NativeFunc::new(func),
                 }),
                 None,
             ),

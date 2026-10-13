@@ -248,7 +248,7 @@ mod tests {
         let span = Some(Span::new(Loc::new(1, 1), Loc::new(1, 2)));
         let proc = Rc::new(Proc::Native {
             name: "noop".into(),
-            func: |_, _, _| Ok(NIL),
+            func: crate::proc::NativeFunc::new(|_, _, _| Ok(NIL)),
         });
         let spanned = [
             Expr::Bool(true, span),

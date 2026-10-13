@@ -1,5 +1,7 @@
 //! Persistent worker thread owning a Rusche [`Evaluator`], streaming [`TurtleEvent`]s.
 
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
@@ -7,7 +9,7 @@ use std::sync::Arc;
 use egui::Context;
 use rusche::{Error, Evaluator, Span};
 
-use crate::builtin::{load_turtle_procs, restore_turtle, with_host, Host};
+use crate::builtin::{load_turtle_procs, Host};
 use crate::turtle::{Origin, Turtle, TurtleEvent, TurtleSnap};
 
 const EVAL_STACK_SIZE: usize = 16 * 1024 * 1024;
@@ -42,46 +44,43 @@ impl Session {
             .name("rusche-turtle-eval".into())
             .stack_size(EVAL_STACK_SIZE)
             .spawn(move || {
-                let host = Host {
+                let host = Rc::new(RefCell::new(Host {
                     turtle: Turtle::new(evt_worker.clone()),
                     cancel: cancel_worker.clone(),
-                };
+                }));
+                let evaluator = Evaluator::with_prelude();
+                load_turtle_procs(&evaluator, &host);
 
-                let (_host, ()) = with_host(host, || {
-                    let evaluator = Evaluator::with_prelude();
-                    load_turtle_procs(&evaluator);
+                while let Ok(request) = req_rx.recv() {
+                    match request {
+                        Request::Sync(snap) => host.borrow_mut().turtle.restore(&snap),
+                        Request::Eval { source, origin } => {
+                            cancel_worker.store(false, Ordering::Relaxed);
+                            let _ = evt_worker.send(TurtleEvent::Started(origin));
 
-                    while let Ok(request) = req_rx.recv() {
-                        match request {
-                            Request::Sync(snap) => restore_turtle(&snap),
-                            Request::Eval { source, origin } => {
-                                cancel_worker.store(false, Ordering::Relaxed);
-                                let _ = evt_worker.send(TurtleEvent::Started(origin));
+                            let source_name = match origin {
+                                Origin::Script => "<script>",
+                                Origin::Repl => "<repl>",
+                            };
 
-                                let source_name = match origin {
-                                    Origin::Script => "<script>",
-                                    Origin::Repl => "<repl>",
-                                };
-
-                                match evaluator.eval_str(&source) {
-                                    Ok(value) => {
-                                        if origin == Origin::Repl {
-                                            let _ = evt_worker
-                                                .send(TurtleEvent::Result(value.to_string()));
-                                        }
-                                    }
-                                    Err(error) => {
-                                        let message = format_error(&error, &source, source_name);
-                                        let _ = evt_worker.send(TurtleEvent::Error(message));
+                            match evaluator.eval_str(&source) {
+                                Ok(value) => {
+                                    if origin == Origin::Repl {
+                                        let _ =
+                                            evt_worker.send(TurtleEvent::Result(value.to_string()));
                                     }
                                 }
-
-                                let _ = evt_worker.send(TurtleEvent::Done);
-                                ctx.request_repaint();
+                                Err(error) => {
+                                    let message = format_error(&error, &source, source_name);
+                                    let _ = evt_worker.send(TurtleEvent::Error(message));
+                                }
                             }
+
+                            let _ = evt_worker.send(TurtleEvent::Done);
+                            ctx.request_repaint();
                         }
                     }
-                });
+                }
             })
             .expect("failed to spawn turtle evaluation thread");
 

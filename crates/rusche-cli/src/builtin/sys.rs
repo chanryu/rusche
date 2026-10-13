@@ -3,15 +3,21 @@ use rusche::{
     arity_error, cons, eval, get_exact_1_arg, ErrorKind, EvalContext, EvalError, EvalResult, Expr,
     List,
 };
+use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::host;
+use crate::host::Host;
 
-pub fn load_sys_procs(context: &EvalContext) {
+pub fn load_sys_procs(context: &EvalContext, host: &Rc<Host>) {
     context.env.define_native_proc("getenv", getenv);
     context.env.define_native_proc("clock", clock);
     context.env.define_native_proc("random", random);
-    context.env.define_native_proc("command-line", command_line);
+    let host = Rc::clone(host);
+    context
+        .env
+        .define_native_proc("command-line", move |proc_name, args, context| {
+            command_line(&host, proc_name, args, context)
+        });
 }
 
 fn getenv(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -50,13 +56,30 @@ fn random(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
     Ok(rand::thread_rng().gen::<f64>().into())
 }
 
-fn command_line(proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
+fn command_line(host: &Host, proc_name: &str, args: &List, _: &EvalContext) -> EvalResult {
     if !args.is_nil() {
         return Err(arity_error(proc_name, 0..=0, args.len()));
     }
     let mut list = List::Nil;
-    for arg in host::command_line().into_iter().rev() {
-        list = cons(Expr::from(arg), list);
+    for arg in host.command_line().iter().rev() {
+        list = cons(Expr::from(arg.as_str()), list);
     }
     Ok(list.into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusche::Evaluator;
+
+    #[test]
+    fn command_line_reads_captured_host_state() {
+        let host = Host::new(vec!["rusche".into(), "script.rsc".into(), "a".into()]);
+        let evaluator = Evaluator::with_builtin();
+        load_sys_procs(evaluator.context(), &host);
+        assert_eq!(
+            evaluator.eval_str("(command-line)").unwrap().to_string(),
+            r#"("rusche" "script.rsc" "a")"#
+        );
+    }
 }
