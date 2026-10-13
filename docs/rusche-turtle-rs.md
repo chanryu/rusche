@@ -1,6 +1,6 @@
-# `rusche-turtle`
+# `rusche-turtle-rs`
 
-[`rusche-turtle`](../crates/rusche-turtle) is an example host: a desktop turtle-graphics
+[`rusche-turtle-rs`](../crates/rusche-turtle-rs) is an example host: a desktop turtle-graphics
 window with a script editor, REPL, canvas, and output log. Scripts and REPL
 expressions run on a worker-thread `Evaluator`; turtle commands stream to the UI over a
 channel.
@@ -8,8 +8,8 @@ channel.
 ## Running
 
 ```bash
-cargo run -p rusche-turtle
-cargo run -p rusche-turtle -- path/to/script.rsc   # optional: load into the editor
+cargo run -p rusche-turtle-rs
+cargo run -p rusche-turtle-rs -- path/to/script.rsc   # optional: load into the editor
 ```
 
 Bundled demos ship inside the binary (`src/examples/*.rsc` via `include_str!`); pick them from **Examples** in the UI.
@@ -85,7 +85,7 @@ Core language: [language reference](language-reference.md). Host adds:
   (right 10))
 ```
 
-Demo sources: [`crates/rusche-turtle/src/examples/`](../crates/rusche-turtle/src/examples).
+Demo sources: [`crates/rusche-turtle-rs/src/examples/`](../crates/rusche-turtle-rs/src/examples).
 
 ## Limitations
 

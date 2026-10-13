@@ -1,5 +1,5 @@
 [package]
-name = "rusche-turtle"
+name = "rusche-turtle-rs"
 version = "0.5.0"
 edition = "2021"
 license = "MIT"
@@ -8,7 +8,7 @@ description = "A turtle-graphics GUI host for the Rusche Scheme-like language"
 publish = false
 
 [[bin]]
-name = "rusche-turtle"
+name = "rusche-turtle-rs"
 path = "src/main.rs"
 
 [dependencies]
