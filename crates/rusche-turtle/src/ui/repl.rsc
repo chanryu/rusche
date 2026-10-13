@@ -2,7 +2,7 @@
 
 (define (history-prev)
   (when (not (null? repl-history))
-    (if (= history-pos false)
+    (if (eq? history-pos false)
         (set! history-pos (- (length repl-history) 1))
         (when (> history-pos 0)
           (set! history-pos (- history-pos 1))))
@@ -10,7 +10,7 @@
     (set! cursor-end true)))
 
 (define (history-next)
-  (when (not (= history-pos false))
+  (when (not (eq? history-pos false))
     (if (>= (+ history-pos 1) (length repl-history))
         (begin
           (set! history-pos false)
@@ -52,11 +52,11 @@
       (when (if (key-pressed? 'enter) (not (shift-down?)) false)
         (submit-repl))
       (when (if (key-pressed? 'up)
-                (= (str-find (buffer-text repl-input) "\n") false)
+                (eq? (str-find (buffer-text repl-input) "\n") false)
                 false)
         (history-prev))
       (when (if (key-pressed? 'down)
-                (= (str-find (buffer-text repl-input) "\n") false)
+                (eq? (str-find (buffer-text repl-input) "\n") false)
                 false)
         (history-next)))))
 

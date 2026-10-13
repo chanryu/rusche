@@ -127,4 +127,51 @@ mod tests {
         egui.run_frame(evaluator.context(), &ui, 1100.0, 720.0)
             .unwrap_or_else(|err| panic!("{err}"));
     }
+
+    #[test]
+    fn mark_site_keeps_non_overlapping_spans() {
+        let evaluator = Evaluator::with_prelude();
+        let egui = Egui::new();
+        let canvas = Rc::new(RefCell::new(Canvas::new()));
+        evaluator.install(egui.clone());
+        evaluator.install(TurtleHost {
+            canvas,
+            egui: egui.clone(),
+        });
+        evaluator
+            .root_env()
+            .define("initial-script", Expr::from("; empty\n"));
+        evaluator
+            .root_env()
+            .define_native_proc("run-app", |proc_name, args, _| -> EvalResult {
+                if args.len() != 4 {
+                    return Err(arity_error(proc_name, 4..=4, args.len()));
+                }
+                Ok(NIL)
+            });
+        eval_ui(&evaluator).unwrap();
+
+        // Spans [0,5) and [10,15); site [20,25) overlaps neither.
+        let marked = evaluator
+            .eval_str(
+                r#"(mark-site '((0 5 1 2 3) (10 15 4 5 6)) 20 25 '(255 232 140))"#,
+            )
+            .unwrap();
+        assert_eq!(
+            marked.to_string(),
+            "((0 5 1 2 3) (10 15 4 5 6))",
+            "non-overlapping site must leave spans unchanged"
+        );
+
+        // Site [3,12) overlaps both: split without extending past original ends.
+        let marked = evaluator
+            .eval_str(
+                r#"(mark-site '((0 5 1 2 3) (10 15 4 5 6)) 3 12 '(255 232 140))"#,
+            )
+            .unwrap();
+        assert_eq!(
+            marked.to_string(),
+            "((0 3 1 2 3) (3 5 1 2 3 255 232 140) (10 12 4 5 6 255 232 140) (12 15 4 5 6))"
+        );
+    }
 }

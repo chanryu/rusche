@@ -3,12 +3,12 @@
 (define (script-layouter text)
   (let ((spans (highlight text))
         (site (turtle-site text)))
-    (if (list? site)
-        (mark-site spans (car site) (cadr site) '(255 232 140))
-        spans)))
+    (if (eq? site false)
+        spans
+        (mark-site spans (car site) (cadr site) '(255 232 140)))))
 
 (define (mark-site spans start end bg)
-  ; `let` bindings are parallel, so dependent values need a nested let.
+  ; Split on overlap with [start, end); leave non-overlapping spans unchanged.
   (define (loop spans out)
     (if (null? spans)
         out
@@ -21,13 +21,13 @@
                 (mid1 (if (< end b) end b)))
             (loop (cdr spans)
                   (append out
-                    (append
-                      (if (< a mid0) (list (list a mid0 r g bl)) '())
-                      (append
-                        (if (< mid0 mid1)
+                    (if (< mid0 mid1)
+                        (append
+                          (if (< a mid0) (list (list a mid0 r g bl)) '())
+                          (append
                             (list (list mid0 mid1 r g bl (car bg) (cadr bg) (caddr bg)))
-                            '())
-                        (if (< mid1 b) (list (list mid1 b r g bl)) '())))))))))
+                            (if (< mid1 b) (list (list mid1 b r g bl)) '())))
+                        (list (list a b r g bl)))))))))
   (loop spans '()))
 
 (define (draw-editor-controls)
