@@ -612,8 +612,10 @@ fn show_text_edit(
     }
     let focused = output.response.has_focus();
     host.set_response(output.response.response.clone());
+    // Layouter already fell back to plain text; do not abort the frame (and
+    // skip later panels) just because syntax highlighting failed.
     if let Some(err) = layouter_error.borrow_mut().take() {
-        return Err(err);
+        eprintln!("rusche-egui: text-edit layouter error: {err}");
     }
     Ok(focused)
 }
@@ -627,7 +629,7 @@ fn remember_error(slot: &RefCell<Option<EvalError>>, err: EvalError) {
 
 fn plain_job(ui: &egui::Ui, text: &str, wrap_width: f32, code: bool) -> LayoutJob {
     let mut job = LayoutJob::default();
-    job.append(text, 0.0, text_format(ui, code, default_color(ui)));
+    job.append(text, 0.0, text_format(ui, code, default_color(ui), None));
     job.wrap.max_width = wrap_width;
     job
 }
@@ -659,17 +661,21 @@ fn spans_to_job(
             return Err(value::domain(proc_name, "overlapping layouter span"));
         }
         if cursor < span.start {
-            job.append(&text[cursor..span.start], 0.0, text_format(ui, code, color));
+            job.append(
+                &text[cursor..span.start],
+                0.0,
+                text_format(ui, code, color, None),
+            );
         }
         job.append(
             &text[span.start..span.end],
             0.0,
-            text_format(ui, code, span.color),
+            text_format(ui, code, span.color, span.background),
         );
         cursor = span.end;
     }
     if cursor < text.len() {
-        job.append(&text[cursor..], 0.0, text_format(ui, code, color));
+        job.append(&text[cursor..], 0.0, text_format(ui, code, color, None));
     }
     Ok(job)
 }
@@ -678,6 +684,7 @@ struct ByteSpan {
     start: usize,
     end: usize,
     color: egui::Color32,
+    background: Option<egui::Color32>,
 }
 
 fn parse_span(proc_name: &str, text: &str, value: &Expr) -> Result<ByteSpan, EvalError> {
@@ -685,15 +692,15 @@ fn parse_span(proc_name: &str, text: &str, value: &Expr) -> Result<ByteSpan, Eva
         return Err(value::type_error(
             proc_name,
             value,
-            "a span (start end r g b)",
+            "a span (start end r g b) or (start end r g b br bg bb)",
         ));
     };
     let nums: Vec<&Expr> = list.iter().collect();
-    if nums.len() != 5 {
+    if nums.len() != 5 && nums.len() != 8 {
         return Err(value::type_error(
             proc_name,
             value,
-            "a span (start end r g b)",
+            "a span (start end r g b) or (start end r g b br bg bb)",
         ));
     }
     let start = byte_index(proc_name, text, value::require_num(proc_name, nums[0])?)?;
@@ -705,7 +712,20 @@ fn parse_span(proc_name: &str, text: &str, value: &Expr) -> Result<ByteSpan, Eva
         proc_name,
         &Expr::from(vec![nums[2].clone(), nums[3].clone(), nums[4].clone()]),
     )?;
-    Ok(ByteSpan { start, end, color })
+    let background = if nums.len() == 8 {
+        Some(value::require_color(
+            proc_name,
+            &Expr::from(vec![nums[5].clone(), nums[6].clone(), nums[7].clone()]),
+        )?)
+    } else {
+        None
+    };
+    Ok(ByteSpan {
+        start,
+        end,
+        color,
+        background,
+    })
 }
 
 fn byte_index(proc_name: &str, text: &str, value: f64) -> Result<usize, EvalError> {
@@ -731,7 +751,12 @@ fn default_color(ui: &egui::Ui) -> egui::Color32 {
         .unwrap_or_else(|| ui.visuals().widgets.inactive.text_color())
 }
 
-fn text_format(ui: &egui::Ui, code: bool, color: egui::Color32) -> TextFormat {
+fn text_format(
+    ui: &egui::Ui,
+    code: bool,
+    color: egui::Color32,
+    background: Option<egui::Color32>,
+) -> TextFormat {
     let font_id = if code {
         egui::TextStyle::Monospace
     } else {
@@ -741,6 +766,7 @@ fn text_format(ui: &egui::Ui, code: bool, color: egui::Color32) -> TextFormat {
     TextFormat {
         font_id,
         color,
+        background: background.unwrap_or(egui::Color32::TRANSPARENT),
         ..Default::default()
     }
 }

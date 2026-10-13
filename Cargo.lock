@@ -2968,6 +2968,16 @@ dependencies = [
 name = "rusche-turtle"
 version = "0.5.0"
 dependencies = [
+ "egui",
+ "rusche",
+ "rusche-egui",
+ "rusche-turtle-rs",
+]
+
+[[package]]
+name = "rusche-turtle-rs"
+version = "0.5.0"
+dependencies = [
  "eframe",
  "egui",
  "rand",

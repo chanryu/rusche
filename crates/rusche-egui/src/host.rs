@@ -78,6 +78,7 @@ impl Host {
 
     /// Points the slot at `ui` for the duration of `f`.
     pub(crate) fn enter<R>(&self, ui: &mut egui::Ui, f: impl FnOnce() -> R) -> R {
+        *self.ctx.borrow_mut() = ui.ctx().clone();
         let prev = self.ui.replace(ui);
         let _restore = Restore {
             slot: &self.ui,

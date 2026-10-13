@@ -1,9 +1,10 @@
 # `rusche-turtle`
 
 [`rusche-turtle`](../crates/rusche-turtle) is an example host: a desktop turtle-graphics
-window with a script editor, REPL, canvas, and output log. Scripts and REPL
-expressions run on a worker-thread `Evaluator`; turtle commands stream to the UI over a
-channel.
+window whose chrome is a Rusche script on [`rusche-egui`](../crates/rusche-egui). Turtle
+commands still run on a worker-thread `Evaluator` shared with
+[`rusche-turtle-rs`](rusche-turtle-rs.md); the canvas animator and session live in that
+crate's library.
 
 ## Running
 
@@ -12,83 +13,32 @@ cargo run -p rusche-turtle
 cargo run -p rusche-turtle -- path/to/script.rsc   # optional: load into the editor
 ```
 
-Bundled demos ship inside the binary (`src/examples/*.rsc` via `include_str!`); pick them from **Examples** in the UI.
+The UI sources live under [`crates/rusche-turtle/src/ui/`](../crates/rusche-turtle/src/ui/)
+(`util`, `state`, `help`, `script`, `repl`, `canvas`, `app`) and are loaded in that
+order via `include_str!`. Bundled demos come from `rusche-turtle-rs` (`Examples` in the UI).
 
 | Control | Role |
 | --- | --- |
-| Script / REPL | Left-panel tabs. Script holds the source + Output; REPL is the interactive prompt. Both editors use simple syntax coloring (Rusche keywords vs turtle API names) |
-| Run | Script tab. Evaluate the script on the **current** session and canvas (does not wipe state) |
-| Stop | Script and REPL. Cancel at the next turtle / `write` / `random` call; later commands continue from the **visible** turtle |
-| Reset | Script and REPL. Fresh session, blank canvas, clear Output and REPL transcript |
-| Examples | Script tab. Load a bundled demo (embedded at compile time) |
+| Script / REPL | Left-panel tabs. Script holds the source + Output; REPL is the interactive prompt |
+| Run | Script tab. Evaluate the script on the **current** session and canvas |
+| Stop | Cancel evaluation; later commands continue from the **visible** turtle |
+| Reset | Fresh session, blank canvas, clear Output and REPL transcript |
+| Examples | Load a bundled demo |
 | Help | API hints (click a form to append it to the Script) |
-| Clear | Under the canvas. Blank the drawing and home the turtle/pen; **keeps** definitions |
-| Speed | Under the canvas. Crawl, Walk, Trot, Run, or Dash |
-| Status | On the canvas: position, heading, show/hide, color (name or `#rrggbb`), size, and pen up or down |
+| Clear | Under the canvas. Blank the drawing; **keeps** definitions |
+| Speed | Crawl → Dash animation pace |
 
-While a script runs, the editor highlights the form whose effect is currently being drawn
-(the call to `forward`, `right`, `pencolor`, …). The highlight follows the canvas animation,
-not the evaluator, so it points at what you see even though the worker thread may already
-be further ahead. Forms called through runtime-built calls (e.g.
-`apply`) fall back to the nearest enclosing call that appears in the source.
+## Architecture
 
-The Script and REPL tabs share one session: after **Run**, procedures defined in the script
-are callable from the REPL. Enter evaluates a complete form; Shift+Enter inserts a newline.
-Up/Down recall history on a single-line input. Turtle commands from either tab animate with
-the same **Speed** setting.
+- **`src/ui/*.rsc`** rebuilds panels, editors, help, and the canvas each frame through `rusche-egui`.
+- **Host natives** (`turtle-frame`, `turtle-run`, …) close over a shared [`Canvas`](../crates/rusche-turtle-rs/src/canvas.rs).
+- **Worker session** evaluates turtle scripts and streams motion events; `turtle-frame` advances the animator each UI pass.
 
-## Script API
-
-Origin at canvas center, **y up**, heading **0° = east**, positive turns
-counter-clockwise. Starts at `(0, 0)` facing north (`90°`) with pen down.
-
-Core language: [language reference](language-reference.md). Host adds:
-
-### Motion
-
-| Form | Effect |
-| --- | --- |
-| `(forward dist)` / `(fd dist)` | Move forward; draw if pen down |
-| `(back dist)` / `(bk dist)` | Move backward |
-| `(left deg)` / `(lt deg)` | Turn left |
-| `(right deg)` / `(rt deg)` | Turn right |
-| `(goto x y)` | Absolute move (draws if pen down) |
-| `(setheading deg)` / `(seth deg)` | Absolute heading |
-| `(home)` | Origin, face north, no draw |
-
-### Pen and canvas
-
-| Form | Effect |
-| --- | --- |
-| `(penup)` / `(pu)`, `(pendown)` / `(pd)` | Pen up / down |
-| `(pencolor name)` | `black` `white` `red` `green` `blue` `yellow` `orange` `purple` `cyan` `magenta` `gray` `brown` |
-| `(pencolor r g b)` | RGB `0…255` |
-| `(pensize w)` | Stroke width |
-| `(clear)` | Blank the drawing and reset turtle/pen (same idea as UI **Clear**) |
-| `(hideturtle)` / `(showturtle)` | Sprite visibility |
-
-### Queries and I/O
-
-| Form | Result |
-| --- | --- |
-| `(position)` | `(x y)` |
-| `(heading)` | Degrees |
-| `(pen?)` | Pen down? |
-| `(write …)` / `(writeln …)` | Output log (Script) or REPL transcript |
-| `(random)` | Float in `[0, 1)` |
-| `(repeat n body…)` | Loop `body` `n` times |
-
-```scheme
-(pencolor "blue")
-(repeat 36
-  (repeat 4 (forward 100) (right 90))
-  (right 10))
-```
-
-Demo sources: [`crates/rusche-turtle/src/examples/`](../crates/rusche-turtle/src/examples).
+The turtle script API (`forward`, `pencolor`, `repeat`, …) matches
+[`rusche-turtle-rs`](rusche-turtle-rs.md#turtle-api).
 
 ## Limitations
 
-- **Stop** sets the evaluator interrupt flag. Evaluation fails with `evaluation interrupted` within a few dozen steps, including a tight loop that calls no natives, and the worker then reports `Done`.
-- **Run** continues the current session; use **Reset** for a fresh evaluator, or **Clear** / `(clear)` to wipe only the drawing.
+- Same Stop / Run / Reset semantics as `rusche-turtle-rs`.
 - Example host (`publish = false`), like `rusche-cli`.
+- The Rust-UI twin [`rusche-turtle-rs`](rusche-turtle-rs.md) remains available for comparison.

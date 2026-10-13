@@ -48,8 +48,9 @@
 //! `(text-edit buf ['code] ['read-only] ['submit-on-enter] ['focus] ['rows n] [layouter])`
 //! returns true when the editor has focus. `'submit-on-enter` inserts a newline on
 //! Shift+Enter and leaves Enter for `(key-pressed? 'enter)`. The layouter is
-//! `(lambda (text) spans)` with each span `(start end r g b)` in byte offsets.
-//! It may run more than once per frame and should not build widgets.
+//! `(lambda (text) spans)` with each span `(start end r g b)` or
+//! `(start end r g b br bg bb)` in byte offsets. The optional trailing triple is a
+//! background color. It may run more than once per frame and should not build widgets.
 //!
 //! `(canvas height (lambda (painter x y w h) ...))`,
 //! `(fill-rect painter x y w h color)`,
@@ -165,6 +166,18 @@ impl Egui {
     /// Whether the latest [`Self::run_frame`] scheduled an immediate repaint.
     pub fn repaint_requested(&self) -> bool {
         self.host.repaint_requested()
+    }
+
+    /// The egui context for the active frame, if a widget or frame procedure is running.
+    ///
+    /// Hosts that need a [`egui::Context`] (for example to spawn a worker that calls
+    /// `request_repaint`) use this from inside the frame procedure.
+    pub fn frame_context(&self) -> Option<egui::Context> {
+        if self.host.in_frame() {
+            Some(self.host.egui_ctx())
+        } else {
+            None
+        }
     }
 }
 
@@ -353,7 +366,7 @@ mod tests {
               (text-edit buf 'code 'rows 4 'submit-on-enter 'focus
                 (lambda (text)
                   (set! seen text)
-                  '((0 2 9 8 7)))))
+                  '((0 2 9 8 7 255 232 140)))))
             "#,
         )
         .unwrap();
@@ -364,7 +377,8 @@ mod tests {
             Expr::from("ab")
         );
 
-        let err = frame(
+        // Invalid spans fall back to plain text instead of aborting the frame.
+        frame(
             &egui,
             &evaluator,
             r#"
@@ -372,8 +386,7 @@ mod tests {
               (text-edit buf (lambda (text) '((0 99 1 2 3)))))
             "#,
         )
-        .unwrap_err();
-        assert!(err.message().contains("span offset"));
+        .unwrap();
     }
 
     #[test]
