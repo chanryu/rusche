@@ -1,6 +1,6 @@
 use rusche::{
-    eval, eval_source, get_exact_1_arg, ErrorKind, EvalContext, EvalError, EvalResult, Expr, List,
-    NIL,
+    eval, eval_source, get_exact_1_arg, ErrorKind, EvalContext, EvalError, EvalResult, Evaluator,
+    Expr, Extension, List, NIL,
 };
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -9,21 +9,23 @@ use std::rc::Rc;
 use crate::diagnostics::print_pipeline_error;
 use crate::host::Host;
 
-pub fn load_io_procs(context: &EvalContext, host: &Rc<Host>) {
-    let write_host = Rc::clone(host);
-    context
-        .env
-        .define_native_proc("write", move |proc_name, args, context| {
+/// `write`, `read`, `exit`, and `load`.
+pub struct IoProcs(pub Rc<Host>);
+
+impl Extension for IoProcs {
+    fn install(&self, evaluator: &Evaluator) {
+        let env = evaluator.root_env();
+        let write_host = Rc::clone(&self.0);
+        env.define_native_proc("write", move |proc_name, args, context| {
             write(&write_host, proc_name, args, context)
         });
-    context.env.define_native_proc("read", read);
-    context.env.define_native_proc("exit", exit);
-    let load_host = Rc::clone(host);
-    context
-        .env
-        .define_native_proc("load", move |proc_name, args, context| {
+        env.define_native_proc("read", read);
+        env.define_native_proc("exit", exit);
+        let load_host = Rc::clone(&self.0);
+        env.define_native_proc("load", move |proc_name, args, context| {
             load(&load_host, proc_name, args, context)
         });
+    }
 }
 
 fn emit(host: &Host, text: &str) {
@@ -140,7 +142,7 @@ mod tests {
 
     fn with_io() -> Evaluator {
         let evaluator = Evaluator::with_builtin();
-        load_io_procs(evaluator.context(), &Host::new(Vec::new()));
+        evaluator.install(IoProcs(Host::new(Vec::new())));
         evaluator
     }
 

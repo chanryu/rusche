@@ -8,7 +8,7 @@ use rand::Rng;
 use rusche::eval_into_num;
 use rusche::{
     arity_error, cons, eval, get_exact_1_arg, get_exact_2_args, ErrorKind, EvalContext, EvalError,
-    EvalResult, Evaluator, Expr, List, NIL,
+    EvalResult, Evaluator, Expr, Extension, List, NIL,
 };
 
 use crate::turtle::{Color, Turtle, TurtleEvent};
@@ -85,7 +85,16 @@ fn define(env: &rusche::Env, host: &Rc<RefCell<Host>>, name: &'static str, func:
     });
 }
 
-pub fn load_turtle_procs(evaluator: &Evaluator, host: &Rc<RefCell<Host>>) {
+/// Turtle natives plus the `repeat` macro.
+pub struct TurtleProcs(pub Rc<RefCell<Host>>);
+
+impl Extension for TurtleProcs {
+    fn install(&self, evaluator: &Evaluator) {
+        load_turtle_procs(evaluator, &self.0);
+    }
+}
+
+fn load_turtle_procs(evaluator: &Evaluator, host: &Rc<RefCell<Host>>) {
     let env = evaluator.root_env();
     define(env, host, "forward", forward);
     define(env, host, "fd", forward);
@@ -115,7 +124,7 @@ pub fn load_turtle_procs(evaluator: &Evaluator, host: &Rc<RefCell<Host>>) {
     define(env, host, "writeln", writeln);
     define(env, host, "random", random);
     evaluator
-        .eval_str(PRELUDE)
+        .eval_prelude(PRELUDE)
         .expect("turtle prelude must evaluate");
 }
 
@@ -390,7 +399,7 @@ fn eval_with_vec_sink(src: &str) -> Result<(Vec<TurtleEvent>, Expr), rusche::Err
         turtle: Turtle::new(tx),
     }));
     let evaluator = Evaluator::with_prelude();
-    load_turtle_procs(&evaluator, &host);
+    evaluator.install(TurtleProcs(Rc::clone(&host)));
     let result = evaluator.eval_str(src);
     drop(host);
     let events: Vec<_> = rx.try_iter().collect();
@@ -538,7 +547,7 @@ mod tests {
         let evaluator = Evaluator::with_prelude();
         let flag = Arc::new(AtomicBool::new(false));
         evaluator.set_interrupt(Some(Arc::clone(&flag)));
-        load_turtle_procs(&evaluator, &host);
+        evaluator.install(TurtleProcs(host));
         evaluator.eval_str("(define (spin) (spin))").unwrap();
         flag.store(true, Ordering::Relaxed);
         let result = evaluator.eval_str("(spin)");

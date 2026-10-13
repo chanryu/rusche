@@ -40,8 +40,8 @@ pub mod utils;
 pub use env::Env;
 pub use error::Error;
 pub use eval::{
-    eval, eval_source, ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, Frame, FrameKind,
-    DEFAULT_GC_THRESHOLD, DEFAULT_MAX_CALL_DEPTH, INTERRUPT_CHECK_INTERVAL,
+    eval, eval_source, ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, Extension, Frame,
+    FrameKind, DEFAULT_GC_THRESHOLD, DEFAULT_MAX_CALL_DEPTH, INTERRUPT_CHECK_INTERVAL,
 };
 pub use expr::{intern, Expr, Foreign, ForeignDowncast, ForeignObject, NIL};
 pub use lexer::{tokenize, LexError, Lexer};

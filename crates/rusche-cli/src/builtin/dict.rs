@@ -286,7 +286,7 @@ mod tests {
 
     fn with_dict() -> Evaluator {
         let evaluator = Evaluator::with_builtin();
-        load_dict_procs(&evaluator);
+        evaluator.install(load_dict_procs);
         evaluator
     }
 
@@ -329,7 +329,7 @@ mod tests {
     #[test]
     fn dict_get_default_semantics() {
         let e = Evaluator::with_prelude();
-        load_dict_procs(&e);
+        e.install(load_dict_procs);
 
         assert_eq!(eval_ok(&e, "(dict-get (dict) \"missing\")"), "false");
         assert_eq!(eval_ok(&e, "(dict-get (dict) \"missing\" 42)"), "42");
@@ -397,7 +397,7 @@ mod tests {
     #[test]
     fn wrong_foreign_type_is_rejected() {
         let e = with_dict();
-        load_vec_procs(&e);
+        e.install(load_vec_procs);
         let msg = eval_err(&e, "(dict-length (vec 1))");
         assert!(msg.contains("dict"), "{msg}");
     }
@@ -405,7 +405,7 @@ mod tests {
     #[test]
     fn dict_trace_keeps_closures_alive() {
         let e = Evaluator::with_prelude();
-        load_dict_procs(&e);
+        e.install(load_dict_procs);
         e.set_gc_threshold(None);
         eval_ok(
             &e,

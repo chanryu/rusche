@@ -164,8 +164,58 @@ host and scripts only call into it.
 A native returns a finished value, so anything it evaluates with `eval` is a
 nested call: it counts towards the call depth and is never a tail call. If you
 need a control-flow form whose body stays in tail position (a `when`, a custom
-loop, …), write it as a `defmacro` in Rusche that expands to `if`/`begin`, and
-load it the way the prelude does, instead of implementing it as a native.
+loop, …), write it as a `defmacro` in Rusche that expands to `if`/`begin` and
+load it with `Evaluator::eval_prelude` instead of implementing it as a native:
+
+```rust
+evaluator
+    .eval_prelude("(defmacro (unless c *body) `(if ,c () (begin ,@body)))")
+    .unwrap();
+```
+
+`eval_prelude` strips source spans before evaluating, the same way the core
+prelude is loaded, so an error raised later inside `unless` points at the
+script form that used it rather than at a line inside your prelude string.
+
+## Bundling natives as an extension
+
+A host usually registers a group of related natives together. Any
+`Fn(&Evaluator)` is an [`Extension`](https://docs.rs/rusche/latest/rusche/trait.Extension.html),
+so a loader function works with `Evaluator::install` as is, and `install`
+returns the evaluator so calls chain. Implement the trait on a struct when the
+group captures host state:
+
+```rust
+use std::rc::Rc;
+use rusche::{Evaluator, Expr, Extension};
+
+fn math_procs(evaluator: &Evaluator) {
+    evaluator.root_env().define_native_proc("clamp", clamp);
+}
+
+struct Greeter(Rc<String>);
+
+impl Extension for Greeter {
+    fn install(&self, evaluator: &Evaluator) {
+        let name = Rc::clone(&self.0);
+        evaluator
+            .root_env()
+            .define_native_proc("greet", move |_, _, _| Ok(Expr::from(format!("hi {name}"))));
+    }
+}
+
+let evaluator = Evaluator::with_prelude();
+evaluator
+    .install(math_procs)
+    .install(Greeter(Rc::new("rusche".into())));
+```
+
+[`rusche-cli`](../../crates/rusche-cli/src/main.rs) installs `IoProcs` and
+`SysProcs` (which hold the host) alongside the plain `load_vec_procs` and
+`load_dict_procs` functions, and
+[`rusche-turtle`](../../crates/rusche-turtle/src/builtin.rs) installs
+`TurtleProcs`, whose `install` registers the natives and then runs the turtle
+prelude through `eval_prelude`.
 
 ## Next steps
 

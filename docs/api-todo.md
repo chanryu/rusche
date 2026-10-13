@@ -87,16 +87,19 @@ its pairs. In-repo hosts, examples, and docs use the trait.
 
 ## P6 — Extension and builder API
 
-Each host has an ad-hoc `load_*_procs` with an inconsistent signature
-(`load_io_procs(&EvalContext, &Rc<Host>)` versus `load_vec_procs(&Evaluator)`). The turtle
-host loads its prelude through `eval_str`, which keeps spans, so errors point
-into the prelude text; the core prelude avoids this via the `strip_spans` flag
-on `eval_source`.
+Mostly done. `Extension` has a blanket impl for `Fn(&Evaluator)`, so stateless
+loaders such as `load_vec_procs` install as plain functions while host-bearing
+ones are structs (`IoProcs`, `SysProcs`, `TurtleProcs`). `Evaluator::install`
+returns `&Self` so calls chain. `TurtleProcs` runs its `repeat` macro through
+`Evaluator::eval_prelude`, so errors inside `repeat` now point at the script
+form. The builder is left out: both hosts read `Option` settings from the
+command line and the existing setters handle that directly, so a builder would
+only add a second way to spell `set_max_call_depth` and `set_gc_threshold`.
 
-- [ ] Add an `Extension` trait with `fn install(&self, evaluator: &Evaluator)` and `Evaluator::install`
-- [ ] Add `Evaluator::eval_prelude(src)` that strips spans the way the core prelude does
+- [x] Add an `Extension` trait with `fn install(&self, evaluator: &Evaluator)` and `Evaluator::install`
+- [x] Add `Evaluator::eval_prelude(src)` that strips spans the way the core prelude does
 - [ ] Add `Evaluator::builder()` collecting `max_call_depth`, `gc_threshold`, prelude on/off, and extensions
-- [ ] Convert the `rusche-cli` and `rusche-turtle` loaders to extensions
+- [x] Convert the `rusche-cli` and `rusche-turtle` loaders to extensions
 
 ## P7 — Named sources in spans
 

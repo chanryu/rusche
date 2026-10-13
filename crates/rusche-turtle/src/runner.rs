@@ -9,7 +9,7 @@ use std::sync::Arc;
 use egui::Context;
 use rusche::{Error, Evaluator, Span};
 
-use crate::builtin::{load_turtle_procs, Host};
+use crate::builtin::{Host, TurtleProcs};
 use crate::turtle::{Origin, Turtle, TurtleEvent, TurtleSnap};
 
 const EVAL_STACK_SIZE: usize = 16 * 1024 * 1024;
@@ -49,7 +49,7 @@ impl Session {
                 }));
                 let evaluator = Evaluator::with_prelude();
                 evaluator.set_interrupt(Some(cancel_worker.clone()));
-                load_turtle_procs(&evaluator, &host);
+                evaluator.install(TurtleProcs(Rc::clone(&host)));
 
                 while let Ok(request) = req_rx.recv() {
                     match request {

@@ -59,6 +59,21 @@ pub const DEFAULT_MAX_CALL_DEPTH: usize = 1000;
 /// See [`Evaluator::set_gc_threshold`].
 pub const DEFAULT_GC_THRESHOLD: usize = 10_000;
 
+/// A bundle of host procedures, types, or prelude code added to an [`Evaluator`].
+///
+/// Any `Fn(&Evaluator)` is an extension, so a loader function or closure works
+/// directly with [`Evaluator::install`]. Implement the trait on a struct when the
+/// extension carries host state.
+pub trait Extension {
+    fn install(&self, evaluator: &Evaluator);
+}
+
+impl<F: Fn(&Evaluator)> Extension for F {
+    fn install(&self, evaluator: &Evaluator) {
+        self(evaluator)
+    }
+}
+
 /// Category of an evaluation error, so hosts and tests can match without parsing message text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ErrorKind {
@@ -776,6 +791,52 @@ impl Evaluator {
         evaluator
     }
 
+    /// Installs an [`Extension`] and returns `self` so calls chain.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rusche::{Evaluator, Expr, NIL};
+    ///
+    /// fn greet(evaluator: &Evaluator) {
+    ///     evaluator
+    ///         .root_env()
+    ///         .define_native_proc("greet", |_, _, _| Ok(Expr::from("hi")));
+    /// }
+    ///
+    /// let evaluator = Evaluator::with_builtin();
+    /// evaluator.install(greet);
+    /// assert_eq!(evaluator.eval_str("(greet)").unwrap(), Expr::from("hi"));
+    /// ```
+    pub fn install(&self, extension: impl Extension) -> &Self {
+        extension.install(self);
+        self
+    }
+
+    /// Evaluates host prelude source with spans removed.
+    ///
+    /// Errors raised later inside prelude-defined procedures are attributed to
+    /// the caller's form instead of a location inside `src`, the same way the
+    /// core prelude is loaded. Returns the value of the last expression.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rusche::{Evaluator, Expr};
+    ///
+    /// let evaluator = Evaluator::with_prelude();
+    /// evaluator
+    ///     .eval_prelude("(define (twice x) (* x 2))")
+    ///     .unwrap();
+    /// assert_eq!(evaluator.eval_str("(twice 4)").unwrap(), Expr::from(8));
+    /// ```
+    pub fn eval_prelude(&self, src: &str) -> Result<Expr, Error> {
+        self.begin_eval();
+        let result = eval_source(src, self.context(), true)?;
+        self.maybe_collect_garbage(Some(&result));
+        Ok(result)
+    }
+
     /// Returns the root environment of the evaluator.
     pub fn root_env(&self) -> &Rc<Env> {
         &self.context.env
@@ -1237,6 +1298,52 @@ mod tests {
         evaluator.set_step_budget(None);
         assert_eq!(evaluator.step_budget(), None);
         assert_eq!(evaluator.eval_str("(quote ok)").unwrap(), intern("ok"));
+    }
+
+    #[test]
+    fn test_install_chains_extensions() {
+        fn define_one(evaluator: &Evaluator) {
+            evaluator.root_env().define("one", Expr::from(1));
+        }
+        struct Offset(i32);
+        impl Extension for Offset {
+            fn install(&self, evaluator: &Evaluator) {
+                evaluator.root_env().define("offset", Expr::from(self.0));
+            }
+        }
+
+        let evaluator = Evaluator::with_prelude();
+        evaluator.install(define_one).install(Offset(41));
+        assert_eq!(
+            evaluator.eval_str("(+ one offset)").unwrap(),
+            Expr::from(42)
+        );
+    }
+
+    #[test]
+    fn test_eval_prelude_attributes_errors_to_the_call_site() {
+        let evaluator = Evaluator::with_builtin();
+        evaluator
+            .eval_prelude("(define (boom)\n  (car 1))")
+            .unwrap();
+
+        // The failing `(car 1)` form lives on the second line of the prelude; a
+        // span kept from there would point into prelude text. Instead the error
+        // falls back to the caller's form on the first line (lines are 0-based).
+        let Error::Eval(err) = evaluator.eval_str("(boom)").unwrap_err() else {
+            panic!("expected an evaluation error");
+        };
+        assert_eq!(err.span.map(|span| span.begin.line), Some(0));
+
+        // Defined through `eval_str`, the same body keeps its span and the error
+        // points at `(car 1)` on the second line.
+        let Error::Eval(err) = evaluator
+            .eval_str("(define (boom)\n  (car 1))\n(boom)")
+            .unwrap_err()
+        else {
+            panic!("expected an evaluation error");
+        };
+        assert_eq!(err.span.map(|span| span.begin.line), Some(1));
     }
 
     #[test]

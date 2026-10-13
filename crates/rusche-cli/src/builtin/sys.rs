@@ -1,23 +1,27 @@
 use rand::Rng;
 use rusche::{
-    arity_error, cons, eval, get_exact_1_arg, ErrorKind, EvalContext, EvalError, EvalResult, Expr,
-    List,
+    arity_error, cons, eval, get_exact_1_arg, ErrorKind, EvalContext, EvalError, EvalResult,
+    Evaluator, Expr, Extension, List,
 };
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::host::Host;
 
-pub fn load_sys_procs(context: &EvalContext, host: &Rc<Host>) {
-    context.env.define_native_proc("getenv", getenv);
-    context.env.define_native_proc("clock", clock);
-    context.env.define_native_proc("random", random);
-    let host = Rc::clone(host);
-    context
-        .env
-        .define_native_proc("command-line", move |proc_name, args, context| {
+/// `getenv`, `clock`, `random`, and `command-line`.
+pub struct SysProcs(pub Rc<Host>);
+
+impl Extension for SysProcs {
+    fn install(&self, evaluator: &Evaluator) {
+        let env = evaluator.root_env();
+        env.define_native_proc("getenv", getenv);
+        env.define_native_proc("clock", clock);
+        env.define_native_proc("random", random);
+        let host = Rc::clone(&self.0);
+        env.define_native_proc("command-line", move |proc_name, args, context| {
             command_line(&host, proc_name, args, context)
         });
+    }
 }
 
 fn getenv(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -74,7 +78,7 @@ mod tests {
     fn command_line_reads_captured_host_state() {
         let host = Host::new(vec!["rusche".into(), "script.rsc".into(), "a".into()]);
         let evaluator = Evaluator::with_builtin();
-        load_sys_procs(evaluator.context(), &host);
+        evaluator.install(SysProcs(host));
         assert_eq!(
             evaluator.eval_str("(command-line)").unwrap().to_string(),
             r#"("rusche" "script.rsc" "a")"#

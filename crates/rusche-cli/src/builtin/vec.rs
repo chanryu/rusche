@@ -170,7 +170,7 @@ mod tests {
 
     fn with_vec() -> Evaluator {
         let evaluator = Evaluator::with_builtin();
-        load_vec_procs(&evaluator);
+        evaluator.install(load_vec_procs);
         evaluator
     }
 
@@ -233,7 +233,7 @@ mod tests {
     #[test]
     fn vec_trace_keeps_closures_alive() {
         let e = Evaluator::with_prelude();
-        load_vec_procs(&e);
+        e.install(load_vec_procs);
         e.set_gc_threshold(None);
         eval_ok(
             &e,

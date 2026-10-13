@@ -6,10 +6,11 @@ mod repl;
 
 use std::io::{self, IsTerminal, Read};
 use std::process::ExitCode;
+use std::rc::Rc;
 
 use rusche::{tokenize, Evaluator, Loc, ParseError, Parser, Span};
 
-use builtin::{load_dict_procs, load_io_procs, load_sys_procs, load_vec_procs};
+use builtin::{load_dict_procs, load_vec_procs, IoProcs, SysProcs};
 use cli::{parse_args, usage, Input, Options};
 use diagnostics::{print_eval_error, print_lex_error, print_parse_error, print_pipeline_error};
 use host::Host;
@@ -131,7 +132,7 @@ fn run_with_options(opts: Options, command_line: Vec<String>) -> ExitCode {
     }
 }
 
-fn build_evaluator(opts: &Options, host: &std::rc::Rc<Host>) -> Evaluator {
+fn build_evaluator(opts: &Options, host: &Rc<Host>) -> Evaluator {
     let evaluator = Evaluator::with_prelude();
 
     if let Some(depth) = opts.max_call_depth {
@@ -141,16 +142,17 @@ fn build_evaluator(opts: &Options, host: &std::rc::Rc<Host>) -> Evaluator {
         evaluator.set_gc_threshold(threshold);
     }
 
-    load_io_procs(evaluator.context(), host);
-    load_sys_procs(evaluator.context(), host);
-    load_vec_procs(&evaluator);
-    load_dict_procs(&evaluator);
+    evaluator
+        .install(IoProcs(Rc::clone(host)))
+        .install(SysProcs(Rc::clone(host)))
+        .install(load_vec_procs)
+        .install(load_dict_procs);
     evaluator
 }
 
 fn run_source(
     evaluator: &Evaluator,
-    host: &std::rc::Rc<Host>,
+    host: &Rc<Host>,
     text: &str,
     source_name: &str,
 ) -> Result<(), ()> {
