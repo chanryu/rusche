@@ -1,9 +1,9 @@
 use rusche::{
-    arity_error, cons, eval, eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args,
-    ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, Expr, List, NIL,
+    eval, eval_into_list, eval_into_usize, get_exact_1_arg, get_exact_2_args, get_exact_3_args,
+    ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, Expr, ForeignObject, List, NIL,
 };
 
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, fmt, ops::Deref, rc::Rc};
 
 pub fn load_vec_procs(evaluator: &Evaluator) {
     let env = evaluator.root_env();
@@ -16,30 +16,53 @@ pub fn load_vec_procs(evaluator: &Evaluator) {
     env.define_native_proc("vec-length", vec_length);
     env.define_native_proc("vec->list", vec_to_list);
     env.define_native_proc("list->vec", list_to_vec);
-
-    // Let the garbage collector see closures stored inside vectors; without this, calling a
-    // closure that only lives in a vector would fail after a collection.
-    evaluator.register_foreign_tracer::<ExprVecRefCell>(|vec, trace| {
-        vec.borrow().iter().for_each(trace);
-    });
 }
 
-type ExprVecRefCell = RefCell<Vec<Expr>>;
+#[derive(Debug)]
+struct ExprVec(RefCell<Vec<Expr>>);
+
+impl Deref for ExprVec {
+    type Target = RefCell<Vec<Expr>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ForeignObject for ExprVec {
+    fn type_name(&self) -> &'static str {
+        "vec"
+    }
+
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<vec")?;
+        for item in self.borrow().iter() {
+            write!(f, " {item}")?;
+        }
+        write!(f, ">")
+    }
+
+    fn trace(&self, trace: &mut dyn FnMut(&Expr)) {
+        let items: Vec<Expr> = self.borrow().iter().cloned().collect();
+        for item in &items {
+            trace(item);
+        }
+    }
+}
 
 fn eval_into_vec(
     proc_name: &str,
     expr: &Expr,
     context: &EvalContext,
-) -> Result<Rc<ExprVecRefCell>, EvalError> {
-    eval_into_foreign(proc_name, expr, context)?
-        .downcast::<ExprVecRefCell>()
-        .map_err(|_| {
-            EvalError::new(
-                ErrorKind::Type,
-                format!("{proc_name}: `{expr}` does not evaluate to a vector"),
-            )
-            .with_span(expr.span())
-        })
+) -> Result<Rc<ExprVec>, EvalError> {
+    let value = eval(expr, context)?;
+    value.as_foreign::<ExprVec>().ok_or_else(|| {
+        EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: `{expr}` does not evaluate to a vector"),
+        )
+        .with_span(expr.span())
+    })
 }
 
 fn is_vec(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -52,7 +75,7 @@ fn vec(_: &str, args: &List, context: &EvalContext) -> EvalResult {
     for arg in args.iter() {
         items.push(eval(arg, context)?);
     }
-    Ok(Expr::Foreign(Rc::new(RefCell::new(items))))
+    Ok(Expr::foreign(ExprVec(RefCell::new(items))))
 }
 
 fn vec_push(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -81,17 +104,9 @@ fn vec_pop(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 fn vec_get(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (vec_expr, index_expr) = get_exact_2_args(proc_name, args)?;
     let vec = eval_into_vec(proc_name, vec_expr, context)?;
-    let index = eval_into_int(proc_name, "index", index_expr, context)?;
+    let index = eval_into_usize(proc_name, "index", index_expr, context)?;
 
-    if index < 0 {
-        return Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: index must be zero or positive integer"),
-        )
-        .with_span(index_expr.span()));
-    }
-
-    let item = vec.borrow().get(index as usize).cloned();
+    let item = vec.borrow().get(index).cloned();
     if let Some(item) = item {
         Ok(item)
     } else {
@@ -104,34 +119,14 @@ fn vec_get(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 }
 
 fn vec_set(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    let mut iter = args.iter();
-    let Some(vec_expr) = iter.next() else {
-        return Err(arity_error(proc_name, 3..=3, 0));
-    };
-    let Some(index_expr) = iter.next() else {
-        return Err(arity_error(proc_name, 3..=3, 1));
-    };
-    let Some(value_expr) = iter.next() else {
-        return Err(arity_error(proc_name, 3..=3, 2));
-    };
-    if iter.next().is_some() {
-        return Err(arity_error(proc_name, 3..=3, 3 + iter.count() + 1));
-    }
+    let (vec_expr, index_expr, value_expr) = get_exact_3_args(proc_name, args)?;
 
     let vec = eval_into_vec(proc_name, vec_expr, context)?;
-    let index = eval_into_int(proc_name, "index", index_expr, context)?;
+    let index = eval_into_usize(proc_name, "index", index_expr, context)?;
     let value = eval(value_expr, context)?;
 
-    if index < 0 {
-        return Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: index must be zero or positive integer"),
-        )
-        .with_span(index_expr.span()));
-    }
-
     let mut borrowed = vec.borrow_mut();
-    let Some(slot) = borrowed.get_mut(index as usize) else {
+    let Some(slot) = borrowed.get_mut(index) else {
         return Err(EvalError::new(
             ErrorKind::Other,
             format!("{proc_name}: index out-of-bounds {index}"),
@@ -145,34 +140,22 @@ fn vec_set(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 fn vec_length(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let vec_expr = get_exact_1_arg(proc_name, args)?;
     let vec = eval_into_vec(proc_name, vec_expr, context)?;
-    let len = vec.borrow().len() as f64;
-    Ok(len.into())
+    let len = vec.borrow().len();
+    Ok(Expr::from(len))
 }
 
 fn vec_to_list(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let vec_expr = get_exact_1_arg(proc_name, args)?;
     let vec = eval_into_vec(proc_name, vec_expr, context)?;
-    let mut list = List::Nil;
-    for item in vec.borrow().iter().rev() {
-        list = cons(item.clone(), list);
-    }
-    Ok(list.into())
+    let list = vec.borrow().iter().cloned().collect();
+    Ok(list)
 }
 
 fn list_to_vec(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let list_expr = get_exact_1_arg(proc_name, args)?;
-    let list = match eval(list_expr, context)? {
-        Expr::List(list, _) => list,
-        other => {
-            return Err(EvalError::new(
-                ErrorKind::Type,
-                format!("{proc_name}: `{other}` does not evaluate to a list"),
-            )
-            .with_span(list_expr.span()));
-        }
-    };
+    let list = eval_into_list(proc_name, list_expr, context)?;
     let items: Vec<Expr> = list.iter().cloned().collect();
-    Ok(Expr::Foreign(Rc::new(RefCell::new(items))))
+    Ok(Expr::foreign(ExprVec(RefCell::new(items))))
 }
 
 #[cfg(test)]
@@ -180,9 +163,14 @@ mod tests {
     use super::*;
     use rusche::Evaluator;
 
+    #[derive(Debug)]
+    struct Other;
+
+    impl ForeignObject for Other {}
+
     fn with_vec() -> Evaluator {
         let evaluator = Evaluator::with_builtin();
-        load_vec_procs(&evaluator);
+        evaluator.install(load_vec_procs);
         evaluator
     }
 
@@ -203,6 +191,7 @@ mod tests {
     #[test]
     fn vec_round_trip_and_predicates() {
         let e = with_vec();
+        assert_eq!(eval_ok(&e, "(vec 1 2 3)"), "<vec 1 2 3>");
         assert_eq!(eval_ok(&e, "(vec-length (vec))"), "0");
         assert_eq!(eval_ok(&e, "(vec-length (vec 1 2 3))"), "3");
         assert_eq!(eval_ok(&e, "(vec? (vec 1))"), "true");
@@ -242,9 +231,9 @@ mod tests {
     }
 
     #[test]
-    fn vec_foreign_tracer_keeps_closures_alive() {
+    fn vec_trace_keeps_closures_alive() {
         let e = Evaluator::with_prelude();
-        load_vec_procs(&e);
+        e.install(load_vec_procs);
         e.set_gc_threshold(None);
         eval_ok(
             &e,
@@ -260,7 +249,7 @@ mod tests {
     #[test]
     fn wrong_foreign_type_is_rejected() {
         let e = with_vec();
-        e.root_env().define("box", Expr::Foreign(Rc::new(1_i32)));
+        e.root_env().define("box", Expr::foreign(Other));
         assert_eq!(eval_ok(&e, "(vec? box)"), "false");
         let msg = eval_err(&e, "(vec-length box)");
         assert!(msg.contains("vector"), "{msg}");

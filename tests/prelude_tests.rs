@@ -412,7 +412,9 @@ fn test_format_library() {
     assert!(evaluator
         .eval_to_str(r#"(format "x" 1)"#)
         .contains("unused arguments"));
-    assert!(evaluator.eval_to_str(r#"(format "{")"#).contains("unclosed"));
+    assert!(evaluator
+        .eval_to_str(r#"(format "{")"#)
+        .contains("unclosed"));
     assert!(evaluator
         .eval_to_str(r#"(format "{x}")"#)
         .contains("expected '}'"));

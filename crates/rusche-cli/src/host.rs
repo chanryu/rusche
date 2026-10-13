@@ -1,65 +1,95 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
+use std::rc::Rc;
 
-static COMMAND_LINE: Mutex<Vec<String>> = Mutex::new(Vec::new());
-static AT_COLUMN_ZERO: AtomicBool = AtomicBool::new(true);
-
-pub fn set_command_line(args: Vec<String>) {
-    *COMMAND_LINE.lock().unwrap() = args;
+/// State shared by natives, the REPL, and diagnostics.
+///
+/// Natives that need it capture an `Rc<Host>`. Column tracking and the `load`
+/// directory stack use interior mutability, so callers share the `Rc` directly.
+pub struct Host {
+    command_line: Vec<String>,
+    at_column_zero: Cell<bool>,
+    source_dirs: RefCell<Vec<PathBuf>>,
+    /// File text retained so a diagnostic can show a file other than the one
+    /// the top-level printer was given. Entries stay for the process lifetime.
+    source_texts: RefCell<HashMap<String, String>>,
 }
 
-pub fn command_line() -> Vec<String> {
-    COMMAND_LINE.lock().unwrap().clone()
-}
-
-pub fn at_column_zero() -> bool {
-    AT_COLUMN_ZERO.load(Ordering::Relaxed)
-}
-
-pub fn set_at_column_zero(value: bool) {
-    AT_COLUMN_ZERO.store(value, Ordering::Relaxed);
-}
-
-pub fn note_output(text: &str) {
-    if text.is_empty() {
-        return;
+impl Host {
+    pub fn new(command_line: Vec<String>) -> Rc<Self> {
+        Rc::new(Self {
+            command_line,
+            at_column_zero: Cell::new(true),
+            source_dirs: RefCell::new(Vec::new()),
+            source_texts: RefCell::new(HashMap::new()),
+        })
     }
-    set_at_column_zero(text.ends_with('\n'));
+
+    pub fn command_line(&self) -> &[String] {
+        &self.command_line
+    }
+
+    pub fn at_column_zero(&self) -> bool {
+        self.at_column_zero.get()
+    }
+
+    pub fn set_at_column_zero(&self, value: bool) {
+        self.at_column_zero.set(value);
+    }
+
+    pub fn note_output(&self, text: &str) {
+        if text.is_empty() {
+            return;
+        }
+        self.set_at_column_zero(text.ends_with('\n'));
+    }
+
+    /// Treat `path` as the file being evaluated until the guard is dropped.
+    /// Relative `load` paths join onto its directory.
+    pub fn enter_source_file(self: &Rc<Self>, path: &Path) -> SourceDirGuard {
+        let dir = path.parent().unwrap_or(Path::new("")).to_path_buf();
+        self.source_dirs.borrow_mut().push(dir);
+        SourceDirGuard {
+            host: Rc::clone(self),
+        }
+    }
+
+    pub fn current_source_dir(&self) -> Option<PathBuf> {
+        self.source_dirs.borrow().last().cloned()
+    }
+
+    /// Remembers `text` under `name` so diagnostics can print it after `load` returns.
+    ///
+    /// A later load of the same name replaces the text.
+    pub fn remember_source(&self, name: &str, text: &str) {
+        self.source_texts
+            .borrow_mut()
+            .insert(name.to_string(), text.to_string());
+    }
+
+    /// Text previously stored with [`Host::remember_source`].
+    pub fn source_text(&self, name: &str) -> Option<String> {
+        self.source_texts.borrow().get(name).cloned()
+    }
+
+    /// If the last stdout write did not end in a newline, emit one so diagnostics start cleanly.
+    pub fn ensure_newline(&self) {
+        if !self.at_column_zero() {
+            println!();
+            self.set_at_column_zero(true);
+        }
+    }
 }
 
-thread_local! {
-    static SOURCE_DIRS: RefCell<Vec<PathBuf>> = const { RefCell::new(Vec::new()) };
+/// Pops the source-directory stack when dropped.
+pub struct SourceDirGuard {
+    host: Rc<Host>,
 }
-
-/// Directory of the file currently being evaluated. Relative `load` paths join onto it.
-pub struct SourceDirGuard;
 
 impl Drop for SourceDirGuard {
     fn drop(&mut self) {
-        SOURCE_DIRS.with(|stack| {
-            stack.borrow_mut().pop();
-        });
-    }
-}
-
-/// Treat `path` as the file being evaluated until the guard is dropped.
-pub fn enter_source_file(path: &Path) -> SourceDirGuard {
-    let dir = path.parent().unwrap_or(Path::new("")).to_path_buf();
-    SOURCE_DIRS.with(|stack| stack.borrow_mut().push(dir));
-    SourceDirGuard
-}
-
-pub fn current_source_dir() -> Option<PathBuf> {
-    SOURCE_DIRS.with(|stack| stack.borrow().last().cloned())
-}
-
-/// If the last stdout write did not end in a newline, emit one so diagnostics start cleanly.
-pub fn ensure_newline() {
-    if !at_column_zero() {
-        println!();
-        set_at_column_zero(true);
+        self.host.source_dirs.borrow_mut().pop();
     }
 }
 
@@ -69,33 +99,43 @@ mod tests {
 
     #[test]
     fn note_output_tracks_column_and_ignores_empty() {
-        set_at_column_zero(true);
-        note_output("");
-        assert!(at_column_zero());
+        let host = Host::new(vec!["rusche".into(), "a".into()]);
+        assert!(host.at_column_zero());
+        host.note_output("");
+        assert!(host.at_column_zero());
 
-        note_output("hi");
-        assert!(!at_column_zero());
-        ensure_newline();
-        assert!(at_column_zero());
+        host.note_output("hi");
+        assert!(!host.at_column_zero());
+        host.ensure_newline();
+        assert!(host.at_column_zero());
 
-        note_output("line\n");
-        assert!(at_column_zero());
+        host.note_output("line\n");
+        assert!(host.at_column_zero());
 
-        set_command_line(vec!["rusche".into(), "a".into()]);
-        assert_eq!(command_line(), vec!["rusche".to_string(), "a".to_string()]);
+        assert_eq!(host.command_line(), ["rusche".to_string(), "a".to_string()]);
     }
 
     #[test]
     fn source_dir_stack_follows_the_file_being_evaluated() {
-        assert!(current_source_dir().is_none());
-        let outer = enter_source_file(Path::new("examples/fizzbuzz.rsc"));
-        assert_eq!(current_source_dir().unwrap(), PathBuf::from("examples"));
+        let host = Host::new(Vec::new());
+        assert!(host.current_source_dir().is_none());
+        let outer = host.enter_source_file(Path::new("examples/fizzbuzz.rsc"));
+        assert_eq!(
+            host.current_source_dir().unwrap(),
+            PathBuf::from("examples")
+        );
         {
-            let _inner = enter_source_file(Path::new("examples/lib/io.rsc"));
-            assert_eq!(current_source_dir().unwrap(), PathBuf::from("examples/lib"));
+            let _inner = host.enter_source_file(Path::new("examples/lib/io.rsc"));
+            assert_eq!(
+                host.current_source_dir().unwrap(),
+                PathBuf::from("examples/lib")
+            );
         }
-        assert_eq!(current_source_dir().unwrap(), PathBuf::from("examples"));
+        assert_eq!(
+            host.current_source_dir().unwrap(),
+            PathBuf::from("examples")
+        );
         drop(outer);
-        assert!(current_source_dir().is_none());
+        assert!(host.current_source_dir().is_none());
     }
 }

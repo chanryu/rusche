@@ -1,9 +1,12 @@
 use std::{
-    any::{Any, TypeId},
     cell::{Cell, RefCell},
     collections::HashMap,
     fmt,
     rc::{Rc, Weak},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
 
 use crate::{
@@ -11,7 +14,7 @@ use crate::{
     env::Env,
     error::Error,
     expr::{Expr, NIL},
-    lexer::tokenize,
+    lexer::tokenize_named,
     list::{Cons, List},
     parser::Parser,
     prelude::load_prelude,
@@ -25,7 +28,21 @@ use crate::{
 /// When `strip_spans` is true, spans are removed from each parsed expression before
 /// evaluation (used by the prelude so errors attribute to the call site).
 pub fn eval_source(src: &str, context: &EvalContext, strip_spans: bool) -> Result<Expr, Error> {
-    let tokens = tokenize(src, None)?;
+    eval_source_named(src, context, strip_spans, None)
+}
+
+/// Like [`eval_source`], tagging every span with `source`.
+///
+/// `source` is a file name or other label. Pass `None` for unnamed spans, the
+/// same as [`eval_source`]. Locations inside `src` then name that buffer, so a
+/// later error and its call trace can say which file each frame came from.
+pub fn eval_source_named(
+    src: &str,
+    context: &EvalContext,
+    strip_spans: bool,
+    source: Option<&str>,
+) -> Result<Expr, Error> {
+    let tokens = tokenize_named(src, None, source)?;
     let mut parser = Parser::with_tokens(tokens);
     let mut last = NIL;
     loop {
@@ -56,12 +73,20 @@ pub const DEFAULT_MAX_CALL_DEPTH: usize = 1000;
 /// See [`Evaluator::set_gc_threshold`].
 pub const DEFAULT_GC_THRESHOLD: usize = 10_000;
 
-/// A callback that reports every [`Expr`] held inside a [`Foreign`](crate::expr::Foreign)
-/// object so the garbage collector can keep the environments they reference alive.
-/// Register one per concrete type with [`Evaluator::register_foreign_tracer`].
-pub type ForeignTracer = Box<dyn Fn(&dyn Any, &mut dyn FnMut(&Expr))>;
+/// A bundle of host procedures, types, or prelude code added to an [`Evaluator`].
+///
+/// Any `Fn(&Evaluator)` is an extension, so a loader function or closure works
+/// directly with [`Evaluator::install`]. Implement the trait on a struct when the
+/// extension carries host state.
+pub trait Extension {
+    fn install(&self, evaluator: &Evaluator);
+}
 
-pub(crate) type ForeignTracers = HashMap<TypeId, ForeignTracer>;
+impl<F: Fn(&Evaluator)> Extension for F {
+    fn install(&self, evaluator: &Evaluator) {
+        self(evaluator)
+    }
+}
 
 /// Category of an evaluation error, so hosts and tests can match without parsing message text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -73,6 +98,8 @@ pub enum ErrorKind {
     InvalidForm,
     User,
     CallDepth,
+    /// The host interrupt flag was set, or the step budget was exceeded.
+    Interrupted,
     Other,
 }
 
@@ -96,6 +123,24 @@ pub struct Frame {
     pub call_site: Option<Span>,
 }
 
+impl Frame {
+    /// `in `name`, called at file:line:col`, or `in `name` (prelude)` when there is no span.
+    ///
+    /// An unnamed call site uses `fallback_source`.
+    pub fn trace_label(&self, fallback_source: &str) -> String {
+        match self.call_site {
+            Some(span) => {
+                format!(
+                    "in `{}`, called at {}",
+                    self.name,
+                    span.location(fallback_source)
+                )
+            }
+            None => format!("in `{}` (prelude)", self.name),
+        }
+    }
+}
+
 /// Cached macro expansion keyed by the address of the call-site [`Cons`].
 #[derive(Debug)]
 pub(crate) struct MacroCacheEntry {
@@ -110,6 +155,12 @@ pub(crate) struct MacroCacheEntry {
 /// Cap on cached expansions. On overflow the whole cache is cleared.
 pub(crate) const MACRO_CACHE_CAP: usize = 4096;
 
+/// How often the eval loop loads the host interrupt flag.
+///
+/// The flag is also loaded on the first step, so a flag that is already set fails
+/// immediately. Between checks, a tight loop can run this many steps.
+pub const INTERRUPT_CHECK_INTERVAL: usize = 64;
+
 /// Shared evaluator state cloned cheaply with every [`EvalContext`].
 ///
 /// Collapsing call-depth, call-trace, and the macro cache into one `Rc` halves
@@ -120,6 +171,10 @@ pub(crate) struct Shared {
     max_call_depth: Cell<usize>,
     call_trace: RefCell<Vec<Frame>>,
     pub(crate) macro_cache: RefCell<HashMap<*const Cons, MacroCacheEntry>>,
+    /// Steps taken since the current top-level `eval` / `eval_str` / `call`.
+    steps: Cell<usize>,
+    step_budget: Cell<Option<usize>>,
+    interrupt: RefCell<Option<Arc<AtomicBool>>>,
 }
 
 impl Shared {
@@ -129,11 +184,46 @@ impl Shared {
             max_call_depth: Cell::new(DEFAULT_MAX_CALL_DEPTH),
             call_trace: RefCell::new(Vec::new()),
             macro_cache: RefCell::new(HashMap::new()),
+            steps: Cell::new(0),
+            step_budget: Cell::new(None),
+            interrupt: RefCell::new(None),
         }
     }
 
     pub(crate) fn clear_macro_cache(&self) {
         self.macro_cache.borrow_mut().clear();
+    }
+
+    /// Counts one evaluation step and fails if the step budget or interrupt flag says to stop.
+    fn poll(&self) -> Result<(), EvalError> {
+        let steps = self.steps.get().saturating_add(1);
+        self.steps.set(steps);
+
+        if let Some(budget) = self.step_budget.get() {
+            if steps > budget {
+                return Err(EvalError::new(
+                    ErrorKind::Interrupted,
+                    format!("step budget ({budget}) exceeded"),
+                ));
+            }
+        }
+
+        // The first step honors a flag set before evaluation started. After that the
+        // atomic is loaded every INTERRUPT_CHECK_INTERVAL steps.
+        if steps == 1 || steps.is_multiple_of(INTERRUPT_CHECK_INTERVAL) {
+            let flag = self.interrupt.borrow();
+            if flag
+                .as_ref()
+                .is_some_and(|flag| flag.load(Ordering::Relaxed))
+            {
+                return Err(EvalError::new(
+                    ErrorKind::Interrupted,
+                    "evaluation interrupted",
+                ));
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -250,6 +340,25 @@ impl EvalContext {
     /// Snapshot of the active call stack (outermost first) for attaching to errors.
     pub(crate) fn trace_snapshot(&self) -> Vec<Frame> {
         self.shared.call_trace.borrow().clone()
+    }
+
+    /// Calls `proc` with already-evaluated `args`.
+    ///
+    /// `proc` must be an [`Expr::Proc`](crate::expr::Expr::Proc). Closures and native
+    /// procedures receive `args` as values, so a list is data rather than a call.
+    /// Macros receive `args` as forms, the same way `(apply macro args)` does.
+    ///
+    /// The call is evaluated in this context. Inside a native procedure it counts as a
+    /// nested call, the same as [`eval`](crate::eval::eval).
+    pub fn call(&self, proc: &Expr, args: &[Expr]) -> EvalResult {
+        let Expr::Proc(proc, _) = proc else {
+            return Err(
+                EvalError::new(ErrorKind::Type, format!("`{proc}` is not a procedure"))
+                    .with_span(proc.span()),
+            );
+        };
+        let form = crate::builtin::special::call_expr(Rc::clone(proc), args.to_vec());
+        eval(&form, self)
     }
 
     /// Span of the innermost active procedure call that came from source, if any.
@@ -387,7 +496,11 @@ pub fn eval(expr: &Expr, context: &EvalContext) -> EvalResult {
             cons_for_span = Some(cons.clone());
         }
 
-        match eval_form(&cons, &context, &mut frame, expr.span()) {
+        let reduced = match context.shared.poll() {
+            Err(err) => Err(err),
+            Ok(()) => eval_form(&cons, &context, &mut frame, expr.span()),
+        };
+        match reduced {
             Ok(Step::Value(value)) => return Ok(value),
             Ok(Step::Eval(next_expr, next_context)) => {
                 expr = next_expr;
@@ -550,6 +663,14 @@ fn eval_form(
 /// The struct that owns the root environment and evaluation context, enforces the call depth
 /// limit, and performs garbage collection.
 ///
+/// # Interrupting evaluation
+///
+/// [`Evaluator::set_interrupt`] watches an [`AtomicBool`]. The eval loop loads it on the
+/// first step and every [`INTERRUPT_CHECK_INTERVAL`] steps after that. When the flag is
+/// set, evaluation fails with [`ErrorKind::Interrupted`]. [`Evaluator::set_step_budget`]
+/// uses the same check to cap how many steps one top-level `eval`, `eval_str`, or `call`
+/// may take.
+///
 /// # Call depth and tail calls
 ///
 /// Evaluation is iterative in tail position (see [`eval`]), so tail-recursive procedures run
@@ -570,12 +691,11 @@ fn eval_form(
 /// Reachability starts from the root environment and the value just returned by `eval`.
 /// Anything the host keeps alive outside of the evaluator (for example an `Expr::Proc` stored in
 /// a Rust struct) is **not** a root; define it in the root environment or keep it inside a
-/// [`Foreign`](crate::expr::Foreign) object with a registered
-/// [tracer](Evaluator::register_foreign_tracer) if it must survive collection.
+/// [`Foreign`](crate::expr::Foreign) object whose
+/// [`trace`](crate::expr::ForeignObject::trace) reports it, if it must survive collection.
 pub struct Evaluator {
     all_envs: Rc<RefCell<Vec<Weak<Env>>>>,
     context: EvalContext,
-    foreign_tracers: RefCell<ForeignTracers>,
     gc_threshold: Cell<Option<usize>>,
     next_gc_at: Cell<usize>,
 }
@@ -602,7 +722,6 @@ impl Evaluator {
                 env: root_env,
                 shared: Rc::new(Shared::new()),
             },
-            foreign_tracers: RefCell::new(HashMap::new()),
             gc_threshold: Cell::new(Some(DEFAULT_GC_THRESHOLD)),
             next_gc_at: Cell::new(DEFAULT_GC_THRESHOLD),
         }
@@ -624,6 +743,65 @@ impl Evaluator {
         self.context.shared.max_call_depth.set(depth);
     }
 
+    /// Watches `flag` and fails evaluation with [`ErrorKind::Interrupted`] when it is set.
+    ///
+    /// Pass `None` to stop watching. The evaluator does not clear the flag. The load happens
+    /// on the first evaluation step and then every [`INTERRUPT_CHECK_INTERVAL`] steps, so a
+    /// tight loop with no native calls still stops.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use std::sync::Arc;
+    /// use rusche::{Error, ErrorKind, Evaluator};
+    ///
+    /// let evaluator = Evaluator::with_builtin();
+    /// let flag = Arc::new(AtomicBool::new(false));
+    /// evaluator.set_interrupt(Some(Arc::clone(&flag)));
+    ///
+    /// evaluator.eval_str("(define (spin) (spin))").unwrap();
+    /// flag.store(true, Ordering::Relaxed);
+    /// let Error::Eval(err) = evaluator.eval_str("(spin)").unwrap_err() else {
+    ///     panic!("expected an evaluation error");
+    /// };
+    /// assert_eq!(err.kind, ErrorKind::Interrupted);
+    /// ```
+    pub fn set_interrupt(&self, flag: Option<Arc<AtomicBool>>) {
+        *self.context.shared.interrupt.borrow_mut() = flag;
+    }
+
+    /// Returns the step budget, or `None` if it is disabled.
+    pub fn step_budget(&self) -> Option<usize> {
+        self.context.shared.step_budget.get()
+    }
+
+    /// Caps how many evaluation steps a top-level [`Evaluator::eval`], [`Evaluator::eval_str`],
+    /// or [`Evaluator::call`] may take. Pass `None` to disable the cap.
+    ///
+    /// Exceeding the budget fails with [`ErrorKind::Interrupted`]. The count resets at the
+    /// start of each of those calls when evaluation is not already inside a procedure.
+    /// One step is one trip around the eval loop (a form reduced in tail position counts;
+    /// atoms that never enter the loop do not).
+    pub fn set_step_budget(&self, budget: Option<usize>) {
+        self.context.shared.step_budget.set(budget);
+    }
+
+    /// Resets the step counter at the start of a top-level evaluation.
+    fn begin_eval(&self) {
+        if !self.context.is_in_proc() {
+            self.context.shared.steps.set(0);
+        }
+    }
+
+    /// Runs `f` as one top-level evaluation: reset the step counter, then collect garbage.
+    fn run<E>(&self, f: impl FnOnce() -> Result<Expr, E>) -> Result<Expr, E> {
+        self.begin_eval();
+        let result = f();
+        self.maybe_collect_garbage(result.as_ref().ok());
+        result
+    }
+
     /// Returns the garbage collection threshold, or `None` if automatic collection is disabled.
     pub fn gc_threshold(&self) -> Option<usize> {
         self.gc_threshold.get()
@@ -637,39 +815,6 @@ impl Evaluator {
         if let Some(threshold) = threshold {
             self.next_gc_at.set(threshold);
         }
-    }
-
-    /// Registers a tracer for [`Foreign`](crate::expr::Foreign) objects of type `T`.
-    ///
-    /// When the garbage collector encounters an `Expr::Foreign` whose payload is a `T`, it calls
-    /// `tracer` and treats every `Expr` passed to the callback as reachable. Without a tracer,
-    /// closures stored inside a foreign object may have their environments collected.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::{cell::RefCell, rc::Rc};
-    /// use rusche::{Evaluator, Expr};
-    ///
-    /// type ExprVec = RefCell<Vec<Expr>>;
-    ///
-    /// let evaluator = Evaluator::default();
-    /// evaluator.register_foreign_tracer::<ExprVec>(|vec, trace| {
-    ///     vec.borrow().iter().for_each(trace);
-    /// });
-    /// ```
-    pub fn register_foreign_tracer<T: Any>(
-        &self,
-        tracer: impl Fn(&T, &mut dyn FnMut(&Expr)) + 'static,
-    ) {
-        self.foreign_tracers.borrow_mut().insert(
-            TypeId::of::<T>(),
-            Box::new(move |object, trace| {
-                if let Some(object) = object.downcast_ref::<T>() {
-                    tracer(object, trace);
-                }
-            }),
-        );
     }
 
     /// Creates a new `Evaluator` with built-in functions.
@@ -686,6 +831,49 @@ impl Evaluator {
         evaluator
     }
 
+    /// Installs an [`Extension`] and returns `self` so calls chain.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rusche::{Evaluator, Expr, NIL};
+    ///
+    /// fn greet(evaluator: &Evaluator) {
+    ///     evaluator
+    ///         .root_env()
+    ///         .define_native_proc("greet", |_, _, _| Ok(Expr::from("hi")));
+    /// }
+    ///
+    /// let evaluator = Evaluator::with_builtin();
+    /// evaluator.install(greet);
+    /// assert_eq!(evaluator.eval_str("(greet)").unwrap(), Expr::from("hi"));
+    /// ```
+    pub fn install(&self, extension: impl Extension) -> &Self {
+        extension.install(self);
+        self
+    }
+
+    /// Evaluates host prelude source with spans removed.
+    ///
+    /// Errors raised later inside prelude-defined procedures are attributed to
+    /// the caller's form instead of a location inside `src`, the same way the
+    /// core prelude is loaded. Returns the value of the last expression.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rusche::{Evaluator, Expr};
+    ///
+    /// let evaluator = Evaluator::with_prelude();
+    /// evaluator
+    ///     .eval_prelude("(define (twice x) (* x 2))")
+    ///     .unwrap();
+    /// assert_eq!(evaluator.eval_str("(twice 4)").unwrap(), Expr::from(8));
+    /// ```
+    pub fn eval_prelude(&self, src: &str) -> Result<Expr, Error> {
+        self.run(|| eval_source(src, self.context(), true))
+    }
+
     /// Returns the root environment of the evaluator.
     pub fn root_env(&self) -> &Rc<Env> {
         &self.context.env
@@ -696,6 +884,28 @@ impl Evaluator {
         &self.context
     }
 
+    /// Calls `proc` with already-evaluated `args` in the root context.
+    ///
+    /// See [`EvalContext::call`]. After the call finishes, garbage is collected
+    /// automatically under the same rules as [`Evaluator::eval`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rusche::{Evaluator, Expr};
+    ///
+    /// let evaluator = Evaluator::default();
+    /// evaluator.eval_str("(define (double x) (* x 2))").unwrap();
+    /// let double = evaluator.eval_str("double").unwrap();
+    /// assert_eq!(
+    ///     evaluator.call(&double, &[Expr::from(21)]).unwrap(),
+    ///     Expr::from(42)
+    /// );
+    /// ```
+    pub fn call(&self, proc: &Expr, args: &[Expr]) -> EvalResult {
+        self.run(|| self.context().call(proc, args))
+    }
+
     /// Evaluates an expression in the current context.
     /// This function is a convenience wrapper around the `eval()` function.
     ///
@@ -703,9 +913,7 @@ impl Evaluator {
     /// registered environments has reached the [threshold](Evaluator::set_gc_threshold).
     /// The returned value is treated as a root during that collection.
     pub fn eval(&self, expr: &Expr) -> EvalResult {
-        let result = eval(expr, self.context());
-        self.maybe_collect_garbage(result.as_ref().ok());
-        result
+        self.run(|| eval(expr, self.context()))
     }
 
     /// Tokenizes, parses, and evaluates every top-level expression in `src`.
@@ -714,9 +922,32 @@ impl Evaluator {
     /// Lex, parse, and evaluation failures are reported as a unified
     /// [`crate::error::Error`].
     pub fn eval_str(&self, src: &str) -> Result<Expr, Error> {
-        let result = eval_source(src, self.context(), false)?;
-        self.maybe_collect_garbage(Some(&result));
-        Ok(result)
+        self.eval_str_in(src, None)
+    }
+
+    /// Like [`Evaluator::eval_str`], tagging every span with `source`.
+    ///
+    /// Use a file path or a label such as `"<eval>"`. Errors raised from this
+    /// buffer, including inside procedures defined here and called from
+    /// somewhere else, keep this name on their span and call trace.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rusche::{Error, Evaluator};
+    ///
+    /// let evaluator = Evaluator::with_builtin();
+    /// let Error::Eval(err) = evaluator.eval_str_named("(car 1)", "main.rsc").unwrap_err() else {
+    ///     panic!("expected an evaluation error");
+    /// };
+    /// assert_eq!(err.span.unwrap().source(), Some("main.rsc"));
+    /// ```
+    pub fn eval_str_named(&self, src: &str, source: &str) -> Result<Expr, Error> {
+        self.eval_str_in(src, Some(source))
+    }
+
+    fn eval_str_in(&self, src: &str, source: Option<&str>) -> Result<Expr, Error> {
+        self.run(|| eval_source_named(src, self.context(), false, source))
     }
 
     /// Count the number of unreachable environments in the evaluator.
@@ -770,10 +1001,9 @@ impl Evaluator {
             }
         });
 
-        let tracers = self.foreign_tracers.borrow();
-        self.root_env().gc_mark(&tracers);
+        self.root_env().gc_mark();
         for expr in extra_roots {
-            Env::gc_mark_expr(expr, &tracers);
+            Env::gc_mark_expr(expr);
         }
     }
 
@@ -966,7 +1196,11 @@ mod tests {
     }
 
     #[test]
-    fn test_gc_ignores_foreign_objects_without_tracer() {
+    fn test_gc_ignores_foreign_objects_that_do_not_trace() {
+        #[derive(Debug)]
+        struct Silent(RefCell<Vec<Expr>>);
+        impl crate::expr::ForeignObject for Silent {}
+
         let evaluator = Evaluator::with_prelude();
 
         let closure = eval_all(
@@ -974,18 +1208,223 @@ mod tests {
             "(define (make-counter) (define n 0) (lambda () (set! n (+ n 1)) n))
              (make-counter)",
         );
-        let held: Rc<RefCell<Vec<Expr>>> = Rc::new(RefCell::new(vec![closure]));
-        evaluator
-            .root_env()
-            .define("box", Expr::Foreign(held.clone()));
+        let held = Rc::new(Silent(RefCell::new(vec![closure])));
+        let object: crate::expr::Foreign = held.clone() as _;
+        evaluator.root_env().define("box", Expr::Foreign(object));
 
-        // Without a registered tracer the closure inside the foreign object is not a root,
-        // so its environment is swept and the closure no longer works.
+        // The default trace reports nothing, so the closure is not a root and its
+        // environment is swept.
         evaluator.collect_garbage();
 
-        let closure = held.borrow()[0].clone();
+        let closure = held.0.borrow()[0].clone();
         evaluator.root_env().define("counter", closure);
         assert!(evaluator.eval(&parse_one("(counter)")).is_err());
+    }
+
+    #[test]
+    fn test_call_passes_values_and_macro_forms() {
+        let evaluator = Evaluator::with_builtin();
+        evaluator
+            .eval_str("(define (id a) a) (define x 5) (defmacro (m a) a)")
+            .unwrap();
+
+        let id = evaluator.eval_str("id").unwrap();
+        // A list value is data. Evaluating it as a form would try to call `1`.
+        assert_eq!(
+            evaluator.call(&id, &[list!(1, 2).into()]).unwrap(),
+            list!(1, 2).into()
+        );
+        // A symbol is passed through, not looked up.
+        assert_eq!(evaluator.call(&id, &[intern("x")]).unwrap(), intern("x"));
+
+        // A macro receives the symbol as a form and the expansion is evaluated.
+        let m = evaluator.eval_str("m").unwrap();
+        assert_eq!(evaluator.call(&m, &[intern("x")]).unwrap(), 5.into());
+
+        let err = evaluator.call(&Expr::from(1), &[]).unwrap_err();
+        assert_eq!(err.kind, ErrorKind::Type);
+        assert!(err.message().contains("is not a procedure"));
+
+        let err = evaluator.call(&id, &[]).unwrap_err();
+        assert_eq!(err.kind, ErrorKind::Arity);
+    }
+
+    #[test]
+    fn test_call_from_native_and_tail_position() {
+        let evaluator = Evaluator::with_prelude();
+
+        evaluator
+            .root_env()
+            .define_native_proc("apply2", |proc_name, args, context| {
+                let (proc_expr, a_expr, b_expr) = crate::utils::get_exact_3_args(proc_name, args)?;
+                let proc = crate::utils::eval_into_proc(proc_name, proc_expr, context)?;
+                let a = eval(a_expr, context)?;
+                let b = eval(b_expr, context)?;
+                context.call(&proc, &[a, b])
+            });
+        assert_eq!(
+            evaluator
+                .eval_str("(apply2 (lambda (a b) (+ a b)) 20 22)")
+                .unwrap(),
+            42.into()
+        );
+
+        evaluator.set_max_call_depth(50);
+        evaluator
+            .eval_str("(define (loop n) (if (= n 0) 'done (loop (- n 1))))")
+            .unwrap();
+        let loop_proc = evaluator.eval_str("loop").unwrap();
+        assert_eq!(
+            evaluator.call(&loop_proc, &[10_000.into()]).unwrap(),
+            intern("done")
+        );
+    }
+
+    #[test]
+    fn test_interrupt_stops_a_loop_with_no_further_natives() {
+        let evaluator = Evaluator::with_prelude();
+        let flag = Arc::new(AtomicBool::new(false));
+        evaluator.set_interrupt(Some(Arc::clone(&flag)));
+
+        let stop_flag = Arc::clone(&flag);
+        evaluator
+            .root_env()
+            .define_native_proc("stop", move |proc_name, args, _| {
+                if !args.is_nil() {
+                    return Err(crate::utils::arity_error(proc_name, 0..=0, args.len()));
+                }
+                stop_flag.store(true, Ordering::Relaxed);
+                Ok(NIL)
+            });
+
+        // After `stop`, `loop` tail-calls itself with no further native calls.
+        evaluator
+            .eval_str(
+                "(define (loop) (loop))
+                 (define (spin n) (if (= n 0) (begin (stop) (loop)) (spin (- n 1))))",
+            )
+            .unwrap();
+        let err = evaluator.eval_str("(spin 3)").unwrap_err();
+        let Error::Eval(err) = err else {
+            panic!("expected an evaluation error");
+        };
+        assert_eq!(err.kind, ErrorKind::Interrupted);
+        assert_eq!(err.message(), "evaluation interrupted");
+        assert!(
+            err.trace.iter().any(|frame| frame.name.as_ref() == "loop"),
+            "{:?}",
+            err.trace
+        );
+        assert!(!evaluator.context.is_in_proc());
+
+        flag.store(false, Ordering::Relaxed);
+        assert_eq!(evaluator.eval_str("1").unwrap(), Expr::from(1));
+
+        evaluator.set_interrupt(None);
+        flag.store(true, Ordering::Relaxed);
+        assert_eq!(evaluator.eval_str("(+ 1 2)").unwrap(), Expr::from(3));
+    }
+
+    #[test]
+    fn test_step_budget_stops_a_loop_and_resets_per_top_level_eval() {
+        let evaluator = Evaluator::with_builtin();
+        assert_eq!(evaluator.step_budget(), None);
+
+        evaluator.set_step_budget(Some(0));
+        let err = evaluator.eval_str("(quote 1)").unwrap_err();
+        let Error::Eval(err) = err else {
+            panic!("expected an evaluation error");
+        };
+        assert_eq!(err.kind, ErrorKind::Interrupted);
+        assert_eq!(err.message(), "step budget (0) exceeded");
+
+        evaluator.set_step_budget(Some(64));
+        evaluator.eval_str("(define (spin) (spin))").unwrap();
+        let err = evaluator.eval_str("(spin)").unwrap_err();
+        let Error::Eval(err) = err else {
+            panic!("expected an evaluation error");
+        };
+        assert_eq!(err.kind, ErrorKind::Interrupted);
+        assert!(err.message().contains("step budget (64) exceeded"));
+        assert!(!evaluator.context.is_in_proc());
+
+        evaluator.set_step_budget(None);
+        assert_eq!(evaluator.step_budget(), None);
+        assert_eq!(evaluator.eval_str("(quote ok)").unwrap(), intern("ok"));
+    }
+
+    #[test]
+    fn test_install_chains_extensions() {
+        fn define_one(evaluator: &Evaluator) {
+            evaluator.root_env().define("one", Expr::from(1));
+        }
+        struct Offset(i32);
+        impl Extension for Offset {
+            fn install(&self, evaluator: &Evaluator) {
+                evaluator.root_env().define("offset", Expr::from(self.0));
+            }
+        }
+
+        let evaluator = Evaluator::with_prelude();
+        evaluator.install(define_one).install(Offset(41));
+        assert_eq!(
+            evaluator.eval_str("(+ one offset)").unwrap(),
+            Expr::from(42)
+        );
+    }
+
+    #[test]
+    fn test_eval_prelude_attributes_errors_to_the_call_site() {
+        let evaluator = Evaluator::with_builtin();
+        evaluator
+            .eval_prelude("(define (boom)\n  (car 1))")
+            .unwrap();
+
+        // The failing `(car 1)` form lives on the second line of the prelude; a
+        // span kept from there would point into prelude text. Instead the error
+        // falls back to the caller's form on the first line (lines are 0-based).
+        let Error::Eval(err) = evaluator.eval_str("(boom)").unwrap_err() else {
+            panic!("expected an evaluation error");
+        };
+        assert_eq!(err.span.map(|span| span.begin.line), Some(0));
+
+        // Defined through `eval_str`, the same body keeps its span and the error
+        // points at `(car 1)` on the second line.
+        let Error::Eval(err) = evaluator
+            .eval_str("(define (boom)\n  (car 1))\n(boom)")
+            .unwrap_err()
+        else {
+            panic!("expected an evaluation error");
+        };
+        assert_eq!(err.span.map(|span| span.begin.line), Some(1));
+    }
+
+    #[test]
+    fn test_named_spans_follow_each_buffer_into_the_trace() {
+        let evaluator = Evaluator::with_prelude();
+        evaluator
+            .eval_str_named("(define (boom x) (begin (car x) 0))", "lib.rsc")
+            .unwrap();
+        let Error::Eval(err) = evaluator
+            .eval_str_named("(boom 1)", "main.rsc")
+            .unwrap_err()
+        else {
+            panic!("expected an evaluation error");
+        };
+
+        // `(car x)` fails inside the body defined in lib.rsc. The argument
+        // expression lives there, so the error span names that file.
+        assert_eq!(err.span.and_then(|span| span.source()), Some("lib.rsc"));
+
+        let boom = err
+            .trace
+            .iter()
+            .find(|frame| frame.name.as_ref() == "boom")
+            .expect("boom frame");
+        assert_eq!(
+            boom.call_site.and_then(|span| span.source()),
+            Some("main.rsc")
+        );
     }
 
     #[test]

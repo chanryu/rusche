@@ -40,15 +40,20 @@ pub mod utils;
 pub use env::Env;
 pub use error::Error;
 pub use eval::{
-    eval, eval_source, ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, ForeignTracer,
-    Frame, FrameKind, DEFAULT_GC_THRESHOLD, DEFAULT_MAX_CALL_DEPTH,
+    eval, eval_source, eval_source_named, ErrorKind, EvalContext, EvalError, EvalResult, Evaluator,
+    Extension, Frame, FrameKind, DEFAULT_GC_THRESHOLD, DEFAULT_MAX_CALL_DEPTH,
+    INTERRUPT_CHECK_INTERVAL,
 };
-pub use expr::{intern, Expr, Foreign, NIL};
-pub use lexer::{tokenize, LexError, Lexer};
+pub use expr::{intern, Expr, Foreign, ForeignDowncast, ForeignObject, NIL};
+pub use lexer::{tokenize, tokenize_named, LexError, Lexer};
 pub use list::{cons, Cons, List, ListIter};
 pub use parser::{ParseError, Parser};
 pub use proc::{FormalArgs, NativeFunc, Proc};
 pub use span::{Loc, Span};
 pub use symbol::Symbol;
 pub use token::Token;
-pub use utils::{arity_error, eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args};
+pub use utils::{
+    arity_error, eval_into_foreign, eval_into_int, eval_into_list, eval_into_num, eval_into_proc,
+    eval_into_str, eval_into_usize, get_2_or_3_args, get_exact_1_arg, get_exact_2_args,
+    get_exact_3_args,
+};

@@ -1,64 +1,32 @@
-//! Turtle natives. Host state is `thread_local` because `NativeFunc` is a fn pointer.
+//! Turtle natives. Each procedure closes over a shared [`Host`].
 
 use std::cell::RefCell;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::rc::Rc;
 use std::sync::mpsc::Sender;
-use std::sync::Arc;
 
 use rand::Rng;
-use rusche::utils::eval_into_num;
+use rusche::eval_into_num;
 use rusche::{
     arity_error, cons, eval, get_exact_1_arg, get_exact_2_args, ErrorKind, EvalContext, EvalError,
-    EvalResult, Evaluator, Expr, List, NIL,
+    EvalResult, Evaluator, Expr, Extension, List, NIL,
 };
 
-use crate::turtle::{Color, Turtle, TurtleEvent, TurtleSnap};
+use crate::turtle::{Color, Turtle, TurtleEvent};
 
 pub struct Host {
     pub turtle: Turtle<Sender<TurtleEvent>>,
-    pub cancel: Arc<AtomicBool>,
 }
 
-thread_local! {
-    static HOST: RefCell<Option<Host>> = const { RefCell::new(None) };
-}
-
-pub fn with_host<R>(host: Host, f: impl FnOnce() -> R) -> (Host, R) {
-    HOST.with(|slot| {
-        let previous = slot.borrow_mut().replace(host);
-        let result = f();
-        let host = slot.borrow_mut().take().expect("host missing after eval");
-        *slot.borrow_mut() = previous;
-        (host, result)
-    })
-}
-
-/// Align the installed turtle with the UI after Stop (no events emitted).
-pub fn restore_turtle(snap: &TurtleSnap) {
-    HOST.with(|slot| {
-        if let Some(host) = slot.borrow_mut().as_mut() {
-            host.turtle.restore(snap);
-        }
-    });
-}
-
-/// Runs `f` against the installed host. Checks for cancellation first, then tags the events
-/// `f` emits with the script form currently being evaluated (see [`TurtleEvent::Site`]).
+/// Runs `f` against the captured host and tags the events `f` emits with the script form
+/// currently being evaluated (see [`TurtleEvent::Site`]).
 fn with_turtle<R>(
+    host: &RefCell<Host>,
     context: &EvalContext,
     f: impl FnOnce(&mut Host) -> Result<R, EvalError>,
 ) -> Result<R, EvalError> {
-    HOST.with(|slot| {
-        let mut borrow = slot.borrow_mut();
-        let host = borrow
-            .as_mut()
-            .ok_or_else(|| EvalError::new(ErrorKind::Other, "turtle host is not installed"))?;
-        if host.cancel.load(Ordering::Relaxed) {
-            return Err(EvalError::new(ErrorKind::Other, "script stopped"));
-        }
-        host.turtle.set_site(context.call_site());
-        f(host)
-    })
+    let mut host = host.borrow_mut();
+    host.turtle.set_site(context.call_site());
+    f(&mut host)
 }
 
 fn require_nil(proc_name: &str, args: &List) -> Result<(), EvalError> {
@@ -74,13 +42,14 @@ fn unary_num(proc_name: &str, args: &List, context: &EvalContext) -> Result<f64,
 }
 
 fn nil_op(
+    host: &RefCell<Host>,
     proc_name: &str,
     args: &List,
     context: &EvalContext,
     f: impl FnOnce(&mut Turtle<Sender<TurtleEvent>>),
 ) -> EvalResult {
     require_nil(proc_name, args)?;
-    with_turtle(context, |host| {
+    with_turtle(host, context, |host| {
         f(&mut host.turtle);
         Ok(NIL)
     })
@@ -89,9 +58,11 @@ fn nil_op(
 fn format_write_args(args: &List, context: &EvalContext) -> Result<String, EvalError> {
     let mut text = String::new();
     for expr in args.iter() {
-        match eval(expr, context)? {
-            Expr::Str(s, _) => text.push_str(&s),
-            other => text.push_str(&other.to_string()),
+        let value = eval(expr, context)?;
+        if let Some(s) = value.as_str() {
+            text.push_str(s);
+        } else {
+            text.push_str(&value.to_string());
         }
     }
     Ok(text)
@@ -105,125 +76,189 @@ const PRELUDE: &str = r#"
             (set! i (+ i 1)))))
 "#;
 
-pub fn load_turtle_procs(evaluator: &Evaluator) {
-    let env = evaluator.root_env();
-    env.define_native_proc("forward", forward);
-    env.define_native_proc("fd", forward);
-    env.define_native_proc("back", back);
-    env.define_native_proc("bk", back);
-    env.define_native_proc("left", left);
-    env.define_native_proc("lt", left);
-    env.define_native_proc("right", right);
-    env.define_native_proc("rt", right);
-    env.define_native_proc("goto", goto);
-    env.define_native_proc("setheading", setheading);
-    env.define_native_proc("seth", setheading);
-    env.define_native_proc("home", home);
-    env.define_native_proc("penup", penup);
-    env.define_native_proc("pu", penup);
-    env.define_native_proc("pendown", pendown);
-    env.define_native_proc("pd", pendown);
-    env.define_native_proc("pencolor", pencolor);
-    env.define_native_proc("pensize", pensize);
-    env.define_native_proc("clear", clear);
-    env.define_native_proc("hideturtle", hideturtle);
-    env.define_native_proc("showturtle", showturtle);
-    env.define_native_proc("position", position);
-    env.define_native_proc("heading", heading);
-    env.define_native_proc("pen?", is_pen);
-    env.define_native_proc("write", write);
-    env.define_native_proc("writeln", writeln);
-    env.define_native_proc("random", random);
-    evaluator
-        .eval_str(PRELUDE)
-        .expect("turtle prelude must evaluate");
+type Native = fn(&Rc<RefCell<Host>>, &str, &List, &EvalContext) -> EvalResult;
+
+fn define(env: &rusche::Env, host: &Rc<RefCell<Host>>, name: &'static str, func: Native) {
+    let host = Rc::clone(host);
+    env.define_native_proc(name, move |proc_name, args, context| {
+        func(&host, proc_name, args, context)
+    });
 }
 
-fn forward(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+/// Turtle natives plus the `repeat` macro.
+pub struct TurtleProcs(pub Rc<RefCell<Host>>);
+
+impl Extension for TurtleProcs {
+    fn install(&self, evaluator: &Evaluator) {
+        let env = evaluator.root_env();
+        let host = &self.0;
+        define(env, host, "forward", forward);
+        define(env, host, "fd", forward);
+        define(env, host, "back", back);
+        define(env, host, "bk", back);
+        define(env, host, "left", left);
+        define(env, host, "lt", left);
+        define(env, host, "right", right);
+        define(env, host, "rt", right);
+        define(env, host, "goto", goto);
+        define(env, host, "setheading", setheading);
+        define(env, host, "seth", setheading);
+        define(env, host, "home", home);
+        define(env, host, "penup", penup);
+        define(env, host, "pu", penup);
+        define(env, host, "pendown", pendown);
+        define(env, host, "pd", pendown);
+        define(env, host, "pencolor", pencolor);
+        define(env, host, "pensize", pensize);
+        define(env, host, "clear", clear);
+        define(env, host, "hideturtle", hideturtle);
+        define(env, host, "showturtle", showturtle);
+        define(env, host, "position", position);
+        define(env, host, "heading", heading);
+        define(env, host, "pen?", is_pen);
+        define(env, host, "write", write);
+        define(env, host, "writeln", writeln);
+        define(env, host, "random", random);
+        evaluator
+            .eval_prelude(PRELUDE)
+            .expect("turtle prelude must evaluate");
+    }
+}
+
+fn forward(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
     let dist = unary_num(proc_name, args, context)?;
-    with_turtle(context, |host| {
+    with_turtle(host, context, |host| {
         host.turtle.forward(dist);
         Ok(NIL)
     })
 }
 
-fn back(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn back(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
     let dist = unary_num(proc_name, args, context)?;
-    with_turtle(context, |host| {
+    with_turtle(host, context, |host| {
         host.turtle.back(dist);
         Ok(NIL)
     })
 }
 
-fn left(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn left(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
     let deg = unary_num(proc_name, args, context)?;
-    with_turtle(context, |host| {
+    with_turtle(host, context, |host| {
         host.turtle.left(deg);
         Ok(NIL)
     })
 }
 
-fn right(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn right(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
     let deg = unary_num(proc_name, args, context)?;
-    with_turtle(context, |host| {
+    with_turtle(host, context, |host| {
         host.turtle.right(deg);
         Ok(NIL)
     })
 }
 
-fn goto(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn goto(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
     let (x_expr, y_expr) = get_exact_2_args(proc_name, args)?;
     let x = eval_into_num(proc_name, x_expr, context)?;
     let y = eval_into_num(proc_name, y_expr, context)?;
-    with_turtle(context, |host| {
+    with_turtle(host, context, |host| {
         host.turtle.goto(x, y);
         Ok(NIL)
     })
 }
 
-fn setheading(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn setheading(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
     let deg = unary_num(proc_name, args, context)?;
-    with_turtle(context, |host| {
+    with_turtle(host, context, |host| {
         host.turtle.set_heading(deg);
         Ok(NIL)
     })
 }
 
-fn home(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    nil_op(proc_name, args, context, |t| t.home())
+fn home(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
+    nil_op(host, proc_name, args, context, |t| t.home())
 }
 
-fn penup(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    nil_op(proc_name, args, context, |t| t.pen_up())
+fn penup(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
+    nil_op(host, proc_name, args, context, |t| t.pen_up())
 }
 
-fn pendown(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    nil_op(proc_name, args, context, |t| t.pen_down())
+fn pendown(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
+    nil_op(host, proc_name, args, context, |t| t.pen_down())
 }
 
-fn pencolor(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn pencolor(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
     let color = match args.len() {
         1 => {
             let arg = get_exact_1_arg(proc_name, args)?;
-            match eval(arg, context)? {
-                Expr::Str(name, _) => Color::from_name(&name).ok_or_else(|| {
+            let value = eval(arg, context)?;
+            if let Some(name) = value.as_str() {
+                Color::from_name(name).ok_or_else(|| {
                     EvalError::new(
                         ErrorKind::Other,
                         format!("{proc_name}: unknown color name `{name}`"),
                     )
                     .with_span(arg.span())
-                })?,
-                Expr::Num(n, _) => {
-                    let c = Color::clamp_channel(n);
-                    Color { r: c, g: c, b: c }
-                }
-                other => {
-                    return Err(EvalError::new(
-                        ErrorKind::Type,
-                        format!("{proc_name}: expected a color name or rgb numbers, got `{other}`"),
-                    )
-                    .with_span(arg.span()));
-                }
+                })?
+            } else if let Some(n) = value.as_num() {
+                let c = Color::clamp_channel(n);
+                Color { r: c, g: c, b: c }
+            } else {
+                return Err(EvalError::new(
+                    ErrorKind::Type,
+                    format!("{proc_name}: expected a color name or rgb numbers, got `{value}`"),
+                )
+                .with_span(arg.span()));
             }
         }
         3 => {
@@ -241,35 +276,60 @@ fn pencolor(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
             ));
         }
     };
-    with_turtle(context, |host| {
+    with_turtle(host, context, |host| {
         host.turtle.set_color(color);
         Ok(NIL)
     })
 }
 
-fn pensize(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn pensize(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
     let size = unary_num(proc_name, args, context)?;
-    with_turtle(context, |host| {
+    with_turtle(host, context, |host| {
         host.turtle.set_width(size as f32);
         Ok(NIL)
     })
 }
 
-fn clear(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    nil_op(proc_name, args, context, |t| t.clear())
+fn clear(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
+    nil_op(host, proc_name, args, context, |t| t.clear())
 }
 
-fn hideturtle(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    nil_op(proc_name, args, context, |t| t.hide())
+fn hideturtle(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
+    nil_op(host, proc_name, args, context, |t| t.hide())
 }
 
-fn showturtle(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    nil_op(proc_name, args, context, |t| t.show())
+fn showturtle(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
+    nil_op(host, proc_name, args, context, |t| t.show())
 }
 
-fn position(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn position(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
     require_nil(proc_name, args)?;
-    with_turtle(context, |host| {
+    with_turtle(host, context, |host| {
         Ok(cons(
             Expr::from(host.turtle.x),
             cons(Expr::from(host.turtle.y), List::Nil),
@@ -278,37 +338,53 @@ fn position(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     })
 }
 
-fn heading(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn heading(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
     require_nil(proc_name, args)?;
-    with_turtle(context, |host| Ok(Expr::from(host.turtle.heading)))
+    with_turtle(host, context, |host| Ok(Expr::from(host.turtle.heading)))
 }
 
-fn is_pen(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn is_pen(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
     require_nil(proc_name, args)?;
-    with_turtle(context, |host| Ok(host.turtle.pen_down.into()))
+    with_turtle(host, context, |host| Ok(host.turtle.pen_down.into()))
 }
 
-fn write(_: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn write(host: &Rc<RefCell<Host>>, _: &str, args: &List, context: &EvalContext) -> EvalResult {
     let text = format_write_args(args, context)?;
-    with_turtle(context, |host| {
+    with_turtle(host, context, |host| {
         host.turtle.print(text);
         Ok(NIL)
     })
 }
 
-fn writeln(_: &str, args: &List, context: &EvalContext) -> EvalResult {
+fn writeln(host: &Rc<RefCell<Host>>, _: &str, args: &List, context: &EvalContext) -> EvalResult {
     let mut text = format_write_args(args, context)?;
     text.push('\n');
-    with_turtle(context, |host| {
+    with_turtle(host, context, |host| {
         host.turtle.print(text);
         Ok(NIL)
     })
 }
 
-fn random(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
-    // Touches the host so cancel is checked (tight loops can call `random`).
+fn random(
+    host: &Rc<RefCell<Host>>,
+    proc_name: &str,
+    args: &List,
+    context: &EvalContext,
+) -> EvalResult {
     require_nil(proc_name, args)?;
-    with_turtle(context, |_| Ok(rand::thread_rng().gen::<f64>().into()))
+    with_turtle(host, context, |_| {
+        Ok(rand::thread_rng().gen::<f64>().into())
+    })
 }
 
 #[cfg(test)]
@@ -316,17 +392,12 @@ fn eval_with_vec_sink(src: &str) -> Result<(Vec<TurtleEvent>, Expr), rusche::Err
     use std::sync::mpsc;
 
     let (tx, rx) = mpsc::channel();
-    let (host, result) = with_host(
-        Host {
-            turtle: Turtle::new(tx),
-            cancel: Arc::new(AtomicBool::new(false)),
-        },
-        || {
-            let evaluator = Evaluator::with_prelude();
-            load_turtle_procs(&evaluator);
-            evaluator.eval_str(src)
-        },
-    );
+    let host = Rc::new(RefCell::new(Host {
+        turtle: Turtle::new(tx),
+    }));
+    let evaluator = Evaluator::with_prelude();
+    evaluator.install(TurtleProcs(Rc::clone(&host)));
+    let result = evaluator.eval_str(src);
     drop(host);
     let events: Vec<_> = rx.try_iter().collect();
     result.map(|expr| (events, expr))
@@ -462,20 +533,23 @@ mod tests {
     }
 
     #[test]
-    fn cancel_aborts_turtle_call() {
+    fn interrupt_stops_a_loop_with_no_turtle_calls() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::sync::Arc;
+
         let (tx, rx) = mpsc::channel();
-        let (_host, result) = with_host(
-            Host {
-                turtle: Turtle::new(tx),
-                cancel: Arc::new(AtomicBool::new(true)),
-            },
-            || {
-                let evaluator = Evaluator::with_prelude();
-                load_turtle_procs(&evaluator);
-                evaluator.eval_str("(forward 10)")
-            },
-        );
+        let host = Rc::new(RefCell::new(Host {
+            turtle: Turtle::new(tx),
+        }));
+        let evaluator = Evaluator::with_prelude();
+        let flag = Arc::new(AtomicBool::new(false));
+        evaluator.set_interrupt(Some(Arc::clone(&flag)));
+        evaluator.install(TurtleProcs(host));
+        evaluator.eval_str("(define (spin) (spin))").unwrap();
+        flag.store(true, Ordering::Relaxed);
+        let result = evaluator.eval_str("(spin)");
         drop(rx);
-        assert!(result.unwrap_err().message().contains("stopped"));
+        let message = result.unwrap_err().message();
+        assert!(message.contains("evaluation interrupted"), "{message}");
     }
 }

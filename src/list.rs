@@ -74,7 +74,7 @@ impl List {
         let last_span = last.span()?;
 
         if first_span.begin < last_span.end {
-            Some(Span::new(first_span.begin, last_span.end))
+            Some(Span::between(first_span, last_span))
         } else {
             None
         }
@@ -102,6 +102,12 @@ impl From<Vec<Expr>> for List {
             list = cons(expr, list);
         }
         list
+    }
+}
+
+impl FromIterator<Expr> for List {
+    fn from_iter<T: IntoIterator<Item = Expr>>(iter: T) -> Self {
+        iter.into_iter().collect::<Vec<_>>().into()
     }
 }
 

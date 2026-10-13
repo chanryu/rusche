@@ -1,6 +1,16 @@
 //! Companion example for docs/tutorials/embedding.md
 
-use rusche::{Evaluator, Expr};
+use rusche::{
+    eval, eval_into_proc, get_exact_3_args, EvalContext, EvalResult, Evaluator, Expr, List,
+};
+
+fn apply2(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let (proc_expr, a_expr, b_expr) = get_exact_3_args(proc_name, args)?;
+    let proc = eval_into_proc(proc_name, proc_expr, context)?;
+    let a = eval(a_expr, context)?;
+    let b = eval(b_expr, context)?;
+    context.call(&proc, &[a, b])
+}
 
 fn main() {
     // One expression via eval_str
@@ -27,17 +37,44 @@ fn main() {
         .unwrap();
     assert_eq!(evaluator.eval_str("n").unwrap(), Expr::from(2));
 
+    // Call a procedure with values the host already has.
+    evaluator.eval_str("(define (double x) (* x 2))").unwrap();
+    let double = evaluator.eval_str("double").unwrap();
+    assert_eq!(
+        evaluator.call(&double, &[Expr::from(21)]).unwrap(),
+        Expr::from(42)
+    );
+
+    // A native calls a script procedure the same way.
+    evaluator.root_env().define_native_proc("apply2", apply2);
+    assert_eq!(
+        evaluator
+            .eval_str("(apply2 (lambda (a b) (+ a b)) 20 22)")
+            .unwrap(),
+        Expr::from(42)
+    );
+
     println!("{}", describe(&result));
 }
 
 fn describe(expr: &Expr) -> String {
-    match expr {
-        Expr::Bool(b, _) => format!("boolean {b}"),
-        Expr::Num(n, _) => format!("number {n}"),
-        Expr::Str(s, _) => format!("string {s:?}"),
-        Expr::Sym(name, _) => format!("symbol {name}"),
-        Expr::List(list, _) => format!("list {list}"),
-        Expr::Proc(proc, _) => format!("procedure <{}>", proc.fingerprint()),
-        Expr::Foreign(object) => format!("foreign {:p}", object),
+    if let Some(n) = expr.as_num() {
+        return format!("number {n}");
     }
+    if let Some(b) = expr.as_bool() {
+        return format!("boolean {b}");
+    }
+    if let Some(s) = expr.as_str() {
+        return format!("string {s:?}");
+    }
+    if let Some(name) = expr.as_sym() {
+        return format!("symbol {name}");
+    }
+    if let Some(list) = expr.as_list() {
+        return format!("list {list}");
+    }
+    if let Some(proc) = expr.as_proc() {
+        return format!("procedure <{}>", proc.fingerprint());
+    }
+    format!("foreign {expr}")
 }

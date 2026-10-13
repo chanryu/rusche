@@ -1,8 +1,8 @@
 use crate::{
-    eval::{eval, ErrorKind, EvalContext, EvalError, EvalResult},
+    eval::{eval, EvalContext, EvalResult},
     expr::Expr,
     list::List,
-    utils::{get_exact_1_arg, get_exact_2_args},
+    utils::{get_exact_1_arg, get_exact_2_args, type_error},
 };
 
 pub fn is_atom(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -16,11 +16,7 @@ pub fn car(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
     match eval(expr, context)? {
         Expr::List(List::Cons(cons), _) => Ok(cons.car.clone()),
-        value => Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a list"),
-        )
-        .with_span(expr.span())),
+        value => Err(type_error(proc_name, expr, &value, "a list")),
     }
 }
 
@@ -29,11 +25,7 @@ pub fn cdr(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
 
     match eval(expr, context)? {
         Expr::List(List::Cons(cons), _) => Ok(cons.cdr.clone().into()),
-        value => Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a list"),
-        )
-        .with_span(expr.span())),
+        value => Err(type_error(proc_name, expr, &value, "a list")),
     }
 }
 
@@ -43,11 +35,7 @@ pub fn cons(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let car = eval(car, context)?;
     match eval(cdr, context)? {
         Expr::List(cdr, _) => Ok(crate::list::cons(car, cdr).into()),
-        value => Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: `{cdr}` evaluated to `{value}`, expected a list"),
-        )
-        .with_span(cdr.span())),
+        value => Err(type_error(proc_name, cdr, &value, "a list")),
     }
 }
 

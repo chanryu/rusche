@@ -1,9 +1,8 @@
-use std::any::Any;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
 use crate::eval::{eval, ErrorKind, EvalContext, EvalError};
-use crate::expr::Expr;
+use crate::expr::{Expr, Foreign};
 use crate::list::List;
 use crate::proc::FormalArgs;
 
@@ -265,6 +264,14 @@ pub fn make_formal_args(expr: &Expr) -> Result<Rc<FormalArgs>, EvalError> {
     Ok(Rc::new(formal_args))
 }
 
+pub(crate) fn type_error(proc_name: &str, expr: &Expr, value: &Expr, expected: &str) -> EvalError {
+    EvalError::new(
+        ErrorKind::Type,
+        format!("{proc_name}: `{expr}` evaluated to `{value}`, expected {expected}"),
+    )
+    .with_span(expr.span())
+}
+
 /// Evaluate an expression into a string.
 ///
 /// Check if `expr` evaluates to a string. If so, return the string. Otherwise, return an error message.
@@ -296,11 +303,7 @@ pub fn eval_into_str(
 ) -> Result<String, EvalError> {
     match eval(expr, context)? {
         Expr::Str(text, _) => Ok(text),
-        value => Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a string"),
-        )
-        .with_span(expr.span())),
+        value => Err(type_error(proc_name, expr, &value, "a string")),
     }
 }
 
@@ -333,14 +336,55 @@ pub fn eval_into_num(
     expr: &Expr,
     context: &EvalContext,
 ) -> Result<f64, EvalError> {
-    match eval(expr, context)? {
-        Expr::Num(value, _) => Ok(value),
-        value => Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a number"),
-        )
-        .with_span(expr.span())),
+    let value = eval(expr, context)?;
+    value
+        .as_num()
+        .ok_or_else(|| type_error(proc_name, expr, &value, "a number"))
+}
+
+/// Evaluate an expression into a non-negative integer (`usize`).
+///
+/// Rejects fractional numbers, negatives, and values that do not fit in `usize`.
+/// Index code can use the result directly, without a separate range check.
+///
+/// # Example
+///
+/// ```
+/// use rusche::{eval_into_usize, Evaluator, Expr};
+///
+/// let evaluator = Evaluator::new();
+/// let expr = Expr::from(3);
+/// assert_eq!(
+///     eval_into_usize("test", "index", &expr, evaluator.context()).unwrap(),
+///     3
+/// );
+/// ```
+pub fn eval_into_usize(
+    proc_name: &str,
+    arg_name: &str,
+    expr: &Expr,
+    context: &EvalContext,
+) -> Result<usize, EvalError> {
+    let num = eval_into_num(proc_name, expr, context)?;
+    let bad = |detail: String| EvalError::new(ErrorKind::Type, detail).with_span(expr.span());
+
+    if num.fract() != 0.0 || !num.is_finite() {
+        return Err(bad(format!(
+            "{proc_name}: {arg_name} must be an integer, but got {num}"
+        )));
     }
+    if num < 0.0 {
+        return Err(bad(format!(
+            "{proc_name}: {arg_name} must be a zero or positive integer, but got {num}"
+        )));
+    }
+    let index = num as usize;
+    if index as f64 != num {
+        return Err(bad(format!(
+            "{proc_name}: {arg_name} is out of range, but got {num}"
+        )));
+    }
+    Ok(index)
 }
 
 /// Evaluate an expression into an integer (`i32`).
@@ -397,11 +441,69 @@ pub fn eval_into_int(
     }
 }
 
+/// Evaluate an expression into a list.
+///
+/// # Example
+///
+/// ```
+/// use rusche::{eval_into_list, intern, Evaluator, Expr};
+///
+/// let evaluator = Evaluator::with_builtin();
+/// // The argument form `(quote (1 2))`, as a native would receive it.
+/// let expr = Expr::from(vec![
+///     intern("quote"),
+///     Expr::from(vec![Expr::from(1), Expr::from(2)]),
+/// ]);
+/// let list = eval_into_list("test", &expr, evaluator.context()).unwrap();
+/// assert_eq!(list.len(), 2);
+/// ```
+pub fn eval_into_list(
+    proc_name: &str,
+    expr: &Expr,
+    context: &EvalContext,
+) -> Result<List, EvalError> {
+    match eval(expr, context)? {
+        Expr::List(list, _) => Ok(list),
+        value => Err(type_error(proc_name, expr, &value, "a list")),
+    }
+}
+
+/// Evaluate an expression into a procedure.
+///
+/// Returns the [`Expr::Proc`](crate::expr::Expr::Proc) value so it can be passed to
+/// [`EvalContext::call`](crate::eval::EvalContext::call).
+///
+/// # Example
+///
+/// ```
+/// use rusche::{eval_into_proc, Evaluator, Expr};
+///
+/// let evaluator = Evaluator::with_builtin();
+/// let expr = evaluator.eval_str("(lambda (x) x)").unwrap();
+/// let proc = eval_into_proc("test", &expr, evaluator.context()).unwrap();
+/// assert_eq!(
+///     evaluator.context().call(&proc, &[Expr::from(1)]).unwrap(),
+///     Expr::from(1)
+/// );
+/// ```
+pub fn eval_into_proc(
+    proc_name: &str,
+    expr: &Expr,
+    context: &EvalContext,
+) -> Result<Expr, EvalError> {
+    let value = eval(expr, context)?;
+    if value.as_proc().is_some() {
+        Ok(value)
+    } else {
+        Err(type_error(proc_name, expr, &value, "a procedure"))
+    }
+}
+
 /// Evaluate an expression into a foreign object.
 ///
 /// Check if `expr` evaluates to a foreign object (`Expr::Foreign`). If so, return
-/// the object (`Rc<dyn Any>`). Otherwise, return an error message.
-/// The caller of this function can downcase the object to the expected type.
+/// the object. Otherwise, return an error message. Downcast with
+/// [`Expr::as_foreign`](crate::expr::Expr::as_foreign).
 ///
 /// # Arguments
 ///
@@ -412,31 +514,25 @@ pub fn eval_into_int(
 /// # Example
 ///
 /// ```
-/// use std::{any::Any, rc::Rc};
-/// use rusche::{
-///     eval::Evaluator,
-///     expr::Expr,
-///     utils::eval_into_foreign,
-/// };
+/// use rusche::{eval_into_foreign, Evaluator, Expr, ForeignObject};
+///
+/// #[derive(Debug)]
+/// struct Bag;
+/// impl ForeignObject for Bag {}
 ///
 /// let evaluator = Evaluator::new();
-/// let context = evaluator.context();
-/// let expr = Expr::Foreign(Rc::new(Vec::<i32>::new()));
-/// let object = eval_into_foreign("test", &expr, context).unwrap();
-/// assert!(object.downcast::<Vec<i32>>().is_ok());
+/// let expr = Expr::foreign(Bag);
+/// let object = eval_into_foreign("test", &expr, evaluator.context()).unwrap();
+/// assert!(object.as_any().is::<Bag>());
 /// ```
 pub fn eval_into_foreign(
     proc_name: &str,
     expr: &Expr,
     context: &EvalContext,
-) -> Result<Rc<dyn Any>, EvalError> {
+) -> Result<Foreign, EvalError> {
     match eval(expr, context)? {
         Expr::Foreign(object) => Ok(object),
-        value => Err(EvalError::new(
-            ErrorKind::Type,
-            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a foreign object"),
-        )
-        .with_span(expr.span())),
+        value => Err(type_error(proc_name, expr, &value, "a foreign object")),
     }
 }
 
@@ -533,17 +629,57 @@ mod tests {
     }
 
     #[test]
+    fn test_eval_into_usize() {
+        let evaluator = Evaluator::new();
+        let context = evaluator.context();
+        assert_eq!(
+            eval_into_usize("test", "index", &Expr::from(4), context).unwrap(),
+            4
+        );
+        let err = eval_into_usize("test", "index", &Expr::from(-1), context).unwrap_err();
+        assert!(err.message().contains("zero or positive"), "{err}");
+        assert!(eval_into_usize("test", "index", &Expr::from(1.5), context).is_err());
+        let err = eval_into_usize("test", "index", &Expr::from(1e20), context).unwrap_err();
+        assert!(err.message().contains("out of range"), "{err}");
+    }
+
+    #[test]
+    fn test_eval_into_list() {
+        let evaluator = Evaluator::with_builtin();
+        let context = evaluator.context();
+        let expr = Expr::from(vec![
+            intern("quote"),
+            Expr::from(vec![Expr::from(1), Expr::from(2)]),
+        ]);
+        assert_eq!(eval_into_list("test", &expr, context).unwrap().len(), 2);
+        assert!(eval_into_list("test", &Expr::from(1), context).is_err());
+    }
+
+    #[test]
     fn test_eval_into_foreign() {
+        #[derive(Debug)]
+        struct Bag;
+        impl crate::expr::ForeignObject for Bag {}
+
         let evaluator = Evaluator::new();
         let context = evaluator.context();
 
-        let expr = Expr::Foreign(Rc::new(Vec::<i32>::new()));
+        let expr = Expr::foreign(Bag);
         let object = eval_into_foreign("test", &expr, context).unwrap();
-        assert!(object.downcast::<Vec<i32>>().is_ok());
+        assert!(object.as_any().is::<Bag>());
 
         assert!(eval_into_foreign("test", &Expr::from(1), context).is_err());
         assert!(eval_into_foreign("test", &Expr::from("str"), context).is_err());
         assert!(eval_into_foreign("test", &intern("sym"), context).is_err());
+    }
+
+    #[test]
+    fn test_eval_into_proc() {
+        let evaluator = Evaluator::with_builtin();
+        let context = evaluator.context();
+        let proc = evaluator.eval_str("(lambda (x) x)").unwrap();
+        assert_eq!(eval_into_proc("test", &proc, context).unwrap(), proc);
+        assert!(eval_into_proc("test", &Expr::from(1), context).is_err());
     }
 
     #[test]

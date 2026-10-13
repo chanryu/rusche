@@ -43,13 +43,10 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
 ### Implementing or embedding Rusche interpreter
 
 ```rust
-use rusche::{
-    utils::{eval_into_num, get_exact_2_args},
-    EvalContext, EvalResult, Evaluator, Expr, List,
-};
+use rusche::{eval_into_num, get_exact_2_args, EvalContext, EvalResult, Evaluator, Expr, List};
 
 // A native function: Rust code that scripts can call. Arguments arrive
-// unevaluated; the helpers in `rusche::utils` evaluate and type-check them.
+// unevaluated; the helpers evaluate and type-check them.
 fn hypot(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (a, b) = get_exact_2_args(proc_name, args)?;
     let a = eval_into_num(proc_name, a, context)?;
@@ -98,7 +95,7 @@ For a standalone REPL and file runner built on the library, see [`rusche-cli`](#
   live environments reaches `Evaluator::gc_threshold()` (set it to `None` to disable), or on
   demand with `Evaluator::collect_garbage`. Reachability starts from the root environment and
   the value `eval` just returned. If your host stores `Expr` values inside a `Foreign` object,
-  register a tracer with `Evaluator::register_foreign_tracer` so the collector can see them
+  implement `ForeignObject::trace` so the collector can see them
   (see `crates/rusche-cli/src/builtin/vec.rs`).
 
 ### Core language

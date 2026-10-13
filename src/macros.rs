@@ -52,7 +52,12 @@ macro_rules! tok {
     ($token_case:ident) => {{
         use rand::{thread_rng, Rng};
         let mut rng = thread_rng();
-        Token::$token_case(crate::span::Loc::new(rng.gen(), rng.gen()))
+        let line = rng.gen::<u32>() as usize;
+        let column = rng.gen::<u32>() as usize;
+        Token::$token_case(crate::span::Span::new(
+            crate::span::Loc::new(line, column),
+            crate::span::Loc::new(line, column + 1),
+        ))
     }};
     ($token_case:ident($value:expr)) => {
         Token::$token_case(

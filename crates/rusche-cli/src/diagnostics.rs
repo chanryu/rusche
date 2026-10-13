@@ -2,7 +2,7 @@ use colored::Colorize;
 use rusche::{Error, EvalError, Frame, LexError, ParseError, Span};
 use unicode_width::UnicodeWidthStr;
 
-use crate::host;
+use crate::host::Host;
 
 const MAX_HEAD_LINES: usize = 3;
 const MAX_TAIL_LINES: usize = 1;
@@ -18,8 +18,8 @@ pub struct Diagnostic<'a> {
 }
 
 /// Print an error message with optional source context, help, and call trace to stderr.
-pub fn print_error(diag: &Diagnostic<'_>) {
-    host::ensure_newline();
+pub fn print_error(host: &Host, diag: &Diagnostic<'_>) {
+    host.ensure_newline();
 
     eprintln!("{}: {}", "error".red(), diag.message);
 
@@ -28,18 +28,24 @@ pub fn print_error(diag: &Diagnostic<'_>) {
         return;
     };
 
-    let lines: Vec<&str> = diag.src.lines().collect();
+    // A span from another file (a `load`ed buffer) is drawn against that file's
+    // text. The name on the span wins over the buffer the caller passed in.
+    let (source_name, same_buffer) = span.source_in(diag.source_name);
+    let owned = if same_buffer {
+        None
+    } else {
+        Some(host.source_text(source_name).unwrap_or_default())
+    };
+    let src = owned.as_deref().unwrap_or(diag.src);
+    let lines: Vec<&str> = src.lines().collect();
+    let loc = span.location(diag.source_name);
     if span.end.line >= lines.len() {
+        if owned.is_some() {
+            eprintln!("  {} {}", "-->".blue().bold(), loc);
+        }
         print_help_and_trace(diag);
         return;
     }
-
-    let loc = format!(
-        "{}:{}:{}",
-        diag.source_name,
-        span.begin.line + 1,
-        span.begin.column + 1
-    );
     eprintln!("  {} {}", "-->".blue().bold(), loc);
 
     let print_line = |line: usize| {
@@ -116,51 +122,69 @@ pub fn print_error(diag: &Diagnostic<'_>) {
 }
 
 /// Print a unified pipeline error ([`Error`]) against `src`.
-pub fn print_pipeline_error(error: &Error, src: &str, source_name: &str) {
-    print_error(&Diagnostic {
-        source_name,
-        src,
-        message: error.message(),
-        span: error.span(),
-        help: error.help(),
-        trace: error.trace(),
-    });
+pub fn print_pipeline_error(host: &Host, error: &Error, src: &str, source_name: &str) {
+    print_error(
+        host,
+        &Diagnostic {
+            source_name,
+            src,
+            message: error.message(),
+            span: error.span(),
+            help: error.help(),
+            trace: error.trace(),
+        },
+    );
 }
 
 /// Print an evaluation error against `src`.
-pub fn print_eval_error(error: &EvalError, src: &str, source_name: &str) {
-    print_error(&Diagnostic {
-        source_name,
-        src,
-        message: error.message().to_string(),
-        span: error.span,
-        help: error.help(),
-        trace: error.trace(),
-    });
+pub fn print_eval_error(host: &Host, error: &EvalError, src: &str, source_name: &str) {
+    print_error(
+        host,
+        &Diagnostic {
+            source_name,
+            src,
+            message: error.message().to_string(),
+            span: error.span,
+            help: error.help(),
+            trace: error.trace(),
+        },
+    );
 }
 
 /// Print a lex error against `src`.
-pub fn print_lex_error(error: &LexError, src: &str, source_name: &str) {
-    print_error(&Diagnostic {
-        source_name,
-        src,
-        message: error.message(),
-        span: Some(error.span()),
-        help: None,
-        trace: &[],
-    });
+pub fn print_lex_error(host: &Host, error: &LexError, src: &str, source_name: &str) {
+    print_error(
+        host,
+        &Diagnostic {
+            source_name,
+            src,
+            message: error.message(),
+            span: Some(error.span()),
+            help: None,
+            trace: &[],
+        },
+    );
 }
 
 /// Print a parse error against `src`.
-pub fn print_parse_error(error: &ParseError, src: &str, source_name: &str, span: Option<Span>) {
-    print_error(&Diagnostic {
-        source_name,
-        src,
-        message: error.message(),
-        span: span.or(Some(error.span())),
-        help: None,
-        trace: &[],
-    });
+pub fn print_parse_error(
+    host: &Host,
+    error: &ParseError,
+    src: &str,
+    source_name: &str,
+    span: Option<Span>,
+) {
+    print_error(
+        host,
+        &Diagnostic {
+            source_name,
+            src,
+            message: error.message(),
+            span: span.or(Some(error.span())),
+            help: None,
+            trace: &[],
+        },
+    );
 }
 
 fn print_help_and_trace(diag: &Diagnostic<'_>) {
@@ -173,17 +197,7 @@ fn print_help_and_trace(diag: &Diagnostic<'_>) {
     }
 
     for frame in diag.trace {
-        let line = if let Some(span) = frame.call_site {
-            format!(
-                "in `{}`, called at {}:{}:{}",
-                frame.name,
-                diag.source_name,
-                span.begin.line + 1,
-                span.begin.column + 1
-            )
-        } else {
-            format!("in `{}` (prelude)", frame.name)
-        };
+        let line = frame.trace_label(diag.source_name);
         eprintln!("  {} {}", "=".blue().bold(), line.dimmed());
     }
 }
@@ -193,6 +207,10 @@ mod tests {
     use super::*;
     use rusche::{ErrorKind, FrameKind, Loc};
 
+    fn host() -> std::rc::Rc<Host> {
+        Host::new(Vec::new())
+    }
+
     fn span(begin_line: usize, begin_col: usize, end_line: usize, end_col: usize) -> Span {
         Span::new(Loc::new(begin_line, begin_col), Loc::new(end_line, end_col))
     }
@@ -200,45 +218,54 @@ mod tests {
     #[test]
     fn prints_without_span_and_with_out_of_range_span() {
         colored::control::set_override(false);
-        print_error(&Diagnostic {
-            source_name: "<test>",
-            src: "x",
-            message: "no span".into(),
-            span: None,
-            help: Some("hint"),
-            trace: &[Frame {
-                name: "f".into(),
-                kind: FrameKind::Native,
-                call_site: None,
-            }],
-        });
+        print_error(
+            &host(),
+            &Diagnostic {
+                source_name: "<test>",
+                src: "x",
+                message: "no span".into(),
+                span: None,
+                help: Some("hint"),
+                trace: &[Frame {
+                    name: "f".into(),
+                    kind: FrameKind::Native,
+                    call_site: None,
+                }],
+            },
+        );
 
-        print_error(&Diagnostic {
-            source_name: "<test>",
-            src: "x",
-            message: "bad span".into(),
-            span: Some(span(5, 0, 5, 1)),
-            help: None,
-            trace: &[],
-        });
+        print_error(
+            &host(),
+            &Diagnostic {
+                source_name: "<test>",
+                src: "x",
+                message: "bad span".into(),
+                span: Some(span(5, 0, 5, 1)),
+                help: None,
+                trace: &[],
+            },
+        );
     }
 
     #[test]
     fn prints_multiline_span_with_ellipsis() {
         colored::control::set_override(false);
         let src = "a\nb\nc\nd\ne\nf\ng\n";
-        print_error(&Diagnostic {
-            source_name: "<test>",
-            src,
-            message: "wide".into(),
-            span: Some(span(0, 0, 6, 1)),
-            help: None,
-            trace: &[Frame {
-                name: "g".into(),
-                kind: FrameKind::Closure,
-                call_site: Some(span(1, 0, 1, 1)),
-            }],
-        });
+        print_error(
+            &host(),
+            &Diagnostic {
+                source_name: "<test>",
+                src,
+                message: "wide".into(),
+                span: Some(span(0, 0, 6, 1)),
+                help: None,
+                trace: &[Frame {
+                    name: "g".into(),
+                    kind: FrameKind::Closure,
+                    call_site: Some(span(1, 0, 1, 1)),
+                }],
+            },
+        );
     }
 
     #[test]
@@ -246,15 +273,18 @@ mod tests {
         colored::control::set_override(false);
         let src = "(car 1)";
         let eval_err = EvalError::new(ErrorKind::Type, "type").with_span(Some(span(0, 1, 0, 4)));
-        print_eval_error(&eval_err, src, "<eval>");
+        let host = host();
+        print_eval_error(&host, &eval_err, src, "<eval>");
 
         let lex = LexError::IncompleteString(span(0, 0, 0, 3));
-        print_lex_error(&lex, "\"ab", "<lex>");
+        print_lex_error(&host, &lex, "\"ab", "<lex>");
 
-        let parse = ParseError::UnexpectedToken(rusche::Token::CloseParen(Loc::new(0, 0)));
-        print_parse_error(&parse, ")", "<parse>", None);
+        let parse = ParseError::UnexpectedToken(rusche::Token::CloseParen(
+            Loc::new(0, 0).span_to(Loc::new(0, 1)),
+        ));
+        print_parse_error(&host, &parse, ")", "<parse>", None);
 
         let pipeline: Error = eval_err.into();
-        print_pipeline_error(&pipeline, src, "<pipe>");
+        print_pipeline_error(&host, &pipeline, src, "<pipe>");
     }
 }

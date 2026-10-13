@@ -89,6 +89,6 @@ Demo sources: [`crates/rusche-turtle/src/examples/`](../crates/rusche-turtle/src
 
 ## Limitations
 
-- **Stop** only interrupts at turtle natives, `write`/`writeln`, or `random`.
+- **Stop** sets the evaluator interrupt flag. Evaluation fails with `evaluation interrupted` within a few dozen steps, including a tight loop that calls no natives, and the worker then reports `Done`.
 - **Run** continues the current session; use **Reset** for a fresh evaluator, or **Clear** / `(clear)` to wipe only the drawing.
 - Example host (`publish = false`), like `rusche-cli`.

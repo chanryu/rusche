@@ -5,7 +5,7 @@ use crate::{
     expr::{intern, Expr, NIL},
     list::{cons, List},
     proc::Proc,
-    utils::{get_exact_2_args, make_formal_args},
+    utils::{eval_into_list, get_exact_2_args, make_formal_args, type_error},
 };
 
 pub fn error(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -43,33 +43,25 @@ pub(crate) fn apply_form(
 
     let proc = match eval(proc_expr, context)? {
         Expr::Proc(proc, _) => proc,
-        value => {
-            return Err(EvalError::new(
-                ErrorKind::Type,
-                format!("{proc_name}: `{proc_expr}` evaluated to `{value}`, expected a procedure"),
-            )
-            .with_span(proc_expr.span()));
-        }
+        value => return Err(type_error(proc_name, proc_expr, &value, "a procedure")),
     };
-
-    let arg_list = match eval(args_expr, context)? {
-        Expr::List(arg_list, _) => arg_list,
-        value => {
-            return Err(EvalError::new(
-                ErrorKind::Type,
-                format!("{proc_name}: `{args_expr}` evaluated to `{value}`, expected a list"),
-            )
-            .with_span(args_expr.span()));
-        }
-    };
-
-    let call_args = match proc.as_ref() {
-        Proc::Macro { .. } => arg_list,
-        _ => arg_list.iter().map(quote_expr).collect::<Vec<_>>().into(),
-    };
+    let arg_list = eval_into_list(proc_name, args_expr, context)?;
 
     // A procedure value in head position evaluates to itself, so this is a regular call.
-    Ok(cons(Expr::Proc(proc, None), call_args).into())
+    Ok(call_expr(proc, arg_list.iter().cloned().collect()))
+}
+
+/// Builds a call of `proc` on already-evaluated `args`.
+///
+/// Closures and natives receive each value wrapped in `(quote ...)`, so they do not
+/// re-evaluate the arguments. Macros receive the values as forms. The caller evaluates
+/// the returned expression.
+pub(crate) fn call_expr(proc: Rc<Proc>, args: Vec<Expr>) -> Expr {
+    let call_args = match proc.as_ref() {
+        Proc::Macro { .. } => List::from(args),
+        _ => args.iter().map(quote_expr).collect::<Vec<_>>().into(),
+    };
+    cons(Expr::Proc(proc, None), call_args).into()
 }
 
 fn quote_expr(value: &Expr) -> Expr {

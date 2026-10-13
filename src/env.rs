@@ -2,8 +2,9 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
-use crate::eval::ForeignTracers;
+use crate::eval::{EvalContext, EvalResult};
 use crate::expr::Expr;
+use crate::list::List;
 use crate::proc::{NativeFunc, Proc};
 use crate::symbol::Symbol;
 
@@ -262,15 +263,22 @@ impl Env {
         names
     }
 
-    /// A convience fucntion to define a native procedure in the current environment.
-    /// This is a shorthand for `define(name, Expr::Proc(Proc::Native { ... }))`.
-    pub fn define_native_proc(&self, name: &str, func: NativeFunc) {
+    /// Defines a native procedure in the current environment.
+    ///
+    /// `func` may be a function item or a `'static` closure that captures host state.
+    /// Share that state with `Rc` (or `Arc`); the closure cannot borrow the caller's stack.
+    /// This is a shorthand for binding `Expr::Proc(Proc::Native { name, func: NativeFunc::new(func) }, None)`.
+    pub fn define_native_proc(
+        &self,
+        name: &str,
+        func: impl Fn(&str, &List, &EvalContext) -> EvalResult + 'static,
+    ) {
         self.define(
             name,
             Expr::Proc(
                 Rc::new(Proc::Native {
                     name: Rc::from(name),
-                    func,
+                    func: NativeFunc::new(func),
                 }),
                 None,
             ),
@@ -284,7 +292,7 @@ impl Env {
         self.is_reachable.set(false);
     }
 
-    pub(crate) fn gc_mark(&self, tracers: &ForeignTracers) {
+    pub(crate) fn gc_mark(&self) {
         if self.is_reachable.get() {
             return;
         }
@@ -292,32 +300,24 @@ impl Env {
         self.is_reachable.set(true);
 
         for expr in self.vars.borrow().values() {
-            Self::gc_mark_expr(&expr, tracers);
+            Self::gc_mark_expr(&expr);
         }
     }
 
     /// Marks every environment reachable from `expr`: closures captured directly, inside
-    /// lists, or inside foreign objects with a registered tracer.
-    pub(crate) fn gc_mark_expr(expr: &Expr, tracers: &ForeignTracers) {
+    /// lists, or reported by a foreign object's [`ForeignObject::trace`](crate::expr::ForeignObject::trace).
+    pub(crate) fn gc_mark_expr(expr: &Expr) {
         match expr {
-            Expr::Proc(proc, _) => Self::gc_mark_proc(proc.as_ref(), tracers),
-            Expr::List(list, _) => list
-                .iter()
-                .for_each(|expr| Self::gc_mark_expr(expr, tracers)),
-            Expr::Foreign(object) => {
-                if let Some(tracer) = tracers.get(&object.as_ref().type_id()) {
-                    tracer(object.as_ref(), &mut |expr| {
-                        Self::gc_mark_expr(expr, tracers)
-                    });
-                }
-            }
+            Expr::Proc(proc, _) => Self::gc_mark_proc(proc.as_ref()),
+            Expr::List(list, _) => list.iter().for_each(Self::gc_mark_expr),
+            Expr::Foreign(object) => object.trace(&mut Self::gc_mark_expr),
             Expr::Num(..) | Expr::Bool(..) | Expr::Str(..) | Expr::Sym(..) => {}
         }
     }
 
-    fn gc_mark_proc(proc: &Proc, tracers: &ForeignTracers) {
+    fn gc_mark_proc(proc: &Proc) {
         if let Proc::Closure { outer_context, .. } = proc {
-            outer_context.env.gc_mark(tracers);
+            outer_context.env.gc_mark();
         }
     }
 
