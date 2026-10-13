@@ -13,8 +13,9 @@ cargo run -p rusche-turtle
 cargo run -p rusche-turtle -- path/to/script.rsc   # optional: load into the editor
 ```
 
-The UI source is [`crates/rusche-turtle/src/ui.rsc`](../crates/rusche-turtle/src/ui.rsc).
-Bundled demos come from `rusche-turtle-rs` (`Examples` in the UI).
+The UI sources live under [`crates/rusche-turtle/src/ui/`](../crates/rusche-turtle/src/ui/)
+(`util`, `state`, `help`, `script`, `repl`, `canvas`, `app`) and are loaded in that
+order via `include_str!`. Bundled demos come from `rusche-turtle-rs` (`Examples` in the UI).
 
 | Control | Role |
 | --- | --- |
@@ -29,7 +30,7 @@ Bundled demos come from `rusche-turtle-rs` (`Examples` in the UI).
 
 ## Architecture
 
-- **`ui.rsc`** rebuilds panels, editors, help, and the canvas each frame through `rusche-egui`.
+- **`src/ui/*.rsc`** rebuilds panels, editors, help, and the canvas each frame through `rusche-egui`.
 - **Host natives** (`turtle-frame`, `turtle-run`, …) close over a shared [`Canvas`](../crates/rusche-turtle-rs/src/canvas.rs).
 - **Worker session** evaluates turtle scripts and streams motion events; `turtle-frame` advances the animator each UI pass.
 

@@ -11,7 +11,23 @@ use rusche::Evaluator;
 use rusche_egui::Egui;
 use rusche_turtle_rs::{examples, Canvas};
 
-const UI: &str = include_str!("ui.rsc");
+/// UI sources, evaluated in order (same pattern as the core prelude).
+const UI: &[&str] = &[
+    include_str!("ui/util.rsc"),
+    include_str!("ui/state.rsc"),
+    include_str!("ui/help.rsc"),
+    include_str!("ui/script.rsc"),
+    include_str!("ui/repl.rsc"),
+    include_str!("ui/canvas.rsc"),
+    include_str!("ui/app.rsc"),
+];
+
+fn eval_ui(evaluator: &Evaluator) -> Result<(), String> {
+    for src in UI {
+        evaluator.eval_str(src).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
 
 fn main() -> ExitCode {
     let mut args = std::env::args().skip(1);
@@ -44,7 +60,7 @@ fn main() -> ExitCode {
         .root_env()
         .define("initial-script", rusche::Expr::from(script));
 
-    if let Err(err) = evaluator.eval_str(UI) {
+    if let Err(err) = eval_ui(&evaluator) {
         eprintln!("error: {err}");
         return ExitCode::from(1);
     }
@@ -77,10 +93,7 @@ mod tests {
                 }
                 Ok(NIL)
             });
-        evaluator
-            .eval_str(UI)
-            .map(|_| ())
-            .map_err(|e| e.to_string())
+        eval_ui(&evaluator)
     }
 
     #[test]
@@ -109,7 +122,7 @@ mod tests {
                 }
                 Ok(NIL)
             });
-        evaluator.eval_str(UI).unwrap();
+        eval_ui(&evaluator).unwrap();
         let ui = evaluator.eval_str("ui").unwrap();
         egui.run_frame(evaluator.context(), &ui, 1100.0, 720.0)
             .unwrap_or_else(|err| panic!("{err}"));
