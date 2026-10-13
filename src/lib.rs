@@ -51,4 +51,7 @@ pub use proc::{FormalArgs, NativeFunc, Proc};
 pub use span::{Loc, Span};
 pub use symbol::Symbol;
 pub use token::Token;
-pub use utils::{arity_error, eval_into_foreign, eval_into_int, get_exact_1_arg, get_exact_2_args};
+pub use utils::{
+    arity_error, eval_into_foreign, eval_into_int, eval_into_proc, get_exact_1_arg,
+    get_exact_2_args,
+};

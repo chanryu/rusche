@@ -63,13 +63,21 @@ pub(crate) fn apply_form(
         }
     };
 
-    let call_args = match proc.as_ref() {
-        Proc::Macro { .. } => arg_list,
-        _ => arg_list.iter().map(quote_expr).collect::<Vec<_>>().into(),
-    };
-
     // A procedure value in head position evaluates to itself, so this is a regular call.
-    Ok(cons(Expr::Proc(proc, None), call_args).into())
+    Ok(call_expr(proc, arg_list.iter().cloned().collect()))
+}
+
+/// Builds a call of `proc` on already-evaluated `args`.
+///
+/// Closures and natives receive each value wrapped in `(quote ...)`, so they do not
+/// re-evaluate the arguments. Macros receive the values as forms. The caller evaluates
+/// the returned expression.
+pub(crate) fn call_expr(proc: Rc<Proc>, args: Vec<Expr>) -> Expr {
+    let call_args = match proc.as_ref() {
+        Proc::Macro { .. } => List::from(args),
+        _ => args.iter().map(quote_expr).collect::<Vec<_>>().into(),
+    };
+    cons(Expr::Proc(proc, None), call_args).into()
 }
 
 fn quote_expr(value: &Expr) -> Expr {

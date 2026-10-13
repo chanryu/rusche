@@ -23,16 +23,15 @@ the command line, the output column, and the `load` directory stack on an
 
 ## P2 — Call Scheme procedures from Rust
 
-There is no public way to invoke an `Expr::Proc` with already-evaluated
-arguments. The machinery exists as the crate-private `apply_form`
-(`src/builtin/special.rs`). Hosts that want callbacks (a game loop calling
-`(update dt)`, a native `sort` taking a comparator) have to hand-build a
-`(quote ...)`-wrapped call form.
+Done. `Evaluator::call` and `EvalContext::call` invoke a procedure with
+already-evaluated arguments. `eval_into_proc` checks that an argument is a
+procedure. Closures and natives receive the values quoted so they are not
+evaluated again; macros receive them as forms, matching `(apply ...)`.
 
-- [ ] Add `Evaluator::call(&self, proc: &Expr, args: &[Expr]) -> EvalResult`
-- [ ] Add `EvalContext::call(...)` for use inside native functions
-- [ ] Add `eval_into_proc` in `utils` (there are helpers for numbers, strings, ints, and foreign objects, but none for procedures, booleans, symbols, or lists)
-- [ ] Cover it in `docs/tutorials/embedding.md` with a worked example
+- [x] Add `Evaluator::call(&self, proc: &Expr, args: &[Expr]) -> EvalResult`
+- [x] Add `EvalContext::call(...)` for use inside native functions
+- [x] Add `eval_into_proc` in `utils` (there are helpers for numbers, strings, ints, and foreign objects, but none for procedures, booleans, symbols, or lists)
+- [x] Cover it in `docs/tutorials/embedding.md` with a worked example
 
 ## P3 — Interrupt and cancellation
 

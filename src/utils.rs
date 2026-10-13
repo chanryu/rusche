@@ -397,6 +397,39 @@ pub fn eval_into_int(
     }
 }
 
+/// Evaluate an expression into a procedure.
+///
+/// Returns the [`Expr::Proc`](crate::expr::Expr::Proc) value so it can be passed to
+/// [`EvalContext::call`](crate::eval::EvalContext::call).
+///
+/// # Example
+///
+/// ```
+/// use rusche::{eval_into_proc, Evaluator, Expr};
+///
+/// let evaluator = Evaluator::with_builtin();
+/// let expr = evaluator.eval_str("(lambda (x) x)").unwrap();
+/// let proc = eval_into_proc("test", &expr, evaluator.context()).unwrap();
+/// assert_eq!(
+///     evaluator.context().call(&proc, &[Expr::from(1)]).unwrap(),
+///     Expr::from(1)
+/// );
+/// ```
+pub fn eval_into_proc(
+    proc_name: &str,
+    expr: &Expr,
+    context: &EvalContext,
+) -> Result<Expr, EvalError> {
+    match eval(expr, context)? {
+        proc @ Expr::Proc(_, _) => Ok(proc),
+        value => Err(EvalError::new(
+            ErrorKind::Type,
+            format!("{proc_name}: `{expr}` evaluated to `{value}`, expected a procedure"),
+        )
+        .with_span(expr.span())),
+    }
+}
+
 /// Evaluate an expression into a foreign object.
 ///
 /// Check if `expr` evaluates to a foreign object (`Expr::Foreign`). If so, return
@@ -544,6 +577,15 @@ mod tests {
         assert!(eval_into_foreign("test", &Expr::from(1), context).is_err());
         assert!(eval_into_foreign("test", &Expr::from("str"), context).is_err());
         assert!(eval_into_foreign("test", &intern("sym"), context).is_err());
+    }
+
+    #[test]
+    fn test_eval_into_proc() {
+        let evaluator = Evaluator::with_builtin();
+        let context = evaluator.context();
+        let proc = evaluator.eval_str("(lambda (x) x)").unwrap();
+        assert_eq!(eval_into_proc("test", &proc, context).unwrap(), proc);
+        assert!(eval_into_proc("test", &Expr::from(1), context).is_err());
     }
 
     #[test]

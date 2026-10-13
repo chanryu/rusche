@@ -135,6 +135,45 @@ Numbers are `f64`. Booleans are `true` / `false`; conditions in `if` must be
 booleans. See the [language reference](../language-reference.md) for the full
 type system.
 
+## Call a procedure from Rust
+
+`Evaluator::call` invokes a procedure with values the host already has. The
+arguments are not evaluated again, so a list stays data:
+
+```rust
+use rusche::{Evaluator, Expr};
+
+let evaluator = Evaluator::default();
+evaluator.eval_str("(define (double x) (* x 2))").unwrap();
+let double = evaluator.eval_str("double").unwrap();
+assert_eq!(
+    evaluator.call(&double, &[Expr::from(21)]).unwrap(),
+    Expr::from(42)
+);
+```
+
+Inside a native, use `EvalContext::call` the same way. `eval_into_proc` checks
+that an argument evaluated to a procedure:
+
+```rust
+use rusche::{
+    eval, eval_into_proc,
+    utils::get_exact_3_args,
+    EvalContext, EvalResult, List,
+};
+
+fn apply2(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
+    let (proc_expr, a_expr, b_expr) = get_exact_3_args(proc_name, args)?;
+    let proc = eval_into_proc(proc_name, proc_expr, context)?;
+    let a = eval(a_expr, context)?;
+    let b = eval(b_expr, context)?;
+    context.call(&proc, &[a, b])
+}
+```
+
+`(apply2 (lambda (a b) (+ a b)) 20 22)` is `42`. Macros passed to `call` receive
+the arguments as forms, matching `(apply macro args)`.
+
 ## Call depth and garbage collection
 
 - **Call depth.** Non-tail calls are capped by `Evaluator::max_call_depth()`
@@ -142,7 +181,7 @@ type system.
   stack overflow. Adjust with `set_max_call_depth` for the thread you evaluate on.
   Tail calls do not count (see [Tail Calls](../language-reference.md#tail-calls)).
   A native procedure counts as one level while it runs, and anything it
-  evaluates with `eval` nests inside it.
+  evaluates with `eval` or `call` nests inside it.
 - **Garbage collection.** After a top-level `eval`, the evaluator may collect
   unreachable environments once their count reaches `gc_threshold()` (default
   `DEFAULT_GC_THRESHOLD`; pass `None` to `set_gc_threshold` to disable). Call

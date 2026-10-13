@@ -252,6 +252,25 @@ impl EvalContext {
         self.shared.call_trace.borrow().clone()
     }
 
+    /// Calls `proc` with already-evaluated `args`.
+    ///
+    /// `proc` must be an [`Expr::Proc`](crate::expr::Expr::Proc). Closures and native
+    /// procedures receive `args` as values, so a list is data rather than a call.
+    /// Macros receive `args` as forms, the same way `(apply macro args)` does.
+    ///
+    /// The call is evaluated in this context. Inside a native procedure it counts as a
+    /// nested call, the same as [`eval`](crate::eval::eval).
+    pub fn call(&self, proc: &Expr, args: &[Expr]) -> EvalResult {
+        let Expr::Proc(proc, _) = proc else {
+            return Err(
+                EvalError::new(ErrorKind::Type, format!("`{proc}` is not a procedure"))
+                    .with_span(proc.span()),
+            );
+        };
+        let form = crate::builtin::special::call_expr(Rc::clone(proc), args.to_vec());
+        eval(&form, self)
+    }
+
     /// Span of the innermost active procedure call that came from source, if any.
     ///
     /// Inside a native procedure this is normally the span of the form that called it. When
@@ -696,6 +715,30 @@ impl Evaluator {
         &self.context
     }
 
+    /// Calls `proc` with already-evaluated `args` in the root context.
+    ///
+    /// See [`EvalContext::call`]. After the call finishes, garbage is collected
+    /// automatically under the same rules as [`Evaluator::eval`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rusche::{Evaluator, Expr};
+    ///
+    /// let evaluator = Evaluator::default();
+    /// evaluator.eval_str("(define (double x) (* x 2))").unwrap();
+    /// let double = evaluator.eval_str("double").unwrap();
+    /// assert_eq!(
+    ///     evaluator.call(&double, &[Expr::from(21)]).unwrap(),
+    ///     Expr::from(42)
+    /// );
+    /// ```
+    pub fn call(&self, proc: &Expr, args: &[Expr]) -> EvalResult {
+        let result = self.context().call(proc, args);
+        self.maybe_collect_garbage(result.as_ref().ok());
+        result
+    }
+
     /// Evaluates an expression in the current context.
     /// This function is a convenience wrapper around the `eval()` function.
     ///
@@ -986,6 +1029,65 @@ mod tests {
         let closure = held.borrow()[0].clone();
         evaluator.root_env().define("counter", closure);
         assert!(evaluator.eval(&parse_one("(counter)")).is_err());
+    }
+
+    #[test]
+    fn test_call_passes_values_and_macro_forms() {
+        let evaluator = Evaluator::with_builtin();
+        evaluator
+            .eval_str("(define (id a) a) (define x 5) (defmacro (m a) a)")
+            .unwrap();
+
+        let id = evaluator.eval_str("id").unwrap();
+        // A list value is data. Evaluating it as a form would try to call `1`.
+        assert_eq!(
+            evaluator.call(&id, &[list!(1, 2).into()]).unwrap(),
+            list!(1, 2).into()
+        );
+        // A symbol is passed through, not looked up.
+        assert_eq!(evaluator.call(&id, &[intern("x")]).unwrap(), intern("x"));
+
+        // A macro receives the symbol as a form and the expansion is evaluated.
+        let m = evaluator.eval_str("m").unwrap();
+        assert_eq!(evaluator.call(&m, &[intern("x")]).unwrap(), 5.into());
+
+        let err = evaluator.call(&Expr::from(1), &[]).unwrap_err();
+        assert_eq!(err.kind, ErrorKind::Type);
+        assert!(err.message().contains("is not a procedure"));
+
+        let err = evaluator.call(&id, &[]).unwrap_err();
+        assert_eq!(err.kind, ErrorKind::Arity);
+    }
+
+    #[test]
+    fn test_call_from_native_and_tail_position() {
+        let evaluator = Evaluator::with_prelude();
+
+        evaluator
+            .root_env()
+            .define_native_proc("apply2", |proc_name, args, context| {
+                let (proc_expr, a_expr, b_expr) = crate::utils::get_exact_3_args(proc_name, args)?;
+                let proc = crate::utils::eval_into_proc(proc_name, proc_expr, context)?;
+                let a = eval(a_expr, context)?;
+                let b = eval(b_expr, context)?;
+                context.call(&proc, &[a, b])
+            });
+        assert_eq!(
+            evaluator
+                .eval_str("(apply2 (lambda (a b) (+ a b)) 20 22)")
+                .unwrap(),
+            42.into()
+        );
+
+        evaluator.set_max_call_depth(50);
+        evaluator
+            .eval_str("(define (loop n) (if (= n 0) 'done (loop (- n 1))))")
+            .unwrap();
+        let loop_proc = evaluator.eval_str("loop").unwrap();
+        assert_eq!(
+            evaluator.call(&loop_proc, &[10_000.into()]).unwrap(),
+            intern("done")
+        );
     }
 
     #[test]
