@@ -1,4 +1,4 @@
-//! Animated turtle canvas and evaluation session. Shared by the Rust and Rusche UIs.
+//! Animated turtle canvas and evaluation session.
 
 use std::ops::Range;
 use std::sync::mpsc::TryRecvError;
@@ -98,7 +98,7 @@ pub struct Canvas {
     /// Script form whose effects are currently being shown on the canvas.
     pub active_site: Option<Span>,
     pub log: String,
-    /// REPL transcript (the Rusche UI owns its own input buffer and history).
+    /// REPL transcript, input buffer, and history.
     pub repl: ReplState,
     /// After Stop, discard drawing events until the cancelled eval's `Done` arrives
     /// so the worker cannot pull the UI ahead of the visible turtle again.

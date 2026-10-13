@@ -1,4 +1,4 @@
-//! Shared turtle session, canvas animator, and helpers for Rusche turtle hosts.
+//! Turtle-graphics session, canvas animator, and desktop UI for Rusche.
 
 pub mod app;
 pub mod builtin;
