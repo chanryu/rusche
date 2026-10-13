@@ -74,16 +74,16 @@ a variadic arity helper (`vec-set!` uses the existing 3-argument helper), and
 
 ## P5 — `ForeignObject` trait (breaking, target 0.6.0)
 
-`Foreign` is `Rc<dyn Any>` (`src/expr.rs`). Consequences: `Display` prints
-`<foreign: 0x…>`, `eq?` is pointer identity, and garbage-collection tracing is
-registered separately from the type via `register_foreign_tracer`. Forgetting it
-is silent — the `vec` and `dict` builtins each carry a comment warning about it.
+Done. `Foreign` is `Rc<dyn ForeignObject>`. The trait's default `fmt` prints
+`<type_name>`, and `trace` reports stored `Expr`s to the collector.
+`register_foreign_tracer` is gone; `vec` prints `<vec 1 2 3>` and `dict` prints
+its pairs. In-repo hosts, examples, and docs use the trait.
 
-- [ ] Introduce a `ForeignObject` trait with default methods: `type_name`, `fmt`, `trace(&self, &mut dyn FnMut(&Expr))`, `as_any`
-- [ ] Store `Rc<dyn ForeignObject>` so tracing lives on the type and `register_foreign_tracer` is no longer required for the common case
-- [ ] Use the trait's `fmt` so `write` and the REPL can print `<vec 1 2 3>`
-- [ ] Keep `register_foreign_tracer` working, or provide a migration path, and update `docs/tutorials/foreign.md`
-- [ ] Breaking change of its own; the `Proc::Native` signature change already landed with P1
+- [x] Introduce a `ForeignObject` trait with default methods: `type_name`, `fmt`, `trace(&self, &mut dyn FnMut(&Expr))`, `as_any`
+- [x] Store `Rc<dyn ForeignObject>` so tracing lives on the type and `register_foreign_tracer` is no longer required for the common case
+- [x] Use the trait's `fmt` so `write` and the REPL can print `<vec 1 2 3>`
+- [x] Remove `register_foreign_tracer` and update `docs/tutorials/foreign.md`
+- [x] Breaking change of its own; the `Proc::Native` signature change already landed with P1
 
 ## P6 — Extension and builder API
 

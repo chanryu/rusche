@@ -6,7 +6,7 @@ mod common;
 use std::{cell::RefCell, rc::Rc};
 
 use common::EvalToStr;
-use rusche::{tokenize, Evaluator, Expr, Parser, Span};
+use rusche::{tokenize, Evaluator, Expr, ForeignObject, Parser, Span};
 
 fn eval_str(src: &str) -> String {
     Evaluator::with_prelude().eval_to_str(src)
@@ -90,25 +90,40 @@ fn gc_keeps_closures_inside_lists_alive() {
     assert_eq!(e.eval_to_str("((cadr counters))"), "1");
 }
 
-// B5 -- closures inside a Foreign object survive when a tracer is registered.
-#[test]
-fn gc_traces_foreign_objects_with_registered_tracer() {
-    type ExprVec = RefCell<Vec<Expr>>;
+#[derive(Debug)]
+struct Token;
 
+impl ForeignObject for Token {}
+
+#[derive(Debug)]
+struct ExprVec(RefCell<Vec<Expr>>);
+
+impl ForeignObject for ExprVec {
+    fn trace(&self, trace: &mut dyn FnMut(&Expr)) {
+        let items: Vec<Expr> = self.0.borrow().iter().cloned().collect();
+        for item in &items {
+            trace(item);
+        }
+    }
+}
+
+// B5 -- closures inside a Foreign object survive when the object traces them.
+#[test]
+fn gc_traces_foreign_objects() {
     let e = Evaluator::with_prelude();
-    e.register_foreign_tracer::<ExprVec>(|vec, trace| vec.borrow().iter().for_each(trace));
 
     let counter = eval_all(
         &e,
         "(define (make-counter) (define n 0) (lambda () (set! n (+ n 1)) n)) (make-counter)",
     )
     .unwrap();
-    let held: Rc<ExprVec> = Rc::new(RefCell::new(vec![counter]));
-    e.root_env().define("box", Expr::Foreign(held.clone()));
+    let held = Rc::new(ExprVec(RefCell::new(vec![counter])));
+    let object: rusche::Foreign = held.clone() as _;
+    e.root_env().define("box", Expr::Foreign(object));
 
     e.collect_garbage();
 
-    let counter = held.borrow()[0].clone();
+    let counter = held.0.borrow()[0].clone();
     e.root_env().define("counter", counter);
     assert_eq!(e.eval_to_str("(counter)"), "1");
 }
@@ -301,14 +316,8 @@ fn display_escapes_strings_and_foreign_is_eq_to_itself() {
     assert_eq!(eval_str(r#"(list "x\ny")"#), r#"("x\ny")"#);
 
     let e = Evaluator::with_prelude();
-    e.root_env().define(
-        "v",
-        Expr::Foreign(Rc::new(RefCell::new(Vec::<Expr>::new()))),
-    );
-    e.root_env().define(
-        "w",
-        Expr::Foreign(Rc::new(RefCell::new(Vec::<Expr>::new()))),
-    );
+    e.root_env().define("v", Expr::foreign(Token));
+    e.root_env().define("w", Expr::foreign(Token));
     assert_eq!(e.eval_to_str("(eq? v v)"), "true");
     assert_eq!(e.eval_to_str("(eq? v w)"), "false");
 }

@@ -7,7 +7,58 @@ use crate::{
     symbol::Symbol,
 };
 
-pub type Foreign = Rc<dyn Any>;
+pub type Foreign = Rc<dyn ForeignObject>;
+
+/// Downcast helpers for every [`ForeignObject`]. A host does not implement this.
+#[doc(hidden)]
+pub trait ForeignDowncast: Any {
+    /// The concrete value as [`Any`], for type checks.
+    fn as_any(&self) -> &dyn Any;
+
+    /// The same `Rc`, so [`Expr::as_foreign`] can downcast it.
+    fn into_any(self: Rc<Self>) -> Rc<dyn Any>;
+}
+
+impl<T: Any> ForeignDowncast for T {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn into_any(self: Rc<Self>) -> Rc<dyn Any> {
+        self
+    }
+}
+
+/// A Rust value stored in an [`Expr::Foreign`].
+///
+/// Default methods cover a value that holds no [`Expr`]s: it prints as
+/// `<type_name>` and the garbage collector does not look inside it. Override
+/// [`trace`](ForeignObject::trace) when the value stores `Expr`s (especially
+/// closures), and [`fmt`](ForeignObject::fmt) to print the contents.
+///
+/// Implement this for a type defined in the host crate. `RefCell<T>` cannot
+/// implement it when `RefCell` comes from another crate; wrap that cell in a
+/// local struct.
+pub trait ForeignObject: ForeignDowncast {
+    /// Short name used by the default [`fmt`](ForeignObject::fmt).
+    fn type_name(&self) -> &'static str {
+        std::any::type_name::<Self>()
+    }
+
+    /// Writes the printed form, including the surrounding `<>`.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<{}>", self.type_name())
+    }
+
+    /// Reports every [`Expr`] stored inside this object.
+    fn trace(&self, _trace: &mut dyn FnMut(&Expr)) {}
+}
+
+impl fmt::Debug for dyn ForeignObject {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Foreign({})", self.type_name())
+    }
+}
 
 /// The enum that represents all expression variants in the Rusche language.
 #[derive(Clone, Debug)]
@@ -115,11 +166,10 @@ impl Expr {
 
     /// Downcasts a foreign object to `T`.
     ///
-    /// `T` is the concrete type stored inside the `Rc`, the same type passed to
-    /// [`Expr::foreign`].
+    /// `T` is the concrete type passed to [`Expr::foreign`].
     pub fn as_foreign<T: Any>(&self) -> Option<Rc<T>> {
         match self {
-            Expr::Foreign(object) => Rc::clone(object).downcast().ok(),
+            Expr::Foreign(object) => Rc::clone(object).into_any().downcast().ok(),
             _ => None,
         }
     }
@@ -128,7 +178,7 @@ impl Expr {
     ///
     /// Pass the value itself, not an `Rc`. [`Expr::as_foreign`] downcasts to that
     /// same type.
-    pub fn foreign(value: impl Any) -> Self {
+    pub fn foreign(value: impl ForeignObject) -> Self {
         Expr::Foreign(Rc::new(value))
     }
 
@@ -187,7 +237,7 @@ impl fmt::Display for Expr {
             Expr::Sym(name, _) => write!(f, "{}", name),
             Expr::Proc(proc, _) => write!(f, "<{}>", proc.fingerprint()),
             Expr::List(list, _) => write!(f, "{}", list),
-            Expr::Foreign(object) => write!(f, "<foreign: {:p}>", object),
+            Expr::Foreign(object) => ForeignObject::fmt(object.as_ref(), f),
         }
     }
 }
@@ -300,6 +350,15 @@ mod tests {
     use super::*;
     use crate::macros::list;
 
+    #[derive(Debug)]
+    struct Sample(i32);
+
+    impl ForeignObject for Sample {
+        fn type_name(&self) -> &'static str {
+            "sample"
+        }
+    }
+
     #[test]
     fn test_display_nil() {
         assert_eq!(format!("{}", NIL), "()");
@@ -348,27 +407,23 @@ mod tests {
         }
 
         // Variants without spans are returned as-is.
-        let foreign = Expr::Foreign(Rc::new(1_i32));
+        let foreign = Expr::foreign(Sample(1));
         assert!(foreign.without_spans().span().is_none());
         assert_eq!(foreign.without_spans(), foreign);
     }
 
     #[test]
     fn test_foreign_eq() {
-        use std::rc::Rc;
-        let a: crate::expr::Foreign = Rc::new(1_i32);
-        let b: crate::expr::Foreign = Rc::new(1_i32);
-        assert_eq!(Expr::Foreign(a.clone()), Expr::Foreign(a.clone()));
-        assert_ne!(Expr::Foreign(a), Expr::Foreign(b));
+        let a = Expr::foreign(Sample(1));
+        let b = Expr::foreign(Sample(1));
+        assert_eq!(a, a.clone());
+        assert_ne!(a, b);
     }
 
     #[test]
     fn test_display_foreign_and_list_iter_from() {
-        use std::rc::Rc;
-        let foreign = Expr::Foreign(Rc::new(1_i32));
-        let text = format!("{foreign}");
-        assert!(text.starts_with("<foreign: "), "{text}");
-        assert!(text.ends_with('>'), "{text}");
+        let foreign = Expr::foreign(Sample(1));
+        assert_eq!(format!("{foreign}"), "<sample>");
 
         let list = list!(1, 2, 3);
         let from_iter: Expr = list.iter().into();
@@ -438,10 +493,10 @@ mod tests {
         let list = list!(1, 2);
         assert_eq!(Expr::List(list.clone(), span).as_list(), Some(&list));
 
-        let foreign = Expr::foreign(7_i32);
-        assert_eq!(*foreign.as_foreign::<i32>().unwrap(), 7);
+        let foreign = Expr::foreign(Sample(7));
+        assert_eq!(foreign.as_foreign::<Sample>().unwrap().0, 7);
         assert!(foreign.as_foreign::<String>().is_none());
-        assert!(Expr::from(1).as_foreign::<i32>().is_none());
+        assert!(Expr::from(1).as_foreign::<Sample>().is_none());
     }
 
     #[test]

@@ -50,7 +50,7 @@ helpers in [`rusche::utils`](https://docs.rs/rusche/latest/rusche/utils/index.ht
 | `eval_into_num` | `f64` |
 | `eval_into_int` | integer `i32` (no fractional part) |
 | `eval_into_str` | `String` |
-| `eval_into_foreign` | `Rc<dyn Any>` for a `Foreign` object |
+| `eval_into_foreign` | `Rc<dyn ForeignObject>` |
 
 Fixed arity:
 

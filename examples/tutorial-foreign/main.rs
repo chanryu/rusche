@@ -4,15 +4,27 @@ use std::{cell::RefCell, rc::Rc};
 
 use rusche::{
     eval, eval_into_num, get_exact_1_arg, get_exact_2_args, get_exact_3_args, tokenize, ErrorKind,
-    EvalContext, EvalError, EvalResult, Evaluator, Expr, List, Parser, NIL,
+    EvalContext, EvalError, EvalResult, Evaluator, Expr, ForeignObject, List, Parser, NIL,
 };
 
+#[derive(Debug)]
 struct Point {
     x: f64,
     y: f64,
 }
 
-type PointCell = RefCell<Point>;
+struct PointCell(RefCell<Point>);
+
+impl ForeignObject for PointCell {
+    fn type_name(&self) -> &'static str {
+        "point"
+    }
+
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let point = self.0.borrow();
+        write!(f, "<point {} {}>", point.x, point.y)
+    }
+}
 
 fn eval_into_point(
     proc_name: &str,
@@ -33,13 +45,13 @@ fn point(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (x_expr, y_expr) = get_exact_2_args(proc_name, args)?;
     let x = eval_into_num(proc_name, x_expr, context)?;
     let y = eval_into_num(proc_name, y_expr, context)?;
-    Ok(Expr::foreign(RefCell::new(Point { x, y })))
+    Ok(Expr::foreign(PointCell(RefCell::new(Point { x, y }))))
 }
 
 fn point_x(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let arg = get_exact_1_arg(proc_name, args)?;
     let point = eval_into_point(proc_name, arg, context)?;
-    let x = point.borrow().x;
+    let x = point.0.borrow().x;
     Ok(Expr::from(x))
 }
 
@@ -50,7 +62,7 @@ fn point_move(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     let dy = eval_into_num(proc_name, dy_expr, context)?;
 
     {
-        let mut point = point.borrow_mut();
+        let mut point = point.0.borrow_mut();
         point.x += dx;
         point.y += dy;
     }

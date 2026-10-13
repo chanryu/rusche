@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
-use crate::eval::{EvalContext, EvalResult, ForeignTracers};
+use crate::eval::{EvalContext, EvalResult};
 use crate::expr::Expr;
 use crate::list::List;
 use crate::proc::{NativeFunc, Proc};
@@ -292,7 +292,7 @@ impl Env {
         self.is_reachable.set(false);
     }
 
-    pub(crate) fn gc_mark(&self, tracers: &ForeignTracers) {
+    pub(crate) fn gc_mark(&self) {
         if self.is_reachable.get() {
             return;
         }
@@ -300,32 +300,24 @@ impl Env {
         self.is_reachable.set(true);
 
         for expr in self.vars.borrow().values() {
-            Self::gc_mark_expr(&expr, tracers);
+            Self::gc_mark_expr(&expr);
         }
     }
 
     /// Marks every environment reachable from `expr`: closures captured directly, inside
-    /// lists, or inside foreign objects with a registered tracer.
-    pub(crate) fn gc_mark_expr(expr: &Expr, tracers: &ForeignTracers) {
+    /// lists, or reported by a foreign object's [`ForeignObject::trace`](crate::expr::ForeignObject::trace).
+    pub(crate) fn gc_mark_expr(expr: &Expr) {
         match expr {
-            Expr::Proc(proc, _) => Self::gc_mark_proc(proc.as_ref(), tracers),
-            Expr::List(list, _) => list
-                .iter()
-                .for_each(|expr| Self::gc_mark_expr(expr, tracers)),
-            Expr::Foreign(object) => {
-                if let Some(tracer) = tracers.get(&object.as_ref().type_id()) {
-                    tracer(object.as_ref(), &mut |expr| {
-                        Self::gc_mark_expr(expr, tracers)
-                    });
-                }
-            }
+            Expr::Proc(proc, _) => Self::gc_mark_proc(proc.as_ref()),
+            Expr::List(list, _) => list.iter().for_each(Self::gc_mark_expr),
+            Expr::Foreign(object) => object.trace(&mut Self::gc_mark_expr),
             Expr::Num(..) | Expr::Bool(..) | Expr::Str(..) | Expr::Sym(..) => {}
         }
     }
 
-    fn gc_mark_proc(proc: &Proc, tracers: &ForeignTracers) {
+    fn gc_mark_proc(proc: &Proc) {
         if let Proc::Closure { outer_context, .. } = proc {
-            outer_context.env.gc_mark(tracers);
+            outer_context.env.gc_mark();
         }
     }
 

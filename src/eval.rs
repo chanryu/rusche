@@ -1,5 +1,4 @@
 use std::{
-    any::{Any, TypeId},
     cell::{Cell, RefCell},
     collections::HashMap,
     fmt,
@@ -59,13 +58,6 @@ pub const DEFAULT_MAX_CALL_DEPTH: usize = 1000;
 /// The default number of live environments that triggers automatic garbage collection.
 /// See [`Evaluator::set_gc_threshold`].
 pub const DEFAULT_GC_THRESHOLD: usize = 10_000;
-
-/// A callback that reports every [`Expr`] held inside a [`Foreign`](crate::expr::Foreign)
-/// object so the garbage collector can keep the environments they reference alive.
-/// Register one per concrete type with [`Evaluator::register_foreign_tracer`].
-pub type ForeignTracer = Box<dyn Fn(&dyn Any, &mut dyn FnMut(&Expr))>;
-
-pub(crate) type ForeignTracers = HashMap<TypeId, ForeignTracer>;
 
 /// Category of an evaluation error, so hosts and tests can match without parsing message text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -652,12 +644,11 @@ fn eval_form(
 /// Reachability starts from the root environment and the value just returned by `eval`.
 /// Anything the host keeps alive outside of the evaluator (for example an `Expr::Proc` stored in
 /// a Rust struct) is **not** a root; define it in the root environment or keep it inside a
-/// [`Foreign`](crate::expr::Foreign) object with a registered
-/// [tracer](Evaluator::register_foreign_tracer) if it must survive collection.
+/// [`Foreign`](crate::expr::Foreign) object whose
+/// [`trace`](crate::expr::ForeignObject::trace) reports it, if it must survive collection.
 pub struct Evaluator {
     all_envs: Rc<RefCell<Vec<Weak<Env>>>>,
     context: EvalContext,
-    foreign_tracers: RefCell<ForeignTracers>,
     gc_threshold: Cell<Option<usize>>,
     next_gc_at: Cell<usize>,
 }
@@ -684,7 +675,6 @@ impl Evaluator {
                 env: root_env,
                 shared: Rc::new(Shared::new()),
             },
-            foreign_tracers: RefCell::new(HashMap::new()),
             gc_threshold: Cell::new(Some(DEFAULT_GC_THRESHOLD)),
             next_gc_at: Cell::new(DEFAULT_GC_THRESHOLD),
         }
@@ -770,39 +760,6 @@ impl Evaluator {
         if let Some(threshold) = threshold {
             self.next_gc_at.set(threshold);
         }
-    }
-
-    /// Registers a tracer for [`Foreign`](crate::expr::Foreign) objects of type `T`.
-    ///
-    /// When the garbage collector encounters an `Expr::Foreign` whose payload is a `T`, it calls
-    /// `tracer` and treats every `Expr` passed to the callback as reachable. Without a tracer,
-    /// closures stored inside a foreign object may have their environments collected.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::{cell::RefCell, rc::Rc};
-    /// use rusche::{Evaluator, Expr};
-    ///
-    /// type ExprVec = RefCell<Vec<Expr>>;
-    ///
-    /// let evaluator = Evaluator::default();
-    /// evaluator.register_foreign_tracer::<ExprVec>(|vec, trace| {
-    ///     vec.borrow().iter().for_each(trace);
-    /// });
-    /// ```
-    pub fn register_foreign_tracer<T: Any>(
-        &self,
-        tracer: impl Fn(&T, &mut dyn FnMut(&Expr)) + 'static,
-    ) {
-        self.foreign_tracers.borrow_mut().insert(
-            TypeId::of::<T>(),
-            Box::new(move |object, trace| {
-                if let Some(object) = object.downcast_ref::<T>() {
-                    tracer(object, trace);
-                }
-            }),
-        );
     }
 
     /// Creates a new `Evaluator` with built-in functions.
@@ -930,10 +887,9 @@ impl Evaluator {
             }
         });
 
-        let tracers = self.foreign_tracers.borrow();
-        self.root_env().gc_mark(&tracers);
+        self.root_env().gc_mark();
         for expr in extra_roots {
-            Env::gc_mark_expr(expr, &tracers);
+            Env::gc_mark_expr(expr);
         }
     }
 
@@ -1126,7 +1082,11 @@ mod tests {
     }
 
     #[test]
-    fn test_gc_ignores_foreign_objects_without_tracer() {
+    fn test_gc_ignores_foreign_objects_that_do_not_trace() {
+        #[derive(Debug)]
+        struct Silent(RefCell<Vec<Expr>>);
+        impl crate::expr::ForeignObject for Silent {}
+
         let evaluator = Evaluator::with_prelude();
 
         let closure = eval_all(
@@ -1134,16 +1094,15 @@ mod tests {
             "(define (make-counter) (define n 0) (lambda () (set! n (+ n 1)) n))
              (make-counter)",
         );
-        let held: Rc<RefCell<Vec<Expr>>> = Rc::new(RefCell::new(vec![closure]));
-        evaluator
-            .root_env()
-            .define("box", Expr::Foreign(held.clone()));
+        let held = Rc::new(Silent(RefCell::new(vec![closure])));
+        let object: crate::expr::Foreign = held.clone() as _;
+        evaluator.root_env().define("box", Expr::Foreign(object));
 
-        // Without a registered tracer the closure inside the foreign object is not a root,
-        // so its environment is swept and the closure no longer works.
+        // The default trace reports nothing, so the closure is not a root and its
+        // environment is swept.
         evaluator.collect_garbage();
 
-        let closure = held.borrow()[0].clone();
+        let closure = held.0.borrow()[0].clone();
         evaluator.root_env().define("counter", closure);
         assert!(evaluator.eval(&parse_one("(counter)")).is_err());
     }

@@ -216,7 +216,7 @@ loop do not count.
 
 Reachability starts from the root environment and the value `eval` just returned.
 If the host stores `Expr` values (especially closures) inside a `Foreign` object,
-register a tracer so the collector can see them — covered in
+implement `ForeignObject::trace` so the collector can see them — covered in
 [How to write a foreign object wrapper](foreign.md).
 
 ## Next steps

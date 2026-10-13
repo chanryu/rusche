@@ -1,9 +1,8 @@
-use std::any::Any;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
 use crate::eval::{eval, ErrorKind, EvalContext, EvalError};
-use crate::expr::Expr;
+use crate::expr::{Expr, Foreign};
 use crate::list::List;
 use crate::proc::FormalArgs;
 
@@ -514,8 +513,8 @@ pub fn eval_into_proc(
 /// Evaluate an expression into a foreign object.
 ///
 /// Check if `expr` evaluates to a foreign object (`Expr::Foreign`). If so, return
-/// the object (`Rc<dyn Any>`). Otherwise, return an error message.
-/// The caller of this function can downcase the object to the expected type.
+/// the object. Otherwise, return an error message. Downcast with
+/// [`Expr::as_foreign`](crate::expr::Expr::as_foreign).
 ///
 /// # Arguments
 ///
@@ -526,24 +525,22 @@ pub fn eval_into_proc(
 /// # Example
 ///
 /// ```
-/// use std::{any::Any, rc::Rc};
-/// use rusche::{
-///     eval::Evaluator,
-///     expr::Expr,
-///     utils::eval_into_foreign,
-/// };
+/// use rusche::{eval_into_foreign, Evaluator, Expr, ForeignObject};
+///
+/// #[derive(Debug)]
+/// struct Bag;
+/// impl ForeignObject for Bag {}
 ///
 /// let evaluator = Evaluator::new();
-/// let context = evaluator.context();
-/// let expr = Expr::Foreign(Rc::new(Vec::<i32>::new()));
-/// let object = eval_into_foreign("test", &expr, context).unwrap();
-/// assert!(object.downcast::<Vec<i32>>().is_ok());
+/// let expr = Expr::foreign(Bag);
+/// let object = eval_into_foreign("test", &expr, evaluator.context()).unwrap();
+/// assert!(object.as_any().is::<Bag>());
 /// ```
 pub fn eval_into_foreign(
     proc_name: &str,
     expr: &Expr,
     context: &EvalContext,
-) -> Result<Rc<dyn Any>, EvalError> {
+) -> Result<Foreign, EvalError> {
     match eval(expr, context)? {
         Expr::Foreign(object) => Ok(object),
         value => Err(EvalError::new(
@@ -675,12 +672,16 @@ mod tests {
 
     #[test]
     fn test_eval_into_foreign() {
+        #[derive(Debug)]
+        struct Bag;
+        impl crate::expr::ForeignObject for Bag {}
+
         let evaluator = Evaluator::new();
         let context = evaluator.context();
 
-        let expr = Expr::Foreign(Rc::new(Vec::<i32>::new()));
+        let expr = Expr::foreign(Bag);
         let object = eval_into_foreign("test", &expr, context).unwrap();
-        assert!(object.downcast::<Vec<i32>>().is_ok());
+        assert!(object.as_any().is::<Bag>());
 
         assert!(eval_into_foreign("test", &Expr::from(1), context).is_err());
         assert!(eval_into_foreign("test", &Expr::from("str"), context).is_err());

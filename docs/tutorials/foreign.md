@@ -12,41 +12,55 @@ vector API is in [`crates/rusche-cli/src/builtin/vec.rs`](../../crates/rusche-cl
 ## What `Foreign` is
 
 ```rust
-pub type Foreign = Rc<dyn Any>;
+pub type Foreign = Rc<dyn ForeignObject>;
 ```
 
+A foreign value implements [`ForeignObject`](https://docs.rs/rusche/latest/rusche/trait.ForeignObject.html).
 Store one as `Expr::foreign(value)`. Important properties:
 
 - **Equality** is pointer identity (`Rc::ptr_eq`), not structural equality.
-- **Display** prints `<foreign: 0x…>` — there is no printable contents by default.
-- The concrete type inside the `Rc` is what you downcast and what you register
-  with a garbage-collection tracer.
+- **Display** uses [`ForeignObject::fmt`](https://docs.rs/rusche/latest/rusche/trait.ForeignObject.html#method.fmt).
+  The default is `<type_name>`.
+- **Garbage collection** uses [`ForeignObject::trace`](https://docs.rs/rusche/latest/rusche/trait.ForeignObject.html#method.trace).
+  The default reports nothing. Override it when the value stores `Expr`s.
 
 For mutable data, wrap the payload in `RefCell` (or another interior-mutability
 type) before putting it in the `Rc`:
 
 ```rust
 use std::cell::RefCell;
-use rusche::Expr;
+use rusche::{Expr, ForeignObject};
 
+#[derive(Debug)]
 struct Point {
     x: f64,
     y: f64,
 }
 
-let point = Expr::foreign(RefCell::new(Point { x: 0.0, y: 0.0 }));
+struct PointCell(RefCell<Point>);
+
+impl ForeignObject for PointCell {
+    fn type_name(&self) -> &'static str {
+        "point"
+    }
+
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let point = self.0.borrow();
+        write!(f, "<point {} {}>", point.x, point.y)
+    }
+}
+
+let point = Expr::foreign(PointCell(RefCell::new(Point { x: 0.0, y: 0.0 })));
 ```
 
 ## Downcasting
 
-`as_foreign::<T>()` downcasts to the **concrete type stored in the `Rc`** (here
-`RefCell<Point>`, not `Rc<RefCell<Point>>`). Evaluate the argument first:
+`as_foreign::<T>()` downcasts to the type that implements `ForeignObject` (here
+`PointCell`, which must be a type your crate owns). Evaluate the argument first:
 
 ```rust
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 use rusche::{eval, ErrorKind, EvalContext, EvalError, Expr};
-
-type PointCell = RefCell<Point>;
 
 fn eval_into_point(
     proc_name: &str,
@@ -75,15 +89,27 @@ Register constructors and accessors as native procedures (see
 use std::{cell::RefCell, rc::Rc};
 use rusche::{
     eval, eval_into_num, get_exact_1_arg, get_exact_2_args, get_exact_3_args, ErrorKind,
-    EvalContext, EvalError, EvalResult, Evaluator, Expr, List, NIL,
+    EvalContext, EvalError, EvalResult, Evaluator, Expr, ForeignObject, List, NIL,
 };
 
+#[derive(Debug)]
 struct Point {
     x: f64,
     y: f64,
 }
 
-type PointCell = RefCell<Point>;
+struct PointCell(RefCell<Point>);
+
+impl ForeignObject for PointCell {
+    fn type_name(&self) -> &'static str {
+        "point"
+    }
+
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let point = self.0.borrow();
+        write!(f, "<point {} {}>", point.x, point.y)
+    }
+}
 
 fn eval_into_point(
     proc_name: &str,
@@ -104,13 +130,13 @@ fn point(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let (x_expr, y_expr) = get_exact_2_args(proc_name, args)?;
     let x = eval_into_num(proc_name, x_expr, context)?;
     let y = eval_into_num(proc_name, y_expr, context)?;
-    Ok(Expr::foreign(RefCell::new(Point { x, y })))
+    Ok(Expr::foreign(PointCell(RefCell::new(Point { x, y }))))
 }
 
 fn point_x(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
     let arg = get_exact_1_arg(proc_name, args)?;
     let point = eval_into_point(proc_name, arg, context)?;
-    let x = point.borrow().x;
+    let x = point.0.borrow().x;
     Ok(Expr::from(x))
 }
 
@@ -121,7 +147,7 @@ fn point_move(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult
     let dy = eval_into_num(proc_name, dy_expr, context)?;
 
     {
-        let mut point = point.borrow_mut();
+        let mut point = point.0.borrow_mut();
         point.x += dx;
         point.y += dy;
     }
@@ -144,33 +170,38 @@ Run the example with:
 cargo run --example tutorial-foreign
 ```
 
-## Holding `Expr` values and GC tracers
+## Holding `Expr` values
 
-If a foreign object stores `Expr` values — especially closures — the garbage
-collector cannot see them unless you register a tracer for that concrete type:
+If a foreign object stores `Expr` values — especially closures — override
+`trace` so the garbage collector can see them. The default reports nothing, and
+a closure that lives only inside the object can have its environment collected.
 
 ```rust
-use std::{cell::RefCell, rc::Rc};
-use rusche::{Evaluator, Expr};
+use std::cell::RefCell;
+use rusche::{Expr, ForeignObject};
 
-type ExprVec = RefCell<Vec<Expr>>;
+#[derive(Debug)]
+struct ExprVec(RefCell<Vec<Expr>>);
 
-let evaluator = Evaluator::with_prelude();
-evaluator.register_foreign_tracer::<ExprVec>(|vec, trace| {
-    vec.borrow().iter().for_each(trace);
-});
+impl ForeignObject for ExprVec {
+    fn trace(&self, trace: &mut dyn FnMut(&Expr)) {
+        let items: Vec<Expr> = self.0.borrow().iter().cloned().collect();
+        for item in &items {
+            trace(item);
+        }
+    }
+}
 ```
 
-The type parameter on `register_foreign_tracer` must match the type used in
-`Rc::new(...)` and in `downcast`. Without a tracer, a closure that lives only
-inside the foreign object can have its environment collected; calling it later
-fails.
+Copy the `Expr`s out before calling `trace`. Holding the `RefCell` borrow across
+the callback can panic if marking walks back into the same object.
 
 The vector builtins in
 [`vec.rs`](../../crates/rusche-cli/src/builtin/vec.rs) show the complete pattern:
-create, push, get, and a tracer over every stored `Expr`. The dict builtins in
-[`dict.rs`](../../crates/rusche-cli/src/builtin/dict.rs) show a Foreign type whose
-keys are a separate Rust enum (not `Expr`), with a tracer over values only.
+create, push, get, and `trace` over every stored `Expr`. The dict builtins in
+[`dict.rs`](../../crates/rusche-cli/src/builtin/dict.rs) show a foreign type whose
+keys are a separate Rust enum (not `Expr`), with `trace` over values only. They
+also override `fmt`, so `write` and the REPL print `<vec 1 2 3>`.
 
 ## Borrowing and re-entrancy
 

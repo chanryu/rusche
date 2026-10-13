@@ -1,9 +1,9 @@
 use rusche::{
     eval, eval_into_list, eval_into_usize, get_exact_1_arg, get_exact_2_args, get_exact_3_args,
-    ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, Expr, List, NIL,
+    ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, Expr, ForeignObject, List, NIL,
 };
 
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, fmt, ops::Deref, rc::Rc};
 
 pub fn load_vec_procs(evaluator: &Evaluator) {
     let env = evaluator.root_env();
@@ -16,23 +16,47 @@ pub fn load_vec_procs(evaluator: &Evaluator) {
     env.define_native_proc("vec-length", vec_length);
     env.define_native_proc("vec->list", vec_to_list);
     env.define_native_proc("list->vec", list_to_vec);
-
-    // Let the garbage collector see closures stored inside vectors; without this, calling a
-    // closure that only lives in a vector would fail after a collection.
-    evaluator.register_foreign_tracer::<ExprVecRefCell>(|vec, trace| {
-        vec.borrow().iter().for_each(trace);
-    });
 }
 
-type ExprVecRefCell = RefCell<Vec<Expr>>;
+#[derive(Debug)]
+struct ExprVec(RefCell<Vec<Expr>>);
+
+impl Deref for ExprVec {
+    type Target = RefCell<Vec<Expr>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ForeignObject for ExprVec {
+    fn type_name(&self) -> &'static str {
+        "vec"
+    }
+
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<vec")?;
+        for item in self.borrow().iter() {
+            write!(f, " {item}")?;
+        }
+        write!(f, ">")
+    }
+
+    fn trace(&self, trace: &mut dyn FnMut(&Expr)) {
+        let items: Vec<Expr> = self.borrow().iter().cloned().collect();
+        for item in &items {
+            trace(item);
+        }
+    }
+}
 
 fn eval_into_vec(
     proc_name: &str,
     expr: &Expr,
     context: &EvalContext,
-) -> Result<Rc<ExprVecRefCell>, EvalError> {
+) -> Result<Rc<ExprVec>, EvalError> {
     let value = eval(expr, context)?;
-    value.as_foreign::<ExprVecRefCell>().ok_or_else(|| {
+    value.as_foreign::<ExprVec>().ok_or_else(|| {
         EvalError::new(
             ErrorKind::Type,
             format!("{proc_name}: `{expr}` does not evaluate to a vector"),
@@ -51,7 +75,7 @@ fn vec(_: &str, args: &List, context: &EvalContext) -> EvalResult {
     for arg in args.iter() {
         items.push(eval(arg, context)?);
     }
-    Ok(Expr::foreign(RefCell::new(items)))
+    Ok(Expr::foreign(ExprVec(RefCell::new(items))))
 }
 
 fn vec_push(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -131,13 +155,18 @@ fn list_to_vec(proc_name: &str, args: &List, context: &EvalContext) -> EvalResul
     let list_expr = get_exact_1_arg(proc_name, args)?;
     let list = eval_into_list(proc_name, list_expr, context)?;
     let items: Vec<Expr> = list.iter().cloned().collect();
-    Ok(Expr::foreign(RefCell::new(items)))
+    Ok(Expr::foreign(ExprVec(RefCell::new(items))))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use rusche::Evaluator;
+
+    #[derive(Debug)]
+    struct Other;
+
+    impl ForeignObject for Other {}
 
     fn with_vec() -> Evaluator {
         let evaluator = Evaluator::with_builtin();
@@ -162,6 +191,7 @@ mod tests {
     #[test]
     fn vec_round_trip_and_predicates() {
         let e = with_vec();
+        assert_eq!(eval_ok(&e, "(vec 1 2 3)"), "<vec 1 2 3>");
         assert_eq!(eval_ok(&e, "(vec-length (vec))"), "0");
         assert_eq!(eval_ok(&e, "(vec-length (vec 1 2 3))"), "3");
         assert_eq!(eval_ok(&e, "(vec? (vec 1))"), "true");
@@ -201,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    fn vec_foreign_tracer_keeps_closures_alive() {
+    fn vec_trace_keeps_closures_alive() {
         let e = Evaluator::with_prelude();
         load_vec_procs(&e);
         e.set_gc_threshold(None);
@@ -219,7 +249,7 @@ mod tests {
     #[test]
     fn wrong_foreign_type_is_rejected() {
         let e = with_vec();
-        e.root_env().define("box", Expr::Foreign(Rc::new(1_i32)));
+        e.root_env().define("box", Expr::foreign(Other));
         assert_eq!(eval_ok(&e, "(vec? box)"), "false");
         let msg = eval_err(&e, "(vec-length box)");
         assert!(msg.contains("vector"), "{msg}");

@@ -95,7 +95,7 @@ For a standalone REPL and file runner built on the library, see [`rusche-cli`](#
   live environments reaches `Evaluator::gc_threshold()` (set it to `None` to disable), or on
   demand with `Evaluator::collect_garbage`. Reachability starts from the root environment and
   the value `eval` just returned. If your host stores `Expr` values inside a `Foreign` object,
-  register a tracer with `Evaluator::register_foreign_tracer` so the collector can see them
+  implement `ForeignObject::trace` so the collector can see them
   (see `crates/rusche-cli/src/builtin/vec.rs`).
 
 ### Core language

@@ -1,10 +1,10 @@
 use rusche::{
     cons, eval, eval_into_list, get_2_or_3_args, get_exact_1_arg, get_exact_2_args,
-    get_exact_3_args, intern, ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, Expr, List,
-    NIL,
+    get_exact_3_args, intern, ErrorKind, EvalContext, EvalError, EvalResult, Evaluator, Expr,
+    ForeignObject, List, NIL,
 };
 
-use std::{cell::RefCell, cmp::Ordering, collections::BTreeMap, rc::Rc};
+use std::{cell::RefCell, cmp::Ordering, collections::BTreeMap, fmt, ops::Deref, rc::Rc};
 
 pub fn load_dict_procs(evaluator: &Evaluator) {
     let env = evaluator.root_env();
@@ -18,12 +18,38 @@ pub fn load_dict_procs(evaluator: &Evaluator) {
     env.define_native_proc("dict-keys", dict_keys);
     env.define_native_proc("dict->list", dict_to_list);
     env.define_native_proc("list->dict", list_to_dict);
+}
 
-    // Let the garbage collector see closures stored as dict values; without this, calling a
-    // closure that only lives in a dict would fail after a collection.
-    evaluator.register_foreign_tracer::<DictCell>(|dict, trace| {
-        dict.borrow().values().for_each(trace);
-    });
+#[derive(Debug)]
+struct Dict(RefCell<BTreeMap<Key, Expr>>);
+
+impl Deref for Dict {
+    type Target = RefCell<BTreeMap<Key, Expr>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ForeignObject for Dict {
+    fn type_name(&self) -> &'static str {
+        "dict"
+    }
+
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<dict")?;
+        for (key, value) in self.borrow().iter() {
+            write!(f, " ({} {})", key.clone().into_expr(), value)?;
+        }
+        write!(f, ">")
+    }
+
+    fn trace(&self, trace: &mut dyn FnMut(&Expr)) {
+        let values: Vec<Expr> = self.borrow().values().cloned().collect();
+        for value in &values {
+            trace(value);
+        }
+    }
 }
 
 /// Number key with total order; `-0.0` normalised to `0.0`, `NaN` rejected at construction.
@@ -99,15 +125,13 @@ impl Key {
     }
 }
 
-type DictCell = RefCell<BTreeMap<Key, Expr>>;
-
 fn eval_into_dict(
     proc_name: &str,
     expr: &Expr,
     context: &EvalContext,
-) -> Result<Rc<DictCell>, EvalError> {
+) -> Result<Rc<Dict>, EvalError> {
     let value = eval(expr, context)?;
-    value.as_foreign::<DictCell>().ok_or_else(|| {
+    value.as_foreign::<Dict>().ok_or_else(|| {
         EvalError::new(
             ErrorKind::Type,
             format!("{proc_name}: `{expr}` does not evaluate to a dict"),
@@ -140,7 +164,7 @@ fn dict(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
         let value = eval(value_expr, context)?;
         map.insert(key, value);
     }
-    Ok(Expr::foreign(RefCell::new(map)))
+    Ok(Expr::foreign(Dict(RefCell::new(map))))
 }
 
 fn dict_get(proc_name: &str, args: &List, context: &EvalContext) -> EvalResult {
@@ -251,7 +275,7 @@ fn list_to_dict(proc_name: &str, args: &List, context: &EvalContext) -> EvalResu
         let key = Key::from_expr(proc_name, key_expr)?;
         map.insert(key, value_expr.clone());
     }
-    Ok(Expr::foreign(RefCell::new(map)))
+    Ok(Expr::foreign(Dict(RefCell::new(map))))
 }
 
 #[cfg(test)]
@@ -283,6 +307,7 @@ mod tests {
     #[test]
     fn dict_round_trip_and_predicates() {
         let e = with_dict();
+        assert_eq!(eval_ok(&e, "(dict \"a\" 1)"), "<dict (\"a\" 1)>");
         assert_eq!(eval_ok(&e, "(dict-length (dict))"), "0");
         assert_eq!(eval_ok(&e, "(dict-length (dict \"a\" 1 \"b\" 2))"), "2");
         assert_eq!(eval_ok(&e, "(dict? (dict \"a\" 1))"), "true");
@@ -378,7 +403,7 @@ mod tests {
     }
 
     #[test]
-    fn dict_foreign_tracer_keeps_closures_alive() {
+    fn dict_trace_keeps_closures_alive() {
         let e = Evaluator::with_prelude();
         load_dict_procs(&e);
         e.set_gc_threshold(None);

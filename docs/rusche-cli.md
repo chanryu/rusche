@@ -200,11 +200,11 @@ that way is the current file for any relative `load` inside it.
 
 ## Vectors
 
-A [`Foreign`](tutorials/foreign.md) wrapper around `RefCell<Vec<Expr>>`.
-Mutable, compared by identity, printed as `<foreign: 0x…>`. `vec-push` and
+A [`Foreign`](tutorials/foreign.md) wrapper around a vector of `Expr`.
+Mutable, compared by identity, printed as `<vec 1 2 3>`. `vec-push` and
 `vec-set!` return `()`. An index is an integer ≥ 0; a negative index, a
 non-integer, an index past the end, or `vec-pop` of an empty vector is an
-error. A tracer keeps closures stored in a vector reachable. See the
+error. `trace` keeps closures stored in a vector reachable. See the
 [foreign object tutorial](tutorials/foreign.md).
 
 ```scheme
@@ -233,12 +233,12 @@ error. A tracer keeps closures stored in a vector reachable. See the
 
 ## Dicts
 
-A [`Foreign`](tutorials/foreign.md) wrapper around `RefCell<BTreeMap<Key, Expr>>`.
-Mutable, compared by identity, printed as `<foreign: 0x…>`. Keys may be
+A [`Foreign`](tutorials/foreign.md) wrapper around a map from keys to `Expr`.
+Mutable, compared by identity, printed as `<dict ("a" 1)>`. Keys may be
 booleans, numbers, strings, or symbols; lists, procedures, and foreign values
 are rejected. `-0.0` and `0.0` are the same key; `NaN` is not a valid key.
 `dict-keys` and `dict->list` use a deterministic key order. `dict-set!` and
-`dict-remove!` return `()`. A tracer keeps closures stored as values reachable.
+`dict-remove!` return `()`. `trace` keeps closures stored as values reachable.
 See the [foreign object tutorial](tutorials/foreign.md), and
 [`examples/dict.rsc`](../examples/dict.rsc) / [`examples/fibonacci-memo.rsc`](../examples/fibonacci-memo.rsc)
 for scripts that use it.
