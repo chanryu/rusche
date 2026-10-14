@@ -72,17 +72,17 @@ use rusche::{Error, Evaluator};
 
 let evaluator = Evaluator::with_prelude();
 evaluator
-    .eval_str_named("(define (boom x) (begin (car x) 0))", "lib.rsc")
+    .eval_str_named("(define (boom x) (begin (car x) 0))", "lib.rsch")
     .unwrap();
-let Error::Eval(err) = evaluator.eval_str_named("(boom 1)", "main.rsc").unwrap_err() else {
+let Error::Eval(err) = evaluator.eval_str_named("(boom 1)", "main.rsch").unwrap_err() else {
     panic!("expected an evaluation error");
 };
-assert_eq!(err.span.unwrap().source(), Some("lib.rsc"));
+assert_eq!(err.span.unwrap().source(), Some("lib.rsch"));
 ```
 
 `Span::source` is `None` unless the span was tagged. `tokenize_named` does the
 same when you drive the lexer yourself. Display of a named span includes the
-name (`lib.rsc:1:2`). The `begin` around `(car x)` keeps `boom` on the call
+name (`lib.rsch:1:2`). The `begin` around `(car x)` keeps `boom` on the call
 trace; a tail call would replace that frame.
 
 ### Lower-level pipeline

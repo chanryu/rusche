@@ -76,12 +76,12 @@ mod tests {
 
     #[test]
     fn command_line_reads_captured_host_state() {
-        let host = Host::new(vec!["rusche".into(), "script.rsc".into(), "a".into()]);
+        let host = Host::new(vec!["rusche".into(), "script.rsch".into(), "a".into()]);
         let evaluator = Evaluator::with_builtin();
         evaluator.install(SysProcs(host));
         assert_eq!(
             evaluator.eval_str("(command-line)").unwrap().to_string(),
-            r#"("rusche" "script.rsc" "a")"#
+            r#"("rusche" "script.rsch" "a")"#
         );
     }
 }

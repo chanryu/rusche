@@ -119,13 +119,13 @@ mod tests {
     fn source_dir_stack_follows_the_file_being_evaluated() {
         let host = Host::new(Vec::new());
         assert!(host.current_source_dir().is_none());
-        let outer = host.enter_source_file(Path::new("examples/fizzbuzz.rsc"));
+        let outer = host.enter_source_file(Path::new("examples/fizzbuzz.rsch"));
         assert_eq!(
             host.current_source_dir().unwrap(),
             PathBuf::from("examples")
         );
         {
-            let _inner = host.enter_source_file(Path::new("examples/lib/io.rsc"));
+            let _inner = host.enter_source_file(Path::new("examples/lib/io.rsch"));
             assert_eq!(
                 host.current_source_dir().unwrap(),
                 PathBuf::from("examples/lib")

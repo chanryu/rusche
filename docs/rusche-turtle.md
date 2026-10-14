@@ -9,10 +9,10 @@ channel.
 
 ```bash
 cargo run -p rusche-turtle
-cargo run -p rusche-turtle -- path/to/script.rsc   # optional: load into the editor
+cargo run -p rusche-turtle -- path/to/script.rsch   # optional: load into the editor
 ```
 
-Bundled demos ship inside the binary (`src/examples/*.rsc` via `include_str!`); pick them from **Examples** in the UI.
+Bundled demos ship inside the binary (`src/examples/*.rsch` via `include_str!`); pick them from **Examples** in the UI.
 
 | Control | Role |
 | --- | --- |

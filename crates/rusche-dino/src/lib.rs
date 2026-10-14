@@ -8,11 +8,11 @@ use rusche::{Error, ErrorKind, EvalError, Evaluator, Expr};
 
 /// Bundled game scripts, evaluated in this order.
 pub const SCRIPTS: &[(&str, &str)] = &[
-    ("state.rsc", include_str!("rsc/state.rsc")),
-    ("player.rsc", include_str!("rsc/player.rsc")),
-    ("field.rsc", include_str!("rsc/field.rsc")),
-    ("scene.rsc", include_str!("rsc/scene.rsc")),
-    ("game.rsc", include_str!("rsc/game.rsc")),
+    ("state.rsch", include_str!("rsch/state.rsch")),
+    ("player.rsch", include_str!("rsch/player.rsch")),
+    ("field.rsch", include_str!("rsch/field.rsch")),
+    ("scene.rsch", include_str!("rsch/scene.rsch")),
+    ("game.rsch", include_str!("rsch/game.rsch")),
 ];
 
 /// Load the game scripts into a fresh evaluator with the prelude.

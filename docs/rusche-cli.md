@@ -8,7 +8,7 @@ The [language reference](language-reference.md) documents only the core language
 
 ```bash
 cargo install --path crates/rusche-cli
-cargo run -p rusche-cli -- examples/fizzbuzz.rsc
+cargo run -p rusche-cli -- examples/fizzbuzz.rsch
 ```
 
 `cargo install` puts `rusche-cli` on `PATH`, which `#!/usr/bin/env rusche-cli` needs.
@@ -24,7 +24,7 @@ cargo run -p rusche-cli -- examples/fizzbuzz.rsc
 | Dicts | [`builtin/dict.rs`](../crates/rusche-cli/src/builtin/dict.rs) | `dict?`, `dict`, `dict-get`, `dict-set!`, `dict-has?`, `dict-remove!`, `dict-length`, `dict-keys`, `dict->list`, `list->dict` |
 
 I/O, system, vector, and dict procedures are always registered. Scripts under
-[`examples/*.rsc`](../examples) are written for this host.
+[`examples/*.rsch`](../examples) are written for this host.
 
 ## Running
 
@@ -52,8 +52,8 @@ next argument.
 nothing. File, pipe, and `-` produce output only through `write`.
 
 ```bash
-rusche-cli --no-color examples/counter.rsc
-rusche-cli examples/mandelbrot.rsc 80 30    # 80 and 30 are script args
+rusche-cli --no-color examples/counter.rsch
+rusche-cli examples/mandelbrot.rsch 80 30    # 80 and 30 are script args
 rusche-cli -e '(+ 1 2)'
 echo '(+ 1 2)' | rusche-cli
 ```
@@ -121,7 +121,7 @@ the active frame, so the trace lists the non-tail call chain.
 
 ```text
 error: `7` is not a symbol
-  --> example.rsc:2:16
+  --> example.rsch:2:16
   1| (define plus
   2|     (lambda (x 7)
    |                ^
@@ -185,8 +185,8 @@ failing line. `,load` prints the value and uses the file as source context. A
 file loaded that way is the current file for any relative `load` inside it.
 
 ```scheme
-(load "lib/io.rsc")             ; relative to the file that contains this call
-(load "examples/counter.rsc")   ; from the REPL, in the repository root
+(load "lib/io.rsch")             ; relative to the file that contains this call
+(load "examples/counter.rsch")   ; from the REPL, in the repository root
 ```
 
 ## System
@@ -240,7 +240,7 @@ are rejected. `-0.0` and `0.0` are the same key; `NaN` is not a valid key.
 `dict-keys` and `dict->list` use a deterministic key order. `dict-set!` and
 `dict-remove!` return `()`. `trace` keeps closures stored as values reachable.
 See the [foreign object tutorial](tutorials/foreign.md), and
-[`examples/dict.rsc`](../examples/dict.rsc) / [`examples/fibonacci-memo.rsc`](../examples/fibonacci-memo.rsc)
+[`examples/dict.rsch`](../examples/dict.rsch) / [`examples/fibonacci-memo.rsch`](../examples/fibonacci-memo.rsch)
 for scripts that use it.
 
 ```scheme
@@ -274,25 +274,25 @@ for scripts that use it.
 
 | Script | What it shows |
 | --- | --- |
-| [`backwards.rsc`](../examples/backwards.rsc) | A macro that reverses a sequence of forms. |
-| [`counter.rsc`](../examples/counter.rsc) | A closure that counts with `set!`. |
-| [`dict.rsc`](../examples/dict.rsc) | Word frequencies with `dict`. Shebang. |
-| [`factorial.rsc`](../examples/factorial.rsc), [`factorial-tail.rsc`](../examples/factorial-tail.rsc) | Factorial, reading a number. The second is tail recursive. |
-| [`fibonacci-memo.rsc`](../examples/fibonacci-memo.rsc), [`fibonacci-tail.rsc`](../examples/fibonacci-tail.rsc) | Fibonacci, reading a number. The first memoizes with `dict`; the second is tail recursive. |
-| [`fizzbuzz.rsc`](../examples/fizzbuzz.rsc) | FizzBuzz from stdin. Shebang. |
-| [`mandelbrot.rsc`](../examples/mandelbrot.rsc) | ASCII Mandelbrot. Optional width and height from `(command-line)`. Shebang. |
-| [`maze.rsc`](../examples/maze.rsc) | ASCII maze by recursive backtracking. Optional columns and rows from `(command-line)`. Shebang. |
-| [`points.rsc`](../examples/points.rsc) | `defrecord`, list destructuring, named `let`, `case` / `when` / `unless`, `sqrt` / `expt`. Shebang. |
-| [`strings.rsc`](../examples/strings.rsc) | `str-find`, `str-split`, `str-join`, `str-replace`, trim/case, `str-repeat`, `str->list`. Shebang. |
+| [`backwards.rsch`](../examples/backwards.rsch) | A macro that reverses a sequence of forms. |
+| [`counter.rsch`](../examples/counter.rsch) | A closure that counts with `set!`. |
+| [`dict.rsch`](../examples/dict.rsch) | Word frequencies with `dict`. Shebang. |
+| [`factorial.rsch`](../examples/factorial.rsch), [`factorial-tail.rsch`](../examples/factorial-tail.rsch) | Factorial, reading a number. The second is tail recursive. |
+| [`fibonacci-memo.rsch`](../examples/fibonacci-memo.rsch), [`fibonacci-tail.rsch`](../examples/fibonacci-tail.rsch) | Fibonacci, reading a number. The first memoizes with `dict`; the second is tail recursive. |
+| [`fizzbuzz.rsch`](../examples/fizzbuzz.rsch) | FizzBuzz from stdin. Shebang. |
+| [`mandelbrot.rsch`](../examples/mandelbrot.rsch) | ASCII Mandelbrot. Optional width and height from `(command-line)`. Shebang. |
+| [`maze.rsch`](../examples/maze.rsch) | ASCII maze by recursive backtracking. Optional columns and rows from `(command-line)`. Shebang. |
+| [`points.rsch`](../examples/points.rsch) | `defrecord`, list destructuring, named `let`, `case` / `when` / `unless`, `sqrt` / `expt`. Shebang. |
+| [`strings.rsch`](../examples/strings.rsch) | `str-find`, `str-split`, `str-join`, `str-replace`, trim/case, `str-repeat`, `str->list`. Shebang. |
 
-Shared modules live in [`lib/`](../examples/lib) and are loaded by these scripts: [`io.rsc`](../examples/lib/io.rsc) (`writeln`, `read-num`, `prompt`) and [`format.rsc`](../examples/lib/format.rsc) (`{}` placeholders, filled with `repr`).
+Shared modules live in [`lib/`](../examples/lib) and are loaded by these scripts: [`io.rsch`](../examples/lib/io.rsch) (`writeln`, `read-num`, `prompt`) and [`format.rsch`](../examples/lib/format.rsch) (`{}` placeholders, filled with `repr`).
 
 ```bash
-cargo run -p rusche-cli -- examples/fizzbuzz.rsc
-cargo run -p rusche-cli -- examples/mandelbrot.rsc 80 30
-cargo run -p rusche-cli -- examples/maze.rsc 24 12
-cargo run -p rusche-cli -- examples/strings.rsc
-cargo run -p rusche-cli -- examples/points.rsc
+cargo run -p rusche-cli -- examples/fizzbuzz.rsch
+cargo run -p rusche-cli -- examples/mandelbrot.rsch 80 30
+cargo run -p rusche-cli -- examples/maze.rsch 24 12
+cargo run -p rusche-cli -- examples/strings.rsch
+cargo run -p rusche-cli -- examples/points.rsch
 ```
 
 Rust projects under `examples/` belong to the embedding tutorials.

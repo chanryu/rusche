@@ -1,12 +1,12 @@
 #!/usr/bin/env rusche-cli
 ;; Carve a perfect maze by recursive backtracking and print it in ASCII.
 ;;
-;;   cargo run -p rusche-cli -- examples/maze.rsc
-;;   cargo run -p rusche-cli -- examples/maze.rsc 24 12 ; rooms across, rooms down
+;;   cargo run -p rusche-cli -- examples/maze.rsch
+;;   cargo run -p rusche-cli -- examples/maze.rsch 24 12 ; rooms across, rooms down
 ;;
 ;; Each run is different: `random` is not seeded.
 
-(load "lib/io.rsc")
+(load "lib/io.rsch")
 
 ;; (command-line) is (program script-path args...), so skip the first two.
 (define args (cddr (command-line)))

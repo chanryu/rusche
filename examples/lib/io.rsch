@@ -1,6 +1,6 @@
 ;; I/O for the example scripts. From a script in `examples/`:
 ;;
-;;   (load "lib/io.rsc")
+;;   (load "lib/io.rsch")
 
 ;; `(writeln expr ...)` -- `(write expr ...)` followed by a newline.
 (define (writeln *args)

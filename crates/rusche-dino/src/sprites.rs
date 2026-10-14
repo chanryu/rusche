@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use egui::{Color32, ColorImage, Context, TextureHandle, TextureOptions, Vec2};
 
-/// Virtual scene size (same numbers as `state.rsc`).
+/// Virtual scene size (same numbers as `state.rsch`).
 pub const SCENE_W: f32 = 600.0;
 pub const SCENE_H: f32 = 150.0;
 pub const SCALE: f32 = 2.0;

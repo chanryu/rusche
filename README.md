@@ -20,7 +20,7 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
 - Garbage collection
 - Tail-call optimization, plus a call-depth limit so runaway recursion is an error rather than a stack overflow
 - Interoperability with the hosting Rust application via user-defined (a.k.a. native) functions and the `Foreign` data type
-- Structured errors with source spans, optional help, and a call trace. Given `first.rsc`:
+- Structured errors with source spans, optional help, and a call trace. Given `first.rsch`:
   ```scheme
   (define (first-or-zero lst)
       (if lst (car lst) 0))   ;; `()` is not false in Rusche
@@ -30,12 +30,12 @@ Rusche is deliberately *Scheme-like*, not Scheme: it uses Scheme's syntax but ke
   `rusche-cli` reports:
   ```
   error: `lst` evaluated to `()`, expected `true` or `false`
-    --> first.rsc:2:9
+    --> first.rsch:2:9
     1| (define (first-or-zero lst)
     2|     (if lst (car lst) 0))   ;; `()` is not false in Rusche
      |         ^^^
     = help: conditions must be booleans; use `(not (null? x))` to test for an empty list
-    = in `first-or-zero`, called at first.rsc:4:1
+    = in `first-or-zero`, called at first.rsch:4:1
   ```
 
 ## Usage
@@ -135,11 +135,11 @@ The core language is everything available from `Evaluator::default()` (built-ins
 - `vec` and `dict` foreign types
 - A REPL with history, multi-line editing, and meta-commands (`,help`, `,load`, …)
 
-The `*.rsc` scripts under [`examples/`](https://github.com/chanryu/rusche/tree/main/examples) are written for this host (for example [fizzbuzz.rsc](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsc) uses `writeln` and `read`). See [`docs/rusche-cli.md`](docs/rusche-cli.md).
+The `*.rsch` scripts under [`examples/`](https://github.com/chanryu/rusche/tree/main/examples) are written for this host (for example [fizzbuzz.rsch](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsch) uses `writeln` and `read`). See [`docs/rusche-cli.md`](docs/rusche-cli.md).
 
 ```bash
 cargo run -p rusche-cli
-cargo run -p rusche-cli -- examples/fizzbuzz.rsc
+cargo run -p rusche-cli -- examples/fizzbuzz.rsch
 cargo install --path crates/rusche-cli
 ```
 
@@ -151,7 +151,7 @@ such as `forward`, `right`, and `pencolor`. See [`docs/rusche-turtle.md`](docs/r
 
 ```bash
 cargo run -p rusche-turtle
-cargo run -p rusche-turtle -- path/to/script.rsc   # optional: load a file into the editor
+cargo run -p rusche-turtle -- path/to/script.rsch   # optional: load a file into the editor
 ```
 
 ### `rusche-dino` (example host)

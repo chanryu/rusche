@@ -187,11 +187,11 @@ mod tests {
         let span = Span::new(Loc::new(0, 9), Loc::new(2, 3));
         assert_eq!(format!("{}", span), "1:10-3:3");
 
-        let span = Span::new(Loc::new(0, 1), Loc::new(0, 2)).with_source("lib.rsc");
-        assert_eq!(span.source(), Some("lib.rsc"));
-        assert_eq!(format!("{span}"), "lib.rsc:1:2");
+        let span = Span::new(Loc::new(0, 1), Loc::new(0, 2)).with_source("lib.rsch");
+        assert_eq!(span.source(), Some("lib.rsch"));
+        assert_eq!(format!("{span}"), "lib.rsch:1:2");
         let wider = Span::between(span, Span::new(Loc::new(0, 1), Loc::new(0, 4)));
-        assert_eq!(wider.source(), Some("lib.rsc"));
+        assert_eq!(wider.source(), Some("lib.rsch"));
         assert_eq!(wider.end.column, 4);
     }
 }

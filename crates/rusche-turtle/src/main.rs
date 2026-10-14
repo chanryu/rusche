@@ -8,7 +8,7 @@ fn main() -> ExitCode {
     let mut args = std::env::args().skip(1);
     let initial = match args.next() {
         Some(arg) if arg == "-h" || arg == "--help" => {
-            eprintln!("Usage: rusche-turtle [SCRIPT.rsc]");
+            eprintln!("Usage: rusche-turtle [SCRIPT.rsch]");
             return ExitCode::SUCCESS;
         }
         Some(path) => match std::fs::read_to_string(&path) {

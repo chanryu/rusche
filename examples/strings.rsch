@@ -1,10 +1,10 @@
 #!/usr/bin/env rusche-cli
 ;; String helpers: find, split, join, replace, trim, case, repeat, compare.
 ;;
-;;   cargo run -p rusche-cli -- examples/strings.rsc
+;;   cargo run -p rusche-cli -- examples/strings.rsch
 
-(load "lib/io.rsc")
-(load "lib/format.rsc")
+(load "lib/io.rsch")
+(load "lib/format.rsch")
 (define line "  Hello, Rusche — hello again.  ")
 
 (writeln (format "raw:      [{}]" line))

@@ -6,7 +6,7 @@
           ((div? n 5) "Buzz")
           (else n)))
 
-(load "lib/io.rsc")
+(load "lib/io.rsch")
 
 (let ((n 1)
       (m (str->num (prompt "Enter a number to fizzbuzz: "))))

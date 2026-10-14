@@ -15,24 +15,24 @@ cargo run -p rusche-dino
 | Space, ↑, or click | Jump (also starts the run and restarts after game over) |
 | ↓ | Duck on the ground; fast-fall in the air |
 
-Edit the bundled scripts under [`crates/rusche-dino/src/rsc/`](../crates/rusche-dino/src/rsc/)
+Edit the bundled scripts under [`crates/rusche-dino/src/rsch/`](../crates/rusche-dino/src/rsch/)
 and rebuild. The host evaluates them in a fixed order with `eval_str_named`.
 
 ## Script layout
 
 | File | Role |
 | --- | --- |
-| `state.rsc` | Canvas / sprite sizes, colors, LCG `rand`, globals, `reset` |
-| `player.rsc` | Run, jump, duck, death pose — `step-player` |
-| `field.rsc` | Speed, clouds, obstacles, collision, score — `step-field` |
-| `scene.rsc` | Scene command list — `draw-scene` |
-| `game.rsc` | `(tick dt jump? duck?)` |
+| `state.rsch` | Canvas / sprite sizes, colors, LCG `rand`, globals, `reset` |
+| `player.rsch` | Run, jump, duck, death pose — `step-player` |
+| `field.rsch` | Speed, clouds, obstacles, collision, score — `step-field` |
+| `scene.rsch` | Scene command list — `draw-scene` |
+| `game.rsch` | `(tick dt jump? duck?)` |
 
 Sprites are white-alpha PNGs under
 [`crates/rusche-dino/src/sprite_png/`](../crates/rusche-dino/src/sprite_png/),
 derived from [Wikimedia Commons — Dinosaur Game](https://commons.wikimedia.org/wiki/Category:Dinosaur_Game)
 (see [`assets/README.md`](../crates/rusche-dino/assets/README.md)). Sizes in
-`state.rsc` must match those PNGs.
+`state.rsch` must match those PNGs.
 
 ## Host contract
 
