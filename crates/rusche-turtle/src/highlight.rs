@@ -26,9 +26,12 @@ pub struct Span {
     pub kind: Kind,
 }
 
+/// Special forms and prelude macros (`src/prelude/macros.rsc`).
 const KEYWORDS: &[&str] = &[
     "define",
     "defmacro",
+    "defun",
+    "defrecord",
     "lambda",
     "if",
     "begin",
@@ -38,9 +41,13 @@ const KEYWORDS: &[&str] = &[
     "set!",
     "while",
     "let",
+    "let*",
+    "letrec",
     "and",
     "or",
+    "or-else",
     "cond",
+    "case",
     "when",
     "unless",
     "else",
@@ -206,26 +213,17 @@ fn classify_atom(atom: &str) -> Kind {
     Kind::Ident
 }
 
+/// Matches the lexer: a leading digit is a number token even when it will not parse
+/// (`23abc`), and `.5` / `+.5` are numbers only when the whole token parses (`.5abc` stays a symbol).
 fn looks_like_number(text: &str) -> bool {
-    if text.is_empty() {
-        return false;
-    }
     let body = text.strip_prefix(['+', '-']).unwrap_or(text);
-    if body.is_empty() {
-        return false;
+    if body.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+        return true;
     }
-    // Leading digit, or `.` followed by a digit (fractional form).
-    let mut chars = body.chars();
-    match chars.next() {
-        Some(c) if c.is_ascii_digit() => body.parse::<f64>().is_ok(),
-        Some('.') => {
-            let rest: String = chars.collect();
-            !rest.is_empty()
-                && rest.chars().next().is_some_and(|c| c.is_ascii_digit())
-                && body.parse::<f64>().is_ok()
-        }
-        _ => false,
-    }
+    let after_dot = body.strip_prefix('.').unwrap_or("");
+    body.starts_with('.')
+        && after_dot.chars().next().is_some_and(|c| c.is_ascii_digit())
+        && text.parse::<f64>().is_ok()
 }
 
 /// Foreground color for a kind. `default` is the editor's normal text color (idents / plain).
@@ -337,6 +335,43 @@ mod tests {
                 (Kind::Ident, "x"),
                 (Kind::Number, "3.14"),
                 (Kind::Punct, ")"),
+            ]
+        );
+    }
+
+    #[test]
+    fn prelude_macros_and_lexer_numbers() {
+        assert_eq!(
+            kinds("(case x (let* y) (defun f) (or-else a b))"),
+            vec![
+                (Kind::Punct, "("),
+                (Kind::Keyword, "case"),
+                (Kind::Ident, "x"),
+                (Kind::Punct, "("),
+                (Kind::Keyword, "let*"),
+                (Kind::Ident, "y"),
+                (Kind::Punct, ")"),
+                (Kind::Punct, "("),
+                (Kind::Keyword, "defun"),
+                (Kind::Ident, "f"),
+                (Kind::Punct, ")"),
+                (Kind::Punct, "("),
+                (Kind::Keyword, "or-else"),
+                (Kind::Ident, "a"),
+                (Kind::Ident, "b"),
+                (Kind::Punct, ")"),
+                (Kind::Punct, ")"),
+            ]
+        );
+        assert_eq!(
+            kinds("23abc .5 +.5 .5abc -inf ..."),
+            vec![
+                (Kind::Number, "23abc"),
+                (Kind::Number, ".5"),
+                (Kind::Number, "+.5"),
+                (Kind::Ident, ".5abc"),
+                (Kind::Ident, "-inf"),
+                (Kind::Ident, "..."),
             ]
         );
     }
