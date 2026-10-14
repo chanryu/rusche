@@ -1,0 +1,104 @@
+//! Chrome-dino-style runner host: Rusche scripts own the game, egui paints the scene.
+
+pub mod app;
+pub mod scene;
+pub mod sprites;
+
+use rusche::{Error, ErrorKind, EvalError, Evaluator, Expr};
+
+/// Bundled game scripts, evaluated in this order.
+pub const SCRIPTS: &[(&str, &str)] = &[
+    ("state.rsc", include_str!("rsc/state.rsc")),
+    ("player.rsc", include_str!("rsc/player.rsc")),
+    ("field.rsc", include_str!("rsc/field.rsc")),
+    ("scene.rsc", include_str!("rsc/scene.rsc")),
+    ("game.rsc", include_str!("rsc/game.rsc")),
+];
+
+/// Load the game scripts into a fresh evaluator with the prelude.
+pub fn load_game() -> Result<(Evaluator, Expr), Error> {
+    let evaluator = Evaluator::with_prelude();
+    for (name, src) in SCRIPTS {
+        evaluator.eval_str_named(src, name)?;
+    }
+    let tick = evaluator.root_env().lookup("tick").ok_or_else(|| {
+        Error::from(EvalError::new(ErrorKind::Other, "tick is not defined"))
+    })?;
+    Ok((evaluator, tick))
+}
+
+/// Y position of the first matching sprite command, if any.
+pub fn sprite_y(scene: &Expr, name: &str) -> Option<f64> {
+    let list = scene.as_list()?;
+    for cmd in list.iter() {
+        let items: Vec<&Expr> = cmd.as_list()?.iter().collect();
+        if items.len() >= 4
+            && items[0].as_sym().map(|s| s.as_str()) == Some("sprite")
+            && items[1].as_sym().map(|s| s.as_str()) == Some(name)
+        {
+            return items[3].as_num();
+        }
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusche::Expr;
+
+    #[test]
+    fn jump_raises_dino() {
+        let (evaluator, tick) = load_game().expect("load game");
+
+        let grounded = evaluator
+            .call(
+                &tick,
+                &[Expr::from(1.0 / 60.0), Expr::from(false), Expr::from(false)],
+            )
+            .expect("idle tick");
+        let run_y = sprite_y(&grounded, "dino-run-0")
+            .or_else(|| sprite_y(&grounded, "dino-run-1"))
+            .expect("grounded dino sprite");
+
+        let (evaluator, tick) = load_game().expect("reload");
+        // Press jump on the first frame after load (prev-jump? is false).
+        for _ in 0..3 {
+            evaluator
+                .call(
+                    &tick,
+                    &[Expr::from(1.0 / 60.0), Expr::from(true), Expr::from(false)],
+                )
+                .expect("jump tick");
+        }
+        let airborne = evaluator
+            .call(
+                &tick,
+                &[Expr::from(1.0 / 60.0), Expr::from(true), Expr::from(false)],
+            )
+            .expect("jump tick");
+
+        let jump_y = sprite_y(&airborne, "dino-jump").expect("jump sprite");
+        assert!(
+            jump_y < run_y,
+            "expected jump y {jump_y} above grounded y {run_y}"
+        );
+    }
+
+    #[test]
+    fn runs_without_eval_error() {
+        let (evaluator, tick) = load_game().expect("load game");
+        let dt = Expr::from(1.0 / 60.0);
+        // Start with a jump, then keep running; auto-jump when near the ground.
+        evaluator
+            .call(&tick, &[dt.clone(), Expr::from(true), Expr::from(false)])
+            .expect("start");
+        for i in 0..600 {
+            let jump = i % 45 == 0;
+            let scene = evaluator
+                .call(&tick, &[dt.clone(), Expr::from(jump), Expr::from(false)])
+                .unwrap_or_else(|e| panic!("tick {i}: {e}"));
+            assert!(scene.as_list().is_some(), "scene must be a list");
+        }
+    }
+}

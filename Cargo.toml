@@ -15,6 +15,7 @@ include = ["/src", "/examples", "/tests", "LICENSE", "README.md"]
 members = [
     "crates/rusche-cli",
     "crates/rusche-turtle",
+    "crates/rusche-dino",
 ]
 resolver = "2"
 

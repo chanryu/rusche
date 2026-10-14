@@ -154,11 +154,22 @@ cargo run -p rusche-turtle
 cargo run -p rusche-turtle -- path/to/script.rsc   # optional: load a file into the editor
 ```
 
+### `rusche-dino` (example host)
+
+[`rusche-dino`](crates/rusche-dino/) is a Chrome-dino-style runner. Gameplay lives in Rusche
+scripts; the egui host calls `(tick dt jump? duck?)` each frame and paints the scene list.
+See [`docs/rusche-dino.md`](docs/rusche-dino.md).
+
+```bash
+cargo run -p rusche-dino
+```
+
 ## Documentation
 
 - [Language reference](docs/language-reference.md) -- core special forms and built-ins (crate only)
 - [`rusche-cli`](docs/rusche-cli.md) -- running the example interpreter: options, the REPL, I/O, `vec`, and `dict`
 - [`rusche-turtle`](docs/rusche-turtle.md) -- turtle-graphics GUI host and script API
+- [`rusche-dino`](docs/rusche-dino.md) -- dinosaur-runner GUI host and `tick` / scene contract
 - [API documentation on docs.rs](https://docs.rs/rusche/latest/rusche/) -- embedding Rusche in a Rust application
 - Tutorials for host applications:
   - [Embedding the interpreter](docs/tutorials/embedding.md)
