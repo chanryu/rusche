@@ -101,4 +101,42 @@ mod tests {
             assert!(scene.as_list().is_some(), "scene must be a list");
         }
     }
+
+    fn scene_has_sprite(scene: &Expr, name: &str) -> bool {
+        scene.as_list().is_some_and(|list| {
+            list.iter().any(|cmd| {
+                cmd.as_list().is_some_and(|items| {
+                    let items: Vec<&Expr> = items.iter().collect();
+                    items.len() >= 2
+                        && items[0].as_sym().map(|s| s.as_str()) == Some("sprite")
+                        && items[1].as_sym().map(|s| s.as_str()) == Some(name)
+                })
+            })
+        })
+    }
+
+    #[test]
+    fn spawns_cactus_clusters() {
+        let (evaluator, tick) = load_game().expect("load game");
+        let dt = Expr::from(1.0 / 60.0);
+        evaluator
+            .call(&tick, &[dt.clone(), Expr::from(true), Expr::from(false)])
+            .expect("start");
+        let mut saw_cluster = false;
+        for i in 0..900 {
+            let jump = i % 45 == 0;
+            let scene = evaluator
+                .call(&tick, &[dt.clone(), Expr::from(jump), Expr::from(false)])
+                .unwrap_or_else(|e| panic!("tick {i}: {e}"));
+            if scene_has_sprite(&scene, "cactus-s2")
+                || scene_has_sprite(&scene, "cactus-s3")
+                || scene_has_sprite(&scene, "cactus-l2")
+                || scene_has_sprite(&scene, "cactus-l3")
+            {
+                saw_cluster = true;
+                break;
+            }
+        }
+        assert!(saw_cluster, "expected a 2+ cactus cluster within ~15s");
+    }
 }

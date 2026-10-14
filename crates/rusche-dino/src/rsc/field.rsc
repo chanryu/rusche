@@ -1,33 +1,102 @@
-;; Scroll speed, clouds, obstacles, collision, score.
+;; Field: scroll, spawn, collide, score.
+;; Chromium offline.js: clusters, type-dup limit, bird minSpeed / speedOffset, CLEAR_TIME.
 
-(define (obstacle-y kind)
-    (cond ((eq? kind 'cactus-s) (- GROUND-Y CACTUS-S-H))
-          ((eq? kind 'cactus-l) (- GROUND-Y CACTUS-L-H))
-          (else 0)))
-
-(define (obstacle-size kind)
+(define (unit-size kind)
     (cond ((eq? kind 'cactus-s) (list CACTUS-S-W CACTUS-S-H))
           ((eq? kind 'cactus-l) (list CACTUS-L-W CACTUS-L-H))
           ((eq? kind 'bird) (list BIRD-W BIRD-H))
           (else (list 0 0))))
 
+(define (cadddr lst) (car (cdr (cddr lst))))
+(define (cdddr lst) (cdr (cddr lst)))
+(define (cddddr lst) (cdr (cdddr lst)))
+
+;; Obstacle: (kind x y size speed-offset flap-t)
+(define (obs-kind obs) (car obs))
+(define (obs-x obs) (cadr obs))
+(define (obs-y obs) (caddr obs))
+(define (obs-size obs) (cadddr obs))
+(define (obs-voff obs) (car (cddddr obs)))
+(define (obs-flap obs) (cadr (cddddr obs)))
+
+(define (obs-width obs)
+    (* (car (unit-size (obs-kind obs))) (obs-size obs)))
+
+(define (obs-height obs)
+    (cadr (unit-size (obs-kind obs))))
+
+(define (cactus-y kind)
+    (cond ((eq? kind 'cactus-s) (- GROUND-Y CACTUS-S-H))
+          ((eq? kind 'cactus-l) (- GROUND-Y CACTUS-L-H))
+          (else 0)))
+
+;; PTERODACTYL yPos [100, 75, 50]
 (define (bird-y-pick)
-    ;; high / mid / low tops
     (let ((r (rand)))
-        (cond ((< r 0.33) 40)
-              ((< r 0.66) 70)
-              (else 95))))
+        (cond ((< r 0.33) 50)
+              ((< r 0.66) 75)
+              (else 100))))
 
-(define (pick-obstacle)
-    (if (and started? (>= score BIRD-AFTER) (< (rand) 0.3))
-        (list 'bird WIDTH (bird-y-pick))
-        (if (< (rand) 0.55)
-            (list 'cactus-s WIDTH (obstacle-y 'cactus-s))
-            (list 'cactus-l WIDTH (obstacle-y 'cactus-l)))))
+(define (multi-speed kind)
+    (cond ((eq? kind 'cactus-s) SMALL-MULTI-SPEED)
+          ((eq? kind 'cactus-l) LARGE-MULTI-SPEED)
+          (else 99999)))
 
-(define (gap-for-speed)
-    (rand-range (+ 180 (* (- MAX-SPEED speed) 0.15))
-                (+ 280 (* (- MAX-SPEED speed) 0.25))))
+;; Roll 1..MAX-CLUSTER; clamp to 1 until multipleSpeed (birds always 1).
+(define (pick-size kind)
+    (if (eq? kind 'bird)
+        1
+        (let ((n (+ 1 (rand-int 0 MAX-CLUSTER))))
+            (if (< speed (multi-speed kind)) 1 n))))
+
+(define (bird-voff)
+    (if (< (rand) 0.5) BIRD-SPEED-OFFSET (- 0 BIRD-SPEED-OFFSET)))
+
+;; True if last MAX-TYPE-DUP kinds were already `kind`.
+(define (would-duplicate? kind)
+    (if (< (length recent-kinds) MAX-TYPE-DUP)
+        false
+        (let ((a (car recent-kinds))
+              (b (cadr recent-kinds)))
+            (and (eq? a kind) (eq? b kind)))))
+
+(define (note-kind kind)
+    (set! recent-kinds (cons kind recent-kinds))
+    (when (> (length recent-kinds) MAX-TYPE-DUP)
+        (set! recent-kinds (list (car recent-kinds) (cadr recent-kinds)))))
+
+;; Retries if type-dup would fire.
+(define (pick-kind)
+    (define (roll)
+        (let ((r (rand)))
+            (cond ((and (>= speed BIRD-MIN-SPEED) (< r 0.33)) 'bird)
+                  ((< r 0.66) 'cactus-s)
+                  (else 'cactus-l))))
+    (define (try n)
+        (let ((k (roll)))
+            (if (and (would-duplicate? k) (> n 0))
+                (try (- n 1))
+                k)))
+    (try 8))
+
+(define (make-obstacle)
+    (let ((kind (pick-kind)))
+        (note-kind kind)
+        (list kind
+              WIDTH
+              (if (eq? kind 'bird) (bird-y-pick) (cactus-y kind))
+              (pick-size kind)
+              (if (eq? kind 'bird) (bird-voff) 0)
+              0)))
+
+;; Gap ≈ width*speed/60 + MIN-GAP*GAP-COEFF, up to 1.5×.
+(define (gap-for obs)
+    (let ((min-gap (+ (* (obs-width obs) (/ speed 60))
+                      (* MIN-GAP GAP-COEFF)))
+          (max-gap (* (+ (* (obs-width obs) (/ speed 60))
+                         (* MIN-GAP GAP-COEFF))
+                      1.5)))
+        (rand-range min-gap (max (+ min-gap 40) max-gap))))
 
 (define (aabb-hit ax ay aw ah bx by bw bh)
     (and (< ax (+ bx bw))
@@ -35,12 +104,12 @@
          (< ay (+ by bh))
          (< by (+ ay ah))))
 
+;; Inset a bit — full sprite AABB feels unfair.
 (define (obstacle-hitbox obs)
-    (let ((kind (car obs))
-          (x (cadr obs))
-          (y (caddr obs))
-          (sz (obstacle-size (car obs))))
-        (list (+ x 2) (+ y 2) (- (car sz) 4) (- (cadr sz) 4))))
+    (list (+ (obs-x obs) 2)
+          (+ (obs-y obs) 2)
+          (- (obs-width obs) 4)
+          (- (obs-height obs) 4)))
 
 (define (hits-dino? obs)
     (let ((d (dino-hitbox))
@@ -48,21 +117,30 @@
         (aabb-hit (car d) (cadr d) (caddr d) (cadddr d)
                   (car o) (cadr o) (caddr o) (cadddr o))))
 
-(define (cadddr lst) (car (cdr (cddr lst))))
+;; Per-bird flap timer (Chromium Obstacle.timer).
+(define (step-flap obs dt)
+    (if (eq? (obs-kind obs) 'bird)
+        (+ (obs-flap obs) dt)
+        0))
 
 (define (move-obstacles dt)
-    (let ((dx (* speed dt)))
-        (set! obstacles
-            (filter (lambda (obs) (> (+ (cadr obs) (car (obstacle-size (car obs)))) -10))
-                    (map (lambda (obs)
-                            (list (car obs) (- (cadr obs) dx) (caddr obs)))
-                         obstacles)))))
+    (set! obstacles
+        (filter (lambda (obs) (> (+ (obs-x obs) (obs-width obs)) -10))
+                (map (lambda (obs)
+                        (list (obs-kind obs)
+                              (- (obs-x obs) (* (+ speed (obs-voff obs)) dt))
+                              (obs-y obs)
+                              (obs-size obs)
+                              (obs-voff obs)
+                              (step-flap obs dt)))
+                     obstacles))))
 
 (define (maybe-spawn dt)
     (set! spawn-cd (- spawn-cd dt))
     (when (and started? (not dead?) (<= spawn-cd 0))
-        (set! obstacles (cons (pick-obstacle) obstacles))
-        (set! spawn-cd (/ (gap-for-speed) speed))))
+        (let ((obs (make-obstacle)))
+            (set! obstacles (cons obs obstacles))
+            (set! spawn-cd (/ (gap-for obs) speed)))))
 
 (define (move-clouds dt)
     (let ((dx (* speed dt 0.35)))
@@ -85,7 +163,7 @@
 (define (update-score dt)
     (when (and started? (not dead?))
         (set! score (+ score (* speed dt SCORE-PER-PX)))
-        (set! speed (min MAX-SPEED (+ BASE-SPEED (* score 0.35))))
+        (set! speed (min MAX-SPEED (+ speed (* SPEED-ACCEL dt))))
         (let ((mark (* BLINK-EVERY (floor (/ score BLINK-EVERY)))))
             (when (and (> mark 0) (> mark last-blink-mark))
                 (set! last-blink-mark mark)

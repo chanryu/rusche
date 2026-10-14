@@ -1,10 +1,11 @@
-;; Build the scene command list for the host painter.
+;; Scene list for the host: clear / rect / sprite commands.
 
 (define digit-names '(d0 d1 d2 d3 d4 d5 d6 d7 d8 d9))
 
 (define (digit-name n)
     (nth digit-names (floor n)))
 
+;; Five digits, leading zeros.
 (define (pad5 n)
     (let ((n (floor (max 0 n))))
         (list (floor (% (/ n 10000) 10))
@@ -36,6 +37,7 @@
 
 (define (cddddr lst) (cdr (cddr (cdr lst))))
 
+;; Score (blinks at milestones) + optional HI.
 (define (hud-cmds fg)
     (let ((r (car fg))
           (g (cadr fg))
@@ -60,6 +62,7 @@
                 (list 'sprite 'cloud (car c) (cadr c) r g b))
              clouds)))
 
+;; Horizon line + scrolling dirt ticks.
 (define (ground-cmds fg)
     (let ((r (car fg))
           (g (cadr fg))
@@ -79,19 +82,34 @@
                   (list 'rect (- 560 ground-scroll) (+ GROUND-Y 5) 5 2 r g b)
                   (list 'rect (- 620 ground-scroll) (+ GROUND-Y 7) 3 2 r g b)))))
 
-(define (obs-sprite-name kind)
-    (cond ((eq? kind 'cactus-s) 'cactus-s)
-          ((eq? kind 'cactus-l) 'cactus-l)
-          ((eq? kind 'bird)
-           (if (< (% (* anim-t 8) 2) 1) 'bird-0 'bird-1))
+;; 6 flaps/s from obs flap-t, not dino anim-t.
+(define (bird-sprite-name obs)
+    (if (= (% (floor (* (obs-flap obs) BIRD-FLAP-HZ)) 2) 0) 'bird-0 'bird-1))
+
+;; size 2/3 → prebaked cluster sprites.
+(define (cactus-sprite kind size)
+    (cond ((eq? kind 'cactus-s)
+           (cond ((= size 1) 'cactus-s)
+                 ((= size 2) 'cactus-s2)
+                 (else 'cactus-s3)))
+          ((eq? kind 'cactus-l)
+           (cond ((= size 1) 'cactus-l)
+                 ((= size 2) 'cactus-l2)
+                 (else 'cactus-l3)))
           (else 'cactus-s)))
+
+(define (obs-sprite-name obs)
+    (let ((kind (obs-kind obs)))
+        (if (eq? kind 'bird)
+            (bird-sprite-name obs)
+            (cactus-sprite kind (obs-size obs)))))
 
 (define (obstacle-cmds fg)
     (let ((r (car fg))
           (g (cadr fg))
           (b (caddr fg)))
         (map (lambda (obs)
-                (list 'sprite (obs-sprite-name (car obs)) (cadr obs) (caddr obs) r g b))
+                (list 'sprite (obs-sprite-name obs) (obs-x obs) (obs-y obs) r g b))
              obstacles)))
 
 (define (dino-cmds fg)
@@ -110,6 +128,7 @@
             (list (list 'sprite 'game-over x y r g b)))
         ()))
 
+;; Back-to-front: clear → clouds → ground → obstacles → dino → HUD.
 (define (draw-scene)
     (let ((fg (fg-rgb))
           (bg (bg-rgb)))

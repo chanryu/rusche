@@ -1,4 +1,4 @@
-;; Canvas / sprite sizes — keep in sync with sprites.rs
+;; Constants + globals. Sprite sizes must match sprites.rs / sprite_png/.
 
 (define WIDTH 600)
 (define HEIGHT 150)
@@ -25,6 +25,7 @@
 (define CLOUD-W 92)
 (define CLOUD-H 28)
 
+;; Day / night palette (RGB 0–255)
 (define DAY-BG-R 247)
 (define DAY-BG-G 247)
 (define DAY-BG-B 247)
@@ -39,15 +40,31 @@
 (define NIGHT-FG-G 247)
 (define NIGHT-FG-B 247)
 
+;; Physics (px/s², px/s). Duck in air multiplies gravity by FAST-FALL.
 (define GRAVITY 2400)
 (define JUMP-V -720)
 (define FAST-FALL 2.2)
+
+;; Speeds px/s. Chromium ~6 units/frame @60fps; gates mirror multipleSpeed / minSpeed.
 (define BASE-SPEED 320)
 (define MAX-SPEED 720)
+(define SPEED-ACCEL 12)
 (define SCORE-PER-PX 0.025)
-(define BIRD-AFTER 400)
-(define NIGHT-BAND 700)
-(define BLINK-EVERY 100)
+
+;; Chromium: small multi@4, large@7, bird@8.5 → ≈ unit*(BASE/6). Small always on.
+(define SMALL-MULTI-SPEED 0)
+(define LARGE-MULTI-SPEED 373)
+(define BIRD-MIN-SPEED 453)
+(define BIRD-SPEED-OFFSET 48)   ; ±0.8 Chromium units → ±48 px/s
+(define BIRD-FLAP-HZ 6)         ; frameRate 1000/6 ms
+(define MAX-CLUSTER 3)
+(define MAX-TYPE-DUP 2)         ; no same kind this many times in a row
+(define CLEAR-TIME 3)           ; seconds with no obstacles after start
+(define MIN-GAP 120)
+(define GAP-COEFF 0.6)
+
+(define NIGHT-BAND 700)         ; score band flips day/night
+(define BLINK-EVERY 100)        ; flash score at milestones
 (define BLINK-SECS 0.35)
 
 ;; MINSTD LCG — exact in f64 while state < 2^31
@@ -60,22 +77,29 @@
 (define (rand-range lo hi)
     (+ lo (* (rand) (- hi lo))))
 
+(define (rand-int lo hi)
+    ;; [lo, hi)
+    (floor (+ lo (* (rand) (- hi lo)))))
+
+;; Mutable game state
 (define dead? false)
 (define started? false)
 (define dino-y 81)
 (define dino-vy 0)
 (define ducking? false)
-(define anim-t 0)
+(define anim-t 0)               ; dino run/duck clock (s)
 (define speed BASE-SPEED)
 (define score 0)
 (define hi-score 0)
+;; obstacles: (kind x y size speed-offset flap-t)
 (define obstacles ())
-(define clouds ())
-(define spawn-cd 0)
-(define prev-jump? false)
+(define clouds ())              ; (x y) pairs
+(define spawn-cd CLEAR-TIME)    ; seconds until next obstacle
+(define prev-jump? false)       ; edge-detect jump
 (define blink-t 0)
 (define last-blink-mark 0)
 (define ground-scroll 0)
+(define recent-kinds ())        ; for MAX_OBSTACLE_DUPLICATION
 
 (define (ground-dino-y)
     (- GROUND-Y DINO-H))
@@ -94,11 +118,12 @@
     (set! score 0)
     (set! obstacles ())
     (set! clouds (list (list 480 30) (list 200 50)))
-    (set! spawn-cd 1.2)
+    (set! spawn-cd CLEAR-TIME)
     (set! prev-jump? false)
     (set! blink-t 0)
     (set! last-blink-mark 0)
     (set! ground-scroll 0)
+    (set! recent-kinds ())
     (set! rng-state 1))
 
 (reset)

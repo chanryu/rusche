@@ -57,6 +57,16 @@ virtual canvas (origin top-left, y down). The host scales by 2× for the window.
 Night mode is only different numbers in those commands. The host does not know about
 score, obstacles, or day/night.
 
+## Chromium rules mirrored in Rusche
+
+Obstacle spawn follows Chromium `offline.js` / `Obstacle.types`:
+
+- Clear first ~3s (`CLEAR-TIME`)
+- Cactus clusters of 1–3 (`MAX-CLUSTER`); small multiples always, large after `LARGE-MULTI-SPEED`
+- No same kind more than twice in a row (`MAX-TYPE-DUP`)
+- Pterodactyl after `BIRD-MIN-SPEED`, never clustered, ±`BIRD-SPEED-OFFSET`, heights 50/75/100
+- Bird flap at 6 Hz per obstacle (`BIRD-FLAP-HZ`)
+
 ## Limitations
 
 - No sound, no persistent high score, no script editor.
