@@ -395,7 +395,7 @@ fn test_repr() {
 fn test_format_library() {
     let evaluator = Evaluator::with_prelude();
     evaluator
-        .eval_str(include_str!("../examples/lib/format.rsc"))
+        .eval_str(include_str!("../examples/lib/format.rsch"))
         .unwrap();
     assert_eq!(
         evaluator.eval_to_str(r#"(format "hello {}" "world")"#),

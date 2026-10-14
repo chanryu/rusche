@@ -147,8 +147,8 @@ mod tests {
 
     #[test]
     fn test_file_and_script_args() {
-        let opts = parse_args(args(&["script.rsc", "a", "b"])).unwrap();
-        assert_eq!(opts.input, Input::File(PathBuf::from("script.rsc")));
+        let opts = parse_args(args(&["script.rsch", "a", "b"])).unwrap();
+        assert_eq!(opts.input, Input::File(PathBuf::from("script.rsch")));
         assert_eq!(opts.script_args, vec!["a".to_string(), "b".to_string()]);
     }
 

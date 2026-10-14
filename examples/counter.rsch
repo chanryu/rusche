@@ -1,4 +1,4 @@
-(load "lib/io.rsc")
+(load "lib/io.rsch")
 
 (define counter
     (let ((count 0))

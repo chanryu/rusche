@@ -1,10 +1,10 @@
 #!/usr/bin/env rusche-cli
 ;; Word frequencies with the dict foreign type.
 ;;
-;;   cargo run -p rusche-cli -- examples/dict.rsc
+;;   cargo run -p rusche-cli -- examples/dict.rsch
 
-(load "lib/io.rsc")
-(load "lib/format.rsc")
+(load "lib/io.rsch")
+(load "lib/format.rsch")
 (define words '(the quick brown fox jumps over the lazy dog the fox))
 
 (define counts (dict))

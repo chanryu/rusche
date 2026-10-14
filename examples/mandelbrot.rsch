@@ -1,13 +1,13 @@
 #!/usr/bin/env rusche-cli
 ;; Plot the Mandelbrot set in ASCII.
 ;;
-;;   cargo run -p rusche-cli -- examples/mandelbrot.rsc
-;;   cargo run -p rusche-cli -- examples/mandelbrot.rsc 120 40 ; custom WIDTH HEIGHT
+;;   cargo run -p rusche-cli -- examples/mandelbrot.rsch
+;;   cargo run -p rusche-cli -- examples/mandelbrot.rsch 120 40 ; custom WIDTH HEIGHT
 ;;
 ;; Rendering is CPU-bound; add `--release` for larger sizes.
 
 ;; Characters from "escapes quickly" to "stays bounded" (the set itself).
-(load "lib/io.rsc")
+(load "lib/io.rsch")
 
 (define palette " .:-=+*#%@")
 

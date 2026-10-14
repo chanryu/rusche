@@ -1,10 +1,10 @@
 #!/usr/bin/env rusche-cli
 ;; Records, destructuring, named let, case, and math (sqrt / expt).
 ;;
-;;   cargo run -p rusche-cli -- examples/points.rsc
+;;   cargo run -p rusche-cli -- examples/points.rsch
 
-(load "lib/io.rsc")
-(load "lib/format.rsc")
+(load "lib/io.rsch")
+(load "lib/format.rsch")
 (defrecord point (x y))
 
 (defun point-dist (a b)

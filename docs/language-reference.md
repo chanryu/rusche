@@ -10,7 +10,7 @@ This reference covers only what the `rusche` crate provides:
 
 It does **not** document the example host [`rusche-cli`](rusche-cli.md). That
 application adds I/O (`write`, `read`) and the `vec` and `dict`
-foreign types. The `examples/*.rsc` scripts in this repository target
+foreign types. The `examples/*.rsch` scripts in this repository target
 `rusche-cli`, not a bare `Evaluator::default()`.
 
 ## Overview
@@ -306,7 +306,7 @@ The following forms and procedures are implemented in Rust. Most are native proc
 ### Prelude
 
 The following forms and procedures are implemented in Rusche itself. See
-[`src/prelude/`](../src/prelude/) (`macros.rsc`, `funcs.rsc`, `aliases.rsc`) for the
+[`src/prelude/`](../src/prelude/) (`macros.rsch`, `funcs.rsch`, `aliases.rsch`) for the
 source loaded by `Evaluator::with_prelude()`.
 
 Macros: `and`, `case`, `cond` (with `else`), `defrecord`, `defun`, `let` (including named `let` and list destructuring), `let*`, `letrec`, `or`, `or-else`, `unless`, `when`, `while`
@@ -651,4 +651,4 @@ Numeric helpers, and comparisons of numbers, strings, or lists (comparisons take
 
 - [`rusche-cli`](rusche-cli.md) — example host: running the interpreter, the REPL, I/O, `vec`, and `dict`
 - [Embedding tutorials](tutorials/embedding.md) — using the core crate from Rust
-- Example scripts: [`examples/strings.rsc`](../examples/strings.rsc) (string helpers), [`examples/points.rsc`](../examples/points.rsc) (`defrecord`, math, `case` / `when`)
+- Example scripts: [`examples/strings.rsch`](../examples/strings.rsch) (string helpers), [`examples/points.rsch`](../examples/points.rsch) (`defrecord`, math, `case` / `when`)

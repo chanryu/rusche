@@ -937,10 +937,10 @@ impl Evaluator {
     /// use rusche::{Error, Evaluator};
     ///
     /// let evaluator = Evaluator::with_builtin();
-    /// let Error::Eval(err) = evaluator.eval_str_named("(car 1)", "main.rsc").unwrap_err() else {
+    /// let Error::Eval(err) = evaluator.eval_str_named("(car 1)", "main.rsch").unwrap_err() else {
     ///     panic!("expected an evaluation error");
     /// };
-    /// assert_eq!(err.span.unwrap().source(), Some("main.rsc"));
+    /// assert_eq!(err.span.unwrap().source(), Some("main.rsch"));
     /// ```
     pub fn eval_str_named(&self, src: &str, source: &str) -> Result<Expr, Error> {
         self.eval_str_in(src, Some(source))
@@ -1403,18 +1403,18 @@ mod tests {
     fn test_named_spans_follow_each_buffer_into_the_trace() {
         let evaluator = Evaluator::with_prelude();
         evaluator
-            .eval_str_named("(define (boom x) (begin (car x) 0))", "lib.rsc")
+            .eval_str_named("(define (boom x) (begin (car x) 0))", "lib.rsch")
             .unwrap();
         let Error::Eval(err) = evaluator
-            .eval_str_named("(boom 1)", "main.rsc")
+            .eval_str_named("(boom 1)", "main.rsch")
             .unwrap_err()
         else {
             panic!("expected an evaluation error");
         };
 
-        // `(car x)` fails inside the body defined in lib.rsc. The argument
+        // `(car x)` fails inside the body defined in lib.rsch. The argument
         // expression lives there, so the error span names that file.
-        assert_eq!(err.span.and_then(|span| span.source()), Some("lib.rsc"));
+        assert_eq!(err.span.and_then(|span| span.source()), Some("lib.rsch"));
 
         let boom = err
             .trace
@@ -1423,7 +1423,7 @@ mod tests {
             .expect("boom frame");
         assert_eq!(
             boom.call_site.and_then(|span| span.source()),
-            Some("main.rsc")
+            Some("main.rsch")
         );
     }
 

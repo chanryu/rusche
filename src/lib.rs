@@ -14,7 +14,7 @@
 //! [rusche-cli](https://github.com/chanryu/rusche/tree/main/crates/rusche-cli) adds I/O
 //! (`write`, `read`), and vector and dict types — see
 //! [rusche-cli.md](https://github.com/chanryu/rusche/blob/main/docs/rusche-cli.md).
-//! Example `*.rsc` scripts target that host, not a bare evaluator.
+//! Example `*.rsch` scripts target that host, not a bare evaluator.
 //!
 //! Also see the prelude in [src/prelude/](https://github.com/chanryu/rusche/blob/main/src/prelude/).
 

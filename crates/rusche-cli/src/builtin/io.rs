@@ -152,7 +152,7 @@ mod tests {
         assert!(e.eval_str(r#"(write)"#).is_ok());
 
         assert!(eval_err(&e, "(load 1)").contains("string path"));
-        assert!(eval_err(&e, r#"(load "/tmp/rusche-missing-xyz.rsc")"#).contains("failed to read"));
+        assert!(eval_err(&e, r#"(load "/tmp/rusche-missing-xyz.rsch")"#).contains("failed to read"));
 
         let dir = std::env::temp_dir().join(format!(
             "rusche-io-test-{}-{}",
@@ -163,7 +163,7 @@ mod tests {
                 .as_nanos()
         ));
         std::fs::create_dir_all(&dir).unwrap();
-        let bad = dir.join("bad.rsc");
+        let bad = dir.join("bad.rsch");
         {
             let mut f = std::fs::File::create(&bad).unwrap();
             writeln!(f, "(car 1)").unwrap();

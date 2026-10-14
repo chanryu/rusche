@@ -3,9 +3,9 @@
 use crate::eval::{eval_source, EvalContext};
 
 const PRELUDE: &[&str] = &[
-    include_str!("macros.rsc"),
-    include_str!("funcs.rsc"),
-    include_str!("aliases.rsc"),
+    include_str!("macros.rsch"),
+    include_str!("funcs.rsch"),
+    include_str!("aliases.rsch"),
 ];
 
 pub fn load_prelude(context: &EvalContext) {

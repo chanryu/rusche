@@ -49,7 +49,7 @@ fn stderr(out: &Output) -> String {
 
 #[test]
 fn ok_script_exits_zero() {
-    let out = run(&[script("ok.rsc").to_str().unwrap()], "");
+    let out = run(&[script("ok.rsch").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(0));
     assert_eq!(stdout(&out), "1\n");
     assert!(stderr(&out).is_empty());
@@ -57,7 +57,7 @@ fn ok_script_exits_zero() {
 
 #[test]
 fn runtime_error_goes_to_stderr_and_exits_one() {
-    let out = run(&[script("runtime_error.rsc").to_str().unwrap()], "");
+    let out = run(&[script("runtime_error.rsch").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1));
     // write without a trailing newline is followed by ensure_newline before the diagnostic
     assert_eq!(stdout(&out), "hi\n");
@@ -70,7 +70,7 @@ fn runtime_error_goes_to_stderr_and_exits_one() {
 
 #[test]
 fn lex_error_exits_one() {
-    let out = run(&[script("lex_error.rsc").to_str().unwrap()], "");
+    let out = run(&[script("lex_error.rsch").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("unterminated string literal"));
     assert!(stdout(&out).is_empty());
@@ -78,7 +78,7 @@ fn lex_error_exits_one() {
 
 #[test]
 fn incomplete_expression_exits_one() {
-    let out = run(&[script("incomplete.rsc").to_str().unwrap()], "");
+    let out = run(&[script("incomplete.rsch").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1));
     let err = stderr(&out);
     assert!(
@@ -89,14 +89,14 @@ fn incomplete_expression_exits_one() {
 
 #[test]
 fn shebang_is_skipped() {
-    let out = run(&[script("shebang.rsc").to_str().unwrap()], "");
+    let out = run(&[script("shebang.rsch").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert_eq!(stdout(&out), "shebang-ok\n");
 }
 
 #[test]
 fn tab_caret_aligns_with_tab_padding() {
-    let out = run(&[script("tabs.rsc").to_str().unwrap()], "");
+    let out = run(&[script("tabs.rsch").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1));
     let err = stderr(&out);
     // The caret line should contain a literal tab before the carets (column after the tab).
@@ -109,7 +109,7 @@ fn tab_caret_aligns_with_tab_padding() {
 
 #[test]
 fn missing_file_exits_two() {
-    let out = run(&["/tmp/rusche-cli-definitely-missing.rsc"], "");
+    let out = run(&["/tmp/rusche-cli-definitely-missing.rsch"], "");
     assert_eq!(out.status.code(), Some(2));
     assert!(stderr(&out).contains("Failed to read file"));
 }
@@ -165,7 +165,7 @@ fn command_line_with_script_args() {
     // Hand-rolled parser: after FILE, remaining args are script args.
     // Use -e via a tiny temp approach: run with a file that prints command-line.
     let dir = tempfile_dir();
-    let path = dir.join("args.rsc");
+    let path = dir.join("args.rsch");
     std::fs::write(&path, "(write (command-line) \"\\n\")\n").unwrap();
     let out = run(&[path.to_str().unwrap(), "alpha", "beta"], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
@@ -239,10 +239,10 @@ fn load_relative_to_calling_file() {
     let dir = tempfile_dir();
     let sub = dir.join("sub");
     std::fs::create_dir(&sub).unwrap();
-    std::fs::write(sub.join("b.rsc"), "(define from-b 7)\n").unwrap();
-    std::fs::write(sub.join("a.rsc"), "(load \"b.rsc\")\n").unwrap();
-    let main = dir.join("main.rsc");
-    std::fs::write(&main, "(load \"sub/a.rsc\")\n(write from-b \"\\n\")\n").unwrap();
+    std::fs::write(sub.join("b.rsch"), "(define from-b 7)\n").unwrap();
+    std::fs::write(sub.join("a.rsch"), "(load \"b.rsch\")\n").unwrap();
+    let main = dir.join("main.rsch");
+    std::fs::write(&main, "(load \"sub/a.rsch\")\n(write from-b \"\\n\")\n").unwrap();
 
     let out = run(&[main.to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
@@ -252,7 +252,7 @@ fn load_relative_to_calling_file() {
 #[test]
 fn load_builtin() {
     let dir = tempfile_dir();
-    let loaded = dir.join("loaded.rsc");
+    let loaded = dir.join("loaded.rsch");
     std::fs::write(&loaded, "(define loaded-value 99)\n").unwrap();
     let expr = format!(
         "(begin (load \"{}\") (write loaded-value \"\\n\"))",
@@ -276,8 +276,8 @@ fn writeln_and_format() {
         &[
             "-e",
             r#"(begin
-                (load "examples/lib/io.rsc")
-                (load "examples/lib/format.rsc")
+                (load "examples/lib/io.rsch")
+                (load "examples/lib/format.rsch")
                 (writeln (format "hello {}" "world"))
                 (writeln (format "{{}} {}" '(a b)))
                 (writeln "x"))"#,
@@ -290,7 +290,7 @@ fn writeln_and_format() {
     let out = run(
         &[
             "-e",
-            r#"(begin (load "examples/lib/format.rsc") (format "{}"))"#,
+            r#"(begin (load "examples/lib/format.rsch") (format "{}"))"#,
         ],
         "",
     );
@@ -308,7 +308,7 @@ fn read_num_and_prompt() {
         &[
             "-e",
             r#"(begin
-                (load "examples/lib/io.rsc")
+                (load "examples/lib/io.rsch")
                 (writeln (read-num))
                 (write (repr (prompt "n: ")))
                 (writeln))"#,
@@ -321,14 +321,14 @@ fn read_num_and_prompt() {
 
 #[test]
 fn example_counter() {
-    let out = run(&[example("counter.rsc").to_str().unwrap()], "");
+    let out = run(&[example("counter.rsch").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert_eq!(stdout(&out), "1\n2\n3\n");
 }
 
 #[test]
 fn example_fizzbuzz() {
-    let out = run(&[example("fizzbuzz.rsc").to_str().unwrap()], "15\n");
+    let out = run(&[example("fizzbuzz.rsch").to_str().unwrap()], "15\n");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert!(stdout(&out).contains("FizzBuzz"));
     assert!(stdout(&out).contains("Enter a number"));
@@ -336,14 +336,14 @@ fn example_fizzbuzz() {
 
 #[test]
 fn example_backwards() {
-    let out = run(&[example("backwards.rsc").to_str().unwrap()], "");
+    let out = run(&[example("backwards.rsch").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     assert_eq!(stdout(&out), "tres\ndos\nuno\n");
 }
 
 #[test]
 fn example_dict() {
-    let out = run(&[example("dict.rsc").to_str().unwrap()], "");
+    let out = run(&[example("dict.rsch").to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     let s = stdout(&out);
     assert!(s.contains("the: 3"), "{s}");
@@ -354,7 +354,7 @@ fn example_dict() {
 
 #[test]
 fn example_maze() {
-    let out = run(&[example("maze.rsc").to_str().unwrap(), "6", "4"], "");
+    let out = run(&[example("maze.rsch").to_str().unwrap(), "6", "4"], "");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     let text = stdout(&out);
     let lines: Vec<&str> = text.lines().collect();
@@ -371,7 +371,7 @@ fn example_maze() {
 
 #[test]
 fn example_fibonacci_memoized() {
-    let out = run(&[example("fibonacci-memo.rsc").to_str().unwrap()], "10\n");
+    let out = run(&[example("fibonacci-memo.rsch").to_str().unwrap()], "10\n");
     assert_eq!(out.status.code(), Some(0), "stderr={}", stderr(&out));
     let s = stdout(&out);
     assert!(s.contains("fib(10) => 55"), "{s}");
@@ -381,7 +381,7 @@ fn example_fibonacci_memoized() {
 #[test]
 fn depth_limit_exits_one_not_abort() {
     let dir = tempfile_dir();
-    let path = dir.join("depth.rsc");
+    let path = dir.join("depth.rsch");
     std::fs::write(&path, "(define (inf n) (+ 1 (inf n)))\n(inf 0)\n").unwrap();
     let out = run(&[path.to_str().unwrap()], "");
     assert_eq!(out.status.code(), Some(1), "stderr={}", stderr(&out));
@@ -404,21 +404,21 @@ fn arity_error_snapshot() {
 #[test]
 fn load_nested_prints_inner_source() {
     let dir = tempfile_dir();
-    let inner = dir.join("inner.rsc");
+    let inner = dir.join("inner.rsch");
     std::fs::write(&inner, "(write \"in\")\n(car 99)\n").unwrap();
     let expr = format!("(load \"{}\")", inner.display());
     let out = run(&["-e", &expr], "");
     assert_eq!(out.status.code(), Some(1));
     let err = stderr(&out);
     assert!(err.contains("car:"), "{err}");
-    assert!(err.contains("inner.rsc"), "{err}");
+    assert!(err.contains("inner.rsch"), "{err}");
     assert!(err.contains("(car 99)"), "{err}");
 }
 
 #[test]
 fn call_trace_is_printed() {
     let dir = tempfile_dir();
-    let path = dir.join("deep.rsc");
+    let path = dir.join("deep.rsch");
     // Non-final `begin` forms keep each closure on the stack; tail calls would replace frames.
     std::fs::write(
         &path,
@@ -525,7 +525,7 @@ fn load_and_exit_error_paths() {
     assert!(stderr(&out).contains("string path"), "{}", stderr(&out));
 
     let out = run(
-        &["-e", "(load \"/tmp/rusche-definitely-missing-xyz.rsc\")"],
+        &["-e", "(load \"/tmp/rusche-definitely-missing-xyz.rsch\")"],
         "",
     );
     assert_eq!(out.status.code(), Some(1));

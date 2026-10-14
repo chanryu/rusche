@@ -38,7 +38,7 @@ fn bench_count_down(c: &mut Criterion) {
 }
 
 fn bench_mandelbrot(c: &mut Criterion) {
-    // Kernel from examples/mandelbrot.rsc without I/O; 24x8 grid, max-iter 20.
+    // Kernel from examples/mandelbrot.rsch without I/O; 24x8 grid, max-iter 20.
     let e = with_prelude(
         r#"
         (define max-iter 20)

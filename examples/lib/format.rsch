@@ -2,7 +2,7 @@
 ;; `{{` and `}}` are literal braces. Anything else after `{` is an error.
 ;; From a script in `examples/`:
 ;;
-;;   (load "lib/format.rsc")
+;;   (load "lib/format.rsch")
 (define (format template *args)
     (define (push s acc)
         (fold (lambda (acc ch) (cons ch acc)) acc (str->list s)))

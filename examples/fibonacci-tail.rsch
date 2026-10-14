@@ -5,7 +5,7 @@
         (fib-aux (- n 1) b (+ a b))))
   (fib-aux n 0 1))
 
-(load "lib/io.rsc")
-(load "lib/format.rsc")
+(load "lib/io.rsch")
+(load "lib/format.rsch")
 (define n (str->num (prompt "Enter a number: ")))
 (writeln (format "fib({}) => {}" n (fib n)))

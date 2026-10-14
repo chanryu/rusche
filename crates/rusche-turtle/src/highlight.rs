@@ -26,7 +26,7 @@ pub struct Span {
     pub kind: Kind,
 }
 
-/// Special forms and prelude macros (`src/prelude/macros.rsc`).
+/// Special forms and prelude macros (`src/prelude/macros.rsch`).
 const KEYWORDS: &[&str] = &[
     "define",
     "defmacro",
