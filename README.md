@@ -164,6 +164,28 @@ See [`docs/rusche-dino.md`](docs/rusche-dino.md).
 cargo run -p rusche-dino
 ```
 
+## Editor: syntax highlighting for `.rsch`
+
+VS Code (or Cursor) do not highlight Rusche out of the box. This repo ships a small
+extension in [`editors/vscode/`](editors/vscode/). Enable it once per machine:
+
+1. Clone (or open) this repository and `cd` to its root.
+2. Symlink the extension into your editor’s extensions folder:
+
+```bash
+# VS Code
+ln -sfn "$(pwd)/editors/vscode" ~/.vscode/extensions/rusche.rusche-0.0.1
+
+# Cursor
+ln -sfn "$(pwd)/editors/vscode" ~/.cursor/extensions/rusche.rusche-0.0.1
+```
+
+3. Reload the window: Command Palette → **Developer: Reload Window**.
+4. Open any `.rsch` file. The status-bar language mode should say **Rusche**, and
+   keywords, strings, comments, and numbers should be colored.
+
+To remove it, delete the symlink and reload again.
+
 ## Documentation
 
 - [Language reference](docs/language-reference.md) -- core special forms and built-ins (crate only)

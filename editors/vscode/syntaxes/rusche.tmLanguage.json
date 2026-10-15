@@ -1,0 +1,67 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Rusche",
+  "scopeName": "source.rusche",
+  "patterns": [
+    { "include": "#shebang" },
+    { "include": "#comment" },
+    { "include": "#string" },
+    { "include": "#bool" },
+    { "include": "#keyword" },
+    { "include": "#number" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "shebang": {
+      "name": "comment.line.shebang.rusche",
+      "match": "\\A#!.*"
+    },
+    "comment": {
+      "name": "comment.line.semicolon.rusche",
+      "match": ";.*"
+    },
+    "string": {
+      "name": "string.quoted.double.rusche",
+      "begin": "\"",
+      "end": "\"|(?=$)",
+      "patterns": [
+        {
+          "name": "constant.character.escape.rusche",
+          "match": "\\\\[\\\\\"nrt]"
+        }
+      ]
+    },
+    "bool": {
+      "name": "constant.language.boolean.rusche",
+      "match": "(?<=^|[\\s\\(\\)'\"`,;])(?:true|false)(?=$|[\\s\\(\\)'\"`,;])"
+    },
+    "keyword": {
+      "name": "keyword.control.rusche",
+      "match": "(?<=^|[\\s\\(\\)'\"`,;])(?:define|defmacro|defun|defrecord|lambda|if|begin|quote|quasiquote|unquote-splicing|unquote|eval|apply|set!|while|let\\*|letrec|let|and|or-else|or|cond|case|when|unless|else)(?=$|[\\s\\(\\)'\"`,;])"
+    },
+    "number": {
+      "name": "constant.numeric.rusche",
+      "match": "(?<=^|[\\s\\(\\)'\"`,;])(?:[+-]?\\d[^\\s\\(\\)'\"`,;]*|[+-]?\\.\\d+(?:[eE][+-]?\\d+)?)(?=$|[\\s\\(\\)'\"`,;])"
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.section.parens.begin.rusche",
+          "match": "\\("
+        },
+        {
+          "name": "punctuation.section.parens.end.rusche",
+          "match": "\\)"
+        },
+        {
+          "name": "keyword.operator.unquote-splicing.rusche",
+          "match": ",@"
+        },
+        {
+          "name": "keyword.operator.quote.rusche",
+          "match": "['`,]"
+        }
+      ]
+    }
+  }
+}

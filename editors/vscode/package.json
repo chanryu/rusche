@@ -1,0 +1,36 @@
+{
+  "name": "rusche",
+  "displayName": "Rusche",
+  "description": "Syntax highlighting for Rusche (.rsch)",
+  "version": "0.0.1",
+  "publisher": "rusche",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "rusche",
+        "aliases": [
+          "Rusche",
+          "rusche"
+        ],
+        "extensions": [
+          ".rsch"
+        ],
+        "configuration": "./language-configuration.json",
+        "firstLine": "^#!.*\\brusche"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "rusche",
+        "scopeName": "source.rusche",
+        "path": "./syntaxes/rusche.tmLanguage.json"
+      }
+    ]
+  }
+}
