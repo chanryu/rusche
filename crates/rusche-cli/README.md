@@ -1,8 +1,8 @@
 # `rusche-cli`
 
-[`rusche-cli`](../crates/rusche-cli) is an example host, not part of the core
+[`rusche-cli`](.) is an example host, not part of the core
 `rusche` crate: a REPL and file runner, plus I/O, `vec`, and `dict`.
-The [language reference](language-reference.md) documents only the core language.
+The [language reference](../../docs/language-reference.md) documents only the core language.
 
 ## Installation
 
@@ -17,14 +17,14 @@ cargo run -p rusche-cli -- examples/fizzbuzz.rsch
 
 | Layer | Source | Contents |
 | --- | --- | --- |
-| Core built-ins + prelude | `rusche` crate | [Language reference](language-reference.md). |
-| I/O | [`builtin/io.rs`](../crates/rusche-cli/src/builtin/io.rs) | `write`, `read`, `exit`, `load` |
-| System | [`builtin/sys.rs`](../crates/rusche-cli/src/builtin/sys.rs) | `getenv`, `clock`, `random`, `command-line` |
-| Vectors | [`builtin/vec.rs`](../crates/rusche-cli/src/builtin/vec.rs) | `vec?`, `vec`, `vec-push`, `vec-pop`, `vec-get`, `vec-set!`, `vec-length`, `vec->list`, `list->vec` |
-| Dicts | [`builtin/dict.rs`](../crates/rusche-cli/src/builtin/dict.rs) | `dict?`, `dict`, `dict-get`, `dict-set!`, `dict-has?`, `dict-remove!`, `dict-length`, `dict-keys`, `dict->list`, `list->dict` |
+| Core built-ins + prelude | `rusche` crate | [Language reference](../../docs/language-reference.md). |
+| I/O | [`builtin/io.rs`](src/builtin/io.rs) | `write`, `read`, `exit`, `load` |
+| System | [`builtin/sys.rs`](src/builtin/sys.rs) | `getenv`, `clock`, `random`, `command-line` |
+| Vectors | [`builtin/vec.rs`](src/builtin/vec.rs) | `vec?`, `vec`, `vec-push`, `vec-pop`, `vec-get`, `vec-set!`, `vec-length`, `vec->list`, `list->vec` |
+| Dicts | [`builtin/dict.rs`](src/builtin/dict.rs) | `dict?`, `dict`, `dict-get`, `dict-set!`, `dict-has?`, `dict-remove!`, `dict-length`, `dict-keys`, `dict->list`, `list->dict` |
 
 I/O, system, vector, and dict procedures are always registered. Scripts under
-[`examples/*.rsch`](../examples) are written for this host.
+[`examples/*.rsch`](../../examples) are written for this host.
 
 ## Running
 
@@ -73,7 +73,7 @@ is an empty program.
 | `-h`, `--help` | Print usage on stdout and exit 0. |
 | `-V`, `--version` | Print `rusche-cli` and the package version on stdout and exit 0. |
 | `-e`, `--eval EXPR` | Evaluate `EXPR` and exit. |
-| `--max-call-depth N` | Maximum call depth (default 1000). Tail calls do not count. See [Tail calls](language-reference.md#tail-calls). |
+| `--max-call-depth N` | Maximum call depth (default 1000). Tail calls do not count. See [Tail calls](../../docs/language-reference.md#tail-calls). |
 | `--gc-threshold N` | Collect automatically once live environments reach `N` (default 10000). |
 | `--gc-threshold off` | Leave automatic collection off. `,gc` in the REPL still collects. |
 | `--no-color` | Turn off color in the banner, REPL values, meta-command help, and diagnostics. |
@@ -145,7 +145,7 @@ values use their source form. A newline is the string `"\n"`. Stdout is flushed.
 (write 1 2)                 ; 12
 ```
 
-To write the source form of a value, including quotes around a string, pass it through `repr`. `repr` is core language; see the [language reference](language-reference.md#repr).
+To write the source form of a value, including quotes around a string, pass it through `repr`. `repr` is core language; see the [language reference](../../docs/language-reference.md#repr).
 
 ```scheme
 (write (repr "hi"))    ; "hi"
@@ -200,12 +200,12 @@ file loaded that way is the current file for any relative `load` inside it.
 
 ## Vectors
 
-A [`Foreign`](tutorials/foreign.md) wrapper around a vector of `Expr`.
+A [`Foreign`](../../docs/tutorials/foreign.md) wrapper around a vector of `Expr`.
 Mutable, compared by identity, printed as `<vec 1 2 3>`. `vec-push` and
 `vec-set!` return `()`. An index is an integer ≥ 0; a negative index, a
 non-integer, an index past the end, or `vec-pop` of an empty vector is an
 error. `trace` keeps closures stored in a vector reachable. See the
-[foreign object tutorial](tutorials/foreign.md).
+[foreign object tutorial](../../docs/tutorials/foreign.md).
 
 ```scheme
 (define v (vec 10 20 30))
@@ -233,14 +233,14 @@ error. `trace` keeps closures stored in a vector reachable. See the
 
 ## Dicts
 
-A [`Foreign`](tutorials/foreign.md) wrapper around a map from keys to `Expr`.
+A [`Foreign`](../../docs/tutorials/foreign.md) wrapper around a map from keys to `Expr`.
 Mutable, compared by identity, printed as `<dict ("a" 1)>`. Keys may be
 booleans, numbers, strings, or symbols; lists, procedures, and foreign values
 are rejected. `-0.0` and `0.0` are the same key; `NaN` is not a valid key.
 `dict-keys` and `dict->list` use a deterministic key order. `dict-set!` and
 `dict-remove!` return `()`. `trace` keeps closures stored as values reachable.
-See the [foreign object tutorial](tutorials/foreign.md), and
-[`examples/dict.rsch`](../examples/dict.rsch) / [`examples/fibonacci-memo.rsch`](../examples/fibonacci-memo.rsch)
+See the [foreign object tutorial](../../docs/tutorials/foreign.md), and
+[`examples/dict.rsch`](../../examples/dict.rsch) / [`examples/fibonacci-memo.rsch`](../../examples/fibonacci-memo.rsch)
 for scripts that use it.
 
 ```scheme
@@ -274,18 +274,18 @@ for scripts that use it.
 
 | Script | What it shows |
 | --- | --- |
-| [`backwards.rsch`](../examples/backwards.rsch) | A macro that reverses a sequence of forms. |
-| [`counter.rsch`](../examples/counter.rsch) | A closure that counts with `set!`. |
-| [`dict.rsch`](../examples/dict.rsch) | Word frequencies with `dict`. Shebang. |
-| [`factorial.rsch`](../examples/factorial.rsch), [`factorial-tail.rsch`](../examples/factorial-tail.rsch) | Factorial, reading a number. The second is tail recursive. |
-| [`fibonacci-memo.rsch`](../examples/fibonacci-memo.rsch), [`fibonacci-tail.rsch`](../examples/fibonacci-tail.rsch) | Fibonacci, reading a number. The first memoizes with `dict`; the second is tail recursive. |
-| [`fizzbuzz.rsch`](../examples/fizzbuzz.rsch) | FizzBuzz from stdin. Shebang. |
-| [`mandelbrot.rsch`](../examples/mandelbrot.rsch) | ASCII Mandelbrot. Optional width and height from `(command-line)`. Shebang. |
-| [`maze.rsch`](../examples/maze.rsch) | ASCII maze by recursive backtracking. Optional columns and rows from `(command-line)`. Shebang. |
-| [`points.rsch`](../examples/points.rsch) | `defrecord`, list destructuring, named `let`, `case` / `when` / `unless`, `sqrt` / `expt`. Shebang. |
-| [`strings.rsch`](../examples/strings.rsch) | `str-find`, `str-split`, `str-join`, `str-replace`, trim/case, `str-repeat`, `str->list`. Shebang. |
+| [`backwards.rsch`](../../examples/backwards.rsch) | A macro that reverses a sequence of forms. |
+| [`counter.rsch`](../../examples/counter.rsch) | A closure that counts with `set!`. |
+| [`dict.rsch`](../../examples/dict.rsch) | Word frequencies with `dict`. Shebang. |
+| [`factorial.rsch`](../../examples/factorial.rsch), [`factorial-tail.rsch`](../../examples/factorial-tail.rsch) | Factorial, reading a number. The second is tail recursive. |
+| [`fibonacci-memo.rsch`](../../examples/fibonacci-memo.rsch), [`fibonacci-tail.rsch`](../../examples/fibonacci-tail.rsch) | Fibonacci, reading a number. The first memoizes with `dict`; the second is tail recursive. |
+| [`fizzbuzz.rsch`](../../examples/fizzbuzz.rsch) | FizzBuzz from stdin. Shebang. |
+| [`mandelbrot.rsch`](../../examples/mandelbrot.rsch) | ASCII Mandelbrot. Optional width and height from `(command-line)`. Shebang. |
+| [`maze.rsch`](../../examples/maze.rsch) | ASCII maze by recursive backtracking. Optional columns and rows from `(command-line)`. Shebang. |
+| [`points.rsch`](../../examples/points.rsch) | `defrecord`, list destructuring, named `let`, `case` / `when` / `unless`, `sqrt` / `expt`. Shebang. |
+| [`strings.rsch`](../../examples/strings.rsch) | `str-find`, `str-split`, `str-join`, `str-replace`, trim/case, `str-repeat`, `str->list`. Shebang. |
 
-Shared modules live in [`lib/`](../examples/lib) and are loaded by these scripts: [`io.rsch`](../examples/lib/io.rsch) (`writeln`, `read-num`, `prompt`) and [`format.rsch`](../examples/lib/format.rsch) (`{}` placeholders, filled with `repr`).
+Shared modules live in [`lib/`](../../examples/lib) and are loaded by these scripts: [`io.rsch`](../../examples/lib/io.rsch) (`writeln`, `read-num`, `prompt`) and [`format.rsch`](../../examples/lib/format.rsch) (`{}` placeholders, filled with `repr`).
 
 ```bash
 cargo run -p rusche-cli -- examples/fizzbuzz.rsch
@@ -299,6 +299,6 @@ Rust projects under `examples/` belong to the embedding tutorials.
 
 ## Related docs
 
-- [Language reference](language-reference.md) — core special forms, built-ins, and prelude
-- [Embedding](tutorials/embedding.md) — the crate without `rusche-cli`
-- [Native functions](tutorials/native-functions.md) / [Foreign wrappers](tutorials/foreign.md) — how a host adds procedures and types
+- [Language reference](../../docs/language-reference.md) — core special forms, built-ins, and prelude
+- [Embedding](../../docs/tutorials/embedding.md) — the crate without `rusche-cli`
+- [Native functions](../../docs/tutorials/native-functions.md) / [Foreign wrappers](../../docs/tutorials/foreign.md) — how a host adds procedures and types

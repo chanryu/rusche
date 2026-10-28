@@ -1,6 +1,6 @@
 # `rusche-turtle`
 
-[`rusche-turtle`](../crates/rusche-turtle) is an example host: a desktop turtle-graphics
+[`rusche-turtle`](.) is an example host: a desktop turtle-graphics
 window with a script editor, REPL, canvas, and output log. Scripts and REPL
 expressions run on a worker-thread `Evaluator`; turtle commands stream to the UI over a
 channel.
@@ -42,7 +42,7 @@ the same **Speed** setting.
 Origin at canvas center, **y up**, heading **0° = east**, positive turns
 counter-clockwise. Starts at `(0, 0)` facing north (`90°`) with pen down.
 
-Core language: [language reference](language-reference.md). Host adds:
+Core language: [language reference](../../docs/language-reference.md). Host adds:
 
 ### Motion
 
@@ -85,7 +85,7 @@ Core language: [language reference](language-reference.md). Host adds:
   (right 10))
 ```
 
-Demo sources: [`crates/rusche-turtle/src/examples/`](../crates/rusche-turtle/src/examples).
+Demo sources: [`src/examples/`](src/examples).
 
 ## Limitations
 

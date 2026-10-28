@@ -8,7 +8,7 @@ This reference covers only what the `rusche` crate provides:
 - **Built-ins** — native primitives loaded by `Evaluator::with_builtin()`
 - **Prelude** — macros and helpers loaded by `Evaluator::with_prelude()` / `Default`
 
-It does **not** document the example host [`rusche-cli`](rusche-cli.md). That
+It does **not** document the example host [`rusche-cli`](../crates/rusche-cli/README.md). That
 application adds I/O (`write`, `read`) and the `vec` and `dict`
 foreign types. The `examples/*.rsch` scripts in this repository target
 `rusche-cli`, not a bare `Evaluator::default()`.
@@ -39,7 +39,7 @@ Rusche supports the following data types.
 - `Symbol`: Name or identifier, e.g. `car`, `num?`, `+`
 - `List`: `()` or a chain of pairs ending in `()`, e.g. `(1 2 3)`. Lists are immutable.
 - `Procedure`: a closure, a macro, or a native procedure.
-- `Foreign`: A host-defined wrapper for external Rust objects. The core language has no built-in foreign types; see the [foreign object tutorial](tutorials/foreign.md). (`rusche-cli`'s [`vec`](rusche-cli.md#vectors) is one host example.)
+- `Foreign`: A host-defined wrapper for external Rust objects. The core language has no built-in foreign types; see the [foreign object tutorial](tutorials/foreign.md). (`rusche-cli`'s [`vec`](../crates/rusche-cli/README.md#vectors) is one host example.)
 
 ## Boolean Values
 
@@ -649,6 +649,6 @@ Numeric helpers, and comparisons of numbers, strings, or lists (comparisons take
 
 ## See also
 
-- [`rusche-cli`](rusche-cli.md) — example host: running the interpreter, the REPL, I/O, `vec`, and `dict`
+- [`rusche-cli`](../crates/rusche-cli/README.md) — example host: running the interpreter, the REPL, I/O, `vec`, and `dict`
 - [Embedding tutorials](tutorials/embedding.md) — using the core crate from Rust
 - Example scripts: [`examples/strings.rsch`](../examples/strings.rsch) (string helpers), [`examples/points.rsch`](../examples/points.rsch) (`defrecord`, math, `case` / `when`)

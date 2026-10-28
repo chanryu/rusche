@@ -3,7 +3,7 @@
 [`Foreign`](https://docs.rs/rusche/latest/rusche/type.Foreign.html) lets the host
 store arbitrary Rust values in the interpreter. The core language defines no
 foreign types; hosts add them. Pair a foreign value with native procedures that
-construct and operate on it — as [`rusche-cli`](../rusche-cli.md) does for `vec`.
+construct and operate on it — as [`rusche-cli`](../../crates/rusche-cli/README.md) does for `vec`.
 
 A small runnable example lives in
 [`examples/tutorial-foreign`](../../examples/tutorial-foreign/main.rs). The fuller

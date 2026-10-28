@@ -12,8 +12,8 @@
 //! The [language reference](https://github.com/chanryu/rusche/blob/main/docs/language-reference.md)
 //! documents the **core language** (built-ins and prelude). The example host
 //! [rusche-cli](https://github.com/chanryu/rusche/tree/main/crates/rusche-cli) adds I/O
-//! (`write`, `read`), and vector and dict types — see
-//! [rusche-cli.md](https://github.com/chanryu/rusche/blob/main/docs/rusche-cli.md).
+//! (`write`, `read`), and vector and dict types — see its
+//! [README](https://github.com/chanryu/rusche/blob/main/crates/rusche-cli/README.md).
 //! Example `*.rsch` scripts target that host, not a bare evaluator.
 //!
 //! Also see the prelude in [src/prelude/](https://github.com/chanryu/rusche/blob/main/src/prelude/).
