@@ -135,7 +135,7 @@ The core language is everything available from `Evaluator::default()` (built-ins
 - `vec` and `dict` foreign types
 - A REPL with history, multi-line editing, and meta-commands (`,help`, `,load`, …)
 
-The `*.rsch` scripts under [`examples/`](https://github.com/chanryu/rusche/tree/main/examples) are written for this host (for example [fizzbuzz.rsch](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsch) uses `writeln` and `read`). See [`docs/rusche-cli.md`](docs/rusche-cli.md).
+The `*.rsch` scripts under [`examples/`](https://github.com/chanryu/rusche/tree/main/examples) are written for this host (for example [fizzbuzz.rsch](https://github.com/chanryu/rusche/blob/main/examples/fizzbuzz.rsch) uses `writeln` and `read`). See [`crates/rusche-cli/README.md`](crates/rusche-cli/README.md).
 
 ```bash
 cargo run -p rusche-cli
@@ -147,7 +147,7 @@ cargo install --path crates/rusche-cli
 
 [`rusche-turtle`](crates/rusche-turtle/) is a desktop turtle-graphics app that embeds Rusche.
 A Script editor and REPL share one session; scripts drive a turtle on a canvas via natives
-such as `forward`, `right`, and `pencolor`. See [`docs/rusche-turtle.md`](docs/rusche-turtle.md).
+such as `forward`, `right`, and `pencolor`. See [`crates/rusche-turtle/README.md`](crates/rusche-turtle/README.md).
 
 ```bash
 cargo run -p rusche-turtle
@@ -158,7 +158,7 @@ cargo run -p rusche-turtle -- path/to/script.rsch   # optional: load a file into
 
 [`rusche-dino`](crates/rusche-dino/) is a Chrome-dino-style runner. Gameplay lives in Rusche
 scripts; the egui host calls `(tick dt jump? duck?)` each frame and paints the scene list.
-See [`docs/rusche-dino.md`](docs/rusche-dino.md).
+See [`crates/rusche-dino/README.md`](crates/rusche-dino/README.md).
 
 ```bash
 cargo run -p rusche-dino
@@ -189,9 +189,9 @@ To remove it, delete the symlink and reload again.
 ## Documentation
 
 - [Language reference](docs/language-reference.md) -- core special forms and built-ins (crate only)
-- [`rusche-cli`](docs/rusche-cli.md) -- running the example interpreter: options, the REPL, I/O, `vec`, and `dict`
-- [`rusche-turtle`](docs/rusche-turtle.md) -- turtle-graphics GUI host and script API
-- [`rusche-dino`](docs/rusche-dino.md) -- dinosaur-runner GUI host and `tick` / scene contract
+- [`rusche-cli`](crates/rusche-cli/README.md) -- running the example interpreter: options, the REPL, I/O, `vec`, and `dict`
+- [`rusche-turtle`](crates/rusche-turtle/README.md) -- turtle-graphics GUI host and script API
+- [`rusche-dino`](crates/rusche-dino/README.md) -- dinosaur-runner GUI host and `tick` / scene contract
 - [API documentation on docs.rs](https://docs.rs/rusche/latest/rusche/) -- embedding Rusche in a Rust application
 - Tutorials for host applications:
   - [Embedding the interpreter](docs/tutorials/embedding.md)

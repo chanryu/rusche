@@ -2,7 +2,7 @@
 
 Native functions are Rust procedures registered in a Rusche environment. They are
 how a **host** adds I/O, domain APIs, and other capabilities the core language
-does not provide — the same mechanism [`rusche-cli`](../rusche-cli.md) uses for
+does not provide — the same mechanism [`rusche-cli`](../../crates/rusche-cli/README.md) uses for
 `write` and friends.
 
 Runnable versions of the examples live in

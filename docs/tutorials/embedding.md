@@ -2,7 +2,7 @@
 
 This guide shows how to embed the **core** `rusche` crate in a Rust application:
 create an evaluator, parse source, evaluate expressions, and exchange values with
-the host. It does not use [`rusche-cli`](../rusche-cli.md); that example host's
+the host. It does not use [`rusche-cli`](../../crates/rusche-cli/README.md); that example host's
 extras (I/O, `vec`, `dict`) are optional batteries you can add yourself.
 
 A runnable version of the snippets lives in

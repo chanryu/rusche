@@ -1,6 +1,6 @@
 # `rusche-dino`
 
-[`rusche-dino`](../crates/rusche-dino) is an example host: a Chrome-dino-style endless
+[`rusche-dino`](.) is an example host: a Chrome-dino-style endless
 runner. Gameplay is written in Rusche; the Rust side only pumps the frame and paints
 the scene list that `tick` returns. There are no game natives and no foreign objects.
 
@@ -15,7 +15,7 @@ cargo run -p rusche-dino
 | Space, ↑, or click | Jump (also starts the run and restarts after game over) |
 | ↓ | Duck on the ground; fast-fall in the air |
 
-Edit the bundled scripts under [`crates/rusche-dino/src/rsch/`](../crates/rusche-dino/src/rsch/)
+Edit the bundled scripts under [`src/rsch/`](src/rsch/)
 and rebuild. The host evaluates them in a fixed order with `eval_str_named`.
 
 ## Script layout
@@ -29,9 +29,9 @@ and rebuild. The host evaluates them in a fixed order with `eval_str_named`.
 | `game.rsch` | `(tick dt jump? duck?)` |
 
 Sprites are white-alpha PNGs under
-[`crates/rusche-dino/src/sprite_png/`](../crates/rusche-dino/src/sprite_png/),
+[`src/sprite_png/`](src/sprite_png/),
 derived from [Wikimedia Commons — Dinosaur Game](https://commons.wikimedia.org/wiki/Category:Dinosaur_Game)
-(see [`assets/README.md`](../crates/rusche-dino/assets/README.md)). Sizes in
+(see [`assets/README.md`](assets/README.md)). Sizes in
 `state.rsch` must match those PNGs.
 
 ## Host contract
